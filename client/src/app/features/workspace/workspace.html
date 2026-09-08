@@ -1,0 +1,126 @@
+<!-- Top Header -->
+<header class="top-header">
+  <div class="header-right">
+    <i class="fa-solid fa-anchor"></i>
+    <span>עמילות מכס & שילוח</span>
+  </div>
+  <div class="header-left">
+    <div class="header-actions">
+      <button type="button">תחנות עבודה</button>
+    </div>
+    <div class="user-info">
+      <span>שלום, דורון ממן</span>
+      <i class="fa-solid fa-circle-user fa-lg"></i>
+    </div>
+  </div>
+</header>
+
+<!-- Main App Container -->
+<div class="main-container">
+  <!-- Right Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <i class="fa-solid fa-bars"></i>
+      תפריט ראשי
+    </div>
+    <ul class="sidebar-menu">
+      @for (node of nav.tree(); track node.id) {
+        <li class="tree-node">
+          <button
+            type="button"
+            class="tree-node-toggle"
+            [class.active]="nav.isNodeExpanded(node.id)"
+            [attr.aria-expanded]="nav.isNodeExpanded(node.id)"
+            (click)="nav.toggleNode(node.id)"
+          >
+            <span class="tree-node-label">
+              <i [class]="node.icon"></i>
+              <span>{{ node.label }}</span>
+            </span>
+            <i
+              class="fa-solid"
+              [class.fa-chevron-down]="nav.isNodeExpanded(node.id)"
+              [class.fa-chevron-left]="!nav.isNodeExpanded(node.id)"
+            ></i>
+          </button>
+          <ul class="tree-node-children" [class.open]="nav.isNodeExpanded(node.id)">
+            @for (child of node.children; track child.id) {
+              <li>
+                <a
+                  href="#"
+                  class="tree-child-item"
+                  [class.active]="nav.isChildActive(child.id)"
+                  (click)="$event.preventDefault(); nav.selectChild(child)"
+                >
+                  <i [class]="child.icon"></i>
+                  <span>{{ child.label }}</span>
+                </a>
+              </li>
+            }
+          </ul>
+        </li>
+      }
+    </ul>
+  </aside>
+
+  <!-- Content Area -->
+  <main class="content-area">
+    <section class="info-bar" aria-label="Shipment and customs file details">
+      <div class="info-card">
+        <span class="info-label">מספר תיק עמילות מכס</span>
+        <span class="info-value">60070531</span>
+      </div>
+      <div class="info-card">
+        <span class="info-label">שם לקוח</span>
+        <span class="info-value">יבוא סחר בע"מ</span>
+      </div>
+      <div class="info-card">
+        <span class="info-label">שם ספק</span>
+        <span class="info-value">Shanghai Tech Components</span>
+      </div>
+      <div class="info-card">
+        <span class="info-label">מספר הזמנה</span>
+        <span class="info-value">11456</span>
+      </div>
+      <div class="info-card">
+        <span class="info-label">תיאור טובין</span>
+        <span class="info-value">אלקטרונית דיוקן ומערכות תקשורת</span>
+      </div>
+      <div class="info-card">
+        <span class="info-label">מספר עסקה</span>
+        <span class="info-value">I-261438-025-004500</span>
+      </div>
+      <div class="info-card">
+        <span class="info-label">מספר מצהר</span>
+        <span class="info-value">261438</span>
+      </div>
+      <div class="info-card">
+        <span class="info-label">מספר שטר מטען</span>
+        <span class="info-value">NEXF123456789</span>
+      </div>
+    </section>
+
+    <div class="page-tab-panel active" role="tabpanel">
+      @switch (nav.activeScreen()) {
+        @case ('order') {
+          <app-order-screen />
+        }
+        @case ('filing') {
+          <app-filing-screen />
+        }
+        @case ('shipment') {
+          <app-shipment-screen />
+        }
+        @case ('classification') {
+          <app-classification-screen />
+        }
+        @case ('importDeclaration') {
+          <app-import-declaration-screen />
+        }
+        @default {
+          <app-placeholder-screen />
+        }
+      }
+    </div>
+  </main>
+</div>

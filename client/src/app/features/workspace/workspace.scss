@@ -1,0 +1,8 @@
+/* The workspace fills the viewport as a vertical flex column: the fixed-height
+   header on top, the sidebar + content row filling the rest (mock's <body> layout). */
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}

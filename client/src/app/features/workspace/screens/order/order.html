@@ -1,0 +1,237 @@
+<form class="order-form" (submit)="$event.preventDefault()">
+  <!-- Section: Customer Information -->
+  <section class="form-section">
+    <h2 class="section-title">פרטי לקוח ופתיחה</h2>
+    <div class="grid-row">
+      <div class="form-group autocomplete-wrapper">
+        <label class="required">לקוח קיים</label>
+        <input
+          type="text"
+          class="form-control"
+          placeholder="הקלד שם לקוח לחיפוש..."
+          autocomplete="off"
+          [value]="customer.query()"
+          (input)="customer.onInput($any($event.target).value)"
+        />
+        <div class="autocomplete-list" [class.active]="customer.open()">
+          @for (match of customer.matches(); track match) {
+            <div class="autocomplete-item" (click)="customer.select(match)">{{ match }}</div>
+          }
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>מספר הזמנה פנימי</label>
+        <input type="text" class="form-control" [value]="internalOrderNum()" readonly />
+      </div>
+
+      <div class="form-group">
+        <label>תאריך פתיחת הזמנה</label>
+        <input type="text" class="form-control" [value]="creationDate" readonly />
+      </div>
+
+      <div class="form-group">
+        <label>פקיד מטפל</label>
+        <input type="text" class="form-control" value="דורון ממן" readonly />
+      </div>
+    </div>
+  </section>
+
+  <!-- Section: Shipment Information -->
+  <section class="form-section">
+    <h2 class="section-title">פרטי משלוח</h2>
+
+    <div class="grid-row">
+      <div class="form-group" style="grid-column: span 2">
+        <label class="required">סטטוס הזמנה</label>
+        <div class="tabs-container">
+          @for (option of statuses; track option) {
+            <button
+              type="button"
+              class="tab-btn"
+              [class.active]="status() === option"
+              (click)="status.set(option)"
+            >
+              {{ option }}
+            </button>
+          }
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-row">
+      <div class="form-group">
+        <label class="required">סוג משלוח</label>
+        <div class="tabs-container">
+          @for (option of types; track option) {
+            <button
+              type="button"
+              class="tab-btn"
+              [class.active]="type() === option"
+              (click)="type.set(option)"
+            >
+              {{ option }}
+            </button>
+          }
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="required">תנאי תשלום הובלה (Incoterms)</label>
+        <div class="tabs-container">
+          <button
+            type="button"
+            class="tab-btn"
+            [class.active]="terms() === 'Prepaid'"
+            (click)="terms.set('Prepaid')"
+          >
+            Prepaid
+          </button>
+          <button
+            type="button"
+            class="tab-btn"
+            [class.active]="terms() === 'Collect'"
+            (click)="terms.set('Collect')"
+          >
+            Collect
+          </button>
+        </div>
+
+        @if (terms() === 'Collect') {
+          <div class="tabs-container sub-tabs-container">
+            @for (row of collectTermsRows; track $index) {
+              <div class="tabs-row">
+                @for (option of row; track option) {
+                  <button
+                    type="button"
+                    class="tab-btn"
+                    [class.active]="collectTerm() === option"
+                    (click)="collectTerm.set(option)"
+                  >
+                    {{ option }}
+                  </button>
+                }
+              </div>
+            }
+          </div>
+        }
+
+        @if (terms() === 'Prepaid') {
+          <div class="tabs-container sub-tabs-container">
+            <div class="tabs-row">
+              @for (option of prepaidTerms; track option) {
+                <button
+                  type="button"
+                  class="tab-btn"
+                  [class.active]="prepaidTerm() === option"
+                  (click)="prepaidTerm.set(option)"
+                >
+                  {{ option }}
+                </button>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+
+    <div class="grid-row">
+      <div class="form-group" style="grid-column: span 2">
+        <label class="required">יעד</label>
+        <div class="tabs-container">
+          @for (option of destinations; track option) {
+            <button
+              type="button"
+              class="tab-btn"
+              [class.active]="dest() === option"
+              (click)="dest.set(option)"
+            >
+              {{ option }}
+            </button>
+          }
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section: Shipping Schedule -->
+  <section class="form-section">
+    <h2 class="section-title">לוחות זמנים</h2>
+    <div class="grid-row">
+      <div class="form-group">
+        <label>תאריך מוכנות במפעל</label>
+        <input type="date" class="form-control" />
+      </div>
+      <div class="form-group">
+        <label>תאריך איסוף מהמפעל</label>
+        <input type="date" class="form-control" />
+      </div>
+      <div class="form-group">
+        <label>תאריך הפלגה / טיסה (יציאה)</label>
+        <input type="date" class="form-control" />
+      </div>
+      <div class="form-group">
+        <label>תאריך הגעה משוער (ETA)</label>
+        <input type="date" class="form-control" />
+      </div>
+    </div>
+  </section>
+
+  <!-- Section: Transportation Details -->
+  <section class="form-section">
+    <h2 class="section-title">פרטי הובלה</h2>
+    <div class="grid-row">
+      @if (seaVisible()) {
+        <div class="form-group autocomplete-wrapper transport-group">
+          <label>חברת ספנות</label>
+          <input
+            type="text"
+            class="form-control"
+            placeholder="חפש חברת ספנות..."
+            autocomplete="off"
+            [value]="shippingLine.query()"
+            (input)="shippingLine.onInput($any($event.target).value)"
+          />
+          <div class="autocomplete-list" [class.active]="shippingLine.open()">
+            @for (match of shippingLine.matches(); track match) {
+              <div class="autocomplete-item" (click)="shippingLine.select(match)">{{ match }}</div>
+            }
+          </div>
+        </div>
+        <div class="form-group transport-group">
+          <label>מספר הפלגה (Voyage Number)</label>
+          <input type="number" class="form-control" placeholder="הזן מספר הפלגה" />
+        </div>
+      }
+
+      @if (airVisible()) {
+        <div class="form-group autocomplete-wrapper transport-group">
+          <label>חברת תעופה (Airline)</label>
+          <input
+            type="text"
+            class="form-control"
+            placeholder="חפש חברת תעופה..."
+            autocomplete="off"
+            [value]="airline.query()"
+            (input)="airline.onInput($any($event.target).value)"
+          />
+          <div class="autocomplete-list" [class.active]="airline.open()">
+            @for (match of airline.matches(); track match) {
+              <div class="autocomplete-item" (click)="airline.select(match)">{{ match }}</div>
+            }
+          </div>
+        </div>
+        <div class="form-group transport-group">
+          <label>מספר טיסה (Flight Number)</label>
+          <input type="text" class="form-control" placeholder="הזן מספר טיסה" />
+        </div>
+      }
+    </div>
+  </section>
+
+  <!-- Form Actions -->
+  <div class="form-actions">
+    <button type="button" class="btn btn-secondary">ביטול</button>
+    <button type="button" class="btn btn-primary" (click)="onSave()">שמור הזמנה</button>
+  </div>
+</form>

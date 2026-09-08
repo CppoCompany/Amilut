@@ -1,0 +1,19 @@
+{
+  "name": "amilut_tax",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Angular 21 + NestJS 11 monorepo scaffold",
+  "scripts": {
+    "dev": "concurrently -n server,client -c blue,green \"npm:dev:server\" \"npm:dev:client\"",
+    "dev:server": "npm --prefix server run start:dev",
+    "dev:client": "npm --prefix client start",
+    "build": "npm --prefix server run build && npm --prefix client run build",
+    "install:all": "npm install && npm --prefix server install && npm --prefix client install"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "dependencies": {
+    "pg": "^8.23.0"
+  }
+}

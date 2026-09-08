@@ -1,0 +1,65 @@
+<form class="order-form">
+  <section class="form-section">
+    <h2 class="section-title">תיוק ניירת יבוא</h2>
+
+    <div class="details-grid">
+      <div class="detail-item">
+        <span class="detail-label">מספר תיק</span>
+        <span class="detail-value">1000</span>
+      </div>
+      <div class="detail-item">
+        <span class="detail-label">מספר זיהוי פנימי</span>
+        <span class="detail-value">11456</span>
+      </div>
+      <div class="detail-item">
+        <span class="detail-label">שם ספק</span>
+        <span class="detail-value">Shanghai Tech Components</span>
+      </div>
+      <div class="detail-item">
+        <span class="detail-label">מספר מסמך</span>
+        <span class="detail-value">NEXF123456789</span>
+      </div>
+    </div>
+
+    <div style="height: 12px"></div>
+
+    <div class="section-header">
+      <div class="title-row">
+        <i class="fa-solid fa-file-lines"></i>
+        <div style="font-weight: 700; font-size: 1.05rem; color: var(--text-dark)">מסמכי משלוח</div>
+      </div>
+    </div>
+
+    <div class="upload-area">
+      <div class="upload-instructions">
+        <div class="upload-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+        <div class="upload-text">
+          <div style="font-weight: 700; color: var(--primary-blue)">גרור לכאן קבצים</div>
+          <div style="color: var(--text-muted); font-size: 0.9rem">תמיכה בקבצי PDF, XLSX, תמונות</div>
+        </div>
+      </div>
+      <button type="button" class="upload-btn">העלה קבצים</button>
+    </div>
+
+    <table class="documents-table">
+      <thead>
+        <tr>
+          <th>שם קובץ</th>
+          <th>תאריך</th>
+          <th>גודל</th>
+          <th>פעולות</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (doc of documents(); track doc.name) {
+          <tr>
+            <td>{{ doc.name }}</td>
+            <td>{{ doc.date }}</td>
+            <td>{{ doc.size }}</td>
+            <td><button type="button" class="upload-btn" style="padding: 6px 10px">פתח</button></td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </section>
+</form>

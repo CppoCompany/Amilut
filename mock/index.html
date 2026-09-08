@@ -1,0 +1,1919 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shipment Order Demo</title>
+    <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            /* Colors based on typical enterprise logistics UIs and reference image */
+            --primary-blue: #0a3d82; /* Deep blue for headers */
+            --secondary-blue: #1b63c7; /* Lighter blue for active elements */
+            --light-blue-bg: #eaf1fb; /* Active sidebar item bg */
+            --bg-color: #f4f7f9; /* Main app background */
+            --card-bg: #ffffff;
+            --text-dark: #202b3c;
+            --text-muted: #64748b;
+            --border-color: #d8e0e9;
+            --input-bg: #ffffff;
+            --readonly-bg: #f8fafc;
+            --success: #10b981;
+            
+            /* Typography & Spacing */
+            --font-main: 'Assistant', sans-serif;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --shadow-sm: 0 2px 4px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 6px rgba(0,0,0,0.07);
+            --transition: all 0.2s ease-in-out;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background-color: var(--bg-color);
+            color: var(--text-dark);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Top Header */
+        .top-header {
+            height: 60px;
+            background-color: white;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 24px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            z-index: 10;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-weight: 700;
+            font-size: 1.2rem;
+            color: var(--primary-blue);
+        }
+
+        .header-right i {
+            font-size: 1.5rem;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .header-actions button {
+            background-color: var(--primary-blue);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: var(--radius-md);
+            font-family: inherit;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        
+        .header-actions button:hover {
+            background-color: var(--secondary-blue);
+        }
+
+        /* Main Container */
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 250px;
+            background-color: white;
+            border-left: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            box-shadow: -2px 0 5px rgba(0,0,0,0.02);
+            z-index: 5;
+        }
+
+        .sidebar-header {
+            background-color: var(--primary-blue);
+            color: white;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            padding: 12px 0;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .tree-node {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .tree-node-toggle {
+            width: 100%;
+            background: transparent;
+            border: none;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            color: var(--text-dark);
+            font-family: inherit;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            border-right: 4px solid transparent;
+            text-align: right;
+        }
+
+        .tree-node-toggle:hover {
+            background-color: var(--bg-color);
+        }
+
+        .tree-node-toggle.active {
+            background-color: var(--light-blue-bg);
+            color: var(--secondary-blue);
+            border-right-color: var(--secondary-blue);
+        }
+
+        .tree-node-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+        }
+
+        .tree-node-label i {
+            width: 20px;
+            text-align: center;
+            color: var(--text-muted);
+        }
+
+        .tree-node-toggle.active .tree-node-label i {
+            color: var(--secondary-blue);
+        }
+
+        .tree-node-children {
+            display: none;
+            padding-right: 8px;
+        }
+
+        .tree-node-children.open {
+            display: block;
+        }
+
+        .tree-child-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 20px 10px 28px;
+            color: var(--text-dark);
+            text-decoration: none;
+            cursor: pointer;
+            transition: var(--transition);
+            border-right: 4px solid transparent;
+            font-size: 0.92rem;
+        }
+
+        .tree-child-item:hover {
+            background-color: var(--bg-color);
+        }
+
+        .tree-child-item.active {
+            background-color: var(--light-blue-bg);
+            color: var(--secondary-blue);
+            border-right-color: var(--secondary-blue);
+            font-weight: 600;
+        }
+
+        .tree-child-item i {
+            width: 16px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .tree-child-item.active i {
+            color: var(--secondary-blue);
+        }
+
+        /* Content Area */
+        .content-area {
+            flex: 1;
+            padding: 24px 32px;
+            overflow-y: auto;
+        }
+
+        .info-bar {
+            display: grid;
+            grid-template-columns: repeat(8, minmax(120px, 1fr));
+            gap: 10px;
+            background: linear-gradient(90deg, #ffffff 0%, #f7fbff 100%);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 12px 14px;
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 18px;
+            align-items: center;
+            overflow-x: auto;
+        }
+
+        .info-card {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 10px 12px;
+            transition: var(--transition);
+            min-width: 140px;
+        }
+
+        .info-card:hover {
+            box-shadow: var(--shadow-md);
+        }
+
+        .info-label {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .info-value {
+            font-size: 0.92rem;
+            color: var(--text-dark);
+            font-weight: 700;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .page-title {
+            font-size: 1.8rem;
+            color: var(--primary-blue);
+            margin-bottom: 24px;
+            font-weight: 700;
+        }
+
+        .page-tab-panel {
+            display: none;
+        }
+
+        .page-tab-panel.active {
+            display: block;
+        }
+
+        /* Form Structure */
+        .order-form {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            max-width: 1200px;
+        }
+
+        .form-section {
+            background: var(--card-bg);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+        }
+
+        .section-title {
+            font-size: 1.2rem;
+            color: var(--text-dark);
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--bg-color);
+            font-weight: 600;
+        }
+
+        .grid-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .grid-row:last-child {
+            margin-bottom: 0;
+        }
+
+        /* Controls */
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            position: relative;
+        }
+
+        .form-group label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .form-group label.required::after {
+            content: '*';
+            color: #ef4444;
+            margin-right: 4px;
+        }
+
+        .transport-group.is-hidden,
+        .transport-group[hidden] {
+            display: none !important;
+        }
+
+        .form-control {
+            padding: 10px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            font-family: inherit;
+            font-size: 0.95rem;
+            transition: var(--transition);
+            background-color: var(--input-bg);
+            width: 100%;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--secondary-blue);
+            box-shadow: 0 0 0 3px rgba(27, 99, 199, 0.1);
+        }
+
+        .form-control[readonly] {
+            background-color: var(--readonly-bg);
+            color: var(--text-muted);
+            cursor: not-allowed;
+            border-style: dashed;
+        }
+
+        .details-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 16px;
+        }
+
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            padding: 12px 14px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            background: var(--readonly-bg);
+        }
+
+        .detail-label {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text-muted);
+        }
+
+        .detail-value {
+            font-size: 0.98rem;
+            color: var(--text-dark);
+            font-weight: 600;
+            word-break: break-word;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .section-header .title-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .section-header .title-row i {
+            font-size: 1.2rem;
+            color: var(--primary-blue);
+        }
+
+        .section-header .section-action-btn {
+            background: var(--secondary-blue);
+            color: white;
+            padding: 8px 14px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        /* Search page styles */
+        .search-panel {
+            max-width: 1200px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .search-row {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .search-select {
+            width: 220px;
+            padding: 10px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            background: var(--card-bg);
+            font-weight: 600;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 10px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+        }
+
+        .search-list {
+            position: absolute;
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            margin-top: 6px;
+            width: calc(100% - 260px);
+            max-height: 200px;
+            overflow-y: auto;
+            box-shadow: var(--shadow-md);
+            z-index: 200;
+        }
+
+        .search-item {
+            padding: 10px 12px;
+            cursor: pointer;
+        }
+
+        .search-item:hover {
+            background: var(--bg-color);
+            color: var(--secondary-blue);
+        }
+
+        /* Filing page specific styles */
+        .upload-area {
+            border: 2px dashed var(--border-color);
+            border-radius: var(--radius-md);
+            background: linear-gradient(180deg, rgba(234,241,251,0.5), rgba(255,255,255,0.6));
+            padding: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .upload-instructions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .upload-instructions .upload-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: var(--primary-blue);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+        }
+
+        .upload-instructions .upload-text {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .upload-btn {
+            background: var(--secondary-blue);
+            color: white;
+            padding: 10px 16px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .documents-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 12px;
+        }
+
+        .documents-table th, .documents-table td {
+            border-bottom: 1px solid var(--border-color);
+            padding: 10px 12px;
+            text-align: right;
+            vertical-align: middle;
+            font-size: 0.95rem;
+        }
+
+        .documents-table th {
+            background: #fbfdff;
+            color: var(--text-muted);
+            font-weight: 700;
+        }
+
+        /* Autocomplete */
+        .autocomplete-wrapper {
+            position: relative;
+        }
+
+        .autocomplete-list {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            margin-top: 4px;
+            max-height: 200px;
+            overflow-y: auto;
+            box-shadow: var(--shadow-md);
+            z-index: 100;
+            display: none;
+        }
+
+        .autocomplete-list.active {
+            display: block;
+        }
+
+        .autocomplete-item {
+            padding: 10px 12px;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 0.95rem;
+        }
+
+        .autocomplete-item:hover {
+            background-color: var(--bg-color);
+            color: var(--secondary-blue);
+        }
+
+        /* Tabs System */
+        .tabs-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            background-color: var(--bg-color);
+            padding: 4px;
+            border-radius: var(--radius-md);
+            width: fit-content;
+        }
+
+        .tabs-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            width: fit-content;
+        }
+
+        .sub-tabs-container {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 8px;
+            width: fit-content;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-family: inherit;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .tab-btn:hover {
+            color: var(--text-dark);
+        }
+
+        .tab-btn.active {
+            background-color: white;
+            color: var(--secondary-blue);
+            box-shadow: var(--shadow-sm);
+        }
+
+        /* Action Buttons */
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 16px;
+            margin-top: 24px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: var(--radius-md);
+            font-family: inherit;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: var(--transition);
+            border: none;
+        }
+
+        .btn-primary {
+            background-color: var(--secondary-blue);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-blue);
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-secondary {
+            background-color: white;
+            color: var(--text-dark);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--bg-color);
+        }
+
+        /* Transmit to customs button */
+        .btn-transmit {
+            background: linear-gradient(90deg,#ff7a00,#ff5a00);
+            color: white;
+            padding: 10px 18px;
+            border-radius: 12px;
+            box-shadow: 0 6px 18px rgba(255,90,0,0.18);
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 700;
+            transition: transform .12s ease, box-shadow .12s ease, opacity .12s ease;
+        }
+
+        .btn-transmit i {
+            font-size: 1rem;
+            opacity: 0.95;
+        }
+
+        .btn-transmit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 24px rgba(255,90,0,0.22);
+        }
+
+        .btn-transmit:active {
+            transform: translateY(0);
+            opacity: 0.95;
+        }
+        /* Small centered input for Classification goods description */
+        #classificationTabPanel .goods-input-wrapper {
+            display: flex;
+            justify-content: center;
+        }
+
+        #classificationTabPanel .goods-input--small {
+            width: 24rem;
+        }
+        /* Center label and contents for the goods description only */
+        #classificationTabPanel .goods-form-group {
+            align-items: center;
+        }
+
+        #classificationTabPanel .goods-form-group > label {
+            text-align: center;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Top Header -->
+    <header class="top-header">
+        <div class="header-right">
+            <i class="fa-solid fa-anchor"></i>
+            <span>עמילות מכס & שילוח</span>
+        </div>
+        <div class="header-left">
+            <div class="header-actions">
+                <button type="button">תחנות עבודה</button>
+            </div>
+            <div class="user-info">
+                <span>שלום, דורון ממן</span>
+                <i class="fa-solid fa-circle-user fa-lg"></i>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main App Container -->
+    <div class="main-container">
+        
+        <!-- Right Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <i class="fa-solid fa-bars"></i>
+                תפריט ראשי
+            </div>
+            <ul class="sidebar-menu" id="mainTreeMenu">
+                <li class="tree-node">
+                    <button type="button" class="tree-node-toggle active" data-node="workstations" aria-expanded="true">
+                        <span class="tree-node-label">
+                            <i class="fa-solid fa-desktop"></i>
+                            <span>תחנות עבודה</span>
+                        </span>
+                        <i class="fa-solid fa-chevron-down"></i>
+                    </button>
+                    <ul class="tree-node-children open" id="workstations">
+                        <li><a href="#" class="tree-child-item active" data-page="order"><i class="fa-solid fa-file-invoice"></i><span>פתיחת הזמנה</span></a></li>
+                            <li><a href="#" class="tree-child-item" data-page="filing"><i class="fa-solid fa-file-import"></i><span>תיוק ניירת יבוא</span></a></li>
+                            <li><a href="#" class="tree-child-item" data-page="shipment"><i class="fa-solid fa-truck-fast"></i><span> ניהול תיק</span></a></li>
+                        <li><a href="#" class="tree-child-item" data-page="classification"><i class="fa-solid fa-tags"></i><span>סיווג</span></a></li>
+                        <li><a href="#" class="tree-child-item" data-page="placeholder"><i class="fa-solid fa-check-double"></i><span>השלמה לאחר סיווג</span></a></li>
+                        <li><a href="#" class="tree-child-item" data-page="placeholder"><i class="fa-solid fa-magnifying-glass"></i><span>ביקורת מסמכים</span></a></li>
+                        <li><a href="#" class="tree-child-item" data-page="placeholder"><i class="fa-solid fa-file-signature"></i><span>שידור הצהרה למכס </span></a></li>
+                                                <li><a href="#" class="tree-child-item" data-page="placeholder"><i class="fa-solid fa-file-signature"></i><span>  תיאום הובלה יבשתית </span></a></li>
+
+                    </ul>
+                </li>
+                                                                <li class="tree-node">
+                    <button type="button" class="tree-node-toggle" data-node="shipmentSelect" aria-expanded="false">
+                        <span class="tree-node-label">
+                            <i class="fa-solid fa-folder-tree"></i>
+                            <span> הצהרת יבוא </span>
+                        </span>
+                        <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                    <ul class="tree-node-children" id="shipmentSelect">
+     <li><a href="#" class="tree-child-item" data-page="importDeclaration"><i class="fa-solid fa-file-import"></i><span>פרטי הצהרת יבוא</span></a></li>
+                            <li><a href="#" class="tree-child-item" data-page="importDeclaration"><i class="fa-solid fa-file-import"></i><span>  חשבון מכר</span></a></li>
+                             <li><a href="#" class="tree-child-item" data-page="importDeclaration"><i class="fa-solid fa-file-import"></i><span>  צרופות</span></a></li>
+                            <li><a href="#" class="tree-child-item" data-page="importDeclaration"><i class="fa-solid fa-file-import"></i><span>  שידורים</span></a></li>
+                            <li><a href="#" class="tree-child-item" data-page="importDeclaration"><i class="fa-solid fa-file-import"></i><span>  הגשות</span></a></li>
+                            <li><a href="#" class="tree-child-item" data-page="importDeclaration"><i class="fa-solid fa-file-import"></i><span>  הודעות מכס</span></a></li>
+                    </ul>
+                </li>
+
+                <li class="tree-node">
+                    <button type="button" class="tree-node-toggle" data-node="shipmentSelect" aria-expanded="false">
+                        <span class="tree-node-label">
+                            <i class="fa-solid fa-folder-tree"></i>
+                            <span>בחר משלוח </span>
+                        </span>
+                        <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                    <ul class="tree-node-children" id="shipmentSelect">
+                       
+
+
+                    </ul>
+                </li>
+
+                
+            </ul>
+        </aside>
+
+        <!-- Content Area -->
+        <main class="content-area">
+            <section class="info-bar" aria-label="Shipment and customs file details">
+                <div class="info-card">
+                    <span class="info-label">מספר תיק עמילות מכס</span>
+                    <span class="info-value">60070531</span>
+                </div>
+                <div class="info-card">
+                    <span class="info-label">שם לקוח</span>
+                    <span class="info-value">יבוא סחר בע"מ</span>
+                </div>
+                <div class="info-card">
+                    <span class="info-label">שם ספק</span>
+                    <span class="info-value">Shanghai Tech Components</span>
+                </div>
+                <div class="info-card">
+                    <span class="info-label">מספר הזמנה</span>
+                    <span class="info-value">11456</span>
+                </div>
+                <div class="info-card">
+                    <span class="info-label">תיאור טובין</span>
+                    <span class="info-value">אלקטרונית דיוקן ומערכות תקשורת</span>
+                </div>
+                <div class="info-card">
+                    <span class="info-label">מספר עסקה</span>
+                    <span class="info-value">I-261438-025-004500</span>
+                </div>
+                <div class="info-card">
+                    <span class="info-label">מספר מצהר</span>
+                    <span class="info-value">261438</span>
+                </div>
+                <div class="info-card">
+                    <span class="info-label">מספר שטר מטען</span>
+                    <span class="info-value">NEXF123456789</span>
+                </div>
+            </section>
+
+            <div id="orderTabPanel" class="page-tab-panel active" role="tabpanel">
+                <form class="order-form">
+                
+                <!-- Section: Customer Information -->
+                <section class="form-section">
+                    <h2 class="section-title">פרטי לקוח ופתיחה</h2>
+                    <div class="grid-row">
+                        <div class="form-group autocomplete-wrapper">
+                            <label class="required">לקוח קיים</label>
+                            <input type="text" id="customerInput" class="form-control" placeholder="הקלד שם לקוח לחיפוש..." autocomplete="off">
+                            <div id="customerList" class="autocomplete-list"></div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>מספר הזמנה פנימי</label>
+                            <input type="text" id="internalOrderNum" class="form-control" readonly>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>תאריך פתיחת הזמנה</label>
+                            <input type="text" id="creationDate" class="form-control" readonly>
+                        </div>
+
+                        <div class="form-group">
+                            <label>פקיד מטפל</label>
+                            <input type="text" id="assignedClerk" class="form-control" value="דורון ממן" readonly>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section: Shipment Information -->
+                <section class="form-section">
+                    <h2 class="section-title">פרטי משלוח</h2>
+                    
+                    <div class="grid-row">
+                        <div class="form-group" style="grid-column: span 2;">
+                            <label class="required">סטטוס הזמנה</label>
+                            <div class="tabs-container" id="statusTabs">
+                                <button type="button" class="tab-btn active" data-value="בהכנה">בהכנה</button>
+                                <button type="button" class="tab-btn" data-value="מוכנה לאיסוף">מוכנה לאיסוף</button>
+                                <button type="button" class="tab-btn" data-value="נאספה">נאספה</button>
+                                <button type="button" class="tab-btn" data-value="ממתינה בנמל">ממתינה בנמל</button>
+                                <button type="button" class="tab-btn" data-value="יצאה לדרך">יצאה לדרך</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid-row">
+                        <div class="form-group">
+                            <label class="required">סוג משלוח</label>
+                            <div class="tabs-container" id="typeTabs">
+                                <button type="button" class="tab-btn active" data-value="ימי">ימי</button>
+                                <button type="button" class="tab-btn" data-value="אווירי">אווירי</button>
+                                <button type="button" class="tab-btn" data-value="יבשתי">יבשתי</button>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="required">תנאי תשלום הובלה (Incoterms)</label>
+                            <div class="tabs-container" id="termsTabs">
+                                <button type="button" class="tab-btn active" data-value="Prepaid">Prepaid</button>
+                                <button type="button" class="tab-btn" data-value="Collect">Collect</button>
+                            </div>
+                            <div class="tabs-container sub-tabs-container" id="collectTermsTabs" hidden>
+                                <div class="tabs-row">
+                                    <button type="button" class="tab-btn active" data-value="EXW" title="משער המפעל">EXW</button>
+                                    <button type="button" class="tab-btn" data-value="FCA">FCA</button>
+                                    <button type="button" class="tab-btn" data-value="FOB">FOB</button>
+                                    <button type="button" class="tab-btn" data-value="FAC">FAC</button>
+                                </div>
+                                <div class="tabs-row">
+                                    <button type="button" class="tab-btn" data-value="DAF">DAF</button>
+                                    <button type="button" class="tab-btn" data-value="DES">DES</button>
+                                    <button type="button" class="tab-btn" data-value="DEQ">DEQ</button>
+                                    <button type="button" class="tab-btn" data-value="DDU">DDU</button>
+                                    <button type="button" class="tab-btn" data-value="DDP">DDP</button>
+                                </div>
+                            </div>
+                            <div class="tabs-container sub-tabs-container" id="prepaidTermsTabs" hidden>
+                                <div class="tabs-row">
+                                    <button type="button" class="tab-btn active" data-value="CFR">CFR</button>
+                                    <button type="button" class="tab-btn" data-value="CAF">CAF</button>
+                                    <button type="button" class="tab-btn" data-value="CPT">CPT</button>
+                                    <button type="button" class="tab-btn" data-value="CIP">CIP</button>
+                                </div>
+                            </div>
+                                <!-- <div class="tabs-container sub-tabs-container" id="collectTermsTabs" hidden>
+                                <button type="button" class="tab-btn active" data-value="DAF">DAF</button>
+                                <button type="button" class="tab-btn" data-value="DES">DES</button>
+                                <button type="button" class="tab-btn" data-value="DEQ">DEQ</button>
+                                <button type="button" class="tab-btn" data-value="DDU">DDU</button>
+                                <button type="button" class="tab-btn" data-value="DDP">DDP</button>
+
+
+                            </div> -->
+                        </div>
+                    </div>
+
+                    <div class="grid-row">
+                        <div class="form-group" style="grid-column: span 2;">
+                            <label class="required">יעד</label>
+                            <div class="tabs-container" id="destTabs">
+                                <button type="button" class="tab-btn active" data-value="נמל אשדוד">נמל אשדוד</button>
+                                <button type="button" class="tab-btn" data-value="נמל הדרום">נמל הדרום</button>
+                                <button type="button" class="tab-btn" data-value="נמל חיפה">נמל חיפה</button>
+                                <button type="button" class="tab-btn" data-value="נתב״ג">נתב"ג</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section: Shipping Schedule -->
+                <section class="form-section">
+                    <h2 class="section-title">לוחות זמנים</h2>
+                    <div class="grid-row">
+                        <div class="form-group">
+                            <label>תאריך מוכנות במפעל</label>
+                            <input type="date" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label>תאריך איסוף מהמפעל</label>
+                            <input type="date" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label>תאריך הפלגה / טיסה (יציאה)</label>
+                            <input type="date" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label>תאריך הגעה משוער (ETA)</label>
+                            <input type="date" class="form-control">
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section: Transportation Details -->
+                <section class="form-section">
+                    <h2 class="section-title">פרטי הובלה</h2>
+                    <div class="grid-row">
+                        <div id="shippingLineGroup" class="form-group autocomplete-wrapper transport-group">
+                            <label>חברת ספנות</label>
+                            <input type="text" id="shippingLineInput" class="form-control" placeholder="חפש חברת ספנות..." autocomplete="off">
+                            <div id="shippingLineList" class="autocomplete-list"></div>
+                        </div>
+                        <div id="voyageNumberGroup" class="form-group transport-group">
+                            <label>מספר הפלגה (Voyage Number)</label>
+                            <input type="number" class="form-control" placeholder="הזן מספר הפלגה">
+                        </div>
+                        <div id="airlineGroup" class="form-group autocomplete-wrapper transport-group">
+                            <label>חברת תעופה (Airline)</label>
+                            <input type="text" id="airlineInput" class="form-control" placeholder="חפש חברת תעופה..." autocomplete="off">
+                            <div id="airlineList" class="autocomplete-list"></div>
+                        </div>
+                        <div id="flightNumberGroup" class="form-group transport-group">
+                            <label>מספר טיסה (Flight Number)</label>
+                            <input type="text" class="form-control" placeholder="הזן מספר טיסה">
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Form Actions -->
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary">ביטול</button>
+                    <button type="button" class="btn btn-primary" onclick="simulateSave()">שמור הזמנה</button>
+                </div>
+
+                </form>
+            </div>
+
+            <div id="shipmentTabPanel" class="page-tab-panel" role="tabpanel" hidden>
+                <form class="order-form">
+                    <section class="form-section">
+                        <h2 class="section-title">זיהוי מסמך- Document Type & Number</h2>
+                        <div class="details-grid">
+                            <div class="detail-item">
+                                <span class="detail-label">מספר Bill of Lading</span>
+                                <span class="detail-value">NEXF123456789</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">סוג מסמך (Original / Sea Waybill / Telex Release)</span>
+                                <span class="detail-value">Sea Waybill</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">תאריך issuance של Bill of Lading</span>
+                                <span class="detail-value">27/05/2026</span>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="form-section">
+                        <h2 class="section-title">מוביל-ForWarder</h2>
+                        <div class="details-grid">
+                            <div class="detail-item">
+                                <span class="detail-label">שם המוביל</span>
+                                <span class="detail-value">MSC Mediterranean Shipping Co.</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">מספר Voyage / Flight</span>
+                                <span class="detail-value">VN624A</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">שם האונייה</span>
+                                <span class="detail-value">MSC NAPOLI</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Port of Loading (POL)</span>
+                                <span class="detail-value">NAPOLI</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Port of Discharge (POD)</span>
+                                <span class="detail-value">HAIFA</span>
+                            </div>
+                             <div class="detail-item">
+                                <span class="detail-label">מספר מצהר </span>
+                                <span class="detail-value">264768</span>
+                            </div>
+                             <div class="detail-item">
+                                <span class="detail-label">מספר עסקה</span>
+                                <span class="detail-value">12345A22</span>
+                            </div>
+                    <button type="button" class="btn btn-primary btn-transmit" onclick="simulateSave()"><i class="fa-solid fa-paper-plane"></i> שדר למכס</button>
+                        </div>
+                    </section>
+
+
+
+                    <section class="form-section">
+                        <h2 class="section-title">שוגר - Shipper</h2>
+                        <div class="details-grid">
+                            <div class="detail-item">
+                                <span class="detail-label">שם השוגר</span>
+                                <span class="detail-value">Shanghai Tech Components Co., Ltd</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">כתובת מלאה</span>
+                                <span class="detail-value">אלי ויזל 5</span>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="form-section">
+                        <h2 class="section-title">נמען - Consignee</h2>
+                        <div class="details-grid">
+                            <div class="detail-item">
+                                <span class="detail-label">שם הנמען</span>
+                                <span class="detail-value">NexTrade Import Ltd</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">כתובת מלאה</span>
+                                <span class="detail-value">שמעון פרס 11</span>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="form-section">
+                        <h2 class="section-title">Notify Party</h2>
+                        <div class="details-grid">
+                            <div class="detail-item">
+                                <span class="detail-label">Notification Party</span>
+                                <span class="detail-value">NexFreight Logistics - Israel</span>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="form-section">
+                        <h2 class="section-title">מטען - Cargo</h2>
+                        <div class="details-grid">
+                            <div class="detail-item">
+                                <span class="detail-label">תיאור המטען</span>
+                                <span class="detail-value">Electronic Components - Motherboards & Power Units</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">מספר ארגזים / משטחים</span>
+                                <span class="detail-value">120 Cartons</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">משקל ברוטו</span>
+                                <span class="detail-value">1,850 KG</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">משקל נטו</span>
+                                <span class="detail-value">1,720 KG</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">נפח מטען (CBM)</span>
+                                <span class="detail-value">9.8 CBM</span>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="form-section">
+                        <h2 class="section-title">מכס - Tariff HS Code</h2>
+                        <div class="details-grid">
+                            <div class="detail-item">
+                                <span class="detail-label">HS Code</span>
+                                <span class="detail-value">8504</span>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="form-section">
+                        <h2 class="section-title">תנאים-Terms
+                        </h2>
+                        <div class="details-grid">
+                            <div class="detail-item">
+                                <span class="detail-label">Incoterms (FOB, CIF וכו')</span>
+                                <span class="detail-value">FOB</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Freight Terms (Prepaid / Collect)</span>
+                                <span class="detail-value">Collect</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Dangerous Goods (Yes/No + IMO Class)</span>
+                                <span class="detail-value">No</span>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="form-section">
+                        <h2 class="section-title">מסמכים - Documents</h2>
+                        <div class="details-grid">
+                            <div class="detail-item">
+                                <span class="detail-label">Container Number</span>
+                                <span class="detail-value">MSCU7845123</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Container Type</span>
+                                <span class="detail-value">40HC</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Container Seal Number</span>
+                                <span class="detail-value">SH98765421</span>
+                            </div>
+                        </div>
+                    </section>
+                </form>
+            </div>
+            <div id="filingTabPanel" class="page-tab-panel" role="tabpanel" hidden>
+                <form class="order-form">
+                    <section class="form-section">
+                        <h2 class="section-title">תיוק ניירת יבוא</h2>
+
+                        <div class="details-grid">
+                                <div class="detail-item">
+                                <span class="detail-label">מספר תיק</span>
+                                <span class="detail-value">1000</span>
+                            </div>
+                           
+                            <div class="detail-item">
+                                <span class="detail-label">מספר זיהוי פנימי</span>
+                                <span class="detail-value">11456</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">שם ספק</span>
+                                <span class="detail-value">Shanghai Tech Components</span>
+                            </div>
+                         <div class="detail-item">
+                                <span class="detail-label">מספר מסמך</span>
+                                <span class="detail-value">NEXF123456789</span>
+                            </div>
+                        </div>
+
+                        <div style="height:12px"></div>
+
+                        <div class="section-header">
+                            <div class="title-row">
+                                <i class="fa-solid fa-file-lines"></i>
+                                <div style="font-weight:700;font-size:1.05rem;color:var(--text-dark)">מסמכי משלוח</div>
+                            </div>
+                        </div>
+
+                        <div class="upload-area">
+                            <div class="upload-instructions">
+                                <div class="upload-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+                                <div class="upload-text">
+                                    <div style="font-weight:700;color:var(--primary-blue)">גרור לכאן קבצים</div>
+                                    <div style="color:var(--text-muted);font-size:0.9rem">תמיכה בקבצי PDF, XLSX, תמונות</div>
+                                </div>
+                            </div>
+                            <button class="upload-btn">העלה קבצים</button>
+                        </div>
+
+                        <table class="documents-table">
+                            <thead>
+                                <tr>
+                                    <th>שם קובץ</th>
+                                    <th>תאריך</th>
+                                    <th>גודל</th>
+                                    <th>פעולות</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>שטר מטען- מאסטרpdf</td>
+                                    <td>18/05/2025</td>
+                                    <td>1.2 MB</td>
+                                    <td><button class="upload-btn" style="padding:6px 10px">פתח</button></td>
+                                </tr>
+                                   <tr>
+                                    <td>שטר מטען- פנימי</td>
+                                    <td>18/05/2025</td>
+                                    <td>1.2 MB</td>
+                                    <td><button class="upload-btn" style="padding:6px 10px">פתח</button></td>
+                                </tr>
+                                <tr>
+                                    <td>חשבון ספק.pdf</td>
+                                    <td>17/05/2025</td>
+                                    <td>850 KB</td>
+                                    <td><button class="upload-btn" style="padding:6px 10px">פתח</button></td>
+                                </tr>
+                                  <tr>
+                                    <td> מפרט אריזות.pdf</td>
+                                    <td>17/05/2025</td>
+                                    <td>850 KB</td>
+                                    <td><button class="upload-btn" style="padding:6px 10px">פתח</button></td>
+                                </tr>
+                                      <tr>
+                                    <td>  תעודת שוק/תעודת מקור.pdf</td>
+                                    <td>17/05/2025</td>
+                                    <td>850 KB</td>
+                                    <td><button class="upload-btn" style="padding:6px 10px">פתח</button></td>
+                                </tr>
+                                    <tr>
+                                    <td>  הצעת מחיר ללקוח.pdf</td>
+                                    <td>17/05/2025</td>
+                                    <td>850 KB</td>
+                                    <td><button class="upload-btn" style="padding:6px 10px">פתח</button></td>
+                                </tr>
+                                    <tr>
+                                    <td>    חשבון מטענים.pdf</td>
+                                    <td>17/05/2025</td>
+                                    <td>850 KB</td>
+                                    <td><button class="upload-btn" style="padding:6px 10px">פתח</button></td>
+                                </tr>
+                                   <tr>
+                                    <td>     אישורים.pdf</td>
+                                    <td>17/05/2025</td>
+                                    <td>850 KB</td>
+                                    <td><button class="upload-btn" style="padding:6px 10px">פתח</button></td>
+                                </tr>
+                                   <tr>
+                                    <td>     רישיונות.pdf</td>
+                                    <td>17/05/2025</td>
+                                    <td>850 KB</td>
+                                    <td><button class="upload-btn" style="padding:6px 10px">פתח</button></td>
+                                </tr>
+                                   <tr>
+                                    <td>     ניירת כללית.pdf</td>
+                                    <td>17/05/2025</td>
+                                    <td>850 KB</td>
+                                    <td><button class="upload-btn" style="padding:6px 10px">פתח</button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </section>
+                </form>
+            </div>
+            <div id="searchTabPanel" class="page-tab-panel" role="tabpanel" hidden>
+  
+            </div>
+            <!-- Classification Screen Panel -->
+            <div id="classificationTabPanel" class="page-tab-panel" role="tabpanel" hidden>
+                <section class="form-section">
+                    <h2 class="section-title">Classification</h2>
+                    <form id="classificationForm" class="order-form">
+                        <div class="grid-row">
+                            <!-- <div class="form-group">
+                                <label for="tradeTerms" class="required">Trade Terms</label>
+                                <input id="tradeTerms" name="tradeTerms" class="form-control" value="EXW" required>
+                                <div id="tradeTermsError" class="error" aria-live="polite"></div>
+                            </div> -->
+                            <div class="form-group goods-form-group">
+                                    <label for="goodsDescription" class="required">תיאור טובין  </label>
+                                    <div class="goods-input-wrapper">
+                                        <input id="goodsDescription" name="goodsDescription" class="form-control goods-input--small" value="ספקי כוח" required>
+                                    </div>
+                                    <div id="goodsDescriptionError" class="error" aria-live="polite"></div>
+                                </div>
+                        </div>
+
+                        <div class="form-section">
+                            <h3 class="section-title">Products</h3>
+                            <div class="table-wrap" style="overflow:auto">
+                                <table id="productsTable" class="documents-table" style="min-width:900px;">
+                                    <thead>
+                                        <tr>
+                                            <th>מק"ט</th>
+                                            <th>שם מוצר</th>
+                                            <th>כמות</th>
+                                            <th>מחיר ליחידה</th>
+                                            <th>מחיר כללי</th>
+                                            <th>הסכם מחר</th>
+                                            <th>קוד סיווג</th>
+                                            <th>אישורים</th>
+                                        </tr>
+                                    </thead>
+                                        <tbody id="productsBody">
+                                            <tr>
+                                                <td>100001</td>
+                                                <td>ספק כוח דגם A</td>
+                                                <td>10</td>
+                                                <td>120.00</td>
+                                                <td>1,200.00</td>
+                                                <td>כן</td>
+                                                <td>850440</td>
+                                                <td>CE, PDF</td>
+                                            </tr>
+                                            <tr>
+                                                <td>100002</td>
+                                                <td>ספק כוח דגם B</td>
+                                                <td>5</td>
+                                                <td>250.00</td>
+                                                <td>1,250.00</td>
+                                                <td>לא</td>
+                                                <td>850450</td>
+                                                <td>PDF</td>
+                                            </tr>
+                                            <tr>
+                                                <td>100003</td>
+                                                <td>מתאם מתח אוניברסלי</td>
+                                                <td>20</td>
+                                                <td>45.50</td>
+                                                <td>910.00</td>
+                                                <td>כן</td>
+                                                <td>850460</td>
+                                                <td>CE</td>
+                                            </tr>
+                                            <tr>
+                                                <td>100004</td>
+                                                <td>סוללה נטענת 12V</td>
+                                                <td>8</td>
+                                                <td>78.00</td>
+                                                <td>624.00</td>
+                                                <td>לא</td>
+                                                <td>850470</td>
+                                                <td>UN</td>
+                                            </tr>
+                                            <tr>
+                                                <td>100005</td>
+                                                <td>כבל חשמל 2 מטר</td>
+                                                <td>50</td>
+                                                <td>12.00</td>
+                                                <td>600.00</td>
+                                                <td>לא</td>
+                                                <td>850480</td>
+                                                <td>מילוי</td>
+                                            </tr>
+                                            <tr>
+                                                <td>100006</td>
+                                                <td>ממיר מתח לתעשייה</td>
+                                                <td>2</td>
+                                                <td>1,450.00</td>
+                                                <td>2,900.00</td>
+                                                <td>כן</td>
+                                                <td>850490</td>
+                                                <td>CE, PDF</td>
+                                            </tr>
+                                        </tbody>
+                                </table>
+                            </div>
+                            <div style="margin-top:10px;">
+                                <button type="button" id="addRowBtn" class="btn btn-secondary">הוסף שורה</button>
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-top:16px;">
+                            <label for="notes">הערות</label>
+                            <textarea id="notes" class="form-control" rows="4"></textarea>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">שמור סיווג</button>
+                        </div>
+                    </form>
+                </section>
+            </div>
+            <div id="importDeclarationTabPanel" class="page-tab-panel" role="tabpanel" hidden>
+                <section class="form-section">
+                    <div class="section-header">
+                        <div>
+                            <div class="page-title">הצהרת יבוא</div>
+                            <div class="detail-subtitle">תצוגת מסמך קריאה בלבד</div>
+                        </div>
+                    </div>
+
+                    <div class="details-grid">
+                        <div class="detail-item">
+                            <span class="detail-label">מספר</span>
+                            <span class="detail-value">261438</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">סטטוס</span>
+                            <span class="detail-value">פתוח</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">סוג</span>
+                            <span class="detail-value">ימי</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">תיק יבוא</span>
+                            <span class="detail-value">60070531</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">עסקה</span>
+                            <span class="detail-value">I-261438-025-004500</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">עסקה ללא מצר</span>
+                            <span class="detail-value">כן</span>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="form-section">
+                    <h2 class="section-title">פרטי משלוח ומטען</h2>
+                    <div class="details-grid">
+                        <div class="detail-item">
+                            <span class="detail-label">אתר טעינה</span>
+                            <span class="detail-value">CNNSA NANSHA</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">אתר פריקה</span>
+                            <span class="detail-value">נמל אשדוד</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">ש/פ פנימי</span>
+                            <span class="detail-value">ZIMUGZH0722575</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">תאריך</span>
+                            <span class="detail-value">20/07/26</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">קבלה</span>
+                            <span class="detail-value">נמל אשדוד</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">כמות</span>
+                            <span class="detail-value">1</span>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="form-section">
+                    <h2 class="section-title">פרטי מכולה</h2>
+                    <div class="details-grid">
+                        <div class="detail-item">
+                            <span class="detail-label">מספר מכולה</span>
+                            <span class="detail-value">TEMU6751513</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">סוג מכולה</span>
+                            <span class="detail-value">CONTAINER D5</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">אורך מכולה</span>
+                            <span class="detail-value">40</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">קוד סגור</span>
+                            <span class="detail-value">45G1</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">משקל</span>
+                            <span class="detail-value">9,840.00</span>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Fake Data Configuration
+        const fakeCustomers = [
+            "דורון ממן", "ארז נקר", "יבוא סחר בע״מ", "טכנולוגיות מתקדמות", 
+            "אלקטרוניקה ישראל", "שיווק ישיר", "גלובל לוגיסטיקה", 
+            "חומרי בניין כהן", "טקסטיל השרון", "אגרו תעשיות"
+        ];
+
+        const fakeShippingLines = [
+            "Conmart", "Green Shipping", "ZIM", "Maersk", 
+            "MSC", "CMA CGM", "Hapag-Lloyd", "Evergreen", 
+            "Yang Ming", "COSCO"
+        ];
+
+        const fakeAirlines = [
+            "El Al", "British Airways", "Lufthansa", "Turkish Airlines", 
+            "Delta", "United", "Air France", "KLM", 
+            "Emirates", "Qatar Airways"
+        ];
+
+        // State Management
+        let currentOrderNumber = 1000;
+
+        // Initialization on Load
+        document.addEventListener('DOMContentLoaded', () => {
+            // Set Today's Date
+            const today = new Date();
+            const formattedDate = today.toLocaleDateString('he-IL', {
+                year: 'numeric', month: '2-digit', day: '2-digit'
+            });
+            document.getElementById('creationDate').value = formattedDate;
+
+            // Set Initial Order Number
+            updateOrderNumber();
+
+            // Setup Autocompletes
+            setupAutocomplete('customerInput', 'customerList', fakeCustomers);
+            setupAutocomplete('shippingLineInput', 'shippingLineList', fakeShippingLines);
+            setupAutocomplete('airlineInput', 'airlineList', fakeAirlines);
+
+            // Setup Tabs Behavior
+            setupTabs('statusTabs');
+            setupTabs('typeTabs');
+            setupTabs('termsTabs');
+            setupTermsTabs();
+            setupTabs('destTabs');
+            setupTreeNavigation();
+            setupShipmentSearch();
+            
+            // Link Tab interactions (e.g. if Air is selected, highlight Airlines input)
+            handleShipmentTypeChange();
+        });
+
+        function updateOrderNumber() {
+            document.getElementById('internalOrderNum').value = currentOrderNumber;
+        }
+
+        // Reusable Tab Logic
+        function setupTabs(containerId) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            const buttons = container.querySelectorAll('.tab-btn');
+            
+            buttons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    // Remove active from all siblings
+                    buttons.forEach(b => b.classList.remove('active'));
+                    // Add active to clicked
+                    this.classList.add('active');
+                });
+            });
+        }
+
+        function setupTermsTabs() {
+            const termsContainer = document.getElementById('termsTabs');
+            const collectTermsContainer = document.getElementById('collectTermsTabs');
+            const prepaidTermsContainer = document.getElementById('prepaidTermsTabs');
+            if (!termsContainer || !collectTermsContainer || !prepaidTermsContainer) return;
+
+            const updateTermsVisibility = () => {
+                const activeTermsButton = termsContainer.querySelector('.tab-btn.active');
+                const isCollectSelected = activeTermsButton && activeTermsButton.getAttribute('data-value') === 'Collect';
+                const isPrepaidSelected = activeTermsButton && activeTermsButton.getAttribute('data-value') === 'Prepaid';
+
+                collectTermsContainer.hidden = !isCollectSelected;
+                collectTermsContainer.style.display = isCollectSelected ? 'flex' : 'none';
+
+                prepaidTermsContainer.hidden = !isPrepaidSelected;
+                prepaidTermsContainer.style.display = isPrepaidSelected ? 'flex' : 'none';
+            };
+
+            termsContainer.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const buttons = termsContainer.querySelectorAll('.tab-btn');
+                    buttons.forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    updateTermsVisibility();
+                });
+            });
+
+            collectTermsContainer.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const buttons = collectTermsContainer.querySelectorAll('.tab-btn');
+                    buttons.forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                });
+            });
+
+            prepaidTermsContainer.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const buttons = prepaidTermsContainer.querySelectorAll('.tab-btn');
+                    buttons.forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                });
+            });
+
+            updateTermsVisibility();
+        }
+
+        function showPanel(panelId) {
+            const panels = document.querySelectorAll('.page-tab-panel');
+            panels.forEach(panel => {
+                panel.classList.remove('active');
+                panel.setAttribute('hidden', 'true');
+            });
+            const target = document.getElementById(panelId);
+            if (target) {
+                target.classList.add('active');
+                target.removeAttribute('hidden');
+            }
+        }
+
+        function setupTreeNavigation() {
+            const nodeToggles = document.querySelectorAll('.tree-node-toggle');
+            const childItems = document.querySelectorAll('.tree-child-item');
+
+            nodeToggles.forEach(toggle => {
+                toggle.addEventListener('click', function() {
+                    const nodeId = this.getAttribute('data-node');
+                    const children = document.getElementById(nodeId);
+
+                    if (!children) return;
+
+                    children.classList.toggle('open');
+                    const isOpen = children.classList.contains('open');
+                    this.setAttribute('aria-expanded', String(isOpen));
+
+                    const icon = this.querySelector('.fa-chevron-down, .fa-chevron-left');
+                    if (icon) {
+                        icon.classList.toggle('fa-chevron-down', isOpen);
+                        icon.classList.toggle('fa-chevron-left', !isOpen);
+                    }
+                });
+            });
+
+            childItems.forEach(item => {
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+
+                    childItems.forEach(child => child.classList.remove('active'));
+                    this.classList.add('active');
+
+                    const page = this.getAttribute('data-page');
+                    if (page === 'order') {
+                        showPanel('orderTabPanel');
+                    } else if (page === 'shipment') {
+                        showPanel('shipmentTabPanel');
+                    } else if (page === 'filing') {
+                        showPanel('filingTabPanel');
+                    } else if (page === 'search') {
+                        showPanel('searchTabPanel');
+                    } else if (page === 'classification') {
+                        showPanel('classificationTabPanel');
+                    } else if (page === 'importDeclaration') {
+                        showPanel('importDeclarationTabPanel');
+                    }
+                });
+            });
+        }
+
+        // Shipment Search (mock autocomplete)
+        function setupShipmentSearch() {
+            const mock = [
+                {
+                    case: '1000',
+                    client: 'דורון ממן',
+                    supplier: 'ברק שולי מזגנים',
+                    deal: '1234567',
+                    declaration: '1111111',
+                    desc: 'מזגנים'
+                },
+                {
+                    case: '1001',
+                    client: 'ארז נקר',
+                    supplier: 'ברק שולי מזגנים',
+                    deal: '1234567',
+                    declaration: '1111111',
+                    desc: 'מזגנים'
+                }
+            ];
+
+            const categoryEl = document.getElementById('searchCategory');
+            const input = document.getElementById('shipmentSearchInput');
+            const list = document.getElementById('shipmentSearchList');
+            const results = document.getElementById('searchResults');
+
+            // If any required element for this mock search is missing, skip setup to avoid runtime errors
+            if (!categoryEl || !input || !list || !results) {
+                return;
+            }
+
+            function renderSuggestions(items) {
+                list.innerHTML = '';
+                if (!items.length) { list.style.display = 'none'; return; }
+                items.forEach(it => {
+                    const div = document.createElement('div');
+                    div.className = 'search-item';
+                    div.textContent = `${it.categoryLabel}: ${it.value}`;
+                    div.addEventListener('click', () => {
+                        input.value = it.value;
+                        list.style.display = 'none';
+                        renderResults([it.source]);
+                    });
+                    list.appendChild(div);
+                });
+                list.style.display = 'block';
+            }
+
+            function renderResults(items) {
+                results.innerHTML = '';
+                items.forEach(s => {
+                    const card = document.createElement('div');
+                    card.className = 'detail-item';
+                    card.innerHTML = `
+                        <div style="font-weight:700">מספר תיק: <span style="font-weight:600">${s.case}</span></div>
+                        <div>לקוח: ${s.client}</div>
+                        <div>ספק: ${s.supplier}</div>
+                        <div>תיאור: ${s.desc}</div>
+                    `;
+                    results.appendChild(card);
+                });
+            }
+
+            function onInput() {
+                const q = input.value.trim();
+                const cat = categoryEl.value;
+                if (!q) { list.style.display = 'none'; results.innerHTML = ''; return; }
+
+                const matches = [];
+                mock.forEach(m => {
+                    const val = (m[cat] || '').toString();
+                    if (val.toLowerCase().includes(q.toLowerCase())) {
+                        matches.push({ categoryLabel: categoryEl.options[categoryEl.selectedIndex].text, value: val, source: m });
+                    }
+                });
+
+                renderSuggestions(matches);
+            }
+
+            input.addEventListener('input', onInput);
+            categoryEl.addEventListener('change', () => { input.value = ''; list.style.display = 'none'; results.innerHTML = ''; });
+            document.addEventListener('click', (e) => { if (!list.contains(e.target) && e.target !== input) list.style.display = 'none'; });
+        }
+
+        // Logic to show/hide transport-related fields based on shipment type
+        function handleShipmentTypeChange() {
+            const typeContainer = document.getElementById('typeTabs');
+            const buttons = typeContainer.querySelectorAll('.tab-btn');
+            
+            const toggleTransportFields = (type) => {
+                const normalizedType = (type || '').toString().trim().toLowerCase();
+                const showSeaFields = normalizedType === 'ימי' || normalizedType === 'sea freight' || normalizedType === 'sea';
+                const showAirFields = normalizedType === 'אווירי' || normalizedType === 'air freight' || normalizedType === 'air';
+                const showLandFields = normalizedType === 'יבשתי' || normalizedType === 'land transport' || normalizedType === 'land';
+
+                const shippingLineGroup = document.getElementById('shippingLineGroup');
+                const voyageNumberGroup = document.getElementById('voyageNumberGroup');
+                const airlineGroup = document.getElementById('airlineGroup');
+                const flightNumberGroup = document.getElementById('flightNumberGroup');
+
+                const seaGroupsVisible = !showAirFields && !showLandFields;
+                const airGroupsVisible = !showSeaFields && !showLandFields;
+
+                shippingLineGroup.classList.toggle('is-hidden', !seaGroupsVisible);
+                voyageNumberGroup.classList.toggle('is-hidden', !seaGroupsVisible);
+                airlineGroup.classList.toggle('is-hidden', !airGroupsVisible);
+                flightNumberGroup.classList.toggle('is-hidden', !airGroupsVisible);
+
+                shippingLineGroup.toggleAttribute('hidden', !seaGroupsVisible);
+                voyageNumberGroup.toggleAttribute('hidden', !seaGroupsVisible);
+                airlineGroup.toggleAttribute('hidden', !airGroupsVisible);
+                flightNumberGroup.toggleAttribute('hidden', !airGroupsVisible);
+            };
+
+            buttons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const type = this.getAttribute('data-value');
+                    toggleTransportFields(type);
+                });
+            });
+
+            const activeButton = typeContainer.querySelector('.tab-btn.active');
+            if (activeButton) {
+                toggleTransportFields(activeButton.getAttribute('data-value'));
+            }
+        }
+
+        // Reusable Autocomplete Logic
+        function setupAutocomplete(inputId, listId, dataArray) {
+            const input = document.getElementById(inputId);
+            const list = document.getElementById(listId);
+
+            input.addEventListener('input', function() {
+                const val = this.value;
+                list.innerHTML = ''; // Clear previous
+                
+                if (!val) {
+                    list.classList.remove('active');
+                    return;
+                }
+
+                const matches = dataArray.filter(item => 
+                    item.toLowerCase().includes(val.toLowerCase())
+                );
+
+                if (matches.length > 0) {
+                    matches.forEach(match => {
+                        const div = document.createElement('div');
+                        div.className = 'autocomplete-item';
+                        div.innerHTML = match; // Can be enhanced to highlight matched text
+                        div.addEventListener('click', function() {
+                            input.value = match;
+                            list.classList.remove('active');
+                        });
+                        list.appendChild(div);
+                    });
+                    list.classList.add('active');
+                } else {
+                    list.classList.remove('active');
+                }
+            });
+
+            // Close list when clicking outside
+            document.addEventListener('click', function(e) {
+                if (e.target !== input && e.target !== list) {
+                    list.classList.remove('active');
+                }
+            });
+        }
+
+        // Save Simulation
+        function simulateSave() {
+            // Check required pseudo-logic
+            const customer = document.getElementById('customerInput').value;
+            if(!customer) {
+                // Not using alert as per instructions, using a simple console log or custom UI
+                console.warn('Customer is required');
+                document.getElementById('customerInput').style.borderColor = '#ef4444';
+                setTimeout(() => document.getElementById('customerInput').style.borderColor = '', 2000);
+                return;
+            }
+
+            // Increment order number for next demo iteration
+            currentOrderNumber++;
+            
+            // Reset form visually for demo
+            document.querySelector('.order-form').reset();
+            updateOrderNumber();
+            
+            // Set date again just in case reset cleared it
+            const today = new Date();
+            document.getElementById('creationDate').value = today.toLocaleDateString('he-IL');
+            
+            // Reset Tabs to first item
+            ['statusTabs', 'typeTabs', 'termsTabs', 'destTabs'].forEach(id => {
+                const container = document.getElementById(id);
+                const buttons = container.querySelectorAll('.tab-btn');
+                buttons.forEach(b => b.classList.remove('active'));
+                buttons[0].classList.add('active');
+            });
+        }
+    </script>
+</body>
+</html>
