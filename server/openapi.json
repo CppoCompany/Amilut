@@ -1,0 +1,260 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/api": {
+      "get": {
+        "operationId": "AppController_getHello",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "App"
+        ]
+      }
+    },
+    "/api/auth/google": {
+      "post": {
+        "operationId": "AuthController_loginWithGoogle",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoogleLoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "operationId": "AuthController_me",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/orders": {
+      "post": {
+        "operationId": "OrdersController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateOrderDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateOrderDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "orders"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "Amilut API",
+    "description": "Customs brokerage back office API",
+    "version": "0.0.1",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "securitySchemes": {
+      "bearer": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http"
+      }
+    },
+    "schemas": {
+      "GoogleLoginDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "OrderStatus": {
+        "type": "string",
+        "enum": [
+          "preparing",
+          "ready_for_pickup",
+          "picked_up",
+          "waiting_at_port",
+          "departed"
+        ],
+        "x-enum-varnames": [
+          "PREPARING",
+          "READY_FOR_PICKUP",
+          "PICKED_UP",
+          "WAITING_AT_PORT",
+          "DEPARTED"
+        ]
+      },
+      "ShipmentType": {
+        "type": "string",
+        "enum": [
+          "sea",
+          "air",
+          "land"
+        ],
+        "x-enum-varnames": [
+          "SEA",
+          "AIR",
+          "LAND"
+        ]
+      },
+      "PaymentTerms": {
+        "type": "string",
+        "enum": [
+          "prepaid",
+          "collect"
+        ],
+        "x-enum-varnames": [
+          "PREPAID",
+          "COLLECT"
+        ]
+      },
+      "Destination": {
+        "type": "string",
+        "enum": [
+          "ashdod",
+          "south_port",
+          "haifa",
+          "ben_gurion"
+        ],
+        "x-enum-varnames": [
+          "ASHDOD",
+          "SOUTH_PORT",
+          "HAIFA",
+          "BEN_GURION"
+        ]
+      },
+      "CreateOrderDto": {
+        "type": "object",
+        "properties": {
+          "customerId": {
+            "type": "integer",
+            "example": 1
+          },
+          "handlerUserId": {
+            "type": "integer",
+            "example": 7
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OrderStatus"
+              }
+            ]
+          },
+          "shipmentType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ShipmentType"
+              }
+            ]
+          },
+          "paymentTerms": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PaymentTerms"
+              }
+            ]
+          },
+          "incoterm": {
+            "type": "string",
+            "example": "FOB"
+          },
+          "destination": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Destination"
+              }
+            ]
+          },
+          "factoryReadyDate": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-09-01"
+          },
+          "factoryPickupDate": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-09-03"
+          },
+          "departureDate": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-09-10"
+          },
+          "etaDate": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-10-05"
+          },
+          "shippingLine": {
+            "type": "string",
+            "example": "ZIM"
+          },
+          "voyageNumber": {
+            "type": "string",
+            "example": "ZIM123E"
+          },
+          "airline": {
+            "type": "string",
+            "example": "EL AL"
+          },
+          "flightNumber": {
+            "type": "string",
+            "example": "LY001"
+          }
+        },
+        "required": [
+          "customerId",
+          "status",
+          "shipmentType",
+          "paymentTerms",
+          "destination"
+        ]
+      }
+    }
+  }
+}

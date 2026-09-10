@@ -14,6 +14,8 @@ invoke the runner directly.
 1. **Confirm the migration files exist.** They live in `SQL-Migration/`:
    - `001_create_role_and_database.sql` — role `Admin` + database `Amilut`
    - `002_create_tables.sql` — `customers` + `users` tables
+   - `003_create_orders.sql` — `orders` table
+   - `004_seed_admin_user.sql` — initial admin user row
    If the folder or files are missing, stop and tell Barak.
 
 2. **Determine the superuser password.** The runner needs the `postgres`
@@ -29,7 +31,7 @@ invoke the runner directly.
    $env:PGPASSWORD='<superuser-password>'; node SQL-Migration/run-migrations.mjs
    ```
 
-   The runner applies `001` then `002`. Every step is idempotent, so it is safe
+   The runner applies `001`, then every other `NNN_*.sql` file in name order (`002`, `003`, …). Every step is idempotent, so it is safe
    to re-run — existing objects are skipped.
 
 4. **Verify and report.** Confirm success from the runner output. Then verify by

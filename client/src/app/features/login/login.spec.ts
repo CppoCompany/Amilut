@@ -1,58 +1,79 @@
+import { HttpErrorResponse } from '@angular/common/http';
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { Router, provideRouter } from '@angular/router';
+
+import { AuthService } from '../../core/auth/auth.service';
 import { Login } from './login';
+
+type LoginInternals = {
+  form: { setValue: (v: { email: string; password: string }) => void };
+  onSubmit: () => Promise<void>;
+  error: () => string | null;
+};
 
 describe('Login', () => {
   let component: Login;
+  let internals: LoginInternals;
+  let authMock: { loading: ReturnType<typeof signal<boolean>>; login: ReturnType<typeof vi.fn> };
+  let router: Router;
 
   beforeEach(async () => {
+    authMock = {
+      loading: signal(false),
+      login: vi.fn().mockResolvedValue({ email: 'a@b.com', name: 'A' }),
+    };
+
     await TestBed.configureTestingModule({
       imports: [Login],
+      providers: [provideRouter([]), { provide: AuthService, useValue: authMock }],
     }).compileComponents();
+
+    router = TestBed.inject(Router);
+    vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
 
     const fixture = TestBed.createComponent(Login);
     component = fixture.componentInstance;
+    internals = component as unknown as LoginInternals;
     fixture.detectChanges();
   });
-
-  // Reach protected members for testing without leaking them into the public API.
-  const form = () => (component as unknown as { form: import('@angular/forms').FormGroup }).form;
-  const submit = () => (component as unknown as { onSubmit: () => void }).onSubmit();
-  const signedIn = () => (component as unknown as { signedIn: () => boolean }).signedIn();
 
   it('should create', () => {
     expect(component).toBeTruthy();
   });
 
-  it('is invalid when both fields are empty', () => {
-    expect(form().invalid).toBe(true);
+  it('does not call the API when the email is missing', async () => {
+    internals.form.setValue({ email: '', password: '' });
+    await internals.onSubmit();
+    expect(authMock.login).not.toHaveBeenCalled();
   });
 
-  it('flags email as required when blank', () => {
-    expect(form().controls['email'].hasError('required')).toBe(true);
+  it('logs in with email only when no password is given', async () => {
+    internals.form.setValue({ email: 'a@b.com', password: '' });
+    await internals.onSubmit();
+    expect(authMock.login).toHaveBeenCalledWith('a@b.com', undefined);
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/workspace');
+    expect(internals.error()).toBeNull();
   });
 
-  it('flags an invalid email format', () => {
-    form().controls['email'].setValue('foo@');
-    expect(form().controls['email'].hasError('email')).toBe(true);
+  it('forwards the password when given', async () => {
+    internals.form.setValue({ email: 'a@b.com', password: 'secret' });
+    await internals.onSubmit();
+    expect(authMock.login).toHaveBeenCalledWith('a@b.com', 'secret');
   });
 
-  it('flags password as required when blank', () => {
-    expect(form().controls['password'].hasError('required')).toBe(true);
+  it('shows the "not allowed" message on 403', async () => {
+    authMock.login.mockRejectedValueOnce(new HttpErrorResponse({ status: 403 }));
+    internals.form.setValue({ email: 'a@b.com', password: '' });
+    await internals.onSubmit();
+    expect(internals.error()).toBe('החשבון אינו מורשה');
+    expect(router.navigateByUrl).not.toHaveBeenCalled();
   });
 
-  it('is valid with a well-formed email and a non-empty password', () => {
-    form().setValue({ email: 'a@b.com', password: 'secret' });
-    expect(form().valid).toBe(true);
-  });
-
-  it('does not sign in (mock) when submitting an invalid form', () => {
-    submit();
-    expect(signedIn()).toBe(false);
-  });
-
-  it('signs in (mock) when submitting a valid form', () => {
-    form().setValue({ email: 'a@b.com', password: 'secret' });
-    submit();
-    expect(signedIn()).toBe(true);
+  it('shows a generic failure message on other errors', async () => {
+    authMock.login.mockRejectedValueOnce(new HttpErrorResponse({ status: 500 }));
+    internals.form.setValue({ email: 'a@b.com', password: '' });
+    await internals.onSubmit();
+    expect(internals.error()).toBe('ההתחברות נכשלה, נסה שוב');
   });
 });

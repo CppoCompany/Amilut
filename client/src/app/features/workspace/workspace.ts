@@ -1,5 +1,6 @@
 import { Component, inject } from '@angular/core';
 
+import { AuthService } from '../../core/auth/auth.service';
 import { NavigationService } from './navigation.service';
 import { ClassificationScreen } from './screens/classification/classification';
 import { FilingScreen } from './screens/filing/filing';
@@ -28,4 +29,5 @@ import { ShipmentScreen } from './screens/shipment/shipment';
 })
 export class Workspace {
   protected readonly nav = inject(NavigationService);
+  protected readonly auth = inject(AuthService);
 }

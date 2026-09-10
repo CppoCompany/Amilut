@@ -1,5 +1,18 @@
 import { Component, computed, signal } from '@angular/core';
 
+import {
+  DESTINATION_LABELS,
+  DESTINATIONS,
+  Destination,
+  ORDER_STATUS_LABELS,
+  ORDER_STATUSES,
+  OrderStatus,
+  PAYMENT_TERMS_LABELS,
+  PaymentTerms,
+  SHIPMENT_TYPE_LABELS,
+  SHIPMENT_TYPES,
+  ShipmentType,
+} from '../../../../api/enums';
 import { Autocomplete } from './autocomplete';
 
 const CUSTOMERS = [
@@ -39,14 +52,18 @@ export class OrderScreen {
     day: '2-digit',
   });
 
-  // Tab selections (data-value from the mock).
-  protected readonly status = signal('בהכנה');
-  protected readonly statuses = ['בהכנה', 'מוכנה לאיסוף', 'נאספה', 'ממתינה בנמל', 'יצאה לדרך'];
+  // Tab selections hold the API enum values; the template renders Hebrew via the label maps.
+  protected readonly status = signal<OrderStatus>(OrderStatus.PREPARING);
+  protected readonly statuses = ORDER_STATUSES;
+  protected readonly statusLabels = ORDER_STATUS_LABELS;
 
-  protected readonly type = signal('ימי');
-  protected readonly types = ['ימי', 'אווירי', 'יבשתי'];
+  protected readonly type = signal<ShipmentType>(ShipmentType.SEA);
+  protected readonly types = SHIPMENT_TYPES;
+  protected readonly typeLabels = SHIPMENT_TYPE_LABELS;
 
-  protected readonly terms = signal<'Prepaid' | 'Collect'>('Prepaid');
+  protected readonly PaymentTerms = PaymentTerms;
+  protected readonly terms = signal<PaymentTerms>(PaymentTerms.PREPAID);
+  protected readonly termsLabels = PAYMENT_TERMS_LABELS;
   protected readonly prepaidTerm = signal('CFR');
   protected readonly prepaidTerms = ['CFR', 'CAF', 'CPT', 'CIP'];
   protected readonly collectTerm = signal('EXW');
@@ -55,18 +72,19 @@ export class OrderScreen {
     ['DAF', 'DES', 'DEQ', 'DDU', 'DDP'],
   ];
 
-  protected readonly dest = signal('נמל אשדוד');
-  protected readonly destinations = ['נמל אשדוד', 'נמל הדרום', 'נמל חיפה', 'נתב"ג'];
+  protected readonly dest = signal<Destination>(Destination.ASHDOD);
+  protected readonly destinations = DESTINATIONS;
+  protected readonly destinationLabels = DESTINATION_LABELS;
 
   // Transport-field visibility, derived from the shipment type — mirrors the
   // mock's toggleTransportFields(): sea fields hide for air/land, air fields for sea/land.
   protected readonly seaVisible = computed(() => {
     const t = this.type();
-    return t !== 'אווירי' && t !== 'יבשתי';
+    return t !== ShipmentType.AIR && t !== ShipmentType.LAND;
   });
   protected readonly airVisible = computed(() => {
     const t = this.type();
-    return t !== 'ימי' && t !== 'יבשתי';
+    return t !== ShipmentType.SEA && t !== ShipmentType.LAND;
   });
 
   protected onSave(): void {

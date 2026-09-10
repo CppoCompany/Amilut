@@ -22,19 +22,100 @@ amilut_tax/
 
 ## Running
 
-From the repo root:
+All commands run from the repo root unless noted. `npm --prefix <app>` runs a
+script inside `client/` or `server/` without `cd`.
+
+### First-time setup
 
 ```bash
-npm install     # root tooling only (concurrently)
-npm run dev     # client + server together
+npm run install:all                  # root + server + client dependencies
+cp server/.env.example server/.env   # then fill GOOGLE_CLIENT_ID and JWT_SECRET
 ```
 
-Per app:
+### Development
 
 ```bash
-npm --prefix server run start:dev    # Nest watch mode  → :3000
-npm --prefix client start            # Angular dev      → :4200
+npm run dev                          # client + server together (concurrently)
+npm --prefix server run start:dev    # Nest watch mode        → http://localhost:3000/api
+npm --prefix client start            # Angular dev server     → http://localhost:4200
 ```
+
+Swagger UI is served by the running server at `http://localhost:3000/api/docs`
+(raw JSON at `/api/docs-json`).
+
+### Build, test, lint
+
+```bash
+npm run build                        # server then client
+npm run test                         # server (jest) then client (vitest via ng test)
+npm --prefix server run lint         # eslint --fix on the server
+npm --prefix server run format       # prettier on the server
+npm --prefix client run test         # client tests only (add -- --watch=false in CI)
+```
+
+### Database (PostgreSQL 17 on 127.0.0.1:5434)
+
+Versioned SQL lives in `SQL-Migration/`. The runner applies `001` (role
+`Admin` + database `Amilut`) and then every other `NNN_*.sql` file in name
+order. Every file is idempotent, so re-running is always safe.
+
+```powershell
+# PowerShell — needs the postgres superuser password
+$env:PGPASSWORD='<superuser-password>'; npm run db:generate
+```
+
+```bash
+# bash
+PGPASSWORD='<superuser-password>' npm run db:generate
+```
+
+Override `PGHOST`, `PGPORT`, `PGSUPERUSER` via env vars if the defaults do not
+fit. In Claude Code, `/generate-db` runs the same thing. Adding a table = add a
+new `SQL-Migration/NNN_<name>.sql` file with `IF NOT EXISTS` guards, then update
+`SQL-Migration/README.md` and `.claude/commands/generate-db.md`.
+
+App connection for the server: role `Admin` / password `Admin`, database
+`Amilut`.
+
+### API contract: server → client enums and types
+
+The server is the source of truth. Enums live in
+`server/src/orders/orders.enums.ts` and DTOs under `server/src/**/dto/`; both
+are exposed through Swagger. The client never hand-writes API types — it
+generates them from the exported OpenAPI spec.
+
+```bash
+npm run api:generate                     # both steps below, in order
+npm --prefix server run openapi:export   # Nest app → server/openapi.json (no listener; checked in)
+npm --prefix client run api:generate     # openapi.json → client/src/app/api/generated/schema.ts
+```
+
+Run `npm run api:generate` after any change to a server enum or DTO, and commit
+both `server/openapi.json` and the generated client file. The hand-written
+`client/src/app/api/enums.ts` re-exports the enums and adds Hebrew UI labels;
+adding an enum member on the server breaks the client build there until a
+label is added — that is intentional.
+
+The database CHECK constraints for enum-like columns (`status`,
+`shipment_type`, `payment_terms`, `destination` in `orders`) must be kept in
+sync with the server enums by hand.
+
+## Authentication
+
+Login page with user name (= email) and password. **The password is not
+verified yet** — the server accepts any well-formed email (subject to the
+optional allow-list) and issues an app JWT (`@nestjs/jwt`). Password checks
+against the `users` table are a planned follow-up. The client keeps the session
+in a signal-based `AuthService` (`client/src/app/core/auth/`), attaches it via a
+functional interceptor, and protects routes with `authGuard` / `guestGuard`.
+
+Setup: `server/.env` (gitignored; template in `server/.env.example`) needs
+`JWT_SECRET` (server refuses to start without it); optional `ALLOWED_EMAILS` /
+`ALLOWED_DOMAIN` restrict who can sign in.
+
+Endpoints: `POST /api/auth/login {email, password?}` → `{accessToken, user}`;
+`GET /api/auth/me` (Bearer) → `{user}`. Protect new endpoints with `JwtAuthGuard`
+from `server/src/auth/`.
 
 ## Conventions
 

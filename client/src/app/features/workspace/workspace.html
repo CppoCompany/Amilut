@@ -9,8 +9,17 @@
       <button type="button">תחנות עבודה</button>
     </div>
     <div class="user-info">
-      <span>שלום, דורון ממן</span>
+      <span>שלום, {{ auth.user()?.name }}</span>
       <i class="fa-solid fa-circle-user fa-lg"></i>
+      <button
+        type="button"
+        class="logout-button"
+        title="התנתק"
+        aria-label="התנתק"
+        (click)="auth.logout()"
+      >
+        <i class="fa-solid fa-right-from-bracket"></i>
+      </button>
     </div>
   </div>
 </header>

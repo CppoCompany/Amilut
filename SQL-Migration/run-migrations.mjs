@@ -6,6 +6,9 @@
  *
  *   001_create_role_and_database.sql   -> role `Admin` + database `Amilut`
  *   002_create_tables.sql              -> `customers`, `users` tables
+ *   003_create_orders.sql              -> `orders` table
+ *   004_seed_admin_user.sql            -> initial admin row in `users`
+ *   NNN_*.sql                          -> any later file, applied in name order
  *
  * Every step is idempotent, so re-running is safe.
  *
@@ -19,13 +22,12 @@
  *   PGPASSWORD    REQUIRED — superuser password (no default)
  *
  * Usage (from repo root):
- *   PGPASSWORD=... npm run db:generate
- * or put the vars in a root .env file (loaded automatically) and run:
- *   npm run db:generate
+ *   PGPASSWORD=... npm run db:generate          (bash)
+ *   $env:PGPASSWORD='...'; npm run db:generate  (PowerShell)
  * -----------------------------------------------------------------------------
  */
 
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
@@ -52,6 +54,18 @@ async function readSql(file) {
 }
 
 /**
+ * Every `NNN_*.sql` file in this folder except 001, sorted by name so the
+ * numeric prefix defines the order. These all run against the app database.
+ */
+async function listLaterMigrations() {
+  const files = (await readdir(HERE))
+    .filter((f) => /^\d{3}_.*\.sql$/i.test(f) && !f.startsWith('001_'))
+    .sort();
+  if (files.length === 0) fail('No migration files found after 001.');
+  return files;
+}
+
+/**
  * Splits 001 into: (a) everything before the create-database marker (the role
  * DDL) and (b) the CREATE DATABASE statement between the markers, plus the
  * database name parsed out of it.
@@ -75,13 +89,13 @@ async function main() {
   if (!cfg.password) {
     fail(
       'PGSUPERUSER password not set. Provide the superuser password via the ' +
-        'PGPASSWORD environment variable (or a root .env file), e.g.\n' +
+        'PGPASSWORD environment variable, e.g.\n' +
         '      PGPASSWORD=yourpass npm run db:generate',
     );
   }
 
   const step001 = parseStep001(await readSql('001_create_role_and_database.sql'));
-  const step002 = await readSql('002_create_tables.sql');
+  const laterFiles = await listLaterMigrations();
 
   console.log(
     `\n  Amilut DB migration → ${cfg.user}@${cfg.host}:${cfg.port}\n`,
@@ -108,13 +122,15 @@ async function main() {
     await admin.end();
   }
 
-  // ---- Step 002: tables (on the app DB; SET ROLE so Admin owns them) --------
+  // ---- Steps 002+: schema files (on the app DB; SET ROLE so Admin owns them)
   const app = new Client({ ...cfg, database: step001.dbName });
   await app.connect();
   try {
     await app.query(`SET ROLE "${APP_ROLE}"`);
-    await app.query(step002);
-    console.log(`  ✓ tables ensured (customers, users) owned by "${APP_ROLE}"`);
+    for (const file of laterFiles) {
+      await app.query(await readSql(file));
+      console.log(`  ✓ ${file} applied (objects owned by "${APP_ROLE}")`);
+    }
   } finally {
     await app.end();
   }

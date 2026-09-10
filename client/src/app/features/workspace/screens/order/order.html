@@ -52,7 +52,7 @@
               [class.active]="status() === option"
               (click)="status.set(option)"
             >
-              {{ option }}
+              {{ statusLabels[option] }}
             </button>
           }
         </div>
@@ -70,7 +70,7 @@
               [class.active]="type() === option"
               (click)="type.set(option)"
             >
-              {{ option }}
+              {{ typeLabels[option] }}
             </button>
           }
         </div>
@@ -82,22 +82,22 @@
           <button
             type="button"
             class="tab-btn"
-            [class.active]="terms() === 'Prepaid'"
-            (click)="terms.set('Prepaid')"
+            [class.active]="terms() === PaymentTerms.PREPAID"
+            (click)="terms.set(PaymentTerms.PREPAID)"
           >
-            Prepaid
+            {{ termsLabels[PaymentTerms.PREPAID] }}
           </button>
           <button
             type="button"
             class="tab-btn"
-            [class.active]="terms() === 'Collect'"
-            (click)="terms.set('Collect')"
+            [class.active]="terms() === PaymentTerms.COLLECT"
+            (click)="terms.set(PaymentTerms.COLLECT)"
           >
-            Collect
+            {{ termsLabels[PaymentTerms.COLLECT] }}
           </button>
         </div>
 
-        @if (terms() === 'Collect') {
+        @if (terms() === PaymentTerms.COLLECT) {
           <div class="tabs-container sub-tabs-container">
             @for (row of collectTermsRows; track $index) {
               <div class="tabs-row">
@@ -116,7 +116,7 @@
           </div>
         }
 
-        @if (terms() === 'Prepaid') {
+        @if (terms() === PaymentTerms.PREPAID) {
           <div class="tabs-container sub-tabs-container">
             <div class="tabs-row">
               @for (option of prepaidTerms; track option) {
@@ -146,7 +146,7 @@
               [class.active]="dest() === option"
               (click)="dest.set(option)"
             >
-              {{ option }}
+              {{ destinationLabels[option] }}
             </button>
           }
         </div>

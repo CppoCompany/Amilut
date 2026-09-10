@@ -1,53 +1,54 @@
 <main class="login-page">
   <form class="login-card" [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
-    <h1 class="login-card__title">Welcome</h1>
+    <h1 class="login-card__title">ברוכים הבאים</h1>
 
     <div class="field">
-      <label class="field__label" for="email">Email</label>
+      <label class="field__label" for="email">שם משתמש (אימייל)</label>
       <input
         id="email"
         class="field__input"
         type="email"
         formControlName="email"
-        autocomplete="email"
+        autocomplete="username"
+        dir="ltr"
         [class.field__input--invalid]="showError(email)"
       />
       @if (showError(email)) {
         <p class="field__error">
           @if (email.hasError('required')) {
-            Email is required
+            יש להזין אימייל
           } @else if (email.hasError('email')) {
-            Enter a valid email address
+            יש להזין כתובת אימייל תקינה
           }
         </p>
       }
     </div>
 
     <div class="field">
-      <label class="field__label" for="password">Password</label>
+      <label class="field__label" for="password">
+        סיסמה <span class="field__hint">(לא נדרשת כרגע)</span>
+      </label>
       <input
         id="password"
         class="field__input"
         type="password"
         formControlName="password"
         autocomplete="current-password"
-        [class.field__input--invalid]="showError(password)"
+        dir="ltr"
       />
-      @if (showError(password)) {
-        <p class="field__error">
-          @if (password.hasError('required')) {
-            Password is required
-          }
-        </p>
-      }
     </div>
 
-    <button class="login-card__submit" type="submit" [disabled]="form.invalid">
-      Sign in
+    <button class="login-card__submit" type="submit" [disabled]="loading()">
+      @if (loading()) {
+        <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
+        מתחבר...
+      } @else {
+        כניסה
+      }
     </button>
 
-    @if (signedIn()) {
-      <p class="login-card__success" role="status">Signed in (mock)</p>
+    @if (error(); as message) {
+      <p class="login-card__error" role="alert">{{ message }}</p>
     }
   </form>
 </main>

@@ -6,3 +6,28 @@
   height: 100vh;
   overflow: hidden;
 }
+
+/* Header logout icon button. Base `.user-info` layout lives in the global styles.scss. */
+.logout-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-inline-start: 4px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: var(--transition);
+
+  &:hover,
+  &:focus-visible {
+    background-color: var(--border-color);
+    color: var(--primary-blue);
+    outline: none;
+  }
+}
