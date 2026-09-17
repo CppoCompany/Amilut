@@ -1,7 +1,22 @@
-import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { DatabaseService } from '../database/database.service';
 import { AuthUser, LoginResponse, toPublicUser } from './auth.types';
+
+/** Row shape read from the `users` table for sign-in. */
+interface UserRow {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+  isActive: boolean;
+}
 
 @Injectable()
 export class AuthService {
@@ -10,35 +25,44 @@ export class AuthService {
   constructor(
     private readonly config: ConfigService,
     private readonly jwt: JwtService,
+    private readonly db: DatabaseService,
   ) {}
 
   /**
-   * Signs a user in by email. The password is accepted but NOT verified yet —
-   * password checks (against the `users` table) are a follow-up.
+   * Signs a user in by email. The account must exist in `users` and be active;
+   * the password is accepted but NOT verified yet — password checks are a
+   * follow-up. The issued JWT carries the user's database id as `sub`, so
+   * protected endpoints can attribute writes (e.g. orders.handler_user_id).
    */
-  async login(rawEmail: string, _password?: string): Promise<LoginResponse> {
+  async login(rawEmail: string, password?: string): Promise<LoginResponse> {
+    void password; // accepted, not verified yet
     const email = rawEmail.trim().toLowerCase();
     this.assertAllowed(email);
 
+    const row = await this.db.queryOne<UserRow>(
+      `SELECT id, name, email, role, "isActive"
+         FROM users
+        WHERE lower(email) = $1`,
+      [email],
+    );
+    if (!row || !row.isActive) {
+      this.logger.warn(`Rejected login for ${email}: unknown or inactive user`);
+      throw new UnauthorizedException('Unknown user');
+    }
+
+    await this.db.query('UPDATE users SET last_login = now() WHERE id = $1', [
+      row.id,
+    ]);
+
     const user: AuthUser = {
-      sub: email,
-      email,
-      name: this.displayNameFor(email),
+      sub: row.id,
+      email: row.email.toLowerCase(),
+      name: row.name,
+      role: row.role,
     };
 
     const accessToken = await this.jwt.signAsync(user);
     return { accessToken, user: toPublicUser(user) };
-  }
-
-  /** Derives a readable name from the email local part, e.g. "john.doe" → "John Doe". */
-  private displayNameFor(email: string): string {
-    const local = email.split('@')[0] ?? email;
-    const name = local
-      .split(/[._-]+/)
-      .filter((part) => part.length > 0)
-      .map((part) => part[0].toUpperCase() + part.slice(1))
-      .join(' ');
-    return name || email;
   }
 
   /** Applies ALLOWED_EMAILS / ALLOWED_DOMAIN restrictions when configured. */

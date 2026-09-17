@@ -15,16 +15,16 @@
         ]
       }
     },
-    "/api/auth/google": {
+    "/api/auth/login": {
       "post": {
-        "operationId": "AuthController_loginWithGoogle",
+        "operationId": "AuthController_login",
         "parameters": [],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/GoogleLoginDto"
+                "$ref": "#/components/schemas/LoginDto"
               }
             }
           }
@@ -35,7 +35,7 @@
           }
         },
         "tags": [
-          "Auth"
+          "auth"
         ]
       }
     },
@@ -48,12 +48,262 @@
             "description": ""
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "tags": [
-          "Auth"
+          "auth"
+        ]
+      }
+    },
+    "/api/customers": {
+      "get": {
+        "operationId": "CustomersController_search",
+        "parameters": [
+          {
+            "name": "q",
+            "required": true,
+            "in": "query",
+            "description": "Case-insensitive substring of the customer name",
+            "schema": {
+              "minLength": 3,
+              "example": "acm",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CustomerDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "customers"
+        ]
+      },
+      "post": {
+        "operationId": "CustomersController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCustomerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "customers"
+        ]
+      }
+    },
+    "/api/customers/{id}": {
+      "get": {
+        "operationId": "CustomersController_findById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No customer with that id"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "customers"
+        ]
+      },
+      "patch": {
+        "operationId": "CustomersController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCustomerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No customer with that id"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "customers"
         ]
       }
     },
     "/api/orders": {
+      "get": {
+        "operationId": "OrdersController_findAll",
+        "parameters": [
+          {
+            "name": "customerId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/OrderStatus"
+            }
+          },
+          {
+            "name": "includeInactive",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": false,
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "offset",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "default": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OrderDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "orders"
+        ]
+      },
       "post": {
         "operationId": "OrdersController_create",
         "parameters": [],
@@ -73,10 +323,123 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CreateOrderDto"
+                  "$ref": "#/components/schemas/OrderDto"
                 }
               }
             }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "orders"
+        ]
+      }
+    },
+    "/api/orders/{id}": {
+      "get": {
+        "operationId": "OrdersController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "orders"
+        ]
+      },
+      "patch": {
+        "operationId": "OrdersController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateOrderDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "orders"
+        ]
+      },
+      "delete": {
+        "operationId": "OrdersController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
           }
         },
         "security": [
@@ -107,9 +470,116 @@
       }
     },
     "schemas": {
-      "GoogleLoginDto": {
+      "LoginDto": {
         "type": "object",
         "properties": {}
+      },
+      "CustomerDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "name": {
+            "type": "string",
+            "example": "Acme Imports Ltd."
+          },
+          "address": {
+            "type": "string",
+            "nullable": true,
+            "example": "1 Herzl St, Tel Aviv"
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true,
+            "example": "+972-3-1234567"
+          },
+          "email": {
+            "type": "string",
+            "nullable": true,
+            "example": "office@acme.co.il"
+          },
+          "isActive": {
+            "type": "boolean",
+            "example": true
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "address",
+          "phone",
+          "email",
+          "isActive"
+        ]
+      },
+      "CreateCustomerDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Acme Imports Ltd.",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "address": {
+            "type": "string",
+            "nullable": true,
+            "example": "1 Herzl St, Tel Aviv",
+            "maxLength": 500
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true,
+            "example": "+972-3-1234567",
+            "maxLength": 50
+          },
+          "email": {
+            "type": "string",
+            "nullable": true,
+            "format": "email",
+            "example": "office@acme.co.il",
+            "maxLength": 255
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "UpdateCustomerDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Acme Imports Ltd.",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "address": {
+            "type": "string",
+            "nullable": true,
+            "example": "1 Herzl St, Tel Aviv",
+            "maxLength": 500
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true,
+            "example": "+972-3-1234567",
+            "maxLength": 50
+          },
+          "email": {
+            "type": "string",
+            "nullable": true,
+            "format": "email",
+            "example": "office@acme.co.il",
+            "maxLength": 255
+          },
+          "isActive": {
+            "type": "boolean",
+            "example": false
+          }
+        }
       },
       "OrderStatus": {
         "type": "string",
@@ -152,6 +622,39 @@
           "COLLECT"
         ]
       },
+      "Incoterm": {
+        "type": "string",
+        "enum": [
+          "CFR",
+          "CAF",
+          "CPT",
+          "CIP",
+          "EXW",
+          "FCA",
+          "FOB",
+          "FAC",
+          "DAF",
+          "DES",
+          "DEQ",
+          "DDU",
+          "DDP"
+        ],
+        "x-enum-varnames": [
+          "CFR",
+          "CAF",
+          "CPT",
+          "CIP",
+          "EXW",
+          "FCA",
+          "FOB",
+          "FAC",
+          "DAF",
+          "DES",
+          "DEQ",
+          "DDU",
+          "DDP"
+        ]
+      },
       "Destination": {
         "type": "string",
         "enum": [
@@ -167,16 +670,41 @@
           "BEN_GURION"
         ]
       },
-      "CreateOrderDto": {
+      "OrderDto": {
         "type": "object",
         "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1000
+          },
           "customerId": {
             "type": "integer",
             "example": 1
           },
+          "customerName": {
+            "type": "string",
+            "nullable": true,
+            "example": "ACME Ltd."
+          },
           "handlerUserId": {
             "type": "integer",
+            "nullable": true,
             "example": 7
+          },
+          "handlerName": {
+            "type": "string",
+            "nullable": true,
+            "example": "Dana Levi"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-01T08:30:00.000Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-01T08:30:00.000Z"
           },
           "status": {
             "allOf": [
@@ -200,8 +728,126 @@
             ]
           },
           "incoterm": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Incoterm"
+              }
+            ]
+          },
+          "destination": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Destination"
+              }
+            ]
+          },
+          "factoryReadyDate": {
             "type": "string",
-            "example": "FOB"
+            "format": "date",
+            "nullable": true,
+            "example": "2026-09-01"
+          },
+          "factoryPickupDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "example": "2026-09-03"
+          },
+          "departureDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "example": "2026-09-10"
+          },
+          "etaDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "example": "2026-10-05"
+          },
+          "shippingLine": {
+            "type": "string",
+            "nullable": true,
+            "example": "ZIM"
+          },
+          "voyageNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "ZIM123E"
+          },
+          "airline": {
+            "type": "string",
+            "nullable": true,
+            "example": "EL AL"
+          },
+          "flightNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "LY001"
+          },
+          "isActive": {
+            "type": "boolean",
+            "example": true
+          }
+        },
+        "required": [
+          "id",
+          "customerId",
+          "customerName",
+          "handlerUserId",
+          "handlerName",
+          "createdAt",
+          "updatedAt",
+          "status",
+          "shipmentType",
+          "paymentTerms",
+          "incoterm",
+          "destination",
+          "factoryReadyDate",
+          "factoryPickupDate",
+          "departureDate",
+          "etaDate",
+          "shippingLine",
+          "voyageNumber",
+          "airline",
+          "flightNumber",
+          "isActive"
+        ]
+      },
+      "CreateOrderDto": {
+        "type": "object",
+        "properties": {
+          "customerId": {
+            "type": "integer",
+            "example": 1
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OrderStatus"
+              }
+            ]
+          },
+          "shipmentType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ShipmentType"
+              }
+            ]
+          },
+          "paymentTerms": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PaymentTerms"
+              }
+            ]
+          },
+          "incoterm": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Incoterm"
+              }
+            ]
           },
           "destination": {
             "allOf": [
@@ -252,8 +898,89 @@
           "status",
           "shipmentType",
           "paymentTerms",
+          "incoterm",
           "destination"
         ]
+      },
+      "UpdateOrderDto": {
+        "type": "object",
+        "properties": {
+          "customerId": {
+            "type": "integer",
+            "example": 1
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OrderStatus"
+              }
+            ]
+          },
+          "shipmentType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ShipmentType"
+              }
+            ]
+          },
+          "paymentTerms": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PaymentTerms"
+              }
+            ]
+          },
+          "incoterm": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Incoterm"
+              }
+            ]
+          },
+          "destination": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Destination"
+              }
+            ]
+          },
+          "factoryReadyDate": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-09-01"
+          },
+          "factoryPickupDate": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-09-03"
+          },
+          "departureDate": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-09-10"
+          },
+          "etaDate": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-10-05"
+          },
+          "shippingLine": {
+            "type": "string",
+            "example": "ZIM"
+          },
+          "voyageNumber": {
+            "type": "string",
+            "example": "ZIM123E"
+          },
+          "airline": {
+            "type": "string",
+            "example": "EL AL"
+          },
+          "flightNumber": {
+            "type": "string",
+            "example": "LY001"
+          }
+        }
       }
     }
   }

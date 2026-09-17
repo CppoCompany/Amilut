@@ -1,100 +1,232 @@
-import { Component, computed, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  computed,
+  inject,
+  linkedSignal,
+  signal,
+} from '@angular/core';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { finalize } from 'rxjs';
 
 import {
   DESTINATION_LABELS,
   DESTINATIONS,
   Destination,
+  INCOTERM_LABELS,
+  INCOTERMS_BY_PAYMENT_TERMS,
   ORDER_STATUS_LABELS,
   ORDER_STATUSES,
   OrderStatus,
+  PAYMENT_TERMS,
   PAYMENT_TERMS_LABELS,
   PaymentTerms,
   SHIPMENT_TYPE_LABELS,
   SHIPMENT_TYPES,
   ShipmentType,
 } from '../../../../api/enums';
+import type { CustomerDto, OrderDto } from '../../../../api/models';
+import { OrdersApi } from '../../../../api/orders-api';
+import { AuthService } from '../../../../core/auth/auth.service';
+import { CustomerAutocomplete } from '../../../customers/customer-autocomplete/customer-autocomplete';
 import { Autocomplete } from './autocomplete';
-
-const CUSTOMERS = [
-  'דורון ממן', 'ארז נקר', 'יבוא סחר בע״מ', 'טכנולוגיות מתקדמות',
-  'אלקטרוניקה ישראל', 'שיווק ישיר', 'גלובל לוגיסטיקה',
-  'חומרי בניין כהן', 'טקסטיל השרון', 'אגרו תעשיות',
-];
+import {
+  EMPTY_ORDER_FORM_VALUE,
+  formatOrderDate,
+  saveErrorMessage,
+  toCreateOrderDto,
+} from './order-form.mapper';
 
 const SHIPPING_LINES = [
-  'Conmart', 'Green Shipping', 'ZIM', 'Maersk',
-  'MSC', 'CMA CGM', 'Hapag-Lloyd', 'Evergreen',
-  'Yang Ming', 'COSCO',
+  'Conmart',
+  'Green Shipping',
+  'ZIM',
+  'Maersk',
+  'MSC',
+  'CMA CGM',
+  'Hapag-Lloyd',
+  'Evergreen',
+  'Yang Ming',
+  'COSCO',
 ];
 
 const AIRLINES = [
-  'El Al', 'British Airways', 'Lufthansa', 'Turkish Airlines',
-  'Delta', 'United', 'Air France', 'KLM',
-  'Emirates', 'Qatar Airways',
+  'El Al',
+  'British Airways',
+  'Lufthansa',
+  'Turkish Airlines',
+  'Delta',
+  'United',
+  'Air France',
+  'KLM',
+  'Emirates',
+  'Qatar Airways',
 ];
 
-/** "פתיחת הזמנה" — new shipment order form. */
+const CUSTOMER_REQUIRED = 'יש לבחור לקוח';
+
+/** "פתיחת הזמנה" — new shipment order form, wired to `POST/PATCH /api/orders`. */
 @Component({
   selector: 'app-order-screen',
+  imports: [ReactiveFormsModule, CustomerAutocomplete],
   templateUrl: './order.html',
+  styleUrl: './order.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class OrderScreen {
-  // Autocomplete inputs.
-  protected readonly customer = new Autocomplete(CUSTOMERS);
-  protected readonly shippingLine = new Autocomplete(SHIPPING_LINES);
-  protected readonly airline = new Autocomplete(AIRLINES);
+  private readonly fb = inject(NonNullableFormBuilder);
+  private readonly ordersApi = inject(OrdersApi);
+  private readonly auth = inject(AuthService);
+  private readonly destroyRef = inject(DestroyRef);
 
-  // Read-only header fields.
-  protected readonly internalOrderNum = signal(1000);
-  protected readonly creationDate = new Date().toLocaleDateString('he-IL', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
+  // ── Customer ───────────────────────────────────────────────────────────────
+  protected readonly selectedCustomer = signal<CustomerDto | null>(null);
+  private readonly submitAttempted = signal(false);
+  protected readonly customerError = computed(() =>
+    this.submitAttempted() && !this.selectedCustomer() ? CUSTOMER_REQUIRED : null,
+  );
+
+  // ── Save state ─────────────────────────────────────────────────────────────
+  /** The order as last returned by the server; `null` until the first successful save. */
+  protected readonly savedOrder = signal<OrderDto | null>(null);
+  protected readonly saving = signal(false);
+  protected readonly successMessage = signal<string | null>(null);
+  protected readonly errorMessage = signal<string | null>(null);
+
+  // ── Read-only header fields ────────────────────────────────────────────────
+  protected readonly orderNumber = computed(() => {
+    const order = this.savedOrder();
+    return order ? String(order.id) : '—';
   });
+  protected readonly creationDate = computed(() => {
+    const order = this.savedOrder();
+    return order ? formatOrderDate(order.createdAt) : '—';
+  });
+  protected readonly handlerName = computed(() => this.auth.user()?.name ?? '');
 
-  // Tab selections hold the API enum values; the template renders Hebrew via the label maps.
+  // ── Enum tab groups (typed signals; labels come from the label maps) ──────
   protected readonly status = signal<OrderStatus>(OrderStatus.PREPARING);
   protected readonly statuses = ORDER_STATUSES;
   protected readonly statusLabels = ORDER_STATUS_LABELS;
 
-  protected readonly type = signal<ShipmentType>(ShipmentType.SEA);
-  protected readonly types = SHIPMENT_TYPES;
-  protected readonly typeLabels = SHIPMENT_TYPE_LABELS;
+  protected readonly shipmentType = signal<ShipmentType>(ShipmentType.SEA);
+  protected readonly shipmentTypes = SHIPMENT_TYPES;
+  protected readonly shipmentTypeLabels = SHIPMENT_TYPE_LABELS;
 
-  protected readonly PaymentTerms = PaymentTerms;
-  protected readonly terms = signal<PaymentTerms>(PaymentTerms.PREPAID);
-  protected readonly termsLabels = PAYMENT_TERMS_LABELS;
-  protected readonly prepaidTerm = signal('CFR');
-  protected readonly prepaidTerms = ['CFR', 'CAF', 'CPT', 'CIP'];
-  protected readonly collectTerm = signal('EXW');
-  protected readonly collectTermsRows = [
-    ['EXW', 'FCA', 'FOB', 'FAC'],
-    ['DAF', 'DES', 'DEQ', 'DDU', 'DDP'],
-  ];
+  protected readonly paymentTerms = signal<PaymentTerms>(PaymentTerms.PREPAID);
+  protected readonly paymentTermsOptions = PAYMENT_TERMS;
+  protected readonly paymentTermsLabels = PAYMENT_TERMS_LABELS;
 
-  protected readonly dest = signal<Destination>(Destination.ASHDOD);
+  /** Incoterms offered for the current payment terms (the server rejects a mismatch). */
+  protected readonly incotermOptions = computed(
+    () => INCOTERMS_BY_PAYMENT_TERMS[this.paymentTerms()],
+  );
+  /** Resets to the first allowed code whenever the payment terms change. */
+  protected readonly incoterm = linkedSignal(() => this.incotermOptions()[0]);
+  protected readonly incotermLabels = INCOTERM_LABELS;
+
+  protected readonly destination = signal<Destination>(Destination.ASHDOD);
   protected readonly destinations = DESTINATIONS;
   protected readonly destinationLabels = DESTINATION_LABELS;
 
-  // Transport-field visibility, derived from the shipment type — mirrors the
-  // mock's toggleTransportFields(): sea fields hide for air/land, air fields for sea/land.
-  protected readonly seaVisible = computed(() => {
-    const t = this.type();
-    return t !== ShipmentType.AIR && t !== ShipmentType.LAND;
-  });
-  protected readonly airVisible = computed(() => {
-    const t = this.type();
-    return t !== ShipmentType.SEA && t !== ShipmentType.LAND;
+  // ── Transport-field visibility ─────────────────────────────────────────────
+  protected readonly seaVisible = computed(() => this.shipmentType() === ShipmentType.SEA);
+  protected readonly airVisible = computed(() => this.shipmentType() === ShipmentType.AIR);
+
+  // ── Dates & free-text fields ───────────────────────────────────────────────
+  protected readonly form = this.fb.group({
+    factoryReadyDate: [EMPTY_ORDER_FORM_VALUE.factoryReadyDate],
+    factoryPickupDate: [EMPTY_ORDER_FORM_VALUE.factoryPickupDate],
+    departureDate: [EMPTY_ORDER_FORM_VALUE.departureDate],
+    etaDate: [EMPTY_ORDER_FORM_VALUE.etaDate],
+    shippingLine: [EMPTY_ORDER_FORM_VALUE.shippingLine],
+    voyageNumber: [EMPTY_ORDER_FORM_VALUE.voyageNumber],
+    airline: [EMPTY_ORDER_FORM_VALUE.airline],
+    flightNumber: [EMPTY_ORDER_FORM_VALUE.flightNumber],
   });
 
+  // Client-side suggestion lists for the free-text carrier fields.
+  protected readonly shippingLine = new Autocomplete(
+    SHIPPING_LINES,
+    toSignal(this.form.controls.shippingLine.valueChanges, { initialValue: '' }),
+  );
+  protected readonly airline = new Autocomplete(
+    AIRLINES,
+    toSignal(this.form.controls.airline.valueChanges, { initialValue: '' }),
+  );
+
+  protected pickShippingLine(value: string): void {
+    this.form.controls.shippingLine.setValue(value);
+    this.shippingLine.close();
+  }
+
+  protected pickAirline(value: string): void {
+    this.form.controls.airline.setValue(value);
+    this.airline.close();
+  }
+
+  /** Creates the order on the first save; PATCHes the same order on later saves. */
   protected onSave(): void {
-    if (!this.customer.query()) {
-      // A real form would flag the required control; keep the mock's console warning.
-      console.warn('Customer is required');
+    if (this.saving()) {
       return;
     }
-    // Mockup only — no backend.
-    console.log('Order (mock) saved for:', this.customer.query());
-    this.internalOrderNum.update((n) => n + 1);
+    this.submitAttempted.set(true);
+    this.successMessage.set(null);
+    this.errorMessage.set(null);
+
+    const customer = this.selectedCustomer();
+    if (!customer) {
+      return;
+    }
+
+    const dto = toCreateOrderDto(
+      customer.id,
+      {
+        status: this.status(),
+        shipmentType: this.shipmentType(),
+        paymentTerms: this.paymentTerms(),
+        incoterm: this.incoterm(),
+        destination: this.destination(),
+      },
+      this.form.getRawValue(),
+    );
+
+    const existing = this.savedOrder();
+    const request$ = existing
+      ? this.ordersApi.update(existing.id, dto)
+      : this.ordersApi.create(dto);
+
+    this.saving.set(true);
+    request$
+      .pipe(
+        finalize(() => this.saving.set(false)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (order) => {
+          this.savedOrder.set(order);
+          this.successMessage.set(`ההזמנה נשמרה — מספר הזמנה ${order.id}`);
+        },
+        error: (error: unknown) => this.errorMessage.set(saveErrorMessage(error)),
+      });
+  }
+
+  /** Clears everything so a fresh order can be entered. */
+  protected onCancel(): void {
+    this.form.reset();
+    this.shippingLine.close();
+    this.airline.close();
+    this.status.set(OrderStatus.PREPARING);
+    this.shipmentType.set(ShipmentType.SEA);
+    this.paymentTerms.set(PaymentTerms.PREPAID);
+    this.incoterm.set(this.incotermOptions()[0]);
+    this.destination.set(Destination.ASHDOD);
+    this.selectedCustomer.set(null);
+    this.savedOrder.set(null);
+    this.submitAttempted.set(false);
+    this.successMessage.set(null);
+    this.errorMessage.set(null);
   }
 }

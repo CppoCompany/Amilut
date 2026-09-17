@@ -1,15 +1,18 @@
 /** Claims we embed in our own JWT. */
 export interface AuthUser {
-  /** Subject: the normalized account email. */
-  sub: string;
+  /** Subject: the `users.id` primary key of the signed-in user. */
+  sub: number;
   email: string;
   name: string;
+  role: string;
 }
 
 /** Public user shape returned to the client. */
 export interface PublicUser {
+  id: number;
   email: string;
   name: string;
+  role: string;
 }
 
 export interface LoginResponse {
@@ -24,5 +27,5 @@ export interface JwtPayload extends AuthUser {
 }
 
 export function toPublicUser(user: AuthUser): PublicUser {
-  return { email: user.email, name: user.name };
+  return { id: user.sub, email: user.email, name: user.name, role: user.role };
 }

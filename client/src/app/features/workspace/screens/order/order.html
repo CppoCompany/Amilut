@@ -1,38 +1,29 @@
-<form class="order-form" (submit)="$event.preventDefault()">
+<form class="order-form" [formGroup]="form" (ngSubmit)="onSave()" novalidate>
   <!-- Section: Customer Information -->
   <section class="form-section">
     <h2 class="section-title">פרטי לקוח ופתיחה</h2>
     <div class="grid-row">
       <div class="form-group autocomplete-wrapper">
         <label class="required">לקוח קיים</label>
-        <input
-          type="text"
-          class="form-control"
-          placeholder="הקלד שם לקוח לחיפוש..."
-          autocomplete="off"
-          [value]="customer.query()"
-          (input)="customer.onInput($any($event.target).value)"
-        />
-        <div class="autocomplete-list" [class.active]="customer.open()">
-          @for (match of customer.matches(); track match) {
-            <div class="autocomplete-item" (click)="customer.select(match)">{{ match }}</div>
-          }
-        </div>
+        <app-customer-autocomplete [(customer)]="selectedCustomer" />
+        @if (customerError(); as message) {
+          <p class="field-error" role="alert">{{ message }}</p>
+        }
       </div>
 
       <div class="form-group">
         <label>מספר הזמנה פנימי</label>
-        <input type="text" class="form-control" [value]="internalOrderNum()" readonly />
+        <input type="text" class="form-control" [value]="orderNumber()" readonly />
       </div>
 
       <div class="form-group">
         <label>תאריך פתיחת הזמנה</label>
-        <input type="text" class="form-control" [value]="creationDate" readonly />
+        <input type="text" class="form-control" [value]="creationDate()" readonly />
       </div>
 
       <div class="form-group">
         <label>פקיד מטפל</label>
-        <input type="text" class="form-control" value="דורון ממן" readonly />
+        <input type="text" class="form-control" [value]="handlerName()" readonly />
       </div>
     </div>
   </section>
@@ -63,14 +54,14 @@
       <div class="form-group">
         <label class="required">סוג משלוח</label>
         <div class="tabs-container">
-          @for (option of types; track option) {
+          @for (option of shipmentTypes; track option) {
             <button
               type="button"
               class="tab-btn"
-              [class.active]="type() === option"
-              (click)="type.set(option)"
+              [class.active]="shipmentType() === option"
+              (click)="shipmentType.set(option)"
             >
-              {{ typeLabels[option] }}
+              {{ shipmentTypeLabels[option] }}
             </button>
           }
         </div>
@@ -79,59 +70,32 @@
       <div class="form-group">
         <label class="required">תנאי תשלום הובלה (Incoterms)</label>
         <div class="tabs-container">
-          <button
-            type="button"
-            class="tab-btn"
-            [class.active]="terms() === PaymentTerms.PREPAID"
-            (click)="terms.set(PaymentTerms.PREPAID)"
-          >
-            {{ termsLabels[PaymentTerms.PREPAID] }}
-          </button>
-          <button
-            type="button"
-            class="tab-btn"
-            [class.active]="terms() === PaymentTerms.COLLECT"
-            (click)="terms.set(PaymentTerms.COLLECT)"
-          >
-            {{ termsLabels[PaymentTerms.COLLECT] }}
-          </button>
+          @for (option of paymentTermsOptions; track option) {
+            <button
+              type="button"
+              class="tab-btn"
+              [class.active]="paymentTerms() === option"
+              (click)="paymentTerms.set(option)"
+            >
+              {{ paymentTermsLabels[option] }}
+            </button>
+          }
         </div>
 
-        @if (terms() === PaymentTerms.COLLECT) {
-          <div class="tabs-container sub-tabs-container">
-            @for (row of collectTermsRows; track $index) {
-              <div class="tabs-row">
-                @for (option of row; track option) {
-                  <button
-                    type="button"
-                    class="tab-btn"
-                    [class.active]="collectTerm() === option"
-                    (click)="collectTerm.set(option)"
-                  >
-                    {{ option }}
-                  </button>
-                }
-              </div>
+        <div class="tabs-container sub-tabs-container">
+          <div class="tabs-row">
+            @for (option of incotermOptions(); track option) {
+              <button
+                type="button"
+                class="tab-btn"
+                [class.active]="incoterm() === option"
+                (click)="incoterm.set(option)"
+              >
+                {{ incotermLabels[option] }}
+              </button>
             }
           </div>
-        }
-
-        @if (terms() === PaymentTerms.PREPAID) {
-          <div class="tabs-container sub-tabs-container">
-            <div class="tabs-row">
-              @for (option of prepaidTerms; track option) {
-                <button
-                  type="button"
-                  class="tab-btn"
-                  [class.active]="prepaidTerm() === option"
-                  (click)="prepaidTerm.set(option)"
-                >
-                  {{ option }}
-                </button>
-              }
-            </div>
-          </div>
-        }
+        </div>
       </div>
     </div>
 
@@ -143,8 +107,8 @@
             <button
               type="button"
               class="tab-btn"
-              [class.active]="dest() === option"
-              (click)="dest.set(option)"
+              [class.active]="destination() === option"
+              (click)="destination.set(option)"
             >
               {{ destinationLabels[option] }}
             </button>
@@ -159,20 +123,35 @@
     <h2 class="section-title">לוחות זמנים</h2>
     <div class="grid-row">
       <div class="form-group">
-        <label>תאריך מוכנות במפעל</label>
-        <input type="date" class="form-control" />
+        <label for="factoryReadyDate">תאריך מוכנות במפעל</label>
+        <input
+          id="factoryReadyDate"
+          type="date"
+          class="form-control"
+          formControlName="factoryReadyDate"
+        />
       </div>
       <div class="form-group">
-        <label>תאריך איסוף מהמפעל</label>
-        <input type="date" class="form-control" />
+        <label for="factoryPickupDate">תאריך איסוף מהמפעל</label>
+        <input
+          id="factoryPickupDate"
+          type="date"
+          class="form-control"
+          formControlName="factoryPickupDate"
+        />
       </div>
       <div class="form-group">
-        <label>תאריך הפלגה / טיסה (יציאה)</label>
-        <input type="date" class="form-control" />
+        <label for="departureDate">תאריך הפלגה / טיסה (יציאה)</label>
+        <input
+          id="departureDate"
+          type="date"
+          class="form-control"
+          formControlName="departureDate"
+        />
       </div>
       <div class="form-group">
-        <label>תאריך הגעה משוער (ETA)</label>
-        <input type="date" class="form-control" />
+        <label for="etaDate">תאריך הגעה משוער (ETA)</label>
+        <input id="etaDate" type="date" class="form-control" formControlName="etaDate" />
       </div>
     </div>
   </section>
@@ -183,55 +162,88 @@
     <div class="grid-row">
       @if (seaVisible()) {
         <div class="form-group autocomplete-wrapper transport-group">
-          <label>חברת ספנות</label>
+          <label for="shippingLine">חברת ספנות</label>
           <input
+            id="shippingLine"
             type="text"
             class="form-control"
             placeholder="חפש חברת ספנות..."
             autocomplete="off"
-            [value]="shippingLine.query()"
-            (input)="shippingLine.onInput($any($event.target).value)"
+            formControlName="shippingLine"
+            (input)="shippingLine.onInput()"
           />
           <div class="autocomplete-list" [class.active]="shippingLine.open()">
             @for (match of shippingLine.matches(); track match) {
-              <div class="autocomplete-item" (click)="shippingLine.select(match)">{{ match }}</div>
+              <div class="autocomplete-item" (click)="pickShippingLine(match)">{{ match }}</div>
             }
           </div>
         </div>
         <div class="form-group transport-group">
-          <label>מספר הפלגה (Voyage Number)</label>
-          <input type="number" class="form-control" placeholder="הזן מספר הפלגה" />
+          <label for="voyageNumber">מספר הפלגה (Voyage Number)</label>
+          <input
+            id="voyageNumber"
+            type="text"
+            class="form-control"
+            placeholder="הזן מספר הפלגה"
+            formControlName="voyageNumber"
+          />
         </div>
       }
 
       @if (airVisible()) {
         <div class="form-group autocomplete-wrapper transport-group">
-          <label>חברת תעופה (Airline)</label>
+          <label for="airline">חברת תעופה (Airline)</label>
           <input
+            id="airline"
             type="text"
             class="form-control"
             placeholder="חפש חברת תעופה..."
             autocomplete="off"
-            [value]="airline.query()"
-            (input)="airline.onInput($any($event.target).value)"
+            formControlName="airline"
+            (input)="airline.onInput()"
           />
           <div class="autocomplete-list" [class.active]="airline.open()">
             @for (match of airline.matches(); track match) {
-              <div class="autocomplete-item" (click)="airline.select(match)">{{ match }}</div>
+              <div class="autocomplete-item" (click)="pickAirline(match)">{{ match }}</div>
             }
           </div>
         </div>
         <div class="form-group transport-group">
-          <label>מספר טיסה (Flight Number)</label>
-          <input type="text" class="form-control" placeholder="הזן מספר טיסה" />
+          <label for="flightNumber">מספר טיסה (Flight Number)</label>
+          <input
+            id="flightNumber"
+            type="text"
+            class="form-control"
+            placeholder="הזן מספר טיסה"
+            formControlName="flightNumber"
+          />
         </div>
       }
     </div>
   </section>
 
+  <!-- Save feedback -->
+  @if (successMessage(); as message) {
+    <p class="form-message form-message--success" role="status">{{ message }}</p>
+  }
+  @if (errorMessage(); as message) {
+    <p class="form-message form-message--error" role="alert">{{ message }}</p>
+  }
+
   <!-- Form Actions -->
   <div class="form-actions">
-    <button type="button" class="btn btn-secondary">ביטול</button>
-    <button type="button" class="btn btn-primary" (click)="onSave()">שמור הזמנה</button>
+    <button type="button" class="btn btn-secondary" (click)="onCancel()" [disabled]="saving()">
+      ביטול
+    </button>
+    <button type="submit" class="btn btn-primary" [disabled]="saving()">
+      @if (saving()) {
+        <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
+        שומר...
+      } @else if (savedOrder()) {
+        עדכן הזמנה
+      } @else {
+        שמור הזמנה
+      }
+    </button>
   </div>
 </form>

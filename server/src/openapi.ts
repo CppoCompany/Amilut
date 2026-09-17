@@ -3,6 +3,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import type { OpenAPIObject } from '@nestjs/swagger';
 import {
   Destination,
+  Incoterm,
   OrderStatus,
   PaymentTerms,
   ShipmentType,
@@ -22,6 +23,7 @@ export const NAMED_ENUMS: Record<string, Record<string, string>> = {
   OrderStatus,
   PaymentTerms,
   Destination,
+  Incoterm,
 };
 
 type SchemaWithExtensions = {

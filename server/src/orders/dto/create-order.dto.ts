@@ -9,20 +9,21 @@ import {
 } from 'class-validator';
 import {
   Destination,
+  Incoterm,
   OrderStatus,
   PaymentTerms,
   ShipmentType,
 } from '../orders.enums';
 
+/**
+ * Payload for opening a new order. The order number (`id`), `createdAt` and
+ * the handler (`handlerUserId`, taken from the JWT) are set by the server and
+ * can never be supplied by the client.
+ */
 export class CreateOrderDto {
   @ApiProperty({ type: 'integer', example: 1 })
   @IsInt()
   customerId!: number;
-
-  @ApiPropertyOptional({ type: 'integer', example: 7 })
-  @IsOptional()
-  @IsInt()
-  handlerUserId?: number;
 
   @ApiProperty({ enum: OrderStatus, enumName: 'OrderStatus' })
   @IsEnum(OrderStatus)
@@ -36,12 +37,10 @@ export class CreateOrderDto {
   @IsEnum(PaymentTerms)
   paymentTerms!: PaymentTerms;
 
-  /** Free-text for now (e.g. "FOB", "CIF"); may become an enum later. */
-  @ApiPropertyOptional({ example: 'FOB' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(16)
-  incoterm?: string;
+  /** Must belong to INCOTERMS_BY_PAYMENT_TERMS[paymentTerms] (checked in the service). */
+  @ApiProperty({ enum: Incoterm, enumName: 'Incoterm' })
+  @IsEnum(Incoterm)
+  incoterm!: Incoterm;
 
   @ApiProperty({ enum: Destination, enumName: 'Destination' })
   @IsEnum(Destination)
@@ -88,6 +87,6 @@ export class CreateOrderDto {
   @ApiPropertyOptional({ example: 'LY001' })
   @IsOptional()
   @IsString()
-  @MaxLength(20)
+  @MaxLength(50)
   flightNumber?: string;
 }

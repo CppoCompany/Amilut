@@ -52,7 +52,8 @@ Amilut
                shipping_line, voyage_number, airline, flight_number,
                updated_at, isActive)
 
-Enum-like columns (`status`, `shipment_type`, `payment_terms`, `destination`)
+Enum-like columns (`status`, `shipment_type`, `payment_terms`, `incoterm`,
+`destination`)
 store English codes guarded by CHECK constraints; the source of truth is
 `server/src/orders/orders.enums.ts`.
 ```

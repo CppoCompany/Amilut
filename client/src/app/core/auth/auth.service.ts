@@ -115,7 +115,14 @@ export class AuthService {
     }
     try {
       const parsed = JSON.parse(raw) as Partial<StoredSession> | null;
-      if (parsed && typeof parsed.accessToken === 'string' && parsed.user?.email) {
+      // Sessions persisted before the user id existed in the token are dropped so the
+      // user signs in again and gets a token the server can attribute writes to.
+      if (
+        parsed &&
+        typeof parsed.accessToken === 'string' &&
+        typeof parsed.user?.id === 'number' &&
+        parsed.user.email
+      ) {
         this._token.set(parsed.accessToken);
         this._user.set(parsed.user as AuthUser);
       } else {

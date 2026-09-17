@@ -1,7 +1,7 @@
 # amilut_tax
 
-A full-stack web project. **Scaffold stage** — framework structure is in place;
-the application domain and feature modules are not decided yet.
+A full-stack web project for customs brokerage & freight forwarding (עמילות מכס
+& שילוח) with a Hebrew RTL UI. Feature modules so far: auth, customers, orders.
 
 ## Monorepo layout
 
@@ -97,25 +97,44 @@ adding an enum member on the server breaks the client build there until a
 label is added — that is intentional.
 
 The database CHECK constraints for enum-like columns (`status`,
-`shipment_type`, `payment_terms`, `destination` in `orders`) must be kept in
-sync with the server enums by hand.
+`shipment_type`, `payment_terms`, `incoterm`, `destination` in `orders`) must
+be kept in sync with the server enums by hand.
 
 ## Authentication
 
-Login page with user name (= email) and password. **The password is not
-verified yet** — the server accepts any well-formed email (subject to the
-optional allow-list) and issues an app JWT (`@nestjs/jwt`). Password checks
-against the `users` table are a planned follow-up. The client keeps the session
-in a signal-based `AuthService` (`client/src/app/core/auth/`), attaches it via a
-functional interceptor, and protects routes with `authGuard` / `guestGuard`.
+Login page with user name (= email) and password. The email must match an
+active row in the `users` table (seeded by `SQL-Migration/004_seed_admin_user.sql`);
+**the password is not verified yet** — password checks are a planned
+follow-up. The server issues an app JWT (`@nestjs/jwt`) whose `sub` is the
+numeric `users.id`, so protected endpoints can attribute writes (orders stamp
+`handler_user_id` from it). The client keeps the session in a signal-based
+`AuthService` (`client/src/app/core/auth/`), attaches it via a functional
+interceptor, and protects routes with `authGuard` / `guestGuard`.
+
+**Every API route requires a bearer token.** `JwtAuthGuard` is registered
+globally (`APP_GUARD` in `server/src/app.module.ts`); opt a route out with
+`@Public()` from `server/src/auth/public.decorator.ts` (only
+`POST /api/auth/login` and the `GET /api` liveness check are public). Use
+`@CurrentUser()` to read the `JwtPayload` (`sub`, `email`, `name`, `role`) in
+a handler.
 
 Setup: `server/.env` (gitignored; template in `server/.env.example`) needs
-`JWT_SECRET` (server refuses to start without it); optional `ALLOWED_EMAILS` /
+`JWT_SECRET` (server refuses to start without it) and the PostgreSQL settings
+(`PGHOST` / `PGPORT` / `PGUSER` / `PGPASSWORD` / `PGDATABASE`, defaulting to
+the migration's `Admin` / `Admin` / `Amilut`); optional `ALLOWED_EMAILS` /
 `ALLOWED_DOMAIN` restrict who can sign in.
 
 Endpoints: `POST /api/auth/login {email, password?}` → `{accessToken, user}`;
-`GET /api/auth/me` (Bearer) → `{user}`. Protect new endpoints with `JwtAuthGuard`
-from `server/src/auth/`.
+`GET /api/auth/me` (Bearer) → `{user}`.
+
+## Database access from the server
+
+`server/src/database/` exposes a global `DatabaseService` wrapping a `pg`
+pool: `query<T>(sql, params)`, `queryOne<T>(sql, params)`, `transaction(fn)`.
+Feature services write parameterised SQL directly (no ORM); map rows to
+response DTO classes explicitly so Swagger — and therefore the generated
+client types — stay accurate. The server fails fast at startup if PostgreSQL
+is unreachable.
 
 ## Conventions
 
@@ -128,5 +147,5 @@ from `server/src/auth/`.
 ## Notes for Claude
 
 - Do **not** use the `swing-trading-us-stocks` skill in this project.
-- This is a generic scaffold — confirm the domain with the user before
-  introducing business logic.
+- Confirm with the user before introducing business logic for a screen that
+  has not been specified yet.

@@ -38,7 +38,7 @@ invoke the runner directly.
    logging in as the app role and listing the tables:
 
    ```powershell
-   $env:PGPASSWORD='Admin'; & "C:\Program Files\PostgreSQL\17\bin\psql.exe" -U Admin -d Amilut -h 127.0.0.1 -p 5432 -c "\dt"
+   $env:PGPASSWORD='Admin'; & "C:\Program Files\PostgreSQL\18\bin\psql.exe" -U Admin -d Amilut -h 127.0.0.1 -p 5432 -c "\dt"
    ```
 
    Report to Barak: which objects were created vs. already existed, and confirm
