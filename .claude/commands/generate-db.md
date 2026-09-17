@@ -22,7 +22,7 @@ invoke the runner directly.
    superuser password via the `PGPASSWORD` env var. If it is not already set in
    the environment, ask Barak for it (do NOT hardcode it in any file). Other
    connection settings default correctly for this machine:
-   `PGHOST=127.0.0.1`, `PGPORT=5434`, `PGSUPERUSER=postgres`.
+   `PGHOST=127.0.0.1`, `PGPORT=5432`, `PGSUPERUSER=postgres`.
 
 3. **Run the migration runner directly** (not through npm). From the repo root,
    in PowerShell:
@@ -38,11 +38,11 @@ invoke the runner directly.
    logging in as the app role and listing the tables:
 
    ```powershell
-   $env:PGPASSWORD='Admin'; & "C:\Program Files\PostgreSQL\17\bin\psql.exe" -U Admin -d Amilut -h 127.0.0.1 -p 5434 -c "\dt"
+   $env:PGPASSWORD='Admin'; & "C:\Program Files\PostgreSQL\17\bin\psql.exe" -U Admin -d Amilut -h 127.0.0.1 -p 5432 -c "\dt"
    ```
 
    Report to Barak: which objects were created vs. already existed, and confirm
-   `Admin`/`Admin` can connect on `127.0.0.1:5434`.
+   `Admin`/`Admin` can connect on `127.0.0.1:5432`.
 
 ## Notes
 

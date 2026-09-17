@@ -31,7 +31,7 @@ PGPASSWORD='...' npm run db:generate
 | Var | Default | Notes |
 |-----|---------|-------|
 | `PGHOST` | `127.0.0.1` | |
-| `PGPORT` | `5434` | This machine runs PostgreSQL 17 on **5434**, not the default 5432 |
+| `PGPORT` | `5432` | This machine runs PostgreSQL 18 on the standard **5432** port |
 | `PGSUPERUSER` | `postgres` | |
 | `PGPASSWORD` | — | **Required.** Superuser password |
 
@@ -57,4 +57,4 @@ store English codes guarded by CHECK constraints; the source of truth is
 `server/src/orders/orders.enums.ts`.
 ```
 
-Connect the app with role `Admin` / password `Admin` on `127.0.0.1:5434`.
+Connect the app with role `Admin` / password `Admin` on `127.0.0.1:5432`.

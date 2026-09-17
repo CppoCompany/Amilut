@@ -53,7 +53,7 @@ npm --prefix server run format       # prettier on the server
 npm --prefix client run test         # client tests only (add -- --watch=false in CI)
 ```
 
-### Database (PostgreSQL 17 on 127.0.0.1:5434)
+### Database (PostgreSQL 18 on 127.0.0.1:5432)
 
 Versioned SQL lives in `SQL-Migration/`. The runner applies `001` (role
 `Admin` + database `Amilut`) and then every other `NNN_*.sql` file in name

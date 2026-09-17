@@ -17,7 +17,7 @@
  * creates a role and a database.
  *
  *   PGHOST        default 127.0.0.1
- *   PGPORT        default 5434            (this box runs PG 17 on 5434, not 5432)
+ *   PGPORT        default 5432            (this box runs PG 18 on the standard 5432 port)
  *   PGSUPERUSER   default postgres
  *   PGPASSWORD    REQUIRED — superuser password (no default)
  *
@@ -37,7 +37,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 
 const cfg = {
   host: process.env.PGHOST || '127.0.0.1',
-  port: Number(process.env.PGPORT || 5434),
+  port: Number(process.env.PGPORT || 5432),
   user: process.env.PGSUPERUSER || 'postgres',
   password: process.env.PGPASSWORD,
 };
