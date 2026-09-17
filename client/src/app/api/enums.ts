@@ -6,9 +6,16 @@
  * typed as `Record<Enum, string>` so that adding a member on the server (and regenerating) fails
  * compilation here until a label is provided.
  */
-import { Destination, Incoterm, OrderStatus, PaymentTerms, ShipmentType } from './generated/schema';
+import {
+  Destination,
+  Incoterm,
+  OrderStatus,
+  PaymentTerms,
+  ShipmentDocumentType,
+  ShipmentType,
+} from './generated/schema';
 
-export { Destination, Incoterm, OrderStatus, PaymentTerms, ShipmentType };
+export { Destination, Incoterm, OrderStatus, PaymentTerms, ShipmentDocumentType, ShipmentType };
 
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   [OrderStatus.PREPARING]: 'בהכנה',
@@ -70,6 +77,12 @@ export const DESTINATION_LABELS: Record<Destination, string> = {
   [Destination.SOUTH_PORT]: 'נמל הדרום',
   [Destination.HAIFA]: 'נמל חיפה',
   [Destination.BEN_GURION]: 'נתב"ג',
+};
+
+export const SHIPMENT_DOCUMENT_TYPE_LABELS: Record<ShipmentDocumentType, string> = {
+  [ShipmentDocumentType.ORIGINAL]: 'Original',
+  [ShipmentDocumentType.SEA_WAYBILL]: 'Sea Waybill',
+  [ShipmentDocumentType.TELEX_RELEASE]: 'Telex Release',
 };
 
 /** All members of each enum, in server declaration order — handy for rendering option lists. */

@@ -8,7 +8,10 @@ import type { CreateOrderDto, OrderDto, UpdateOrderDto } from './models';
 /** Query parameters accepted by `GET /api/orders`. */
 export interface ListOrdersParams {
   customerId?: number;
+  handlerUserId?: number;
   status?: OrderStatus;
+  /** Matches orders created on this calendar date (`YYYY-MM-DD`). */
+  createdDate?: string;
   limit?: number;
   offset?: number;
 }

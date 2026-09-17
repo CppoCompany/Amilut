@@ -51,9 +51,9 @@ export class NavigationService {
         label: 'תחנות עבודה',
         icon: 'fa-solid fa-desktop',
         children: [
-          { id: 'ws-order', page: 'order', label: 'פתיחת הזמנה', icon: 'fa-solid fa-file-invoice' },
+          { id: 'ws-order', page: 'order', label: 'יצירת הזמנה חדשה', icon: 'fa-solid fa-file-invoice' },
           { id: 'ws-filing', page: 'filing', label: 'תיוק ניירת יבוא', icon: 'fa-solid fa-file-import' },
-          { id: 'ws-shipment', page: 'shipment', label: 'ניהול תיק', icon: 'fa-solid fa-truck-fast' },
+          { id: 'ws-shipment', page: 'shipment', label: 'יצירת תיק חדש', icon: 'fa-solid fa-truck-fast' },
           { id: 'ws-classification', page: 'classification', label: 'סיווג', icon: 'fa-solid fa-tags' },
           {
             id: 'ws-post-classification',
@@ -128,7 +128,10 @@ export class NavigationService {
         id: 'shipmentSelect',
         label: 'בחר משלוח',
         icon: 'fa-solid fa-folder-tree',
-        children: [],
+        children: [
+          { id: 'ws-my-orders', page: 'myOrders', label: 'ההזמנות שלי', icon: 'fa-solid fa-list' },
+          { id: 'ws-my-files', page: 'myFiles', label: 'התיקים שלי', icon: 'fa-solid fa-folder-open' },
+        ],
       },
     ];
 
@@ -140,6 +143,8 @@ export class NavigationService {
     this.screenMap.set('shipment', 'shipment');
     this.screenMap.set('classification', 'classification');
     this.screenMap.set('importDeclaration', 'importDeclaration');
+    this.screenMap.set('myOrders', 'myOrders');
+    this.screenMap.set('myFiles', 'myFiles');
     this.screenMap.set('search', 'placeholder');
     this.screenMap.set('placeholder', 'placeholder');
 

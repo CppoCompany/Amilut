@@ -1,0 +1,53 @@
+<div class="form-section">
+  <h2 class="section-title">התיקים שלי</h2>
+
+  @if (errorMessage(); as message) {
+    <p class="form-message form-message--error" role="alert">{{ message }}</p>
+  }
+
+  <div class="data-table-wrapper">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>מספר תיק</th>
+          <th>מספר הזמנה</th>
+          <th>לקוח</th>
+          <th>Bill of Lading</th>
+          <th>סוג מסמך</th>
+          <th>מוביל</th>
+          <th>תאריך פתיחה</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (shipment of shipments(); track shipment.id) {
+          <tr>
+            <td>{{ shipment.id }}</td>
+            <td>{{ shipment.orderId }}</td>
+            <td>{{ shipment.customerName ?? '—' }}</td>
+            <td>{{ shipment.billOfLadingNumber ?? '—' }}</td>
+            <td>{{ shipment.documentType ? documentTypeLabels[shipment.documentType] : '—' }}</td>
+            <td>{{ shipment.forwarderName ?? '—' }}</td>
+            <td>{{ formatDate(shipment.createdAt) }}</td>
+          </tr>
+        }
+        @empty {
+          <tr>
+            <td colspan="7" class="data-table__empty">
+              {{ loading() ? 'טוען...' : 'לא נמצאו תיקים' }}
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <div class="pagination-bar">
+    <button type="button" class="btn btn-secondary" [disabled]="page() === 0 || loading()" (click)="prevPage()">
+      הקודם
+    </button>
+    <span class="pagination-bar__label">עמוד {{ page() + 1 }}</span>
+    <button type="button" class="btn btn-secondary" [disabled]="!hasNextPage() || loading()" (click)="nextPage()">
+      הבא
+    </button>
+  </div>
+</div>

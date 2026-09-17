@@ -5,6 +5,8 @@ import { NavigationService } from './navigation.service';
 import { ClassificationScreen } from './screens/classification/classification';
 import { FilingScreen } from './screens/filing/filing';
 import { ImportDeclarationScreen } from './screens/import-declaration/import-declaration';
+import { MyFilesScreen } from './screens/my-files/my-files';
+import { MyOrdersScreen } from './screens/my-orders/my-orders';
 import { OrderScreen } from './screens/order/order';
 import { PlaceholderScreen } from './screens/placeholder/placeholder';
 import { ShipmentScreen } from './screens/shipment/shipment';
@@ -22,6 +24,8 @@ import { ShipmentScreen } from './screens/shipment/shipment';
     ShipmentScreen,
     ClassificationScreen,
     ImportDeclarationScreen,
+    MyOrdersScreen,
+    MyFilesScreen,
     PlaceholderScreen,
   ],
   templateUrl: './workspace.html',

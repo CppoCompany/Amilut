@@ -2,6 +2,7 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import {
   IsBoolean,
+  IsDateString,
   IsEnum,
   IsInt,
   IsOptional,
@@ -18,10 +19,22 @@ export class ListOrdersQuery {
   @IsInt()
   customerId?: number;
 
+  @ApiPropertyOptional({ type: 'integer', example: 7 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  handlerUserId?: number;
+
   @ApiPropertyOptional({ enum: OrderStatus, enumName: 'OrderStatus' })
   @IsOptional()
   @IsEnum(OrderStatus)
   status?: OrderStatus;
+
+  /** Matches orders created on this calendar date (server local date of `created_at`). */
+  @ApiPropertyOptional({ format: 'date', example: '2026-09-01' })
+  @IsOptional()
+  @IsDateString()
+  createdDate?: string;
 
   /** Include soft-deleted orders. */
   @ApiPropertyOptional({ type: 'boolean', default: false })

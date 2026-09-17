@@ -16,6 +16,8 @@ invoke the runner directly.
    - `002_create_tables.sql` — `customers` + `users` tables
    - `003_create_orders.sql` — `orders` table
    - `004_seed_admin_user.sql` — initial admin user row
+   - `005_create_shipments.sql` — `shipments` table (1:1 with `orders`)
+   - `006_rename_shipments_to_order_account.sql` — renames it to `order_account`
    If the folder or files are missing, stop and tell Barak.
 
 2. **Determine the superuser password.** The runner needs the `postgres`

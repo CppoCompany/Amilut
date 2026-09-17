@@ -1,0 +1,95 @@
+<div class="form-section">
+  <h2 class="section-title">ההזמנות שלי</h2>
+
+  <div class="filter-bar">
+    <div class="form-group">
+      <label for="filterHandlerUserId">מזהה פקיד מטפל</label>
+      <input
+        id="filterHandlerUserId"
+        type="number"
+        min="1"
+        class="form-control"
+        placeholder="לדוגמה 7"
+        [(ngModel)]="filterHandlerUserId"
+      />
+    </div>
+
+    <div class="form-group">
+      <label for="filterStatus">סטטוס</label>
+      <select id="filterStatus" class="form-control" [(ngModel)]="filterStatus">
+        <option value="">הכל</option>
+        @for (option of statuses; track option) {
+          <option [value]="option">{{ statusLabels[option] }}</option>
+        }
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="filterCreatedDate">תאריך פתיחה</label>
+      <input
+        id="filterCreatedDate"
+        type="date"
+        class="form-control"
+        [(ngModel)]="filterCreatedDate"
+      />
+    </div>
+
+    <div class="form-group filter-bar__actions">
+      <label>&nbsp;</label>
+      <div class="filter-bar__buttons">
+        <button type="button" class="btn btn-primary" [disabled]="loading()" (click)="applyFilters()">
+          סנן
+        </button>
+        <button type="button" class="btn btn-secondary" [disabled]="loading()" (click)="clearFilters()">
+          נקה
+        </button>
+      </div>
+    </div>
+  </div>
+
+  @if (errorMessage(); as message) {
+    <p class="form-message form-message--error" role="alert">{{ message }}</p>
+  }
+
+  <div class="data-table-wrapper">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>מספר הזמנה</th>
+          <th>לקוח</th>
+          <th>פקיד מטפל</th>
+          <th>סטטוס</th>
+          <th>תאריך פתיחה</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (order of orders(); track order.id) {
+          <tr>
+            <td>{{ order.id }}</td>
+            <td>{{ order.customerName ?? '—' }}</td>
+            <td>{{ order.handlerName ?? '—' }}</td>
+            <td>{{ statusLabels[order.status] }}</td>
+            <td>{{ formatDate(order.createdAt) }}</td>
+          </tr>
+        }
+        @empty {
+          <tr>
+            <td colspan="5" class="data-table__empty">
+              {{ loading() ? 'טוען...' : 'לא נמצאו הזמנות' }}
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <div class="pagination-bar">
+    <button type="button" class="btn btn-secondary" [disabled]="page() === 0 || loading()" (click)="prevPage()">
+      הקודם
+    </button>
+    <span class="pagination-bar__label">עמוד {{ page() + 1 }}</span>
+    <button type="button" class="btn btn-secondary" [disabled]="!hasNextPage() || loading()" (click)="nextPage()">
+      הבא
+    </button>
+  </div>
+</div>

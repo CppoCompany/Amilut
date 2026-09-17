@@ -8,6 +8,7 @@ import {
   PaymentTerms,
   ShipmentType,
 } from './orders/orders.enums';
+import { ShipmentDocumentType } from './shipments/shipments.enums';
 
 /** Swagger UI path (relative to the app; global prefix is NOT applied to it). */
 export const OPENAPI_DOCS_PATH = 'api/docs';
@@ -24,6 +25,7 @@ export const NAMED_ENUMS: Record<string, Record<string, string>> = {
   PaymentTerms,
   Destination,
   Incoterm,
+  ShipmentDocumentType,
 };
 
 type SchemaWithExtensions = {

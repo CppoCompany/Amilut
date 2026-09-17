@@ -13,6 +13,8 @@ export type PageKey =
   | 'shipment'
   | 'classification'
   | 'importDeclaration'
+  | 'myOrders'
+  | 'myFiles'
   | 'search'
   | 'placeholder';
 
@@ -23,6 +25,8 @@ export type ScreenId =
   | 'shipment'
   | 'classification'
   | 'importDeclaration'
+  | 'myOrders'
+  | 'myFiles'
   | 'placeholder';
 
 /** A leaf item under a tree node — one row in the sidebar. */

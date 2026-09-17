@@ -116,6 +116,22 @@ export interface paths {
         patch: operations["OrdersController_update"];
         trace?: never;
     };
+    "/api/shipments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ShipmentsController_findAll"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -304,6 +320,26 @@ export interface components {
             /** @example LY001 */
             flightNumber?: string;
         };
+        /** @enum {string} */
+        ShipmentDocumentType: ShipmentDocumentType;
+        ShipmentSummaryDto: {
+            /** @example 1 */
+            id: number;
+            /** @example 1000 */
+            orderId: number;
+            /** @example ACME Ltd. */
+            customerName: string | null;
+            /** @example NEXF123456789 */
+            billOfLadingNumber: string | null;
+            documentType: components["schemas"]["ShipmentDocumentType"] | null;
+            /** @example MSC Mediterranean Shipping Co. */
+            forwarderName: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-01T08:30:00.000Z
+             */
+            createdAt: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -478,7 +514,9 @@ export interface operations {
         parameters: {
             query?: {
                 customerId?: number;
+                handlerUserId?: number;
                 status?: components["schemas"]["OrderStatus"];
+                createdDate?: string;
                 includeInactive?: boolean;
                 limit?: number;
                 offset?: number;
@@ -605,6 +643,28 @@ export interface operations {
             };
         };
     };
+    ShipmentsController_findAll: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShipmentSummaryDto"][];
+                };
+            };
+        };
+    };
 }
 export enum OrderStatus {
     PREPARING = "preparing",
@@ -642,4 +702,9 @@ export enum Destination {
     SOUTH_PORT = "south_port",
     HAIFA = "haifa",
     BEN_GURION = "ben_gurion"
+}
+export enum ShipmentDocumentType {
+    ORIGINAL = "original",
+    SEA_WAYBILL = "sea_waybill",
+    TELEX_RELEASE = "telex_release"
 }

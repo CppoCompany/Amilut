@@ -132,9 +132,17 @@ export class OrdersService {
       params.push(query.customerId);
       where.push(`o.customer_id = $${params.length}`);
     }
+    if (query.handlerUserId !== undefined) {
+      params.push(query.handlerUserId);
+      where.push(`o.handler_user_id = $${params.length}`);
+    }
     if (query.status !== undefined) {
       params.push(query.status);
       where.push(`o.status = $${params.length}`);
+    }
+    if (query.createdDate !== undefined) {
+      params.push(query.createdDate);
+      where.push(`o.created_at::date = $${params.length}::date`);
     }
 
     params.push(query.limit ?? 50);

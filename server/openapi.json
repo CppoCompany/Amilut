@@ -242,11 +242,30 @@
             }
           },
           {
+            "name": "handlerUserId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": 7,
+              "type": "integer"
+            }
+          },
+          {
             "name": "status",
             "required": false,
             "in": "query",
             "schema": {
               "$ref": "#/components/schemas/OrderStatus"
+            }
+          },
+          {
+            "name": "createdDate",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "example": "2026-09-01",
+              "type": "string"
             }
           },
           {
@@ -449,6 +468,57 @@
         ],
         "tags": [
           "orders"
+        ]
+      }
+    },
+    "/api/shipments": {
+      "get": {
+        "operationId": "ShipmentsController_findAll",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "offset",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "default": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ShipmentSummaryDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "shipments"
         ]
       }
     }
@@ -981,6 +1051,69 @@
             "example": "LY001"
           }
         }
+      },
+      "ShipmentDocumentType": {
+        "type": "string",
+        "enum": [
+          "original",
+          "sea_waybill",
+          "telex_release"
+        ],
+        "x-enum-varnames": [
+          "ORIGINAL",
+          "SEA_WAYBILL",
+          "TELEX_RELEASE"
+        ]
+      },
+      "ShipmentSummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "orderId": {
+            "type": "integer",
+            "example": 1000
+          },
+          "customerName": {
+            "type": "string",
+            "nullable": true,
+            "example": "ACME Ltd."
+          },
+          "billOfLadingNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "NEXF123456789"
+          },
+          "documentType": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ShipmentDocumentType"
+              }
+            ]
+          },
+          "forwarderName": {
+            "type": "string",
+            "nullable": true,
+            "example": "MSC Mediterranean Shipping Co."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-01T08:30:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "orderId",
+          "customerName",
+          "billOfLadingNumber",
+          "documentType",
+          "forwarderName",
+          "createdAt"
+        ]
       }
     }
   }
