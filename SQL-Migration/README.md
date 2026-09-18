@@ -13,6 +13,7 @@ wired to `npm run db:generate`.
 | `004_seed_admin_user.sql` | Seeds the initial admin row in `users` | `Amilut` | `Admin` (via `SET ROLE`) |
 | `005_create_shipments.sql` | `shipments` table (workspace → shipment/file screen), 1:1 with `orders` | `Amilut` | `Admin` (via `SET ROLE`) |
 | `006_rename_shipments_to_order_account.sql` | Renames `shipments` → `order_account` (and cleans up the empty stray 005 would otherwise recreate on re-run) | `Amilut` | `Admin` (via `SET ROLE`) |
+| `007_rename_and_bump_order_account_sequence.sql` | Renames `shipments_id_seq` → `order_account_id_seq` and starts file numbers at 1000 | `Amilut` | `Admin` (via `SET ROLE`) |
 | `run-migrations.mjs` | Applies `001`, then every other `NNN_*.sql` in name order | — | — |
 
 Every step is **idempotent** — re-running does nothing if the objects already exist.

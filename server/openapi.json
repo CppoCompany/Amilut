@@ -520,6 +520,132 @@
         "tags": [
           "shipments"
         ]
+      },
+      "post": {
+        "operationId": "ShipmentsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateShipmentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShipmentDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "The order already has a shipment file"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "shipments"
+        ]
+      }
+    },
+    "/api/shipments/by-order/{orderId}": {
+      "get": {
+        "operationId": "ShipmentsController_findByOrderId",
+        "parameters": [
+          {
+            "name": "orderId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShipmentDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "shipments"
+        ]
+      }
+    },
+    "/api/shipments/{id}": {
+      "patch": {
+        "operationId": "ShipmentsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateShipmentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShipmentDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "shipments"
+        ]
       }
     }
   },
@@ -1114,6 +1240,441 @@
           "forwarderName",
           "createdAt"
         ]
+      },
+      "ShipmentDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1000
+          },
+          "orderId": {
+            "type": "integer",
+            "example": 1000
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-01T08:30:00.000Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-01T08:30:00.000Z"
+          },
+          "billOfLadingNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "NEXF123456789"
+          },
+          "documentType": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ShipmentDocumentType"
+              }
+            ]
+          },
+          "blIssueDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "example": "2026-05-27"
+          },
+          "forwarderName": {
+            "type": "string",
+            "nullable": true,
+            "example": "MSC Mediterranean Shipping Co."
+          },
+          "voyageFlightNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "VN624A"
+          },
+          "vesselName": {
+            "type": "string",
+            "nullable": true,
+            "example": "MSC NAPOLI"
+          },
+          "portOfLoading": {
+            "type": "string",
+            "nullable": true,
+            "example": "NAPOLI"
+          },
+          "portOfDischarge": {
+            "type": "string",
+            "nullable": true,
+            "example": "HAIFA"
+          },
+          "manifestNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "264768"
+          },
+          "transactionNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "12345A22"
+          },
+          "shipperName": {
+            "type": "string",
+            "nullable": true,
+            "example": "Shanghai Tech Components Co., Ltd"
+          },
+          "shipperAddress": {
+            "type": "string",
+            "nullable": true,
+            "example": "אלי ויזל 5"
+          },
+          "consigneeName": {
+            "type": "string",
+            "nullable": true,
+            "example": "NexTrade Import Ltd"
+          },
+          "consigneeAddress": {
+            "type": "string",
+            "nullable": true,
+            "example": "שמעון פרס 11"
+          },
+          "notifyParty": {
+            "type": "string",
+            "nullable": true,
+            "example": "NexFreight Logistics - Israel"
+          },
+          "cargoDescription": {
+            "type": "string",
+            "nullable": true,
+            "example": "Electronic Components - Motherboards & Power Units"
+          },
+          "packageCount": {
+            "type": "integer",
+            "nullable": true,
+            "example": 120
+          },
+          "packageUnit": {
+            "type": "string",
+            "nullable": true,
+            "example": "Cartons"
+          },
+          "grossWeightKg": {
+            "type": "number",
+            "nullable": true,
+            "example": 1850
+          },
+          "netWeightKg": {
+            "type": "number",
+            "nullable": true,
+            "example": 1720
+          },
+          "volumeCbm": {
+            "type": "number",
+            "nullable": true,
+            "example": 9.8
+          },
+          "hsCode": {
+            "type": "string",
+            "nullable": true,
+            "example": "8504"
+          },
+          "dangerousGoods": {
+            "type": "boolean",
+            "example": false
+          },
+          "dangerousGoodsImoClass": {
+            "type": "string",
+            "nullable": true,
+            "example": "Class 9"
+          },
+          "containerNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "MSCU7845123"
+          },
+          "containerType": {
+            "type": "string",
+            "nullable": true,
+            "example": "40HC"
+          },
+          "containerSealNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "SH98765421"
+          }
+        },
+        "required": [
+          "id",
+          "orderId",
+          "createdAt",
+          "updatedAt",
+          "billOfLadingNumber",
+          "documentType",
+          "blIssueDate",
+          "forwarderName",
+          "voyageFlightNumber",
+          "vesselName",
+          "portOfLoading",
+          "portOfDischarge",
+          "manifestNumber",
+          "transactionNumber",
+          "shipperName",
+          "shipperAddress",
+          "consigneeName",
+          "consigneeAddress",
+          "notifyParty",
+          "cargoDescription",
+          "packageCount",
+          "packageUnit",
+          "grossWeightKg",
+          "netWeightKg",
+          "volumeCbm",
+          "hsCode",
+          "dangerousGoods",
+          "dangerousGoodsImoClass",
+          "containerNumber",
+          "containerType",
+          "containerSealNumber"
+        ]
+      },
+      "CreateShipmentDto": {
+        "type": "object",
+        "properties": {
+          "orderId": {
+            "type": "integer",
+            "example": 1000
+          },
+          "billOfLadingNumber": {
+            "type": "string",
+            "example": "NEXF123456789"
+          },
+          "documentType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ShipmentDocumentType"
+              }
+            ]
+          },
+          "blIssueDate": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-05-27"
+          },
+          "forwarderName": {
+            "type": "string",
+            "example": "MSC Mediterranean Shipping Co."
+          },
+          "voyageFlightNumber": {
+            "type": "string",
+            "example": "VN624A"
+          },
+          "vesselName": {
+            "type": "string",
+            "example": "MSC NAPOLI"
+          },
+          "portOfLoading": {
+            "type": "string",
+            "example": "NAPOLI"
+          },
+          "portOfDischarge": {
+            "type": "string",
+            "example": "HAIFA"
+          },
+          "manifestNumber": {
+            "type": "string",
+            "example": "264768"
+          },
+          "transactionNumber": {
+            "type": "string",
+            "example": "12345A22"
+          },
+          "shipperName": {
+            "type": "string",
+            "example": "Shanghai Tech Components Co., Ltd"
+          },
+          "shipperAddress": {
+            "type": "string",
+            "example": "אלי ויזל 5"
+          },
+          "consigneeName": {
+            "type": "string",
+            "example": "NexTrade Import Ltd"
+          },
+          "consigneeAddress": {
+            "type": "string",
+            "example": "שמעון פרס 11"
+          },
+          "notifyParty": {
+            "type": "string",
+            "example": "NexFreight Logistics - Israel"
+          },
+          "cargoDescription": {
+            "type": "string",
+            "example": "Electronic Components - Motherboards & Power Units"
+          },
+          "packageCount": {
+            "type": "integer",
+            "example": 120
+          },
+          "packageUnit": {
+            "type": "string",
+            "example": "Cartons"
+          },
+          "grossWeightKg": {
+            "type": "number",
+            "example": 1850
+          },
+          "netWeightKg": {
+            "type": "number",
+            "example": 1720
+          },
+          "volumeCbm": {
+            "type": "number",
+            "example": 9.8
+          },
+          "hsCode": {
+            "type": "string",
+            "example": "8504"
+          },
+          "dangerousGoods": {
+            "type": "boolean",
+            "default": false
+          },
+          "dangerousGoodsImoClass": {
+            "type": "string",
+            "example": "Class 9"
+          },
+          "containerNumber": {
+            "type": "string",
+            "example": "MSCU7845123"
+          },
+          "containerType": {
+            "type": "string",
+            "example": "40HC"
+          },
+          "containerSealNumber": {
+            "type": "string",
+            "example": "SH98765421"
+          }
+        },
+        "required": [
+          "orderId"
+        ]
+      },
+      "UpdateShipmentDto": {
+        "type": "object",
+        "properties": {
+          "billOfLadingNumber": {
+            "type": "string",
+            "example": "NEXF123456789"
+          },
+          "documentType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ShipmentDocumentType"
+              }
+            ]
+          },
+          "blIssueDate": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-05-27"
+          },
+          "forwarderName": {
+            "type": "string",
+            "example": "MSC Mediterranean Shipping Co."
+          },
+          "voyageFlightNumber": {
+            "type": "string",
+            "example": "VN624A"
+          },
+          "vesselName": {
+            "type": "string",
+            "example": "MSC NAPOLI"
+          },
+          "portOfLoading": {
+            "type": "string",
+            "example": "NAPOLI"
+          },
+          "portOfDischarge": {
+            "type": "string",
+            "example": "HAIFA"
+          },
+          "manifestNumber": {
+            "type": "string",
+            "example": "264768"
+          },
+          "transactionNumber": {
+            "type": "string",
+            "example": "12345A22"
+          },
+          "shipperName": {
+            "type": "string",
+            "example": "Shanghai Tech Components Co., Ltd"
+          },
+          "shipperAddress": {
+            "type": "string",
+            "example": "אלי ויזל 5"
+          },
+          "consigneeName": {
+            "type": "string",
+            "example": "NexTrade Import Ltd"
+          },
+          "consigneeAddress": {
+            "type": "string",
+            "example": "שמעון פרס 11"
+          },
+          "notifyParty": {
+            "type": "string",
+            "example": "NexFreight Logistics - Israel"
+          },
+          "cargoDescription": {
+            "type": "string",
+            "example": "Electronic Components - Motherboards & Power Units"
+          },
+          "packageCount": {
+            "type": "integer",
+            "example": 120
+          },
+          "packageUnit": {
+            "type": "string",
+            "example": "Cartons"
+          },
+          "grossWeightKg": {
+            "type": "number",
+            "example": 1850
+          },
+          "netWeightKg": {
+            "type": "number",
+            "example": 1720
+          },
+          "volumeCbm": {
+            "type": "number",
+            "example": 9.8
+          },
+          "hsCode": {
+            "type": "string",
+            "example": "8504"
+          },
+          "dangerousGoods": {
+            "type": "boolean",
+            "default": false
+          },
+          "dangerousGoodsImoClass": {
+            "type": "string",
+            "example": "Class 9"
+          },
+          "containerNumber": {
+            "type": "string",
+            "example": "MSCU7845123"
+          },
+          "containerType": {
+            "type": "string",
+            "example": "40HC"
+          },
+          "containerSealNumber": {
+            "type": "string",
+            "example": "SH98765421"
+          }
+        }
       }
     }
   }
