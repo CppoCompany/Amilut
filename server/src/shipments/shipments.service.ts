@@ -146,14 +146,34 @@ export class ShipmentsService {
   constructor(private readonly db: DatabaseService) {}
 
   async findAll(query: ListShipmentsQuery): Promise<ShipmentSummaryDto[]> {
-    const limit = query.limit ?? 50;
-    const offset = query.offset ?? 0;
+    const where: string[] = [];
+    const params: unknown[] = [];
 
+    if (query.customerId !== undefined) {
+      params.push(query.customerId);
+      where.push(`o.customer_id = $${params.length}`);
+    }
+    if (query.forwarderName !== undefined) {
+      params.push(`%${query.forwarderName}%`);
+      where.push(`s.forwarder_name ILIKE $${params.length}`);
+    }
+    if (query.caseNumber !== undefined) {
+      params.push(query.caseNumber);
+      where.push(`s.id = $${params.length}`);
+    }
+
+    params.push(query.limit ?? 50);
+    const limitIdx = params.length;
+    params.push(query.offset ?? 0);
+    const offsetIdx = params.length;
+
+    const whereClause = where.length ? `WHERE ${where.join(' AND ')}` : '';
     const rows = await this.db.query<ShipmentSummaryRow>(
       `${SHIPMENT_SUMMARY_SELECT}
+       ${whereClause}
        ORDER BY s.id DESC
-       LIMIT $1 OFFSET $2`,
-      [limit, offset],
+       LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+      params,
     );
     return rows.map(toShipmentSummaryDto);
   }

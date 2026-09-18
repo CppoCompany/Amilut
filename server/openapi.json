@@ -476,6 +476,33 @@
         "operationId": "ShipmentsController_findAll",
         "parameters": [
           {
+            "name": "customerId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "forwarderName",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "MSC",
+              "type": "string"
+            }
+          },
+          {
+            "name": "caseNumber",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": 1000,
+              "type": "integer"
+            }
+          },
+          {
             "name": "limit",
             "required": false,
             "in": "query",

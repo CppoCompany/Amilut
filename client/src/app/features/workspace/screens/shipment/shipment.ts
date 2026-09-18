@@ -21,6 +21,7 @@ import {
 import type { OrderDto, ShipmentDto } from '../../../../api/models';
 import { OrdersApi } from '../../../../api/orders-api';
 import { ShipmentsApi } from '../../../../api/shipments-api';
+import { NavigationService } from '../../navigation.service';
 import {
   EMPTY_SHIPMENT_FORM_VALUE,
   loadErrorMessage,
@@ -54,6 +55,7 @@ export class ShipmentScreen {
   private readonly ordersApi = inject(OrdersApi);
   private readonly shipmentsApi = inject(ShipmentsApi);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly nav = inject(NavigationService);
 
   protected readonly tabs: { id: ShipmentTab; label: string }[] = [
     { id: 'document', label: 'זיהוי מסמך' },
@@ -128,6 +130,19 @@ export class ShipmentScreen {
     containerType: [EMPTY_SHIPMENT_FORM_VALUE.containerType],
     containerSealNumber: [EMPTY_SHIPMENT_FORM_VALUE.containerSealNumber],
   });
+
+  constructor() {
+    // A double-click on a row in "התיקים שלי" queues an order id here (see
+    // NavigationService.openShipmentForEdit) before switching to this screen.
+    // Consume it once immediately so a later, ordinary navigation back to this
+    // screen (e.g. via the sidebar) starts with a blank picker as usual.
+    const editOrderId = this.nav.editShipmentOrderId();
+    if (editOrderId !== null) {
+      this.nav.editShipmentOrderId.set(null);
+      this.orderIdText.set(String(editOrderId));
+      this.loadOrder();
+    }
+  }
 
   /** Looks up the order, then its shipment file (if any already exists). */
   protected loadOrder(): void {

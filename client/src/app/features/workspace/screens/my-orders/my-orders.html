@@ -52,48 +52,38 @@
   }
 
   <div class="data-table-wrapper">
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>מספר הזמנה</th>
-          <th>לקוח</th>
-          <th>פקיד מטפל</th>
-          <th>סטטוס</th>
-          <th>תאריך פתיחה</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (order of orders(); track order.id) {
-          <tr
-            class="data-table__row--clickable"
-            title="לחץ פעמיים לעריכה"
-            (dblclick)="onEditOrder(order)"
-          >
-            <td>{{ order.id }}</td>
-            <td>{{ order.customerName ?? '—' }}</td>
-            <td>{{ order.handlerName ?? '—' }}</td>
-            <td>{{ statusLabels[order.status] }}</td>
-            <td>{{ formatDate(order.createdAt) }}</td>
-          </tr>
-        }
-        @empty {
-          <tr>
-            <td colspan="5" class="data-table__empty">
-              {{ loading() ? 'טוען...' : 'לא נמצאו הזמנות' }}
-            </td>
-          </tr>
-        }
-      </tbody>
-    </table>
-  </div>
-
-  <div class="pagination-bar">
-    <button type="button" class="btn btn-secondary" [disabled]="page() === 0 || loading()" (click)="prevPage()">
-      הקודם
-    </button>
-    <span class="pagination-bar__label">עמוד {{ page() + 1 }}</span>
-    <button type="button" class="btn btn-secondary" [disabled]="!hasNextPage() || loading()" (click)="nextPage()">
-      הבא
-    </button>
+    @if (loading() && orders().length === 0) {
+      <p class="data-table__empty">טוען...</p>
+    } @else if (orders().length === 0) {
+      <p class="data-table__empty">לא נמצאו הזמנות</p>
+    } @else {
+      <cdk-virtual-scroll-viewport itemSize="49" class="data-table-viewport">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>מספר הזמנה</th>
+              <th>לקוח</th>
+              <th>פקיד מטפל</th>
+              <th>סטטוס</th>
+              <th>תאריך פתיחה</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              *cdkVirtualFor="let order of orders(); trackBy: trackById"
+              class="data-table__row--clickable"
+              title="לחץ פעמיים לעריכה"
+              (dblclick)="onEditOrder(order)"
+            >
+              <td>{{ order.id }}</td>
+              <td>{{ order.customerName ?? '—' }}</td>
+              <td>{{ order.handlerName ?? '—' }}</td>
+              <td>{{ statusLabels[order.status] }}</td>
+              <td>{{ formatDate(order.createdAt) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </cdk-virtual-scroll-viewport>
+    }
   </div>
 </div>

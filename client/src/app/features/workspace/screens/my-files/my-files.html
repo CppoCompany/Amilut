@@ -1,53 +1,93 @@
 <div class="form-section">
   <h2 class="section-title">התיקים שלי</h2>
 
+  <div class="filter-bar">
+    <div class="form-group autocomplete-wrapper">
+      <label for="filterCustomer">לקוח</label>
+      <app-customer-autocomplete
+        inputId="filterCustomer"
+        placeholder="הקלד שם לקוח לסינון..."
+        [(customer)]="filterCustomer"
+      />
+    </div>
+
+    <div class="form-group">
+      <label for="filterForwarderName">מוביל</label>
+      <input
+        id="filterForwarderName"
+        type="text"
+        class="form-control"
+        placeholder="לדוגמה MSC"
+        [(ngModel)]="filterForwarderName"
+      />
+    </div>
+
+    <div class="form-group">
+      <label for="filterCaseNumber">מספר תיק</label>
+      <input
+        id="filterCaseNumber"
+        type="text"
+        inputmode="numeric"
+        class="form-control"
+        placeholder="לדוגמה 1000"
+        [(ngModel)]="filterCaseNumber"
+      />
+    </div>
+
+    <div class="form-group filter-bar__actions">
+      <label>&nbsp;</label>
+      <div class="filter-bar__buttons">
+        <button type="button" class="btn btn-primary" [disabled]="loading()" (click)="applyFilters()">
+          סנן
+        </button>
+        <button type="button" class="btn btn-secondary" [disabled]="loading()" (click)="clearFilters()">
+          נקה
+        </button>
+      </div>
+    </div>
+  </div>
+
   @if (errorMessage(); as message) {
     <p class="form-message form-message--error" role="alert">{{ message }}</p>
   }
 
   <div class="data-table-wrapper">
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>מספר תיק</th>
-          <th>מספר הזמנה</th>
-          <th>לקוח</th>
-          <th>Bill of Lading</th>
-          <th>סוג מסמך</th>
-          <th>מוביל</th>
-          <th>תאריך פתיחה</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (shipment of shipments(); track shipment.id) {
-          <tr>
-            <td>{{ shipment.id }}</td>
-            <td>{{ shipment.orderId }}</td>
-            <td>{{ shipment.customerName ?? '—' }}</td>
-            <td>{{ shipment.billOfLadingNumber ?? '—' }}</td>
-            <td>{{ shipment.documentType ? documentTypeLabels[shipment.documentType] : '—' }}</td>
-            <td>{{ shipment.forwarderName ?? '—' }}</td>
-            <td>{{ formatDate(shipment.createdAt) }}</td>
-          </tr>
-        }
-        @empty {
-          <tr>
-            <td colspan="7" class="data-table__empty">
-              {{ loading() ? 'טוען...' : 'לא נמצאו תיקים' }}
-            </td>
-          </tr>
-        }
-      </tbody>
-    </table>
-  </div>
-
-  <div class="pagination-bar">
-    <button type="button" class="btn btn-secondary" [disabled]="page() === 0 || loading()" (click)="prevPage()">
-      הקודם
-    </button>
-    <span class="pagination-bar__label">עמוד {{ page() + 1 }}</span>
-    <button type="button" class="btn btn-secondary" [disabled]="!hasNextPage() || loading()" (click)="nextPage()">
-      הבא
-    </button>
+    @if (loading() && shipments().length === 0) {
+      <p class="data-table__empty">טוען...</p>
+    } @else if (shipments().length === 0) {
+      <p class="data-table__empty">לא נמצאו תיקים</p>
+    } @else {
+      <cdk-virtual-scroll-viewport itemSize="49" class="data-table-viewport">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>מספר תיק</th>
+              <th>מספר הזמנה</th>
+              <th>לקוח</th>
+              <th>Bill of Lading</th>
+              <th>סוג מסמך</th>
+              <th>מוביל</th>
+              <th>תאריך פתיחה</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              *cdkVirtualFor="let shipment of shipments(); trackBy: trackById"
+              class="data-table__row--clickable"
+              title="לחץ פעמיים לעריכה"
+              (dblclick)="onEditCase(shipment)"
+            >
+              <td>{{ shipment.id }}</td>
+              <td>{{ shipment.orderId }}</td>
+              <td>{{ shipment.customerName ?? '—' }}</td>
+              <td>{{ shipment.billOfLadingNumber ?? '—' }}</td>
+              <td>{{ shipment.documentType ? documentTypeLabels[shipment.documentType] : '—' }}</td>
+              <td>{{ shipment.forwarderName ?? '—' }}</td>
+              <td>{{ formatDate(shipment.createdAt) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </cdk-virtual-scroll-viewport>
+    }
   </div>
 </div>

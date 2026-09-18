@@ -868,6 +868,9 @@ export interface operations {
     ShipmentsController_findAll: {
         parameters: {
             query?: {
+                customerId?: number;
+                forwarderName?: string;
+                caseNumber?: number;
                 limit?: number;
                 offset?: number;
             };

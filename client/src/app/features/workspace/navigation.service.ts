@@ -43,6 +43,13 @@ export class NavigationService {
    */
   readonly editOrderId = signal<number | null>(null);
 
+  /**
+   * Order id another screen (e.g. a double-click in "התיקים שלי") wants the
+   * shipment/case screen to load for editing, set via {@link openShipmentForEdit}.
+   * Consumed once — the shipment screen clears it immediately after reading it.
+   */
+  readonly editShipmentOrderId = signal<number | null>(null);
+
   constructor() {
     this.setupTreeNavigation();
   }
@@ -200,6 +207,19 @@ export class NavigationService {
       this.selectChild(child);
     } else {
       this.activePage.set('order');
+    }
+  }
+
+  /** Navigate to the shipment/case screen with `orderId`'s case queued up for editing. */
+  openShipmentForEdit(orderId: number): void {
+    this.editShipmentOrderId.set(orderId);
+    const child = this.tree()
+      .flatMap((node) => node.children)
+      .find((c) => c.page === 'shipment');
+    if (child) {
+      this.selectChild(child);
+    } else {
+      this.activePage.set('shipment');
     }
   }
 }

@@ -463,17 +463,8 @@ body {
   padding: 24px 14px;
 }
 
-.pagination-bar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  margin-top: 16px;
-}
-
-.pagination-bar__label {
-  color: var(--text-muted);
-  font-weight: 600;
+.data-table-viewport {
+  height: 60vh;
 }
 
 .section-header {

@@ -1,3 +1,4 @@
+import { ScrollingModule } from '@angular/cdk/scrolling';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
@@ -8,12 +9,13 @@ import type { OrderDto } from '../../../../api/models';
 import { ListOrdersParams, OrdersApi } from '../../../../api/orders-api';
 import { NavigationService } from '../../navigation.service';
 
-const PAGE_SIZE = 20;
+/** Single batch fetched per filter change; rendering beyond this is virtualized, not paginated. */
+const MAX_ROWS = 200;
 
-/** "ההזמנות שלי" — paginated, filterable grid over all orders. */
+/** "ההזמנות שלי" — filterable grid over all orders, virtual-scrolled. */
 @Component({
   selector: 'app-my-orders-screen',
-  imports: [FormsModule],
+  imports: [FormsModule, ScrollingModule],
   templateUrl: './my-orders.html',
   styleUrl: './my-orders.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -32,18 +34,14 @@ export class MyOrdersScreen {
 
   // ── Grid state ──────────────────────────────────────────────────────────────
   protected readonly orders = signal<OrderDto[]>([]);
-  protected readonly page = signal(0);
-  protected readonly hasNextPage = signal(false);
   protected readonly loading = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
-  protected readonly pageSize = PAGE_SIZE;
 
   constructor() {
     this.fetch();
   }
 
   protected applyFilters(): void {
-    this.page.set(0);
     this.fetch();
   }
 
@@ -51,19 +49,6 @@ export class MyOrdersScreen {
     this.filterHandlerUserId.set('');
     this.filterStatus.set('');
     this.filterCreatedDate.set('');
-    this.page.set(0);
-    this.fetch();
-  }
-
-  protected nextPage(): void {
-    if (!this.hasNextPage() || this.loading()) return;
-    this.page.update((p) => p + 1);
-    this.fetch();
-  }
-
-  protected prevPage(): void {
-    if (this.page() === 0 || this.loading()) return;
-    this.page.update((p) => p - 1);
     this.fetch();
   }
 
@@ -78,11 +63,12 @@ export class MyOrdersScreen {
     return date.toLocaleDateString('he-IL', { year: 'numeric', month: '2-digit', day: '2-digit' });
   }
 
+  protected trackById(_index: number, order: OrderDto): number {
+    return order.id;
+  }
+
   private fetch(): void {
-    const params: ListOrdersParams = {
-      limit: this.pageSize,
-      offset: this.page() * this.pageSize,
-    };
+    const params: ListOrdersParams = { limit: MAX_ROWS };
 
     const handlerIdText = this.filterHandlerUserId().trim();
     if (handlerIdText) {
@@ -104,13 +90,9 @@ export class MyOrdersScreen {
       .list(params)
       .pipe(finalize(() => this.loading.set(false)), takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (rows) => {
-          this.orders.set(rows);
-          this.hasNextPage.set(rows.length === this.pageSize);
-        },
+        next: (rows) => this.orders.set(rows),
         error: () => {
           this.orders.set([]);
-          this.hasNextPage.set(false);
           this.errorMessage.set('טעינת ההזמנות נכשלה');
         },
       });
