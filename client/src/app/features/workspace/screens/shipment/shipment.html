@@ -1,201 +1,400 @@
-<form class="order-form">
-  <div class="form-section">
-    <div class="tabs-container">
-      @for (tab of tabs; track tab.id) {
-        <button
-          type="button"
-          class="tab-btn"
-          [class.active]="activeTab() === tab.id"
-          (click)="activeTab.set(tab.id)"
-        >
-          {{ tab.label }}
-        </button>
+<form class="order-form" [formGroup]="form" (ngSubmit)="onSave()" novalidate>
+  <!-- Order picker -->
+  <section class="form-section">
+    <h2 class="section-title">בחירת הזמנה</h2>
+    <div class="grid-row">
+      <div class="form-group">
+        <label class="required">מספר הזמנה</label>
+        <input
+          type="text"
+          class="form-control"
+          inputmode="numeric"
+          placeholder="לדוגמה 1000"
+          [value]="orderIdText()"
+          [readonly]="currentOrder() !== null"
+          (input)="orderIdText.set($any($event.target).value)"
+          (keydown.enter)="$event.preventDefault(); loadOrder()"
+        />
+        @if (loadError(); as message) {
+          <p class="field-error" role="alert">{{ message }}</p>
+        }
+      </div>
+
+      <div class="form-group">
+        <label>&nbsp;</label>
+        @if (currentOrder() === null) {
+          <button type="button" class="btn btn-primary" [disabled]="loading()" (click)="loadOrder()">
+            @if (loading()) {
+              <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
+              טוען...
+            } @else {
+              טען תיק
+            }
+          </button>
+        } @else {
+          <button type="button" class="btn btn-secondary" (click)="changeOrder()">
+            בחר הזמנה אחרת
+          </button>
+        }
+      </div>
+
+      @if (currentOrder(); as order) {
+        <div class="form-group">
+          <label>לקוח</label>
+          <input type="text" class="form-control" [value]="order.customerName ?? '—'" readonly />
+        </div>
+        <div class="form-group">
+          <label>סטטוס תיק</label>
+          <input
+            type="text"
+            class="form-control"
+            [value]="existingShipment() ? 'תיק קיים' : 'תיק חדש'"
+            readonly
+          />
+        </div>
       }
     </div>
-  </div>
+  </section>
 
-  @switch (activeTab()) {
-    @case ('document') {
-      <section class="form-section">
-        <h2 class="section-title">זיהוי מסמך- Document Type & Number</h2>
-        <div class="details-grid">
-          <div class="detail-item">
-            <span class="detail-label">מספר Bill of Lading</span>
-            <span class="detail-value">NEXF123456789</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">סוג מסמך (Original / Sea Waybill / Telex Release)</span>
-            <span class="detail-value">Sea Waybill</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">תאריך issuance של Bill of Lading</span>
-            <span class="detail-value">27/05/2026</span>
-          </div>
-        </div>
-      </section>
-    }
-
-    @case ('forwarder') {
-      <section class="form-section">
-        <h2 class="section-title">מוביל-ForWarder</h2>
-        <div class="details-grid">
-          <div class="detail-item">
-            <span class="detail-label">שם המוביל</span>
-            <span class="detail-value">MSC Mediterranean Shipping Co.</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">מספר Voyage / Flight</span>
-            <span class="detail-value">VN624A</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">שם האונייה</span>
-            <span class="detail-value">MSC NAPOLI</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Port of Loading (POL)</span>
-            <span class="detail-value">NAPOLI</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Port of Discharge (POD)</span>
-            <span class="detail-value">HAIFA</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">מספר מצהר</span>
-            <span class="detail-value">264768</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">מספר עסקה</span>
-            <span class="detail-value">12345A22</span>
-          </div>
-          <button type="button" class="btn btn-primary btn-transmit">
-            <i class="fa-solid fa-paper-plane"></i> שדר למכס
+  @if (currentOrder(); as order) {
+    <div class="form-section">
+      <div class="tabs-container">
+        @for (tab of tabs; track tab.id) {
+          <button
+            type="button"
+            class="tab-btn"
+            [class.active]="activeTab() === tab.id"
+            (click)="activeTab.set(tab.id)"
+          >
+            {{ tab.label }}
           </button>
-        </div>
-      </section>
+        }
+      </div>
+    </div>
+
+    @switch (activeTab()) {
+      @case ('document') {
+        <section class="form-section">
+          <h2 class="section-title">זיהוי מסמך- Document Type & Number</h2>
+          <div class="grid-row">
+            <div class="form-group">
+              <label for="billOfLadingNumber">מספר Bill of Lading</label>
+              <input
+                id="billOfLadingNumber"
+                type="text"
+                class="form-control"
+                formControlName="billOfLadingNumber"
+              />
+            </div>
+            <div class="form-group">
+              <label for="blIssueDate">תאריך issuance של Bill of Lading</label>
+              <input id="blIssueDate" type="date" class="form-control" formControlName="blIssueDate" />
+            </div>
+          </div>
+          <div class="grid-row">
+            <div class="form-group" style="grid-column: span 2">
+              <label>סוג מסמך (Original / Sea Waybill / Telex Release)</label>
+              <div class="tabs-container">
+                @for (option of documentTypes; track option) {
+                  <button
+                    type="button"
+                    class="tab-btn"
+                    [class.active]="documentType() === option"
+                    (click)="documentType.set(option)"
+                  >
+                    {{ documentTypeLabels[option] }}
+                  </button>
+                }
+              </div>
+            </div>
+          </div>
+        </section>
+      }
+
+      @case ('forwarder') {
+        <section class="form-section">
+          <h2 class="section-title">מוביל-ForWarder</h2>
+          <div class="grid-row">
+            <div class="form-group">
+              <label for="forwarderName">שם המוביל</label>
+              <input id="forwarderName" type="text" class="form-control" formControlName="forwarderName" />
+            </div>
+            <div class="form-group">
+              <label for="voyageFlightNumber">מספר Voyage / Flight</label>
+              <input
+                id="voyageFlightNumber"
+                type="text"
+                class="form-control"
+                formControlName="voyageFlightNumber"
+              />
+            </div>
+            <div class="form-group">
+              <label for="vesselName">שם האונייה</label>
+              <input id="vesselName" type="text" class="form-control" formControlName="vesselName" />
+            </div>
+          </div>
+          <div class="grid-row">
+            <div class="form-group">
+              <label for="portOfLoading">Port of Loading (POL)</label>
+              <input id="portOfLoading" type="text" class="form-control" formControlName="portOfLoading" />
+            </div>
+            <div class="form-group">
+              <label for="portOfDischarge">Port of Discharge (POD)</label>
+              <input
+                id="portOfDischarge"
+                type="text"
+                class="form-control"
+                formControlName="portOfDischarge"
+              />
+            </div>
+            <div class="form-group">
+              <label for="manifestNumber">מספר מצהר</label>
+              <input id="manifestNumber" type="text" class="form-control" formControlName="manifestNumber" />
+            </div>
+            <div class="form-group">
+              <label for="transactionNumber">מספר עסקה</label>
+              <input
+                id="transactionNumber"
+                type="text"
+                class="form-control"
+                formControlName="transactionNumber"
+              />
+            </div>
+          </div>
+          <div class="grid-row">
+            <button type="button" class="btn btn-primary btn-transmit">
+              <i class="fa-solid fa-paper-plane"></i> שדר למכס
+            </button>
+          </div>
+        </section>
+      }
+
+      @case ('shipper') {
+        <section class="form-section">
+          <h2 class="section-title">שוגר - Shipper</h2>
+          <div class="grid-row">
+            <div class="form-group">
+              <label for="shipperName">שם השוגר</label>
+              <input id="shipperName" type="text" class="form-control" formControlName="shipperName" />
+            </div>
+            <div class="form-group">
+              <label for="shipperAddress">כתובת מלאה</label>
+              <input id="shipperAddress" type="text" class="form-control" formControlName="shipperAddress" />
+            </div>
+          </div>
+        </section>
+      }
+
+      @case ('consignee') {
+        <section class="form-section">
+          <h2 class="section-title">נמען - Consignee</h2>
+          <div class="grid-row">
+            <div class="form-group">
+              <label for="consigneeName">שם הנמען</label>
+              <input id="consigneeName" type="text" class="form-control" formControlName="consigneeName" />
+            </div>
+            <div class="form-group">
+              <label for="consigneeAddress">כתובת מלאה</label>
+              <input
+                id="consigneeAddress"
+                type="text"
+                class="form-control"
+                formControlName="consigneeAddress"
+              />
+            </div>
+          </div>
+        </section>
+      }
+
+      @case ('notify') {
+        <section class="form-section">
+          <h2 class="section-title">Notify Party</h2>
+          <div class="grid-row">
+            <div class="form-group">
+              <label for="notifyParty">Notification Party</label>
+              <input id="notifyParty" type="text" class="form-control" formControlName="notifyParty" />
+            </div>
+          </div>
+        </section>
+      }
+
+      @case ('cargo') {
+        <section class="form-section">
+          <h2 class="section-title">מטען - Cargo</h2>
+          <div class="grid-row">
+            <div class="form-group" style="grid-column: span 2">
+              <label for="cargoDescription">תיאור המטען</label>
+              <input
+                id="cargoDescription"
+                type="text"
+                class="form-control"
+                formControlName="cargoDescription"
+              />
+            </div>
+          </div>
+          <div class="grid-row">
+            <div class="form-group">
+              <label for="packageCount">מספר ארגזים / משטחים</label>
+              <input
+                id="packageCount"
+                type="text"
+                inputmode="numeric"
+                class="form-control"
+                formControlName="packageCount"
+              />
+            </div>
+            <div class="form-group">
+              <label for="packageUnit">יחידת אריזה</label>
+              <input
+                id="packageUnit"
+                type="text"
+                class="form-control"
+                placeholder="Cartons"
+                formControlName="packageUnit"
+              />
+            </div>
+            <div class="form-group">
+              <label for="grossWeightKg">משקל ברוטו (KG)</label>
+              <input
+                id="grossWeightKg"
+                type="text"
+                inputmode="decimal"
+                class="form-control"
+                formControlName="grossWeightKg"
+              />
+            </div>
+            <div class="form-group">
+              <label for="netWeightKg">משקל נטו (KG)</label>
+              <input
+                id="netWeightKg"
+                type="text"
+                inputmode="decimal"
+                class="form-control"
+                formControlName="netWeightKg"
+              />
+            </div>
+            <div class="form-group">
+              <label for="volumeCbm">נפח מטען (CBM)</label>
+              <input
+                id="volumeCbm"
+                type="text"
+                inputmode="decimal"
+                class="form-control"
+                formControlName="volumeCbm"
+              />
+            </div>
+          </div>
+        </section>
+      }
+
+      @case ('tariff') {
+        <section class="form-section">
+          <h2 class="section-title">מכס - Tariff HS Code</h2>
+          <div class="grid-row">
+            <div class="form-group">
+              <label for="hsCode">HS Code</label>
+              <input id="hsCode" type="text" class="form-control" formControlName="hsCode" />
+            </div>
+          </div>
+        </section>
+      }
+
+      @case ('terms') {
+        <section class="form-section">
+          <h2 class="section-title">תנאים-Terms</h2>
+          <div class="grid-row">
+            <div class="form-group">
+              <label>Incoterms (מוגדר בהזמנה)</label>
+              <input type="text" class="form-control" [value]="orderIncotermLabel()" readonly />
+            </div>
+            <div class="form-group">
+              <label>Freight Terms (מוגדר בהזמנה)</label>
+              <input type="text" class="form-control" [value]="orderPaymentTermsLabel()" readonly />
+            </div>
+          </div>
+          <div class="grid-row">
+            <div class="form-group">
+              <label>Dangerous Goods</label>
+              <div class="tabs-container">
+                <button
+                  type="button"
+                  class="tab-btn"
+                  [class.active]="!dangerousGoods()"
+                  (click)="dangerousGoods.set(false)"
+                >
+                  No
+                </button>
+                <button
+                  type="button"
+                  class="tab-btn"
+                  [class.active]="dangerousGoods()"
+                  (click)="dangerousGoods.set(true)"
+                >
+                  Yes
+                </button>
+              </div>
+            </div>
+            @if (dangerousGoods()) {
+              <div class="form-group">
+                <label for="dangerousGoodsImoClass">IMO Class</label>
+                <input
+                  id="dangerousGoodsImoClass"
+                  type="text"
+                  class="form-control"
+                  formControlName="dangerousGoodsImoClass"
+                />
+              </div>
+            }
+          </div>
+        </section>
+      }
+
+      @case ('documents') {
+        <section class="form-section">
+          <h2 class="section-title">מסמכים - Documents</h2>
+          <div class="grid-row">
+            <div class="form-group">
+              <label for="containerNumber">Container Number</label>
+              <input id="containerNumber" type="text" class="form-control" formControlName="containerNumber" />
+            </div>
+            <div class="form-group">
+              <label for="containerType">Container Type</label>
+              <input id="containerType" type="text" class="form-control" formControlName="containerType" />
+            </div>
+            <div class="form-group">
+              <label for="containerSealNumber">Container Seal Number</label>
+              <input
+                id="containerSealNumber"
+                type="text"
+                class="form-control"
+                formControlName="containerSealNumber"
+              />
+            </div>
+          </div>
+        </section>
+      }
     }
 
-    @case ('shipper') {
-      <section class="form-section">
-        <h2 class="section-title">שוגר - Shipper</h2>
-        <div class="details-grid">
-          <div class="detail-item">
-            <span class="detail-label">שם השוגר</span>
-            <span class="detail-value">Shanghai Tech Components Co., Ltd</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">כתובת מלאה</span>
-            <span class="detail-value">אלי ויזל 5</span>
-          </div>
-        </div>
-      </section>
+    <!-- Save feedback -->
+    @if (successMessage(); as message) {
+      <p class="form-message form-message--success" role="status">{{ message }}</p>
+    }
+    @if (errorMessage(); as message) {
+      <p class="form-message form-message--error" role="alert">{{ message }}</p>
     }
 
-    @case ('consignee') {
-      <section class="form-section">
-        <h2 class="section-title">נמען - Consignee</h2>
-        <div class="details-grid">
-          <div class="detail-item">
-            <span class="detail-label">שם הנמען</span>
-            <span class="detail-value">NexTrade Import Ltd</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">כתובת מלאה</span>
-            <span class="detail-value">שמעון פרס 11</span>
-          </div>
-        </div>
-      </section>
-    }
-
-    @case ('notify') {
-      <section class="form-section">
-        <h2 class="section-title">Notify Party</h2>
-        <div class="details-grid">
-          <div class="detail-item">
-            <span class="detail-label">Notification Party</span>
-            <span class="detail-value">NexFreight Logistics - Israel</span>
-          </div>
-        </div>
-      </section>
-    }
-
-    @case ('cargo') {
-      <section class="form-section">
-        <h2 class="section-title">מטען - Cargo</h2>
-        <div class="details-grid">
-          <div class="detail-item">
-            <span class="detail-label">תיאור המטען</span>
-            <span class="detail-value">Electronic Components - Motherboards & Power Units</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">מספר ארגזים / משטחים</span>
-            <span class="detail-value">120 Cartons</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">משקל ברוטו</span>
-            <span class="detail-value">1,850 KG</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">משקל נטו</span>
-            <span class="detail-value">1,720 KG</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">נפח מטען (CBM)</span>
-            <span class="detail-value">9.8 CBM</span>
-          </div>
-        </div>
-      </section>
-    }
-
-    @case ('tariff') {
-      <section class="form-section">
-        <h2 class="section-title">מכס - Tariff HS Code</h2>
-        <div class="details-grid">
-          <div class="detail-item">
-            <span class="detail-label">HS Code</span>
-            <span class="detail-value">8504</span>
-          </div>
-        </div>
-      </section>
-    }
-
-    @case ('terms') {
-      <section class="form-section">
-        <h2 class="section-title">תנאים-Terms</h2>
-        <div class="details-grid">
-          <div class="detail-item">
-            <span class="detail-label">Incoterms (FOB, CIF וכו')</span>
-            <span class="detail-value">FOB</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Freight Terms (Prepaid / Collect)</span>
-            <span class="detail-value">Collect</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Dangerous Goods (Yes/No + IMO Class)</span>
-            <span class="detail-value">No</span>
-          </div>
-        </div>
-      </section>
-    }
-
-    @case ('documents') {
-      <section class="form-section">
-        <h2 class="section-title">מסמכים - Documents</h2>
-        <div class="details-grid">
-          <div class="detail-item">
-            <span class="detail-label">Container Number</span>
-            <span class="detail-value">MSCU7845123</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Container Type</span>
-            <span class="detail-value">40HC</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Container Seal Number</span>
-            <span class="detail-value">SH98765421</span>
-          </div>
-        </div>
-      </section>
+    <!-- Save action — only offered once the user reaches the last tab -->
+    @if (isLastTab()) {
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary" [disabled]="saving()">
+          @if (saving()) {
+            <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
+            שומר...
+          } @else {
+            שמור תיק
+          }
+        </button>
+      </div>
     }
   }
 </form>

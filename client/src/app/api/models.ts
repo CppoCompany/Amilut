@@ -13,3 +13,6 @@ export type CreateOrderDto = components['schemas']['CreateOrderDto'];
 export type UpdateOrderDto = components['schemas']['UpdateOrderDto'];
 
 export type ShipmentSummaryDto = components['schemas']['ShipmentSummaryDto'];
+export type ShipmentDto = components['schemas']['ShipmentDto'];
+export type CreateShipmentDto = components['schemas']['CreateShipmentDto'];
+export type UpdateShipmentDto = components['schemas']['UpdateShipmentDto'];
