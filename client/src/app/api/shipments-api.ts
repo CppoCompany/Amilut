@@ -11,6 +11,9 @@ import type {
 
 /** Query parameters accepted by `GET /api/shipments`. */
 export interface ListShipmentsParams {
+  customerId?: number;
+  forwarderName?: string;
+  caseNumber?: number;
   limit?: number;
   offset?: number;
 }
