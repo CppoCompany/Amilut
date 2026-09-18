@@ -223,6 +223,12 @@
   </section>
 
   <!-- Save feedback -->
+  @if (loadingOrder()) {
+    <p class="form-message" role="status">
+      <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
+      טוען הזמנה לעריכה...
+    </p>
+  }
   @if (successMessage(); as message) {
     <p class="form-message form-message--success" role="status">{{ message }}</p>
   }
@@ -232,10 +238,15 @@
 
   <!-- Form Actions -->
   <div class="form-actions">
-    <button type="button" class="btn btn-secondary" (click)="onCancel()" [disabled]="saving()">
+    <button
+      type="button"
+      class="btn btn-secondary"
+      (click)="onCancel()"
+      [disabled]="saving() || loadingOrder()"
+    >
       ביטול
     </button>
-    <button type="submit" class="btn btn-primary" [disabled]="saving()">
+    <button type="submit" class="btn btn-primary" [disabled]="saving() || loadingOrder()">
       @if (saving()) {
         <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
         שומר...

@@ -7,7 +7,7 @@ import {
   PaymentTerms,
   ShipmentType,
 } from '../../../../api/enums';
-import type { CreateOrderDto } from '../../../../api/models';
+import type { CreateOrderDto, OrderDto } from '../../../../api/models';
 
 /** Free-text / date fields of the order form (always strings; `''` = not filled). */
 export interface OrderFormValue {
@@ -84,6 +84,20 @@ export function toCreateOrderDto(
   ) as CreateOrderDto;
 }
 
+/** Maps an `OrderDto` from the server back into the form's flat string shape. */
+export function orderToFormValue(order: OrderDto): OrderFormValue {
+  return {
+    factoryReadyDate: order.factoryReadyDate ?? '',
+    factoryPickupDate: order.factoryPickupDate ?? '',
+    departureDate: order.departureDate ?? '',
+    etaDate: order.etaDate ?? '',
+    shippingLine: order.shippingLine ?? '',
+    voyageNumber: order.voyageNumber ?? '',
+    airline: order.airline ?? '',
+    flightNumber: order.flightNumber ?? '',
+  };
+}
+
 /** Formats an ISO timestamp as a `he-IL` date (dd.mm.yyyy). */
 export function formatOrderDate(iso: string): string {
   const date = new Date(iso);
@@ -94,9 +108,9 @@ export function formatOrderDate(iso: string): string {
 }
 
 const SAVE_FAILED = 'שמירת ההזמנה נכשלה';
+const LOAD_FAILED = 'טעינת ההזמנה נכשלה';
 
-/** Hebrew error line for a failed save, with the server's message appended when present. */
-export function saveErrorMessage(error: unknown): string {
+function errorSuffix(error: unknown): string {
   if (error instanceof HttpErrorResponse) {
     const body = error.error as { message?: string | string[] } | string | null | undefined;
     const message =
@@ -106,8 +120,18 @@ export function saveErrorMessage(error: unknown): string {
           ? body.message.join(', ')
           : body?.message;
     if (message) {
-      return `${SAVE_FAILED}: ${message}`;
+      return `: ${message}`;
     }
   }
-  return SAVE_FAILED;
+  return '';
+}
+
+/** Hebrew error line for a failed save, with the server's message appended when present. */
+export function saveErrorMessage(error: unknown): string {
+  return `${SAVE_FAILED}${errorSuffix(error)}`;
+}
+
+/** Hebrew error line for a failed order lookup, with the server's message appended when present. */
+export function loadErrorMessage(error: unknown): string {
+  return `${LOAD_FAILED}${errorSuffix(error)}`;
 }

@@ -64,7 +64,11 @@
       </thead>
       <tbody>
         @for (order of orders(); track order.id) {
-          <tr>
+          <tr
+            class="data-table__row--clickable"
+            title="לחץ פעמיים לעריכה"
+            (dblclick)="onEditOrder(order)"
+          >
             <td>{{ order.id }}</td>
             <td>{{ order.customerName ?? '—' }}</td>
             <td>{{ order.handlerName ?? '—' }}</td>

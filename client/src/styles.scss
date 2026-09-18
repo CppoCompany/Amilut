@@ -453,6 +453,10 @@ body {
   background: var(--light-blue-bg);
 }
 
+.data-table__row--clickable {
+  cursor: pointer;
+}
+
 .data-table__empty {
   text-align: center;
   color: var(--text-muted);
