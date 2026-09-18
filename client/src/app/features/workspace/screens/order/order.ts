@@ -3,6 +3,7 @@ import {
   Component,
   DestroyRef,
   computed,
+  effect,
   inject,
   linkedSignal,
   signal,
@@ -32,6 +33,7 @@ import { OrdersApi } from '../../../../api/orders-api';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { CustomerAutocomplete } from '../../../customers/customer-autocomplete/customer-autocomplete';
 import { NavigationService } from '../../navigation.service';
+import { WorkspaceContextService } from '../../workspace-context.service';
 import { Autocomplete } from './autocomplete';
 import {
   EMPTY_ORDER_FORM_VALUE,
@@ -84,6 +86,7 @@ export class OrderScreen {
   private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly nav = inject(NavigationService);
+  private readonly workspaceContext = inject(WorkspaceContextService);
 
   // ── Customer ───────────────────────────────────────────────────────────────
   protected readonly selectedCustomer = signal<CustomerDto | null>(null);
@@ -163,16 +166,6 @@ export class OrderScreen {
     toSignal(this.form.controls.airline.valueChanges, { initialValue: '' }),
   );
 
-  protected pickShippingLine(value: string): void {
-    this.form.controls.shippingLine.setValue(value);
-    this.shippingLine.close();
-  }
-
-  protected pickAirline(value: string): void {
-    this.form.controls.airline.setValue(value);
-    this.airline.close();
-  }
-
   constructor() {
     // A double-click on a row in "ההזמנות שלי" queues an order id here (see
     // NavigationService.openOrderForEdit) before switching to this screen.
@@ -183,6 +176,30 @@ export class OrderScreen {
       this.nav.editOrderId.set(null);
       this.loadOrderForEditing(editOrderId);
     }
+
+    // Mirrors the workspace shell's info bar to whatever the user is currently
+    // working on: cards are always shown, blank until a customer is picked or
+    // an order loaded, then live. Cleared on destroy so navigating away blanks
+    // the panel again.
+    effect(() => {
+      const customer = this.selectedCustomer();
+      const saved = this.savedOrder();
+      this.workspaceContext.set({
+        orderNumber: saved ? String(saved.id) : '',
+        customerName: customer?.name ?? saved?.customerName ?? '',
+      });
+    });
+    this.destroyRef.onDestroy(() => this.workspaceContext.clear());
+  }
+
+  protected pickShippingLine(value: string): void {
+    this.form.controls.shippingLine.setValue(value);
+    this.shippingLine.close();
+  }
+
+  protected pickAirline(value: string): void {
+    this.form.controls.airline.setValue(value);
+    this.airline.close();
   }
 
   /** Fetches an existing order and populates the form so Save will PATCH it. */

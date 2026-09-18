@@ -75,37 +75,38 @@
   <!-- Content Area -->
   <main class="content-area">
     <section class="info-bar" aria-label="Shipment and customs file details">
+      @let ctx = workspaceContext.context();
       <div class="info-card">
         <span class="info-label">מספר תיק עמילות מכס</span>
-        <span class="info-value">60070531</span>
+        <span class="info-value">{{ ctx.caseNumber }}</span>
       </div>
       <div class="info-card">
         <span class="info-label">שם לקוח</span>
-        <span class="info-value">יבוא סחר בע"מ</span>
+        <span class="info-value">{{ ctx.customerName }}</span>
       </div>
       <div class="info-card">
         <span class="info-label">שם ספק</span>
-        <span class="info-value">Shanghai Tech Components</span>
+        <span class="info-value">{{ ctx.supplierName }}</span>
       </div>
       <div class="info-card">
         <span class="info-label">מספר הזמנה</span>
-        <span class="info-value">11456</span>
+        <span class="info-value">{{ ctx.orderNumber }}</span>
       </div>
       <div class="info-card">
         <span class="info-label">תיאור טובין</span>
-        <span class="info-value">אלקטרונית דיוקן ומערכות תקשורת</span>
+        <span class="info-value">{{ ctx.goodsDescription }}</span>
       </div>
       <div class="info-card">
         <span class="info-label">מספר עסקה</span>
-        <span class="info-value">I-261438-025-004500</span>
+        <span class="info-value">{{ ctx.transactionNumber }}</span>
       </div>
       <div class="info-card">
         <span class="info-label">מספר מצהר</span>
-        <span class="info-value">261438</span>
+        <span class="info-value">{{ ctx.manifestNumber }}</span>
       </div>
       <div class="info-card">
         <span class="info-label">מספר שטר מטען</span>
-        <span class="info-value">NEXF123456789</span>
+        <span class="info-value">{{ ctx.billOfLadingNumber }}</span>
       </div>
     </section>
 

@@ -10,6 +10,7 @@ import { MyOrdersScreen } from './screens/my-orders/my-orders';
 import { OrderScreen } from './screens/order/order';
 import { PlaceholderScreen } from './screens/placeholder/placeholder';
 import { ShipmentScreen } from './screens/shipment/shipment';
+import { WorkspaceContextService } from './workspace-context.service';
 
 /**
  * Workspace shell: top header, sidebar tree, and the content area whose screen
@@ -34,4 +35,5 @@ import { ShipmentScreen } from './screens/shipment/shipment';
 export class Workspace {
   protected readonly nav = inject(NavigationService);
   protected readonly auth = inject(AuthService);
+  protected readonly workspaceContext = inject(WorkspaceContextService);
 }
