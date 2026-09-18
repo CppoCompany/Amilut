@@ -6,6 +6,7 @@ import { finalize } from 'rxjs';
 import { ORDER_STATUS_LABELS, ORDER_STATUSES, OrderStatus } from '../../../../api/enums';
 import type { OrderDto } from '../../../../api/models';
 import { ListOrdersParams, OrdersApi } from '../../../../api/orders-api';
+import { NavigationService } from '../../navigation.service';
 
 const PAGE_SIZE = 20;
 
@@ -20,6 +21,7 @@ const PAGE_SIZE = 20;
 export class MyOrdersScreen {
   private readonly ordersApi = inject(OrdersApi);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly nav = inject(NavigationService);
 
   // ── Filters (applied on demand, not live-as-you-type) ─────────────────────
   protected readonly filterHandlerUserId = signal('');
@@ -63,6 +65,11 @@ export class MyOrdersScreen {
     if (this.page() === 0 || this.loading()) return;
     this.page.update((p) => p - 1);
     this.fetch();
+  }
+
+  /** Double-click a row to edit that order in "יצירת הזמנה חדשה". */
+  protected onEditOrder(order: OrderDto): void {
+    this.nav.openOrderForEdit(order.id);
   }
 
   protected formatDate(iso: string): string {

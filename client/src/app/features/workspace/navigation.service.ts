@@ -36,6 +36,13 @@ export class NavigationService {
     () => this.screenMap.get(this.activePage()) ?? 'placeholder',
   );
 
+  /**
+   * Order id another screen (e.g. a double-click in "ההזמנות שלי") wants the
+   * order screen to load for editing, set via {@link openOrderForEdit}.
+   * Consumed once — the order screen clears it immediately after reading it.
+   */
+  readonly editOrderId = signal<number | null>(null);
+
   constructor() {
     this.setupTreeNavigation();
   }
@@ -181,5 +188,18 @@ export class NavigationService {
   /** Whether a child row is the highlighted one. */
   isChildActive(childId: string): boolean {
     return this.activeChildId() === childId;
+  }
+
+  /** Navigate to the order screen with `orderId` queued up for it to load and edit. */
+  openOrderForEdit(orderId: number): void {
+    this.editOrderId.set(orderId);
+    const child = this.tree()
+      .flatMap((node) => node.children)
+      .find((c) => c.page === 'order');
+    if (child) {
+      this.selectChild(child);
+    } else {
+      this.activePage.set('order');
+    }
   }
 }
