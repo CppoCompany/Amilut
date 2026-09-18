@@ -91,3 +91,5 @@ export const SHIPMENT_TYPES: readonly ShipmentType[] = Object.values(ShipmentTyp
 export const PAYMENT_TERMS: readonly PaymentTerms[] = Object.values(PaymentTerms);
 export const DESTINATIONS: readonly Destination[] = Object.values(Destination);
 export const INCOTERMS: readonly Incoterm[] = Object.values(Incoterm);
+export const SHIPMENT_DOCUMENT_TYPES: readonly ShipmentDocumentType[] =
+  Object.values(ShipmentDocumentType);

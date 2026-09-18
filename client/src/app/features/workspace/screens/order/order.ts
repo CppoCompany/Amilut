@@ -32,11 +32,14 @@ import type { CustomerDto, OrderDto } from '../../../../api/models';
 import { OrdersApi } from '../../../../api/orders-api';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { CustomerAutocomplete } from '../../../customers/customer-autocomplete/customer-autocomplete';
+import { NavigationService } from '../../navigation.service';
 import { WorkspaceContextService } from '../../workspace-context.service';
 import { Autocomplete } from './autocomplete';
 import {
   EMPTY_ORDER_FORM_VALUE,
   formatOrderDate,
+  loadErrorMessage,
+  orderToFormValue,
   saveErrorMessage,
   toCreateOrderDto,
 } from './order-form.mapper';
@@ -82,6 +85,7 @@ export class OrderScreen {
   private readonly ordersApi = inject(OrdersApi);
   private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly nav = inject(NavigationService);
   private readonly workspaceContext = inject(WorkspaceContextService);
 
   // ── Customer ───────────────────────────────────────────────────────────────
@@ -97,6 +101,8 @@ export class OrderScreen {
   protected readonly saving = signal(false);
   protected readonly successMessage = signal<string | null>(null);
   protected readonly errorMessage = signal<string | null>(null);
+  /** True while an existing order is being fetched for editing (see the constructor). */
+  protected readonly loadingOrder = signal(false);
 
   // ── Read-only header fields ────────────────────────────────────────────────
   protected readonly orderNumber = computed(() => {
@@ -161,6 +167,16 @@ export class OrderScreen {
   );
 
   constructor() {
+    // A double-click on a row in "ההזמנות שלי" queues an order id here (see
+    // NavigationService.openOrderForEdit) before switching to this screen.
+    // Consume it once immediately so a later, ordinary navigation back to this
+    // screen (e.g. via the sidebar) starts a fresh blank order as usual.
+    const editOrderId = this.nav.editOrderId();
+    if (editOrderId !== null) {
+      this.nav.editOrderId.set(null);
+      this.loadOrderForEditing(editOrderId);
+    }
+
     // Mirrors the workspace shell's info bar to whatever the user is currently
     // working on: cards are always shown, blank until a customer is picked or
     // an order loaded, then live. Cleared on destroy so navigating away blanks
@@ -184,6 +200,41 @@ export class OrderScreen {
   protected pickAirline(value: string): void {
     this.form.controls.airline.setValue(value);
     this.airline.close();
+  }
+
+  /** Fetches an existing order and populates the form so Save will PATCH it. */
+  private loadOrderForEditing(orderId: number): void {
+    this.loadingOrder.set(true);
+    this.errorMessage.set(null);
+    this.successMessage.set(null);
+
+    this.ordersApi
+      .getById(orderId)
+      .pipe(finalize(() => this.loadingOrder.set(false)), takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (order) => {
+          // Placeholder fields are never read by CustomerAutocomplete (it only
+          // uses `.id`/`.name`), so this avoids an extra CustomersApi round-trip.
+          this.selectedCustomer.set({
+            id: order.customerId,
+            name: order.customerName ?? '',
+            address: null,
+            phone: null,
+            email: null,
+            isActive: true,
+          });
+          this.status.set(order.status);
+          this.shipmentType.set(order.shipmentType);
+          // paymentTerms first: `incoterm` is a linkedSignal derived from it and
+          // would otherwise reset to the first allowed option for that group.
+          this.paymentTerms.set(order.paymentTerms);
+          this.incoterm.set(order.incoterm);
+          this.destination.set(order.destination);
+          this.form.reset(orderToFormValue(order));
+          this.savedOrder.set(order);
+        },
+        error: (error: unknown) => this.errorMessage.set(loadErrorMessage(error)),
+      });
   }
 
   /** Creates the order on the first save; PATCHes the same order on later saves. */
