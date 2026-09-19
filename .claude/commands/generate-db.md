@@ -19,6 +19,7 @@ invoke the runner directly.
    - `005_create_shipments.sql` — `shipments` table (1:1 with `orders`)
    - `006_rename_shipments_to_order_account.sql` — renames it to `order_account`
    - `007_rename_and_bump_order_account_sequence.sql` — renames its id sequence and starts file numbers at 1000
+   - `008_seed_user_erez_nakar.sql` — seeds an additional user row
    If the folder or files are missing, stop and tell Barak.
 
 2. **Determine the superuser password.** The runner needs the `postgres`
