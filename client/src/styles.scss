@@ -227,6 +227,8 @@ body {
 /* Content Area */
 .content-area {
   flex: 1;
+  display: flex;
+  flex-direction: column;
   padding: 24px 32px;
   overflow-y: auto;
 }
@@ -243,6 +245,7 @@ body {
   margin-bottom: 18px;
   align-items: center;
   overflow-x: auto;
+  flex-shrink: 0;
 }
 
 .info-card {
@@ -288,7 +291,22 @@ body {
 }
 
 .page-tab-panel.active {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* The dynamically-swapped screen component's own host element — give it the
+   full height `.page-tab-panel.active` just gained, so grid screens have a
+   real 100% to fill (see `.grid-screen`) and tall screens (e.g. the order
+   form) scroll within this box via the `overflow-y: auto` above. */
+.page-tab-panel.active > * {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
 }
 
 /* Form Structure */
@@ -305,6 +323,22 @@ body {
   padding: 24px;
   box-shadow: var(--shadow-sm);
   border: 1px solid var(--border-color);
+}
+
+/* Added alongside `.form-section` (not replacing it) on the two grid screens,
+   so the table can flex-fill the space left after the title/filter-bar. */
+.grid-screen {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.grid-screen .data-table-wrapper {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .section-title {
@@ -464,7 +498,8 @@ body {
 }
 
 .data-table-viewport {
-  height: 60vh;
+  flex: 1;
+  min-height: 0;
 }
 
 .section-header {

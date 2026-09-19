@@ -1,13 +1,16 @@
 import { ScrollingModule } from '@angular/cdk/scrolling';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { finalize } from 'rxjs';
+import { combineLatest, debounceTime, finalize, skip } from 'rxjs';
 
 import { SHIPMENT_DOCUMENT_TYPE_LABELS } from '../../../../api/enums';
 import type { CustomerDto, ShipmentSummaryDto } from '../../../../api/models';
 import { ListShipmentsParams, ShipmentsApi } from '../../../../api/shipments-api';
-import { CustomerAutocomplete } from '../../../customers/customer-autocomplete/customer-autocomplete';
+import {
+  CustomerAutocomplete,
+  SEARCH_DEBOUNCE_MS,
+} from '../../../customers/customer-autocomplete/customer-autocomplete';
 import { NavigationService } from '../../navigation.service';
 
 /** Single batch fetched per filter change; rendering beyond this is virtualized, not paginated. */
@@ -28,7 +31,7 @@ export class MyFilesScreen {
 
   protected readonly documentTypeLabels = SHIPMENT_DOCUMENT_TYPE_LABELS;
 
-  // ── Filters (applied on demand, not live-as-you-type) ─────────────────────
+  // ── Filters (live — debounced, no apply button) ────────────────────────────
   protected readonly filterCustomer = signal<CustomerDto | null>(null);
   protected readonly filterForwarderName = signal('');
   protected readonly filterCaseNumber = signal('');
@@ -40,17 +43,24 @@ export class MyFilesScreen {
 
   constructor() {
     this.fetch();
-  }
 
-  protected applyFilters(): void {
-    this.fetch();
+    combineLatest([
+      toObservable(this.filterCustomer),
+      toObservable(this.filterForwarderName),
+      toObservable(this.filterCaseNumber),
+    ])
+      .pipe(
+        skip(1), // the initial load above already happened
+        debounceTime(SEARCH_DEBOUNCE_MS),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe(() => this.fetch());
   }
 
   protected clearFilters(): void {
     this.filterCustomer.set(null);
     this.filterForwarderName.set('');
     this.filterCaseNumber.set('');
-    this.fetch();
   }
 
   /** Double-click a row to edit that case in "יצירת תיק חדש". */
