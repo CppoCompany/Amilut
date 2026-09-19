@@ -74,6 +74,17 @@ export class ShipmentScreen {
     () => this.activeTab() === this.tabs[this.tabs.length - 1].id,
   );
 
+  /** The tab right before the active one, or `null` on the first tab. */
+  protected readonly previousTab = computed(() => {
+    const index = this.tabs.findIndex((tab) => tab.id === this.activeTab());
+    return index > 0 ? this.tabs[index - 1] : null;
+  });
+  /** The tab right after the active one, or `null` on the last tab. */
+  protected readonly nextTab = computed(() => {
+    const index = this.tabs.findIndex((tab) => tab.id === this.activeTab());
+    return index < this.tabs.length - 1 ? this.tabs[index + 1] : null;
+  });
+
   // ── Order picker ────────────────────────────────────────────────────────────
   protected readonly orderIdText = signal('');
   protected readonly currentOrder = signal<OrderDto | null>(null);
@@ -197,6 +208,16 @@ export class ShipmentScreen {
     this.successMessage.set(null);
     this.errorMessage.set(null);
     this.activeTab.set('document');
+  }
+
+  protected goToPreviousTab(): void {
+    const tab = this.previousTab();
+    if (tab) this.activeTab.set(tab.id);
+  }
+
+  protected goToNextTab(): void {
+    const tab = this.nextTab();
+    if (tab) this.activeTab.set(tab.id);
   }
 
   /** Creates the shipment file on the first save; PATCHes the same file on later saves. */
