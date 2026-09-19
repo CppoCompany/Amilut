@@ -375,6 +375,20 @@
       }
     }
 
+    <!-- Tab-to-tab navigation shortcuts -->
+    <div class="tab-nav-actions">
+      @if (previousTab(); as prev) {
+        <button type="button" class="btn btn-secondary" (click)="goToPreviousTab()">
+          → חזרה ל{{ prev.label }}
+        </button>
+      }
+      @if (nextTab(); as next) {
+        <button type="button" class="btn btn-primary" (click)="goToNextTab()">
+          מעבר ל{{ next.label }} ←
+        </button>
+      }
+    </div>
+
     <!-- Save feedback -->
     @if (successMessage(); as message) {
       <p class="form-message form-message--success" role="status">{{ message }}</p>
