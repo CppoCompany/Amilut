@@ -67,7 +67,7 @@ export class NavigationService {
         children: [
           { id: 'ws-order', page: 'order', label: 'יצירת הזמנה חדשה', icon: 'fa-solid fa-file-invoice' },
           { id: 'ws-filing', page: 'filing', label: 'תיוק ניירת יבוא', icon: 'fa-solid fa-file-import' },
-          { id: 'ws-shipment', page: 'shipment', label: 'יצירת תיק חדש', icon: 'fa-solid fa-truck-fast' },
+          { id: 'ws-shipment', page: 'shipment', label: 'יצירת תיק שילוח', icon: 'fa-solid fa-truck-fast' },
           { id: 'ws-classification', page: 'classification', label: 'סיווג', icon: 'fa-solid fa-tags' },
           {
             id: 'ws-post-classification',

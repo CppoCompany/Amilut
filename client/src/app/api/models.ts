@@ -8,6 +8,10 @@ export type CustomerDto = components['schemas']['CustomerDto'];
 export type CreateCustomerDto = components['schemas']['CreateCustomerDto'];
 export type UpdateCustomerDto = components['schemas']['UpdateCustomerDto'];
 
+export type SupplierDto = components['schemas']['SupplierDto'];
+export type CreateSupplierDto = components['schemas']['CreateSupplierDto'];
+export type UpdateSupplierDto = components['schemas']['UpdateSupplierDto'];
+
 export type OrderDto = components['schemas']['OrderDto'];
 export type CreateOrderDto = components['schemas']['CreateOrderDto'];
 export type UpdateOrderDto = components['schemas']['UpdateOrderDto'];

@@ -15,6 +15,8 @@ wired to `npm run db:generate`.
 | `006_rename_shipments_to_order_account.sql` | Renames `shipments` → `order_account` (and cleans up the empty stray 005 would otherwise recreate on re-run) | `Amilut` | `Admin` (via `SET ROLE`) |
 | `007_rename_and_bump_order_account_sequence.sql` | Renames `shipments_id_seq` → `order_account_id_seq` and starts file numbers at 1000 | `Amilut` | `Admin` (via `SET ROLE`) |
 | `008_seed_user_erez_nakar.sql` | Seeds an additional user row (Erez Nakar) in `users` | `Amilut` | `Admin` (via `SET ROLE`) |
+| `009_add_supplier_name_to_orders.sql` | Adds `supplier_name` to `orders` (superseded by 010) | `Amilut` | `Admin` (via `SET ROLE`) |
+| `010_create_suppliers_and_link_orders.sql` | `suppliers` table (mirrors `customers`) + `orders.supplier_id` FK, replacing `supplier_name` | `Amilut` | `Admin` (via `SET ROLE`) |
 | `run-migrations.mjs` | Applies `001`, then every other `NNN_*.sql` in name order | — | — |
 
 Every step is **idempotent** — re-running does nothing if the objects already exist.
@@ -47,10 +49,11 @@ The application role/database/password are declared in the SQL files
 ```
 Amilut
 ├── customers (id, name, address, phone, email, isActive)
+├── suppliers (id, name, address, phone, email, isActive)
 ├── users     (id, customer_id → customers.id, name, role[=admin],
 │              title, email, last_login, isActive)
 ├── orders    (id[seq from 1000], customer_id → customers.id,
-│              handler_user_id → users.id, created_at,
+│              handler_user_id → users.id, supplier_id → suppliers.id, created_at,
 │              status, shipment_type, payment_terms, incoterm, destination,
 │              factory_ready_date, factory_pickup_date, departure_date, eta_date,
 │              shipping_line, voyage_number, airline, flight_number,

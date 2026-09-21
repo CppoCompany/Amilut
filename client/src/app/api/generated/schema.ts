@@ -164,6 +164,38 @@ export interface paths {
         patch: operations["ShipmentsController_update"];
         trace?: never;
     };
+    "/api/suppliers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["SuppliersController_search"];
+        put?: never;
+        post: operations["SuppliersController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/suppliers/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["SuppliersController_findById"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["SuppliersController_update"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -247,6 +279,10 @@ export interface components {
             paymentTerms: components["schemas"]["PaymentTerms"];
             incoterm: components["schemas"]["Incoterm"];
             destination: components["schemas"]["Destination"];
+            /** @example 1 */
+            supplierId: number | null;
+            /** @example Shanghai Tech Components Co., Ltd */
+            supplierName: string | null;
             /**
              * Format: date
              * @example 2026-09-01
@@ -286,6 +322,8 @@ export interface components {
             paymentTerms: components["schemas"]["PaymentTerms"];
             incoterm: components["schemas"]["Incoterm"];
             destination: components["schemas"]["Destination"];
+            /** @example 1 */
+            supplierId?: number;
             /**
              * Format: date
              * @example 2026-09-01
@@ -323,6 +361,8 @@ export interface components {
             paymentTerms?: components["schemas"]["PaymentTerms"];
             incoterm?: components["schemas"]["Incoterm"];
             destination?: components["schemas"]["Destination"];
+            /** @example 1 */
+            supplierId?: number;
             /**
              * Format: date
              * @example 2026-09-01
@@ -561,6 +601,48 @@ export interface components {
             containerType?: string;
             /** @example SH98765421 */
             containerSealNumber?: string;
+        };
+        SupplierDto: {
+            /** @example 1 */
+            id: number;
+            /** @example Shanghai Tech Components Co., Ltd */
+            name: string;
+            /** @example 1 Herzl St, Tel Aviv */
+            address: string | null;
+            /** @example +972-3-1234567 */
+            phone: string | null;
+            /** @example office@supplier.co.il */
+            email: string | null;
+            /** @example true */
+            isActive: boolean;
+        };
+        CreateSupplierDto: {
+            /** @example Shanghai Tech Components Co., Ltd */
+            name: string;
+            /** @example 1 Herzl St, Tel Aviv */
+            address?: string | null;
+            /** @example +972-3-1234567 */
+            phone?: string | null;
+            /**
+             * Format: email
+             * @example office@supplier.co.il
+             */
+            email?: string | null;
+        };
+        UpdateSupplierDto: {
+            /** @example Shanghai Tech Components Co., Ltd */
+            name?: string;
+            /** @example 1 Herzl St, Tel Aviv */
+            address?: string | null;
+            /** @example +972-3-1234567 */
+            phone?: string | null;
+            /**
+             * Format: email
+             * @example office@supplier.co.il
+             */
+            email?: string | null;
+            /** @example false */
+            isActive?: boolean;
         };
     };
     responses: never;
@@ -976,6 +1058,112 @@ export interface operations {
                     "application/json": components["schemas"]["ShipmentDto"];
                 };
             };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    SuppliersController_search: {
+        parameters: {
+            query: {
+                /** @description Case-insensitive substring of the supplier name */
+                q: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplierDto"][];
+                };
+            };
+        };
+    };
+    SuppliersController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSupplierDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplierDto"];
+                };
+            };
+        };
+    };
+    SuppliersController_findById: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplierDto"];
+                };
+            };
+            /** @description No supplier with that id */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    SuppliersController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSupplierDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplierDto"];
+                };
+            };
+            /** @description No supplier with that id */
             404: {
                 headers: {
                     [name: string]: unknown;

@@ -28,10 +28,11 @@ import {
   SHIPMENT_TYPES,
   ShipmentType,
 } from '../../../../api/enums';
-import type { CustomerDto, OrderDto } from '../../../../api/models';
+import type { CustomerDto, OrderDto, SupplierDto } from '../../../../api/models';
 import { OrdersApi } from '../../../../api/orders-api';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { CustomerAutocomplete } from '../../../customers/customer-autocomplete/customer-autocomplete';
+import { SupplierAutocomplete } from '../../../suppliers/supplier-autocomplete/supplier-autocomplete';
 import { NavigationService } from '../../navigation.service';
 import { WorkspaceContextService } from '../../workspace-context.service';
 import { Autocomplete } from './autocomplete';
@@ -75,7 +76,7 @@ const CUSTOMER_REQUIRED = 'יש לבחור לקוח';
 /** "פתיחת הזמנה" — new shipment order form, wired to `POST/PATCH /api/orders`. */
 @Component({
   selector: 'app-order-screen',
-  imports: [ReactiveFormsModule, CustomerAutocomplete],
+  imports: [ReactiveFormsModule, CustomerAutocomplete, SupplierAutocomplete],
   templateUrl: './order.html',
   styleUrl: './order.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -88,8 +89,9 @@ export class OrderScreen {
   private readonly nav = inject(NavigationService);
   private readonly workspaceContext = inject(WorkspaceContextService);
 
-  // ── Customer ───────────────────────────────────────────────────────────────
+  // ── Customer / Supplier ─────────────────────────────────────────────────────
   protected readonly selectedCustomer = signal<CustomerDto | null>(null);
+  protected readonly selectedSupplier = signal<SupplierDto | null>(null);
   private readonly submitAttempted = signal(false);
   protected readonly customerError = computed(() =>
     this.submitAttempted() && !this.selectedCustomer() ? CUSTOMER_REQUIRED : null,
@@ -223,6 +225,20 @@ export class OrderScreen {
             email: null,
             isActive: true,
           });
+          // Same placeholder trick as the customer: SupplierAutocomplete only
+          // ever reads `.id`/`.name`, so this avoids an extra SuppliersApi call.
+          this.selectedSupplier.set(
+            order.supplierId !== null
+              ? {
+                  id: order.supplierId,
+                  name: order.supplierName ?? '',
+                  address: null,
+                  phone: null,
+                  email: null,
+                  isActive: true,
+                }
+              : null,
+          );
           this.status.set(order.status);
           this.shipmentType.set(order.shipmentType);
           // paymentTerms first: `incoterm` is a linkedSignal derived from it and
@@ -253,6 +269,7 @@ export class OrderScreen {
 
     const dto = toCreateOrderDto(
       customer.id,
+      this.selectedSupplier()?.id,
       {
         status: this.status(),
         shipmentType: this.shipmentType(),
@@ -294,6 +311,7 @@ export class OrderScreen {
     this.incoterm.set(this.incotermOptions()[0]);
     this.destination.set(Destination.ASHDOD);
     this.selectedCustomer.set(null);
+    this.selectedSupplier.set(null);
     this.savedOrder.set(null);
     this.submitAttempted.set(false);
     this.successMessage.set(null);

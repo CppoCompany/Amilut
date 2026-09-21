@@ -31,6 +31,8 @@ interface OrderRow {
   payment_terms: PaymentTerms;
   incoterm: Incoterm;
   destination: Destination;
+  supplier_id: number | null;
+  supplier_name: string | null;
   factory_ready_date: string | null;
   factory_pickup_date: string | null;
   departure_date: string | null;
@@ -50,6 +52,7 @@ const WRITABLE_COLUMNS: Record<keyof CreateOrderDto, string> = {
   paymentTerms: 'payment_terms',
   incoterm: 'incoterm',
   destination: 'destination',
+  supplierId: 'supplier_id',
   factoryReadyDate: 'factory_ready_date',
   factoryPickupDate: 'factory_pickup_date',
   departureDate: 'departure_date',
@@ -75,6 +78,8 @@ const ORDER_SELECT = `
          o.payment_terms,
          o.incoterm,
          o.destination,
+         o.supplier_id,
+         sup.name AS supplier_name,
          to_char(o.factory_ready_date, 'YYYY-MM-DD')  AS factory_ready_date,
          to_char(o.factory_pickup_date, 'YYYY-MM-DD') AS factory_pickup_date,
          to_char(o.departure_date, 'YYYY-MM-DD')      AS departure_date,
@@ -86,7 +91,8 @@ const ORDER_SELECT = `
          o."isActive" AS is_active
     FROM orders o
     LEFT JOIN customers c ON c.id = o.customer_id
-    LEFT JOIN users     u ON u.id = o.handler_user_id`;
+    LEFT JOIN users     u ON u.id = o.handler_user_id
+    LEFT JOIN suppliers sup ON sup.id = o.supplier_id`;
 
 const PG_FOREIGN_KEY_VIOLATION = '23503';
 
@@ -98,6 +104,9 @@ export class OrdersService {
   async create(dto: CreateOrderDto, handlerUserId: number): Promise<OrderDto> {
     assertIncotermMatchesPaymentTerms(dto.paymentTerms, dto.incoterm);
     await this.assertCustomerUsable(dto.customerId);
+    if (dto.supplierId !== undefined) {
+      await this.assertSupplierUsable(dto.supplierId);
+    }
 
     const keys = WRITABLE_KEYS.filter((key) => dto[key] !== undefined);
     const columns = keys.map((key) => WRITABLE_COLUMNS[key]);
@@ -190,6 +199,12 @@ export class OrdersService {
     ) {
       await this.assertCustomerUsable(dto.customerId);
     }
+    if (
+      dto.supplierId !== undefined &&
+      dto.supplierId !== existing.supplierId
+    ) {
+      await this.assertSupplierUsable(dto.supplierId);
+    }
 
     const params: unknown[] = [];
     const sets = keys.map((key) => {
@@ -237,6 +252,19 @@ export class OrdersService {
       throw new BadRequestException(`Customer ${customerId} is inactive`);
     }
   }
+
+  private async assertSupplierUsable(supplierId: number): Promise<void> {
+    const supplier = await this.db.queryOne<{ id: number; isActive: boolean }>(
+      'SELECT id, "isActive" FROM suppliers WHERE id = $1',
+      [supplierId],
+    );
+    if (!supplier) {
+      throw new NotFoundException(`Supplier ${supplierId} not found`);
+    }
+    if (!supplier.isActive) {
+      throw new BadRequestException(`Supplier ${supplierId} is inactive`);
+    }
+  }
 }
 
 function assertIncotermMatchesPaymentTerms(
@@ -278,6 +306,8 @@ function toOrderDto(row: OrderRow): OrderDto {
     paymentTerms: row.payment_terms,
     incoterm: row.incoterm,
     destination: row.destination,
+    supplierId: row.supplier_id ?? null,
+    supplierName: row.supplier_name ?? null,
     factoryReadyDate: row.factory_ready_date ?? null,
     factoryPickupDate: row.factory_pickup_date ?? null,
     departureDate: row.departure_date ?? null,

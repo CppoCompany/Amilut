@@ -25,6 +25,11 @@
         <label>פקיד מטפל</label>
         <input type="text" class="form-control" [value]="handlerName()" readonly />
       </div>
+
+      <div class="form-group autocomplete-wrapper">
+        <label for="supplierName">שם ספק</label>
+        <app-supplier-autocomplete inputId="supplierName" [(supplier)]="selectedSupplier" />
+      </div>
     </div>
   </section>
 
