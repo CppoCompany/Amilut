@@ -107,13 +107,15 @@ export class OrderScreen {
   protected readonly loadingOrder = signal(false);
 
   // ── Read-only header fields ────────────────────────────────────────────────
+  /** A real order id only exists once the server has inserted the row. */
   protected readonly orderNumber = computed(() => {
     const order = this.savedOrder();
-    return order ? String(order.id) : '—';
+    return order ? String(order.id) : 'יוקצה אוטומטית לאחר השמירה';
   });
+  /** Shows today until the first save, then the server's actual `createdAt`. */
   protected readonly creationDate = computed(() => {
     const order = this.savedOrder();
-    return order ? formatOrderDate(order.createdAt) : '—';
+    return order ? formatOrderDate(order.createdAt) : formatOrderDate(new Date().toISOString());
   });
   protected readonly handlerName = computed(() => this.auth.user()?.name ?? '');
 
