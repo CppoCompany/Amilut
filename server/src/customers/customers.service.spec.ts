@@ -25,6 +25,9 @@ describe('CustomersService', () => {
     address: null,
     phone: '+972-3-1234567',
     email: 'office@acme.co.il',
+    company_reg_number: null,
+    contact_name: null,
+    contact_phone: null,
     isActive: true,
   };
 
@@ -60,6 +63,9 @@ describe('CustomersService', () => {
         address: null,
         phone: '+972-3-1234567',
         email: 'office@acme.co.il',
+        companyRegNumber: null,
+        contactName: null,
+        contactPhone: null,
         isActive: true,
       });
     });
@@ -101,7 +107,7 @@ describe('CustomersService', () => {
       const [sql, params] = db.queryOne.mock.calls[0] as [string, unknown[]];
       expect(sql).toMatch(/INSERT INTO customers/);
       expect(sql).toMatch(/RETURNING/);
-      expect(params).toEqual(['Acme Imports', null, null, null]);
+      expect(params).toEqual(['Acme Imports', null, null, null, null, null, null]);
       expect(result).toBeInstanceOf(CustomerDto);
       expect(result).toEqual({
         id: 42,
@@ -109,6 +115,9 @@ describe('CustomersService', () => {
         address: null,
         phone: null,
         email: null,
+        companyRegNumber: null,
+        contactName: null,
+        contactPhone: null,
         isActive: true,
       });
     });

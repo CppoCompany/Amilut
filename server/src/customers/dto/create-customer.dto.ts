@@ -4,6 +4,7 @@ import {
   IsEmail,
   IsOptional,
   IsString,
+  Matches,
   MaxLength,
   MinLength,
 } from 'class-validator';
@@ -66,4 +67,43 @@ export class CreateCustomerDto {
   @IsEmail()
   @MaxLength(255)
   email?: string | null;
+
+  /** ח״פ — company registration number. Digits only. */
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+    example: '512345678',
+    maxLength: 20,
+  })
+  @Transform(trimToNull)
+  @IsOptional()
+  @Matches(/^\d+$/, { message: 'ח״פ חייב להכיל ספרות בלבד' })
+  @MaxLength(20)
+  companyRegNumber?: string | null;
+
+  /** איש קשר — contact person's full name. */
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+    example: 'Dana Levi',
+    maxLength: 255,
+  })
+  @Transform(trimToNull)
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  contactName?: string | null;
+
+  /** איש קשר — contact person's phone number. */
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+    example: '+972-50-1234567',
+    maxLength: 50,
+  })
+  @Transform(trimToNull)
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  contactPhone?: string | null;
 }

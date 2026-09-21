@@ -223,6 +223,9 @@ export class OrderScreen {
             address: null,
             phone: null,
             email: null,
+            companyRegNumber: null,
+            contactName: null,
+            contactPhone: null,
             isActive: true,
           });
           // Same placeholder trick as the customer: SupplierAutocomplete only

@@ -60,6 +60,12 @@ export class AddCustomerDialog implements OnInit {
     address: this.fb.control('', [Validators.maxLength(500)]),
     phone: this.fb.control('', [Validators.maxLength(50)]),
     email: this.fb.control('', [Validators.email, Validators.maxLength(255)]),
+    companyRegNumber: this.fb.control('', [
+      Validators.pattern(/^\d*$/),
+      Validators.maxLength(20),
+    ]),
+    contactName: this.fb.control('', [Validators.maxLength(255)]),
+    contactPhone: this.fb.control('', [Validators.maxLength(50)]),
   });
 
   /** Set once a submit has been attempted, so errors show even on untouched fields. */
@@ -96,6 +102,18 @@ export class AddCustomerDialog implements OnInit {
     return this.form.controls.email;
   }
 
+  protected get companyRegNumber(): AbstractControl {
+    return this.form.controls.companyRegNumber;
+  }
+
+  protected get contactName(): AbstractControl {
+    return this.form.controls.contactName;
+  }
+
+  protected get contactPhone(): AbstractControl {
+    return this.form.controls.contactPhone;
+  }
+
   /** Whether to surface validation errors for a control yet. */
   protected showError(control: AbstractControl): boolean {
     return control.invalid && (control.touched || this.submitted());
@@ -113,12 +131,16 @@ export class AddCustomerDialog implements OnInit {
       return;
     }
 
-    const { name, address, phone, email } = this.form.getRawValue();
+    const { name, address, phone, email, companyRegNumber, contactName, contactPhone } =
+      this.form.getRawValue();
     const dto: CreateCustomerDto = {
       name,
       address: address.trim() || null,
       phone: phone.trim() || null,
       email: email.trim() || null,
+      companyRegNumber: companyRegNumber.trim() || null,
+      contactName: contactName.trim() || null,
+      contactPhone: contactPhone.trim() || null,
     };
 
     this.saving.set(true);

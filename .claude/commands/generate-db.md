@@ -22,6 +22,7 @@ invoke the runner directly.
    - `008_seed_user_erez_nakar.sql` — seeds an additional user row
    - `009_add_supplier_name_to_orders.sql` — adds `supplier_name` to `orders` (superseded by 010)
    - `010_create_suppliers_and_link_orders.sql` — `suppliers` table (mirrors `customers`) + `orders.supplier_id` FK
+   - `011_add_contact_fields_to_customers.sql` — adds `company_reg_number`, `contact_name`, `contact_phone` to `customers`
    If the folder or files are missing, stop and tell Barak.
 
 2. **Determine the superuser password.** The runner needs the `postgres`
