@@ -65,7 +65,11 @@ export class MyFilesScreen {
 
   /** Double-click a row to edit that case in "יצירת תיק חדש". */
   protected onEditCase(shipment: ShipmentSummaryDto): void {
-    this.nav.openShipmentForEdit(shipment.orderId);
+    this.nav.openCaseForEdit(shipment.id);
+  }
+
+  protected joinOrEmDash(values: readonly (string | number)[]): string {
+    return values.length ? values.join(', ') : '—';
   }
 
   protected formatDate(iso: string): string {

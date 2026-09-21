@@ -9,6 +9,9 @@ import type { CreateOrderDto, OrderDto, UpdateOrderDto } from './models';
 export interface ListOrdersParams {
   customerId?: number;
   handlerUserId?: number;
+  supplierId?: number;
+  /** `false` matches orders with no shipping case yet; `true` matches the opposite. */
+  hasCase?: boolean;
   status?: OrderStatus;
   /** Matches orders created on this calendar date (`YYYY-MM-DD`). */
   createdDate?: string;

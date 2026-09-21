@@ -1,7 +1,6 @@
 import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
 import {
   ApiBearerAuth,
-  ApiConflictResponse,
   ApiCreatedResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
@@ -9,6 +8,7 @@ import {
 } from '@nestjs/swagger';
 import { CreateShipmentDto } from './dto/create-shipment.dto';
 import { ListShipmentsQuery } from './dto/list-shipments.query';
+import { ManageShipmentOrdersDto } from './dto/manage-shipment-orders.dto';
 import { ShipmentDto } from './dto/shipment.dto';
 import { ShipmentSummaryDto } from './dto/shipment-summary.dto';
 import { UpdateShipmentDto } from './dto/update-shipment.dto';
@@ -34,10 +34,16 @@ export class ShipmentsController {
     return this.shipments.findByOrderId(orderId);
   }
 
+  @Get(':id')
+  @ApiOkResponse({ type: ShipmentDto })
+  @ApiNotFoundResponse()
+  findById(@Param('id', ParseIntPipe) id: number): Promise<ShipmentDto> {
+    return this.shipments.findById(id);
+  }
+
   @Post()
   @ApiCreatedResponse({ type: ShipmentDto })
   @ApiNotFoundResponse()
-  @ApiConflictResponse({ description: 'The order already has a shipment file' })
   create(@Body() dto: CreateShipmentDto): Promise<ShipmentDto> {
     return this.shipments.create(dto);
   }
@@ -50,5 +56,15 @@ export class ShipmentsController {
     @Body() dto: UpdateShipmentDto,
   ): Promise<ShipmentDto> {
     return this.shipments.update(id, dto);
+  }
+
+  @Patch(':id/orders')
+  @ApiOkResponse({ type: ShipmentDto })
+  @ApiNotFoundResponse()
+  updateOrders(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ManageShipmentOrdersDto,
+  ): Promise<ShipmentDto> {
+    return this.shipments.updateOrders(id, dto.orderIds);
   }
 }

@@ -1,62 +1,143 @@
 <form class="order-form" [formGroup]="form" (ngSubmit)="onSave()" novalidate>
-  <!-- Order picker -->
-  <section class="form-section">
-    <h2 class="section-title">בחירת הזמנה</h2>
-    <div class="grid-row">
-      <div class="form-group">
-        <label class="required">מספר הזמנה</label>
-        <input
-          type="text"
-          class="form-control"
-          inputmode="numeric"
-          placeholder="לדוגמה 1000"
-          [value]="orderIdText()"
-          [readonly]="currentOrder() !== null"
-          (input)="orderIdText.set($any($event.target).value)"
-          (keydown.enter)="$event.preventDefault(); loadOrder()"
-        />
-        @if (loadError(); as message) {
-          <p class="field-error" role="alert">{{ message }}</p>
-        }
-      </div>
+  @if (loadError(); as message) {
+    <p class="form-message form-message--error" role="alert">{{ message }}</p>
+  }
 
-      <div class="form-group">
-        <label>&nbsp;</label>
-        @if (currentOrder() === null) {
-          <button type="button" class="btn btn-primary" [disabled]="loading()" (click)="loadOrder()">
-            @if (loading()) {
-              <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
-              טוען...
-            } @else {
-              צור תיק שילוח
-            }
-          </button>
-        } @else {
-          <button type="button" class="btn btn-secondary" (click)="changeOrder()">
-            בחר הזמנה אחרת
-          </button>
-        }
-      </div>
+  @if (showOrderSelection()) {
+    <!-- Order selection: pick which orders belong to this case -->
+    <section class="form-section grid-screen">
+      <h2 class="section-title">בחירת הזמנות לתיק השילוח</h2>
 
-      @if (currentOrder(); as order) {
-        <div class="form-group">
-          <label>לקוח</label>
-          <input type="text" class="form-control" [value]="order.customerName ?? '—'" readonly />
+      <div class="filter-bar">
+        <div class="form-group autocomplete-wrapper">
+          <label for="filterCustomer">לקוח</label>
+          <app-customer-autocomplete
+            inputId="filterCustomer"
+            placeholder="הקלד שם לקוח לסינון..."
+            [(customer)]="filterCustomer"
+          />
         </div>
+
+        <div class="form-group autocomplete-wrapper">
+          <label for="filterSupplier">ספק</label>
+          <app-supplier-autocomplete
+            inputId="filterSupplier"
+            placeholder="הקלד שם ספק לסינון..."
+            [(supplier)]="filterSupplier"
+          />
+        </div>
+
+        <div class="form-group filter-bar__actions">
+          <label>&nbsp;</label>
+          <div class="filter-bar__buttons">
+            <button type="button" class="btn btn-secondary" [disabled]="ordersLoading()" (click)="clearFilters()">
+              נקה
+            </button>
+          </div>
+        </div>
+      </div>
+
+      @if (ordersError(); as message) {
+        <p class="form-message form-message--error" role="alert">{{ message }}</p>
+      }
+
+      <div class="data-table-wrapper">
+        @if (ordersLoading() && selectableOrders().length === 0) {
+          <p class="data-table__empty">טוען...</p>
+        } @else if (selectableOrders().length === 0) {
+          <p class="data-table__empty">לא נמצאו הזמנות</p>
+        } @else {
+          <div class="orders-scroll-list">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>מספר הזמנה</th>
+                  <th>לקוח</th>
+                  <th>ספק</th>
+                  <th>סטטוס</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (order of selectableOrders(); track order.id) {
+                  <tr>
+                    <td>
+                      <input
+                        type="checkbox"
+                        [checked]="isOrderSelected(order.id)"
+                        (change)="toggleOrderSelection(order.id)"
+                      />
+                    </td>
+                    <td>{{ order.id }}</td>
+                    <td>{{ order.customerName ?? '—' }}</td>
+                    <td>{{ order.supplierName ?? '—' }}</td>
+                    <td>{{ order.status }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+
+      <div class="form-actions">
+        @if (editingAssociation()) {
+          <button type="button" class="btn btn-secondary" (click)="cancelEditAssociation()">
+            ביטול
+          </button>
+        }
+        <button
+          type="button"
+          class="btn btn-primary"
+          [disabled]="selectedOrderIds().size === 0 || saving()"
+          (click)="onAssociate()"
+        >
+          @if (saving()) {
+            <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
+            שומר...
+          } @else {
+            {{ associateButtonLabel() }}
+          }
+        </button>
+      </div>
+
+      @if (errorMessage(); as message) {
+        <p class="form-message form-message--error" role="alert">{{ message }}</p>
+      }
+    </section>
+  }
+
+  @if (existingShipment(); as shipment) {
+  @if (!showOrderSelection()) {
+    <section class="form-section">
+      <h2 class="section-title">הזמנות בתיק {{ shipment.id }}</h2>
+      <div class="grid-row">
         <div class="form-group">
-          <label>סטטוס תיק</label>
+          <label>הזמנות</label>
           <input
             type="text"
             class="form-control"
-            [value]="existingShipment() ? 'תיק קיים' : 'תיק חדש'"
+            [value]="shipment.orders.length ? shipment.orders.map(o => o.id).join(', ') : '—'"
             readonly
           />
         </div>
-      }
-    </div>
-  </section>
-
-  @if (currentOrder(); as order) {
+        <div class="form-group">
+          <label>לקוחות</label>
+          <input
+            type="text"
+            class="form-control"
+            [value]="shipment.orders.length ? shipment.orders.map(o => o.customerName ?? '—').join(', ') : '—'"
+            readonly
+          />
+        </div>
+        <div class="form-group">
+          <label>&nbsp;</label>
+          <button type="button" class="btn btn-secondary" (click)="editAssociation()">
+            ערוך שיוך הזמנות
+          </button>
+        </div>
+      </div>
+    </section>
     <div class="form-section">
       <div class="tabs-container">
         @for (tab of tabs; track tab.id) {
@@ -410,5 +491,6 @@
         </button>
       </div>
     }
+  }
   }
 </form>

@@ -6,11 +6,11 @@ export class ShipmentSummaryDto {
   @ApiProperty({ type: 'integer', example: 1 })
   id!: number;
 
-  @ApiProperty({ type: 'integer', example: 1000 })
-  orderId!: number;
+  @ApiProperty({ type: 'integer', isArray: true, example: [1000, 1002] })
+  orderIds!: number[];
 
-  @ApiProperty({ type: 'string', nullable: true, example: 'ACME Ltd.' })
-  customerName!: string | null;
+  @ApiProperty({ type: 'string', isArray: true, example: ['ACME Ltd.'] })
+  customerNames!: string[];
 
   @ApiProperty({ type: 'string', nullable: true, example: 'NEXF123456789' })
   billOfLadingNumber!: string | null;

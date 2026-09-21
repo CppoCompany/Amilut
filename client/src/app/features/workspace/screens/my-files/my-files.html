@@ -59,8 +59,8 @@
           <thead>
             <tr>
               <th>מספר תיק</th>
-              <th>מספר הזמנה</th>
-              <th>לקוח</th>
+              <th>מספרי הזמנות</th>
+              <th>לקוחות</th>
               <th>Bill of Lading</th>
               <th>סוג מסמך</th>
               <th>מוביל</th>
@@ -75,8 +75,8 @@
               (dblclick)="onEditCase(shipment)"
             >
               <td>{{ shipment.id }}</td>
-              <td>{{ shipment.orderId }}</td>
-              <td>{{ shipment.customerName ?? '—' }}</td>
+              <td>{{ joinOrEmDash(shipment.orderIds) }}</td>
+              <td>{{ joinOrEmDash(shipment.customerNames) }}</td>
               <td>{{ shipment.billOfLadingNumber ?? '—' }}</td>
               <td>{{ shipment.documentType ? documentTypeLabels[shipment.documentType] : '—' }}</td>
               <td>{{ shipment.forwarderName ?? '—' }}</td>

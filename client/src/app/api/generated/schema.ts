@@ -155,13 +155,29 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        get: operations["ShipmentsController_findById"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
         patch: operations["ShipmentsController_update"];
+        trace?: never;
+    };
+    "/api/shipments/{id}/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["ShipmentsController_updateOrders"];
         trace?: never;
     };
     "/api/suppliers": {
@@ -415,10 +431,19 @@ export interface components {
         ShipmentSummaryDto: {
             /** @example 1 */
             id: number;
-            /** @example 1000 */
-            orderId: number;
-            /** @example ACME Ltd. */
-            customerName: string | null;
+            /**
+             * @example [
+             *       1000,
+             *       1002
+             *     ]
+             */
+            orderIds: number[];
+            /**
+             * @example [
+             *       "ACME Ltd."
+             *     ]
+             */
+            customerNames: string[];
             /** @example NEXF123456789 */
             billOfLadingNumber: string | null;
             documentType: components["schemas"]["ShipmentDocumentType"] | null;
@@ -430,11 +455,16 @@ export interface components {
              */
             createdAt: string;
         };
+        ShipmentOrderSummaryDto: {
+            /** @example 1000 */
+            id: number;
+            /** @example ACME Ltd. */
+            customerName: string | null;
+        };
         ShipmentDto: {
             /** @example 1000 */
             id: number;
-            /** @example 1000 */
-            orderId: number;
+            orders: components["schemas"]["ShipmentOrderSummaryDto"][];
             /**
              * Format: date-time
              * @example 2026-09-01T08:30:00.000Z
@@ -503,8 +533,13 @@ export interface components {
             containerSealNumber: string | null;
         };
         CreateShipmentDto: {
-            /** @example 1000 */
-            orderId: number;
+            /**
+             * @example [
+             *       1000,
+             *       1002
+             *     ]
+             */
+            orderIds: number[];
             /** @example NEXF123456789 */
             billOfLadingNumber?: string;
             documentType?: components["schemas"]["ShipmentDocumentType"];
@@ -619,6 +654,15 @@ export interface components {
             containerType?: string;
             /** @example SH98765421 */
             containerSealNumber?: string;
+        };
+        ManageShipmentOrdersDto: {
+            /**
+             * @example [
+             *       1000,
+             *       1002
+             *     ]
+             */
+            orderIds: number[];
         };
         SupplierDto: {
             /** @example 1 */
@@ -837,6 +881,8 @@ export interface operations {
             query?: {
                 customerId?: number;
                 handlerUserId?: number;
+                supplierId?: number;
+                hasCase?: boolean;
                 status?: components["schemas"]["OrderStatus"];
                 createdDate?: string;
                 includeInactive?: boolean;
@@ -1017,13 +1063,6 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description The order already has a shipment file */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
     ShipmentsController_findByOrderId: {
@@ -1032,6 +1071,33 @@ export interface operations {
             header?: never;
             path: {
                 orderId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShipmentDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ShipmentsController_findById: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
             };
             cookie?: never;
         };
@@ -1065,6 +1131,37 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["UpdateShipmentDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShipmentDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ShipmentsController_updateOrders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ManageShipmentOrdersDto"];
             };
         };
         responses: {

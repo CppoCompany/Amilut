@@ -6,10 +6,9 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { HttpErrorResponse } from '@angular/common/http';
-import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
-import { catchError, finalize, map, of, switchMap, throwError } from 'rxjs';
+import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
+import { FormsModule, NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { combineLatest, debounceTime, finalize, forkJoin, skip } from 'rxjs';
 
 import {
   INCOTERM_LABELS,
@@ -18,16 +17,20 @@ import {
   SHIPMENT_DOCUMENT_TYPES,
   ShipmentDocumentType,
 } from '../../../../api/enums';
-import type { OrderDto, ShipmentDto } from '../../../../api/models';
-import { OrdersApi } from '../../../../api/orders-api';
+import type { CustomerDto, OrderDto, ShipmentDto, SupplierDto } from '../../../../api/models';
+import { ListOrdersParams, OrdersApi } from '../../../../api/orders-api';
 import { ShipmentsApi } from '../../../../api/shipments-api';
+import {
+  CustomerAutocomplete,
+  SEARCH_DEBOUNCE_MS,
+} from '../../../customers/customer-autocomplete/customer-autocomplete';
+import { SupplierAutocomplete } from '../../../suppliers/supplier-autocomplete/supplier-autocomplete';
 import { NavigationService } from '../../navigation.service';
 import {
   EMPTY_SHIPMENT_FORM_VALUE,
   loadErrorMessage,
   saveErrorMessage,
   shipmentToFormValue,
-  toCreateShipmentDto,
   toUpdateShipmentDto,
 } from './shipment-form.mapper';
 
@@ -42,10 +45,13 @@ type ShipmentTab =
   | 'terms'
   | 'documents';
 
-/** "ניהול תיק" — shipment file, 1:1 with an order, wired to `/api/shipments`. */
+/** Single batch fetched per filter change; rendering beyond this is virtualized, not paginated. */
+const MAX_ROWS = 200;
+
+/** "ניהול תיק" — shipment file, 1 case → many orders, wired to `/api/shipments`. */
 @Component({
   selector: 'app-shipment-screen',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, FormsModule, CustomerAutocomplete, SupplierAutocomplete],
   templateUrl: './shipment.html',
   styleUrl: './shipment.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -85,12 +91,38 @@ export class ShipmentScreen {
     return index < this.tabs.length - 1 ? this.tabs[index + 1] : null;
   });
 
-  // ── Order picker ────────────────────────────────────────────────────────────
-  protected readonly orderIdText = signal('');
-  protected readonly currentOrder = signal<OrderDto | null>(null);
+  // ── Order selection step ────────────────────────────────────────────────────
+  protected readonly filterCustomer = signal<CustomerDto | null>(null);
+  protected readonly filterSupplier = signal<SupplierDto | null>(null);
+  /** Orders with no case yet, as returned by the server (`hasCase: false`). */
+  private readonly unassignedOrders = signal<OrderDto[]>([]);
+  /** Unassigned orders, plus the case's own currently-associated orders so they stay visible/checked while editing an association. */
+  protected readonly selectableOrders = computed(() => {
+    const base = this.unassignedOrders();
+    const extra = this.associatedOrders().filter(
+      (order) => !base.some((candidate) => candidate.id === order.id),
+    );
+    return [...extra, ...base];
+  });
+  protected readonly selectedOrderIds = signal<ReadonlySet<number>>(new Set());
+  protected readonly ordersLoading = signal(false);
+  protected readonly ordersError = signal<string | null>(null);
+  /** True while re-picking the orders of an already-created case. */
+  protected readonly editingAssociation = signal(false);
+
   protected readonly existingShipment = signal<ShipmentDto | null>(null);
+  /** Full order rows for `existingShipment().orders`, fetched for read-only display (Incoterm/Freight Terms). */
+  protected readonly associatedOrders = signal<OrderDto[]>([]);
   protected readonly loading = signal(false);
   protected readonly loadError = signal<string | null>(null);
+
+  /** The order-selection grid is shown until a case exists, or while re-picking its orders. */
+  protected readonly showOrderSelection = computed(
+    () => this.existingShipment() === null || this.editingAssociation(),
+  );
+  protected readonly associateButtonLabel = computed(() =>
+    this.existingShipment() ? 'עדכן שיוך' : 'שיוך לתיק שילוח',
+  );
 
   // ── Save state ──────────────────────────────────────────────────────────────
   protected readonly saving = signal(false);
@@ -103,15 +135,13 @@ export class ShipmentScreen {
   protected readonly documentType = signal<ShipmentDocumentType | null>(null);
   protected readonly dangerousGoods = signal(false);
 
-  /** Incoterm / freight terms are set on the order itself — shown read-only here. */
-  protected readonly orderPaymentTermsLabel = computed(() => {
-    const order = this.currentOrder();
-    return order ? PAYMENT_TERMS_LABELS[order.paymentTerms] : '';
-  });
-  protected readonly orderIncotermLabel = computed(() => {
-    const order = this.currentOrder();
-    return order ? INCOTERM_LABELS[order.incoterm] : '';
-  });
+  /** Incoterm / freight terms are set on each associated order — shown read-only here. */
+  protected readonly orderIncotermLabel = computed(() => this.joinDistinctLabels(
+    this.associatedOrders().map((order) => INCOTERM_LABELS[order.incoterm]),
+  ));
+  protected readonly orderPaymentTermsLabel = computed(() => this.joinDistinctLabels(
+    this.associatedOrders().map((order) => PAYMENT_TERMS_LABELS[order.paymentTerms]),
+  ));
 
   // ── Free-text / date / numeric fields ───────────────────────────────────────
   protected readonly form = this.fb.group({
@@ -143,71 +173,102 @@ export class ShipmentScreen {
   });
 
   constructor() {
-    // A double-click on a row in "התיקים שלי" queues an order id here (see
-    // NavigationService.openShipmentForEdit) before switching to this screen.
+    this.fetchSelectableOrders();
+
+    combineLatest([toObservable(this.filterCustomer), toObservable(this.filterSupplier)])
+      .pipe(
+        skip(1), // the initial load above already happened
+        debounceTime(SEARCH_DEBOUNCE_MS),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe(() => this.fetchSelectableOrders());
+
+    // A double-click on a row in "התיקים שלי" queues a case id here (see
+    // NavigationService.openCaseForEdit) before switching to this screen.
     // Consume it once immediately so a later, ordinary navigation back to this
-    // screen (e.g. via the sidebar) starts with a blank picker as usual.
-    const editOrderId = this.nav.editShipmentOrderId();
-    if (editOrderId !== null) {
-      this.nav.editShipmentOrderId.set(null);
-      this.orderIdText.set(String(editOrderId));
-      this.loadOrder();
+    // screen (e.g. via the sidebar) starts with a blank selection as usual.
+    const editCaseId = this.nav.editCaseId();
+    if (editCaseId !== null) {
+      this.nav.editCaseId.set(null);
+      this.loadCase(editCaseId);
     }
   }
 
-  /** Looks up the order, then its shipment file (if any already exists). */
-  protected loadOrder(): void {
-    if (this.loading()) return;
+  protected clearFilters(): void {
+    this.filterCustomer.set(null);
+    this.filterSupplier.set(null);
+  }
 
-    const orderId = Number(this.orderIdText().trim());
-    if (!Number.isInteger(orderId) || orderId <= 0) {
-      this.loadError.set('יש להזין מספר הזמנה תקין');
-      return;
+  protected isOrderSelected(orderId: number): boolean {
+    return this.selectedOrderIds().has(orderId);
+  }
+
+  protected toggleOrderSelection(orderId: number): void {
+    const next = new Set(this.selectedOrderIds());
+    if (next.has(orderId)) {
+      next.delete(orderId);
+    } else {
+      next.add(orderId);
     }
+    this.selectedOrderIds.set(next);
+  }
+
+  /** Loads an existing case (e.g. for editing) by its own id. */
+  protected loadCase(caseId: number): void {
+    if (this.loading()) return;
 
     this.loadError.set(null);
     this.successMessage.set(null);
     this.errorMessage.set(null);
     this.loading.set(true);
 
-    this.ordersApi
-      .getById(orderId)
-      .pipe(
-        switchMap((order) =>
-          this.shipmentsApi.getByOrderId(orderId).pipe(
-            map((shipment) => ({ order, shipment: shipment as ShipmentDto | null })),
-            catchError((err: unknown) =>
-              err instanceof HttpErrorResponse && err.status === 404
-                ? of({ order, shipment: null })
-                : throwError(() => err),
-            ),
-          ),
-        ),
-        finalize(() => this.loading.set(false)),
-        takeUntilDestroyed(this.destroyRef),
-      )
+    this.shipmentsApi
+      .getById(caseId)
+      .pipe(finalize(() => this.loading.set(false)), takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: ({ order, shipment }) => {
-          this.currentOrder.set(order);
-          this.applyShipment(shipment);
-        },
+        next: (shipment) => this.applyShipment(shipment),
         error: (error: unknown) => {
-          this.currentOrder.set(null);
           this.applyShipment(null);
           this.loadError.set(loadErrorMessage(error));
         },
       });
   }
 
-  /** Drops the loaded order/file so a different order number can be entered. */
-  protected changeOrder(): void {
-    this.orderIdText.set('');
-    this.currentOrder.set(null);
-    this.applyShipment(null);
-    this.loadError.set(null);
+  /** Switches back to the order-selection grid, pre-checking the case's current orders. */
+  protected editAssociation(): void {
+    const shipment = this.existingShipment();
+    this.selectedOrderIds.set(new Set(shipment ? shipment.orders.map((order) => order.id) : []));
+    this.editingAssociation.set(true);
+  }
+
+  protected cancelEditAssociation(): void {
+    this.editingAssociation.set(false);
+  }
+
+  /** Associates the checked orders with a new case, or updates an existing case's orders. */
+  protected onAssociate(): void {
+    const orderIds = [...this.selectedOrderIds()];
+    if (orderIds.length === 0 || this.saving()) return;
+
     this.successMessage.set(null);
     this.errorMessage.set(null);
-    this.activeTab.set('document');
+    this.saving.set(true);
+
+    const existing = this.existingShipment();
+    const request$ = existing
+      ? this.shipmentsApi.updateOrders(existing.id, orderIds)
+      : this.shipmentsApi.create({ orderIds, dangerousGoods: false });
+
+    request$
+      .pipe(finalize(() => this.saving.set(false)), takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (shipment) => {
+          this.applyShipment(shipment);
+          this.editingAssociation.set(false);
+          this.activeTab.set('document');
+        },
+        error: (error: unknown) => this.errorMessage.set(saveErrorMessage(error)),
+      });
   }
 
   protected goToPreviousTab(): void {
@@ -220,24 +281,20 @@ export class ShipmentScreen {
     if (tab) this.activeTab.set(tab.id);
   }
 
-  /** Creates the shipment file on the first save; PATCHes the same file on later saves. */
+  /** Patches the document fields of the already-open case. */
   protected onSave(): void {
-    const order = this.currentOrder();
-    if (!order || this.saving()) return;
+    const existing = this.existingShipment();
+    if (!existing || this.saving()) return;
 
     this.successMessage.set(null);
     this.errorMessage.set(null);
 
     const selection = { documentType: this.documentType(), dangerousGoods: this.dangerousGoods() };
     const form = this.form.getRawValue();
-    const existing = this.existingShipment();
-
-    const request$ = existing
-      ? this.shipmentsApi.update(existing.id, toUpdateShipmentDto(selection, form))
-      : this.shipmentsApi.create(toCreateShipmentDto(order.id, selection, form));
 
     this.saving.set(true);
-    request$
+    this.shipmentsApi
+      .update(existing.id, toUpdateShipmentDto(selection, form))
       .pipe(finalize(() => this.saving.set(false)), takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (shipment) => {
@@ -248,10 +305,51 @@ export class ShipmentScreen {
       });
   }
 
+  private fetchSelectableOrders(): void {
+    // Only orders with no shipping case yet — `unassignedOrders` is merged with
+    // `associatedOrders()` below (in `selectableOrders`) so a case's own orders
+    // stay visible/checked while re-picking its association.
+    const params: ListOrdersParams = { limit: MAX_ROWS, hasCase: false };
+
+    this.ordersLoading.set(true);
+    this.ordersError.set(null);
+    this.ordersApi
+      .list(params)
+      .pipe(finalize(() => this.ordersLoading.set(false)), takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (rows) => this.unassignedOrders.set(rows),
+        error: () => {
+          this.unassignedOrders.set([]);
+          this.ordersError.set('טעינת ההזמנות נכשלה');
+        },
+      });
+  }
+
   private applyShipment(shipment: ShipmentDto | null): void {
     this.existingShipment.set(shipment);
     this.documentType.set(shipment?.documentType ?? null);
     this.dangerousGoods.set(shipment?.dangerousGoods ?? false);
     this.form.reset(shipment ? shipmentToFormValue(shipment) : EMPTY_SHIPMENT_FORM_VALUE);
+    if (!shipment) {
+      this.selectedOrderIds.set(new Set());
+    }
+    this.loadAssociatedOrders(shipment);
+  }
+
+  private loadAssociatedOrders(shipment: ShipmentDto | null): void {
+    if (!shipment || shipment.orders.length === 0) {
+      this.associatedOrders.set([]);
+      return;
+    }
+    forkJoin(shipment.orders.map((order) => this.ordersApi.getById(order.id)))
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (orders) => this.associatedOrders.set(orders),
+        error: () => this.associatedOrders.set([]),
+      });
+  }
+
+  private joinDistinctLabels(labels: string[]): string {
+    return labels.length ? [...new Set(labels)].join(', ') : '—';
   }
 }

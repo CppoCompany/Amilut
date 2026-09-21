@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -8,16 +7,16 @@ import { DatabaseService } from '../database/database.service';
 import { CreateShipmentDto } from './dto/create-shipment.dto';
 import { ListShipmentsQuery } from './dto/list-shipments.query';
 import { ShipmentDto } from './dto/shipment.dto';
+import { ShipmentOrderSummaryDto } from './dto/shipment-order-summary.dto';
 import { ShipmentSummaryDto } from './dto/shipment-summary.dto';
 import { UpdateShipmentDto } from './dto/update-shipment.dto';
 import { ShipmentDocumentType } from './shipments.enums';
 
-type WritableShipmentField = Exclude<keyof CreateShipmentDto, 'orderId'>;
+type WritableShipmentField = Exclude<keyof CreateShipmentDto, 'orderIds'>;
 
 /** Row shape produced by SHIPMENT_SELECT (DATE columns are pre-formatted in SQL). */
 interface ShipmentRow {
   id: number;
-  order_id: number;
   created_at: Date | string;
   updated_at: Date | string;
   bill_of_lading_number: string | null;
@@ -49,10 +48,15 @@ interface ShipmentRow {
   container_seal_number: string | null;
 }
 
+interface CaseOrderRow {
+  id: number;
+  customer_name: string | null;
+}
+
 interface ShipmentSummaryRow {
   id: number;
-  order_id: number;
-  customer_name: string | null;
+  order_ids: number[] | null;
+  customer_names: string[] | null;
   bill_of_lading_number: string | null;
   document_type: ShipmentDocumentType | null;
   forwarder_name: string | null;
@@ -94,7 +98,6 @@ const WRITABLE_KEYS = Object.keys(WRITABLE_COLUMNS) as WritableShipmentField[];
 
 const SHIPMENT_SELECT = `
   SELECT id,
-         order_id,
          created_at,
          updated_at,
          bill_of_lading_number,
@@ -126,20 +129,26 @@ const SHIPMENT_SELECT = `
          container_seal_number
     FROM order_account`;
 
+const CASE_ORDERS_SELECT = `
+  SELECT o.id, c.name AS customer_name
+    FROM orders o
+    LEFT JOIN customers c ON c.id = o.customer_id
+   WHERE o.case_id = $1
+   ORDER BY o.id`;
+
 const SHIPMENT_SUMMARY_SELECT = `
   SELECT s.id,
-         s.order_id,
-         c.name AS customer_name,
+         array_agg(DISTINCT o.id) FILTER (WHERE o.id IS NOT NULL) AS order_ids,
+         array_agg(DISTINCT c.name) FILTER (WHERE c.name IS NOT NULL) AS customer_names,
          s.bill_of_lading_number,
          s.document_type,
          s.forwarder_name,
          s.created_at
     FROM order_account s
-    LEFT JOIN orders    o ON o.id = s.order_id
+    LEFT JOIN orders    o ON o.case_id = s.id
     LEFT JOIN customers c ON c.id = o.customer_id`;
 
 const PG_FOREIGN_KEY_VIOLATION = '23503';
-const PG_UNIQUE_VIOLATION = '23505';
 
 @Injectable()
 export class ShipmentsService {
@@ -151,7 +160,9 @@ export class ShipmentsService {
 
     if (query.customerId !== undefined) {
       params.push(query.customerId);
-      where.push(`o.customer_id = $${params.length}`);
+      where.push(
+        `EXISTS (SELECT 1 FROM orders o2 WHERE o2.case_id = s.id AND o2.customer_id = $${params.length})`,
+      );
     }
     if (query.forwarderName !== undefined) {
       params.push(`%${query.forwarderName}%`);
@@ -171,6 +182,7 @@ export class ShipmentsService {
     const rows = await this.db.query<ShipmentSummaryRow>(
       `${SHIPMENT_SUMMARY_SELECT}
        ${whereClause}
+       GROUP BY s.id, s.bill_of_lading_number, s.document_type, s.forwarder_name, s.created_at
        ORDER BY s.id DESC
        LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
       params,
@@ -178,27 +190,42 @@ export class ShipmentsService {
     return rows.map(toShipmentSummaryDto);
   }
 
-  /** Opens a shipment file for an order. Fails if the order already has one. */
+  /** Opens a shipment case grouping the given orders. Reassigns any of them away from a prior case. */
   async create(dto: CreateShipmentDto): Promise<ShipmentDto> {
-    await this.assertOrderExists(dto.orderId);
+    const caseId = await this.db.transaction(async (client) => {
+      await assertOrdersExist(
+        (sql, params) => client.query(sql, params).then((r) => r.rows),
+        dto.orderIds,
+      );
 
-    const keys = WRITABLE_KEYS.filter((key) => dto[key] !== undefined);
-    const columns = ['order_id', ...keys.map((key) => WRITABLE_COLUMNS[key])];
-    const values: unknown[] = [dto.orderId, ...keys.map((key) => dto[key])];
-    const placeholders = values.map((_, i) => `$${i + 1}`);
+      const keys = WRITABLE_KEYS.filter((key) => dto[key] !== undefined);
+      const columns = keys.map((key) => WRITABLE_COLUMNS[key]);
+      const values: unknown[] = keys.map((key) => dto[key]);
+      const placeholders = values.map((_, i) => `$${i + 1}`);
 
-    const sql = `INSERT INTO order_account (${columns.join(', ')}) VALUES (${placeholders.join(', ')}) RETURNING id`;
+      const insertSql = columns.length
+        ? `INSERT INTO order_account (${columns.join(', ')}) VALUES (${placeholders.join(', ')}) RETURNING id`
+        : `INSERT INTO order_account DEFAULT VALUES RETURNING id`;
 
-    let inserted: { id: number } | null;
-    try {
-      inserted = await this.db.queryOne<{ id: number }>(sql, values);
-    } catch (err) {
-      throw translateWriteError(err);
-    }
-    if (!inserted) {
-      throw new BadRequestException('Shipment was not created');
-    }
-    return this.findById(inserted.id);
+      let inserted;
+      try {
+        inserted = await client.query<{ id: number }>(insertSql, values);
+      } catch (err) {
+        throw translateWriteError(err);
+      }
+      const newCaseId = inserted.rows[0]?.id;
+      if (newCaseId === undefined) {
+        throw new BadRequestException('Shipment was not created');
+      }
+
+      await client.query('UPDATE orders SET case_id = $1 WHERE id = ANY($2)', [
+        newCaseId,
+        dto.orderIds,
+      ]);
+      return newCaseId;
+    });
+
+    return this.findById(caseId);
   }
 
   async findById(id: number): Promise<ShipmentDto> {
@@ -206,21 +233,23 @@ export class ShipmentsService {
     if (!row) {
       throw new NotFoundException(`Shipment ${id} not found`);
     }
-    return toShipmentDto(row);
+    const orders = await this.db.query<CaseOrderRow>(CASE_ORDERS_SELECT, [id]);
+    return toShipmentDto(row, orders);
   }
 
+  /** Looks up the case a given order currently belongs to, if any. */
   async findByOrderId(orderId: number): Promise<ShipmentDto> {
-    const row = await this.db.queryOne<ShipmentRow>(
-      `${SHIPMENT_SELECT} WHERE order_id = $1`,
+    const order = await this.db.queryOne<{ case_id: number | null }>(
+      'SELECT case_id FROM orders WHERE id = $1',
       [orderId],
     );
-    if (!row) {
+    if (!order || order.case_id === null) {
       throw new NotFoundException(`Order ${orderId} has no shipment file yet`);
     }
-    return toShipmentDto(row);
+    return this.findById(order.case_id);
   }
 
-  /** Patches only the provided fields; id / orderId / createdAt are immutable. */
+  /** Patches only the provided document fields; the order association is unaffected. */
   async update(id: number, dto: UpdateShipmentDto): Promise<ShipmentDto> {
     const keys = WRITABLE_KEYS.filter((key) => dto[key] !== undefined);
     if (keys.length === 0) {
@@ -250,13 +279,43 @@ export class ShipmentsService {
     return this.findById(id);
   }
 
-  private async assertOrderExists(orderId: number): Promise<void> {
-    const order = await this.db.queryOne<{ id: number }>('SELECT id FROM orders WHERE id = $1', [
-      orderId,
-    ]);
-    if (!order) {
-      throw new NotFoundException(`Order ${orderId} not found`);
-    }
+  /** Replaces the full set of orders associated with a case. */
+  async updateOrders(id: number, orderIds: number[]): Promise<ShipmentDto> {
+    await this.db.transaction(async (client) => {
+      const existing = await client.query<{ id: number }>(
+        'SELECT id FROM order_account WHERE id = $1',
+        [id],
+      );
+      if (existing.rows.length === 0) {
+        throw new NotFoundException(`Shipment ${id} not found`);
+      }
+
+      await assertOrdersExist(
+        (sql, params) => client.query(sql, params).then((r) => r.rows),
+        orderIds,
+      );
+
+      await client.query(
+        'UPDATE orders SET case_id = NULL WHERE case_id = $1 AND NOT (id = ANY($2))',
+        [id, orderIds],
+      );
+      await client.query('UPDATE orders SET case_id = $1 WHERE id = ANY($2)', [id, orderIds]);
+    });
+
+    return this.findById(id);
+  }
+}
+
+/** Throws NotFoundException listing any id in `orderIds` that doesn't exist. */
+async function assertOrdersExist(
+  query: (sql: string, params: unknown[]) => Promise<{ id: number }[]>,
+  orderIds: number[],
+): Promise<void> {
+  const found = await query('SELECT id FROM orders WHERE id = ANY($1)', [orderIds]);
+  const foundIds = new Set(found.map((row) => row.id));
+  const missing = orderIds.filter((id) => !foundIds.has(id));
+  if (missing.length > 0) {
+    throw new NotFoundException(`Order(s) not found: ${missing.join(', ')}`);
   }
 }
 
@@ -264,9 +323,6 @@ function translateWriteError(err: unknown): unknown {
   const code = (err as { code?: unknown } | null)?.code;
   if (code === PG_FOREIGN_KEY_VIOLATION) {
     return new BadRequestException('Referenced order does not exist');
-  }
-  if (code === PG_UNIQUE_VIOLATION) {
-    return new ConflictException('This order already has a shipment file');
   }
   return err;
 }
@@ -279,10 +335,15 @@ function toNumberOrNull(value: string | number | null): number | null {
   return value === null ? null : Number(value);
 }
 
-function toShipmentDto(row: ShipmentRow): ShipmentDto {
+function toShipmentDto(row: ShipmentRow, orders: CaseOrderRow[]): ShipmentDto {
   return {
     id: row.id,
-    orderId: row.order_id,
+    orders: orders.map(
+      (order): ShipmentOrderSummaryDto => ({
+        id: order.id,
+        customerName: order.customer_name,
+      }),
+    ),
     createdAt: toIsoString(row.created_at),
     updatedAt: toIsoString(row.updated_at),
     billOfLadingNumber: row.bill_of_lading_number,
@@ -318,8 +379,8 @@ function toShipmentDto(row: ShipmentRow): ShipmentDto {
 function toShipmentSummaryDto(row: ShipmentSummaryRow): ShipmentSummaryDto {
   return {
     id: row.id,
-    orderId: row.order_id,
-    customerName: row.customer_name,
+    orderIds: row.order_ids ?? [],
+    customerNames: row.customer_names ?? [],
     billOfLadingNumber: row.bill_of_lading_number,
     documentType: row.document_type,
     forwarderName: row.forwarder_name,

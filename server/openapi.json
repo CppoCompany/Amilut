@@ -251,6 +251,23 @@
             }
           },
           {
+            "name": "supplierId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "hasCase",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
             "name": "status",
             "required": false,
             "in": "query",
@@ -574,9 +591,6 @@
           },
           "404": {
             "description": ""
-          },
-          "409": {
-            "description": "The order already has a shipment file"
           }
         },
         "security": [
@@ -628,6 +642,42 @@
       }
     },
     "/api/shipments/{id}": {
+      "get": {
+        "operationId": "ShipmentsController_findById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShipmentDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "shipments"
+        ]
+      },
       "patch": {
         "operationId": "ShipmentsController_update",
         "parameters": [
@@ -646,6 +696,54 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateShipmentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShipmentDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "shipments"
+        ]
+      }
+    },
+    "/api/shipments/{id}/orders": {
+      "patch": {
+        "operationId": "ShipmentsController_updateOrders",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManageShipmentOrdersDto"
               }
             }
           }
@@ -1469,14 +1567,24 @@
             "type": "integer",
             "example": 1
           },
-          "orderId": {
-            "type": "integer",
-            "example": 1000
+          "orderIds": {
+            "example": [
+              1000,
+              1002
+            ],
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
           },
-          "customerName": {
-            "type": "string",
-            "nullable": true,
-            "example": "ACME Ltd."
+          "customerNames": {
+            "example": [
+              "ACME Ltd."
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "billOfLadingNumber": {
             "type": "string",
@@ -1504,12 +1612,30 @@
         },
         "required": [
           "id",
-          "orderId",
-          "customerName",
+          "orderIds",
+          "customerNames",
           "billOfLadingNumber",
           "documentType",
           "forwarderName",
           "createdAt"
+        ]
+      },
+      "ShipmentOrderSummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1000
+          },
+          "customerName": {
+            "type": "string",
+            "nullable": true,
+            "example": "ACME Ltd."
+          }
+        },
+        "required": [
+          "id",
+          "customerName"
         ]
       },
       "ShipmentDto": {
@@ -1519,9 +1645,11 @@
             "type": "integer",
             "example": 1000
           },
-          "orderId": {
-            "type": "integer",
-            "example": 1000
+          "orders": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ShipmentOrderSummaryDto"
+            }
           },
           "createdAt": {
             "type": "string",
@@ -1674,7 +1802,7 @@
         },
         "required": [
           "id",
-          "orderId",
+          "orders",
           "createdAt",
           "updatedAt",
           "billOfLadingNumber",
@@ -1709,9 +1837,15 @@
       "CreateShipmentDto": {
         "type": "object",
         "properties": {
-          "orderId": {
-            "type": "integer",
-            "example": 1000
+          "orderIds": {
+            "example": [
+              1000,
+              1002
+            ],
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
           },
           "billOfLadingNumber": {
             "type": "string",
@@ -1827,7 +1961,7 @@
           }
         },
         "required": [
-          "orderId"
+          "orderIds"
         ]
       },
       "UpdateShipmentDto": {
@@ -1946,6 +2080,24 @@
             "example": "SH98765421"
           }
         }
+      },
+      "ManageShipmentOrdersDto": {
+        "type": "object",
+        "properties": {
+          "orderIds": {
+            "example": [
+              1000,
+              1002
+            ],
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          }
+        },
+        "required": [
+          "orderIds"
+        ]
       },
       "SupplierDto": {
         "type": "object",

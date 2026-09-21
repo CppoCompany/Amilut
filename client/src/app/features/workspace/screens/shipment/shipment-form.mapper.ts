@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 
 import { ShipmentDocumentType } from '../../../../api/enums';
-import type { CreateShipmentDto, ShipmentDto, UpdateShipmentDto } from '../../../../api/models';
+import type { ShipmentDto, UpdateShipmentDto } from '../../../../api/models';
 
 /** Free-text / date / numeric fields of the shipment form (always strings; `''` = not filled). */
 export interface ShipmentFormValue {
@@ -115,15 +115,6 @@ function sharedFields(selection: ShipmentSelection, form: ShipmentFormValue) {
     containerType: blankToUndefined(form.containerType),
     containerSealNumber: blankToUndefined(form.containerSealNumber),
   };
-}
-
-/** Assembles the `CreateShipmentDto` sent to `POST /api/shipments`. */
-export function toCreateShipmentDto(
-  orderId: number,
-  selection: ShipmentSelection,
-  form: ShipmentFormValue,
-): CreateShipmentDto {
-  return withoutUndefined({ orderId, ...sharedFields(selection, form) });
 }
 
 /** Assembles the `UpdateShipmentDto` sent to `PATCH /api/shipments/:id`. */
