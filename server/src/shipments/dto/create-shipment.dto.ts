@@ -1,5 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  ArrayMinSize,
+  IsArray,
   IsBoolean,
   IsDateString,
   IsEnum,
@@ -13,15 +15,18 @@ import {
 import { ShipmentDocumentType } from '../shipments.enums';
 
 /**
- * Payload for opening a shipment file. `orderId` identifies the order it
- * belongs to (1:1 — the server rejects a second file for the same order);
- * every other field is optional and filled in over time as the file
- * progresses.
+ * Payload for opening a shipment file. `orderIds` are the orders it groups
+ * together (1 case → many orders; each order belongs to at most one case at
+ * a time — associating an order here reassigns it away from any other case
+ * it was previously in); every other field is optional and filled in over
+ * time as the file progresses.
  */
 export class CreateShipmentDto {
-  @ApiProperty({ type: 'integer', example: 1000 })
-  @IsInt()
-  orderId!: number;
+  @ApiProperty({ type: 'integer', isArray: true, example: [1000, 1002] })
+  @IsArray()
+  @ArrayMinSize(1)
+  @IsInt({ each: true })
+  orderIds!: number[];
 
   // ── זיהוי מסמך — Document Type & Number ────────────────────────────────────
   @ApiPropertyOptional({ example: 'NEXF123456789' })

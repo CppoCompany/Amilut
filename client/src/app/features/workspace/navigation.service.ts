@@ -44,11 +44,11 @@ export class NavigationService {
   readonly editOrderId = signal<number | null>(null);
 
   /**
-   * Order id another screen (e.g. a double-click in "התיקים שלי") wants the
-   * shipment/case screen to load for editing, set via {@link openShipmentForEdit}.
+   * Case id another screen (e.g. a double-click in "התיקים שלי") wants the
+   * shipment/case screen to load for editing, set via {@link openCaseForEdit}.
    * Consumed once — the shipment screen clears it immediately after reading it.
    */
-  readonly editShipmentOrderId = signal<number | null>(null);
+  readonly editCaseId = signal<number | null>(null);
 
   constructor() {
     this.setupTreeNavigation();
@@ -210,9 +210,9 @@ export class NavigationService {
     }
   }
 
-  /** Navigate to the shipment/case screen with `orderId`'s case queued up for editing. */
-  openShipmentForEdit(orderId: number): void {
-    this.editShipmentOrderId.set(orderId);
+  /** Navigate to the shipment/case screen with `caseId` queued up for editing. */
+  openCaseForEdit(caseId: number): void {
+    this.editCaseId.set(caseId);
     const child = this.tree()
       .flatMap((node) => node.children)
       .find((c) => c.page === 'shipment');

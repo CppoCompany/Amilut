@@ -18,6 +18,7 @@ wired to `npm run db:generate`.
 | `009_add_supplier_name_to_orders.sql` | Adds `supplier_name` to `orders` (superseded by 010) | `Amilut` | `Admin` (via `SET ROLE`) |
 | `010_create_suppliers_and_link_orders.sql` | `suppliers` table (mirrors `customers`) + `orders.supplier_id` FK, replacing `supplier_name` | `Amilut` | `Admin` (via `SET ROLE`) |
 | `011_add_contact_fields_to_customers.sql` | Adds `company_reg_number` (ח״פ), `contact_name`, `contact_phone` (איש קשר) to `customers` | `Amilut` | `Admin` (via `SET ROLE`) |
+| `012_orders_case_id.sql` | Flips case↔order to `orders.case_id` (1 case → many orders), replacing `order_account.order_id` | `Amilut` | `Admin` (via `SET ROLE`) |
 | `run-migrations.mjs` | Applies `001`, then every other `NNN_*.sql` in name order | — | — |
 
 Every step is **idempotent** — re-running does nothing if the objects already exist.
@@ -55,12 +56,13 @@ Amilut
 ├── users     (id, customer_id → customers.id, name, role[=admin],
 │              title, email, last_login, isActive)
 ├── orders    (id[seq from 1000], customer_id → customers.id,
-│              handler_user_id → users.id, supplier_id → suppliers.id, created_at,
+│              handler_user_id → users.id, supplier_id → suppliers.id,
+│              case_id → order_account.id [nullable, ON DELETE SET NULL], created_at,
 │              status, shipment_type, payment_terms, incoterm, destination,
 │              factory_ready_date, factory_pickup_date, departure_date, eta_date,
 │              shipping_line, voyage_number, airline, flight_number,
 │              updated_at, isActive)
-└── order_account (id, order_id → orders.id [UNIQUE, 1:1, ON DELETE CASCADE],
+└── order_account (id [1 case → many orders.case_id],
                bill_of_lading_number, document_type, bl_issue_date,
                forwarder_name, voyage_flight_number, vessel_name,
                port_of_loading, port_of_discharge, manifest_number,
@@ -71,7 +73,8 @@ Amilut
                dangerous_goods, dangerous_goods_imo_class,
                container_number, container_type, container_seal_number,
                created_at, updated_at)
-               -- created as `shipments` by 005, renamed by 006
+               -- created as `shipments` by 005, renamed by 006;
+               -- was 1:1 with orders.order_id until 012 flipped it to orders.case_id
 
 Enum-like columns (`status`, `shipment_type`, `payment_terms`, `incoterm`,
 `destination` in `orders`; `document_type` in `order_account`)

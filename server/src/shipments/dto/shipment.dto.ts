@@ -1,13 +1,14 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { ShipmentDocumentType } from '../shipments.enums';
+import { ShipmentOrderSummaryDto } from './shipment-order-summary.dto';
 
-/** Shipment file ("ניהול תיק") as returned by the API — 1:1 with an order. */
+/** Shipment file ("ניהול תיק") as returned by the API — 1 case → many orders. */
 export class ShipmentDto {
   @ApiProperty({ type: 'integer', example: 1000 })
   id!: number;
 
-  @ApiProperty({ type: 'integer', example: 1000 })
-  orderId!: number;
+  @ApiProperty({ type: () => ShipmentOrderSummaryDto, isArray: true })
+  orders!: ShipmentOrderSummaryDto[];
 
   @ApiProperty({ format: 'date-time', example: '2026-09-01T08:30:00.000Z' })
   createdAt!: string;
@@ -93,7 +94,7 @@ export class ShipmentDto {
   hsCode!: string | null;
 
   // ── תנאים — Terms (dangerous goods only; Incoterms / Freight Terms live on
-  // the parent order — see orders.incoterm / orders.paymentTerms) ───────────
+  // each associated order — see orders.incoterm / orders.paymentTerms) ─────
   @ApiProperty({ example: false })
   dangerousGoods!: boolean;
 

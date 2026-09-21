@@ -25,6 +25,23 @@ export class ListOrdersQuery {
   @IsInt()
   handlerUserId?: number;
 
+  @ApiPropertyOptional({ type: 'integer', example: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  supplierId?: number;
+
+  /** `false` matches orders with no shipping case yet (`case_id IS NULL`); `true` matches the opposite. */
+  @ApiPropertyOptional({ type: 'boolean' })
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    value === undefined
+      ? undefined
+      : value === true || value === 'true' || value === '1' || value === 1,
+  )
+  @IsBoolean()
+  hasCase?: boolean;
+
   @ApiPropertyOptional({ enum: OrderStatus, enumName: 'OrderStatus' })
   @IsOptional()
   @IsEnum(OrderStatus)

@@ -1,5 +1,16 @@
 // Component-scoped additions to the shared form styles (see src/styles.scss).
 
+// `.grid-screen`'s `height: 100%` (src/styles.scss) assumes it's the direct
+// child of a flex-stretched host, which is true for the dedicated grid screens
+// (my-orders/my-files) but not here — this section sits inside `.order-form`,
+// a plain content-sized flex column, so a plain scrollable box (not
+// cdk-virtual-scroll-viewport, which needs a resolved ancestor height to
+// measure itself against) is used for the order-selection list instead.
+.orders-scroll-list {
+  max-height: 420px;
+  overflow-y: auto;
+}
+
 .field-error {
   margin: 0.35rem 0 0;
   font-size: 0.85rem;
