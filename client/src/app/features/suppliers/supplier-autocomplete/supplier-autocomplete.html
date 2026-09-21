@@ -1,0 +1,97 @@
+<div class="customer-search" [class.customer-search--selected]="supplier() !== null">
+  <input
+    #searchInput
+    class="form-control customer-search__input"
+    type="text"
+    role="combobox"
+    autocomplete="off"
+    [id]="inputId()"
+    [value]="text()"
+    [placeholder]="placeholder()"
+    [disabled]="disabled()"
+    [class.is-invalid]="invalid()"
+    [attr.aria-expanded]="open()"
+    [attr.aria-controls]="listId()"
+    [attr.aria-activedescendant]="activeOptionId()"
+    aria-autocomplete="list"
+    (input)="onInput($event)"
+    (focus)="onFocus()"
+    (blur)="onBlur()"
+    (keydown)="onKeydown($event)"
+  />
+
+  @if (loading()) {
+    <span class="customer-search__spinner" aria-label="מחפש..." title="מחפש...">
+      <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
+    </span>
+  } @else if (supplier()) {
+    <span class="customer-search__check" aria-hidden="true">
+      <i class="fa-solid fa-circle-check"></i>
+    </span>
+  }
+</div>
+
+<div
+  class="autocomplete-list"
+  role="listbox"
+  [id]="listId()"
+  [class.active]="open()"
+  (mousedown)="onListMousedown($event)"
+>
+  @for (match of results(); track match.id; let i = $index) {
+    <div
+      class="autocomplete-item"
+      role="option"
+      [id]="optionId(i)"
+      [class.autocomplete-item--active]="activeIndex() === i"
+      [attr.aria-selected]="activeIndex() === i"
+      (mouseenter)="setActive(i)"
+      (click)="select(match)"
+    >
+      <div class="autocomplete-item__name">{{ match.name }}</div>
+      @if (match.phone || match.email) {
+        <div class="autocomplete-item__meta">
+          @if (match.phone) {
+            <span dir="ltr">{{ match.phone }}</span>
+          }
+          @if (match.phone && match.email) {
+            <span class="autocomplete-item__sep" aria-hidden="true">·</span>
+          }
+          @if (match.email) {
+            <span dir="ltr">{{ match.email }}</span>
+          }
+        </div>
+      }
+    </div>
+  }
+
+  @if (showAddRow()) {
+    <div
+      class="autocomplete-item autocomplete-item--add"
+      role="option"
+      [id]="optionId(addRowIndex())"
+      [class.autocomplete-item--active]="activeIndex() === addRowIndex()"
+      [attr.aria-selected]="activeIndex() === addRowIndex()"
+      (mouseenter)="setActive(addRowIndex())"
+      (click)="openDialog()"
+    >
+      <i class="fa-solid fa-plus" aria-hidden="true"></i>
+      <span>לא נמצא ספק בשם „{{ lastQuery() }}” — הוסף ספק חדש</span>
+    </div>
+  }
+
+  @if (error()) {
+    <div class="autocomplete-item autocomplete-item--error" role="alert">
+      <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+      <span>חיפוש הספקים נכשל, נסה שוב</span>
+    </div>
+  }
+</div>
+
+@if (dialogOpen()) {
+  <app-add-supplier-dialog
+    [initialName]="text()"
+    (saved)="onDialogSaved($event)"
+    (cancelled)="onDialogCancelled()"
+  />
+}

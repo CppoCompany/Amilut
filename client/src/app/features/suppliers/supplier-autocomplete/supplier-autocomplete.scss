@@ -1,0 +1,92 @@
+:host {
+  display: block;
+}
+
+.customer-search {
+  position: relative;
+
+  &__input {
+    // Room for the spinner / check icon on the inline-end side (left in RTL).
+    padding-inline-end: 36px;
+  }
+
+  &__spinner,
+  &__check {
+    position: absolute;
+    top: 50%;
+    inset-inline-end: 12px;
+    transform: translateY(-50%);
+    pointer-events: none;
+    font-size: 0.95rem;
+    line-height: 1;
+  }
+
+  &__spinner {
+    color: var(--text-muted, #64748b);
+  }
+
+  &__check {
+    color: #16a34a;
+  }
+}
+
+.form-control.is-invalid {
+  border-color: #ef4444;
+
+  &:focus {
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+  }
+}
+
+.autocomplete-item {
+  &--active,
+  &--active:hover {
+    background-color: var(--bg-color, #f4f7f9);
+    color: var(--secondary-blue, #1b63c7);
+  }
+
+  &__name {
+    font-weight: 600;
+  }
+
+  &__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 0.4rem;
+    margin-top: 2px;
+    font-size: 0.8rem;
+    color: var(--text-muted, #64748b);
+  }
+
+  &__sep {
+    color: var(--border-color, #d8e0e9);
+  }
+
+  &--add {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    color: var(--secondary-blue, #1b63c7);
+    background-color: #eef4fd;
+    border-top: 1px solid var(--border-color, #d8e0e9);
+
+    &.autocomplete-item--active,
+    &:hover {
+      background-color: #dfeafb;
+    }
+  }
+
+  &--error {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: default;
+    color: #b91c1c;
+
+    &:hover {
+      background-color: transparent;
+      color: #b91c1c;
+    }
+  }
+}

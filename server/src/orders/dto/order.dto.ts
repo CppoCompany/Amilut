@@ -46,6 +46,12 @@ export class OrderDto {
   @ApiProperty({ enum: Destination, enumName: 'Destination' })
   destination!: Destination;
 
+  @ApiProperty({ type: 'integer', nullable: true, example: 1 })
+  supplierId!: number | null;
+
+  @ApiProperty({ type: 'string', nullable: true, example: 'Shanghai Tech Components Co., Ltd' })
+  supplierName!: string | null;
+
   @ApiProperty({
     type: 'string',
     format: 'date',

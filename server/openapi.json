@@ -674,6 +674,176 @@
           "shipments"
         ]
       }
+    },
+    "/api/suppliers": {
+      "get": {
+        "operationId": "SuppliersController_search",
+        "parameters": [
+          {
+            "name": "q",
+            "required": true,
+            "in": "query",
+            "description": "Case-insensitive substring of the supplier name",
+            "schema": {
+              "minLength": 3,
+              "example": "sha",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SupplierDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "suppliers"
+        ]
+      },
+      "post": {
+        "operationId": "SuppliersController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSupplierDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupplierDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "suppliers"
+        ]
+      }
+    },
+    "/api/suppliers/{id}": {
+      "get": {
+        "operationId": "SuppliersController_findById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupplierDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No supplier with that id"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "suppliers"
+        ]
+      },
+      "patch": {
+        "operationId": "SuppliersController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSupplierDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupplierDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No supplier with that id"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "suppliers"
+        ]
+      }
     }
   },
   "info": {
@@ -964,6 +1134,16 @@
               }
             ]
           },
+          "supplierId": {
+            "type": "integer",
+            "nullable": true,
+            "example": 1
+          },
+          "supplierName": {
+            "type": "string",
+            "nullable": true,
+            "example": "Shanghai Tech Components Co., Ltd"
+          },
           "factoryReadyDate": {
             "type": "string",
             "format": "date",
@@ -1026,6 +1206,8 @@
           "paymentTerms",
           "incoterm",
           "destination",
+          "supplierId",
+          "supplierName",
           "factoryReadyDate",
           "factoryPickupDate",
           "departureDate",
@@ -1078,6 +1260,10 @@
                 "$ref": "#/components/schemas/Destination"
               }
             ]
+          },
+          "supplierId": {
+            "type": "integer",
+            "example": 1
           },
           "factoryReadyDate": {
             "type": "string",
@@ -1166,6 +1352,10 @@
                 "$ref": "#/components/schemas/Destination"
               }
             ]
+          },
+          "supplierId": {
+            "type": "integer",
+            "example": 1
           },
           "factoryReadyDate": {
             "type": "string",
@@ -1700,6 +1890,113 @@
           "containerSealNumber": {
             "type": "string",
             "example": "SH98765421"
+          }
+        }
+      },
+      "SupplierDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "name": {
+            "type": "string",
+            "example": "Shanghai Tech Components Co., Ltd"
+          },
+          "address": {
+            "type": "string",
+            "nullable": true,
+            "example": "1 Herzl St, Tel Aviv"
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true,
+            "example": "+972-3-1234567"
+          },
+          "email": {
+            "type": "string",
+            "nullable": true,
+            "example": "office@supplier.co.il"
+          },
+          "isActive": {
+            "type": "boolean",
+            "example": true
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "address",
+          "phone",
+          "email",
+          "isActive"
+        ]
+      },
+      "CreateSupplierDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Shanghai Tech Components Co., Ltd",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "address": {
+            "type": "string",
+            "nullable": true,
+            "example": "1 Herzl St, Tel Aviv",
+            "maxLength": 500
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true,
+            "example": "+972-3-1234567",
+            "maxLength": 50
+          },
+          "email": {
+            "type": "string",
+            "nullable": true,
+            "format": "email",
+            "example": "office@supplier.co.il",
+            "maxLength": 255
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "UpdateSupplierDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Shanghai Tech Components Co., Ltd",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "address": {
+            "type": "string",
+            "nullable": true,
+            "example": "1 Herzl St, Tel Aviv",
+            "maxLength": 500
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true,
+            "example": "+972-3-1234567",
+            "maxLength": 50
+          },
+          "email": {
+            "type": "string",
+            "nullable": true,
+            "format": "email",
+            "example": "office@supplier.co.il",
+            "maxLength": 255
+          },
+          "isActive": {
+            "type": "boolean",
+            "example": false
           }
         }
       }

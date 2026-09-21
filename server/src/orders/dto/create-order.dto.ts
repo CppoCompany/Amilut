@@ -46,6 +46,11 @@ export class CreateOrderDto {
   @IsEnum(Destination)
   destination!: Destination;
 
+  @ApiPropertyOptional({ type: 'integer', example: 1 })
+  @IsOptional()
+  @IsInt()
+  supplierId?: number;
+
   @ApiPropertyOptional({ format: 'date', example: '2026-09-01' })
   @IsOptional()
   @IsDateString()

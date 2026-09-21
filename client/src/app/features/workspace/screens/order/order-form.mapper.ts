@@ -55,6 +55,7 @@ export function blankToUndefined(value: string | null | undefined): string | und
  */
 export function toCreateOrderDto(
   customerId: number,
+  supplierId: number | undefined,
   selection: OrderSelection,
   form: OrderFormValue,
 ): CreateOrderDto {
@@ -68,6 +69,7 @@ export function toCreateOrderDto(
     paymentTerms: selection.paymentTerms,
     incoterm: selection.incoterm,
     destination: selection.destination,
+    supplierId,
     factoryReadyDate: blankToUndefined(form.factoryReadyDate),
     factoryPickupDate: blankToUndefined(form.factoryPickupDate),
     departureDate: blankToUndefined(form.departureDate),
