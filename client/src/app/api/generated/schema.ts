@@ -212,6 +212,12 @@ export interface components {
             phone: string | null;
             /** @example office@acme.co.il */
             email: string | null;
+            /** @example 512345678 */
+            companyRegNumber: string | null;
+            /** @example Dana Levi */
+            contactName: string | null;
+            /** @example +972-50-1234567 */
+            contactPhone: string | null;
             /** @example true */
             isActive: boolean;
         };
@@ -227,6 +233,12 @@ export interface components {
              * @example office@acme.co.il
              */
             email?: string | null;
+            /** @example 512345678 */
+            companyRegNumber?: string | null;
+            /** @example Dana Levi */
+            contactName?: string | null;
+            /** @example +972-50-1234567 */
+            contactPhone?: string | null;
         };
         UpdateCustomerDto: {
             /** @example Acme Imports Ltd. */
@@ -240,6 +252,12 @@ export interface components {
              * @example office@acme.co.il
              */
             email?: string | null;
+            /** @example 512345678 */
+            companyRegNumber?: string | null;
+            /** @example Dana Levi */
+            contactName?: string | null;
+            /** @example +972-50-1234567 */
+            contactPhone?: string | null;
             /** @example false */
             isActive?: boolean;
         };

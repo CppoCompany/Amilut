@@ -17,6 +17,7 @@ wired to `npm run db:generate`.
 | `008_seed_user_erez_nakar.sql` | Seeds an additional user row (Erez Nakar) in `users` | `Amilut` | `Admin` (via `SET ROLE`) |
 | `009_add_supplier_name_to_orders.sql` | Adds `supplier_name` to `orders` (superseded by 010) | `Amilut` | `Admin` (via `SET ROLE`) |
 | `010_create_suppliers_and_link_orders.sql` | `suppliers` table (mirrors `customers`) + `orders.supplier_id` FK, replacing `supplier_name` | `Amilut` | `Admin` (via `SET ROLE`) |
+| `011_add_contact_fields_to_customers.sql` | Adds `company_reg_number` (ח״פ), `contact_name`, `contact_phone` (איש קשר) to `customers` | `Amilut` | `Admin` (via `SET ROLE`) |
 | `run-migrations.mjs` | Applies `001`, then every other `NNN_*.sql` in name order | — | — |
 
 Every step is **idempotent** — re-running does nothing if the objects already exist.
@@ -48,7 +49,8 @@ The application role/database/password are declared in the SQL files
 
 ```
 Amilut
-├── customers (id, name, address, phone, email, isActive)
+├── customers (id, name, address, phone, email,
+│              company_reg_number, contact_name, contact_phone, isActive)
 ├── suppliers (id, name, address, phone, email, isActive)
 ├── users     (id, customer_id → customers.id, name, role[=admin],
 │              title, email, last_login, isActive)

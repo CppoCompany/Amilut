@@ -11,10 +11,14 @@ export interface CustomerRow {
   address: string | null;
   phone: string | null;
   email: string | null;
+  company_reg_number: string | null;
+  contact_name: string | null;
+  contact_phone: string | null;
   isActive: boolean;
 }
 
-const COLUMNS = 'id, name, address, phone, email, "isActive"';
+const COLUMNS =
+  'id, name, address, phone, email, company_reg_number, contact_name, contact_phone, "isActive"';
 
 /** Escapes LIKE/ILIKE metacharacters so user input matches literally. */
 export function escapeLikePattern(input: string): string {
@@ -50,10 +54,18 @@ export class CustomersService {
 
   async create(dto: CreateCustomerDto): Promise<CustomerDto> {
     const row = await this.db.queryOne<CustomerRow>(
-      `INSERT INTO customers (name, address, phone, email)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO customers (name, address, phone, email, company_reg_number, contact_name, contact_phone)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING ${COLUMNS}`,
-      [dto.name, dto.address ?? null, dto.phone ?? null, dto.email ?? null],
+      [
+        dto.name,
+        dto.address ?? null,
+        dto.phone ?? null,
+        dto.email ?? null,
+        dto.companyRegNumber ?? null,
+        dto.contactName ?? null,
+        dto.contactPhone ?? null,
+      ],
     );
     if (!row) throw new Error('INSERT INTO customers returned no row');
     return toDto(row);
@@ -72,6 +84,9 @@ export class CustomersService {
     if (dto.address !== undefined) set('address', dto.address);
     if (dto.phone !== undefined) set('phone', dto.phone);
     if (dto.email !== undefined) set('email', dto.email);
+    if (dto.companyRegNumber !== undefined) set('company_reg_number', dto.companyRegNumber);
+    if (dto.contactName !== undefined) set('contact_name', dto.contactName);
+    if (dto.contactPhone !== undefined) set('contact_phone', dto.contactPhone);
     if (dto.isActive !== undefined) set('"isActive"', dto.isActive);
 
     if (assignments.length === 0) return this.findById(id);
@@ -96,6 +111,9 @@ function toDto(row: CustomerRow): CustomerDto {
   dto.address = row.address ?? null;
   dto.phone = row.phone ?? null;
   dto.email = row.email ?? null;
+  dto.companyRegNumber = row.company_reg_number ?? null;
+  dto.contactName = row.contact_name ?? null;
+  dto.contactPhone = row.contact_phone ?? null;
   dto.isActive = row.isActive;
   return dto;
 }

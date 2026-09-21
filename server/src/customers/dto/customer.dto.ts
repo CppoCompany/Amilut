@@ -21,6 +21,15 @@ export class CustomerDto {
   @ApiProperty({ type: String, nullable: true, example: 'office@acme.co.il' })
   email!: string | null;
 
+  @ApiProperty({ type: String, nullable: true, example: '512345678' })
+  companyRegNumber!: string | null;
+
+  @ApiProperty({ type: String, nullable: true, example: 'Dana Levi' })
+  contactName!: string | null;
+
+  @ApiProperty({ type: String, nullable: true, example: '+972-50-1234567' })
+  contactPhone!: string | null;
+
   @ApiProperty({ example: true })
   isActive!: boolean;
 }

@@ -64,6 +64,29 @@
         }
       </div>
 
+      <div class="form-group">
+        <label for="add-customer-company-reg-number">ח״פ</label>
+        <input
+          id="add-customer-company-reg-number"
+          class="form-control"
+          type="text"
+          inputmode="numeric"
+          formControlName="companyRegNumber"
+          dir="ltr"
+          maxlength="20"
+          [class.is-invalid]="showError(companyRegNumber)"
+        />
+        @if (showError(companyRegNumber)) {
+          <p class="field-error">
+            @if (companyRegNumber.hasError('pattern')) {
+              ח״פ חייב להכיל ספרות בלבד
+            } @else if (companyRegNumber.hasError('maxlength')) {
+              ח״פ ארוך מדי (עד 20 ספרות)
+            }
+          </p>
+        }
+      </div>
+
       <div class="dialog-card__row">
         <div class="form-group">
           <label for="add-customer-phone">טלפון</label>
@@ -102,6 +125,41 @@
                 כתובת האימייל ארוכה מדי (עד 255 תווים)
               }
             </p>
+          }
+        </div>
+      </div>
+
+      <div class="dialog-card__row">
+        <div class="form-group">
+          <label for="add-customer-contact-name">שם איש קשר</label>
+          <input
+            id="add-customer-contact-name"
+            class="form-control"
+            type="text"
+            formControlName="contactName"
+            autocomplete="name"
+            maxlength="255"
+            [class.is-invalid]="showError(contactName)"
+          />
+          @if (showError(contactName)) {
+            <p class="field-error">שם איש הקשר ארוך מדי (עד 255 תווים)</p>
+          }
+        </div>
+
+        <div class="form-group">
+          <label for="add-customer-contact-phone">טלפון איש קשר</label>
+          <input
+            id="add-customer-contact-phone"
+            class="form-control"
+            type="tel"
+            formControlName="contactPhone"
+            autocomplete="tel"
+            dir="ltr"
+            maxlength="50"
+            [class.is-invalid]="showError(contactPhone)"
+          />
+          @if (showError(contactPhone)) {
+            <p class="field-error">מספר הטלפון ארוך מדי (עד 50 תווים)</p>
           }
         </div>
       </div>

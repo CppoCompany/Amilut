@@ -893,6 +893,21 @@
             "nullable": true,
             "example": "office@acme.co.il"
           },
+          "companyRegNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "512345678"
+          },
+          "contactName": {
+            "type": "string",
+            "nullable": true,
+            "example": "Dana Levi"
+          },
+          "contactPhone": {
+            "type": "string",
+            "nullable": true,
+            "example": "+972-50-1234567"
+          },
           "isActive": {
             "type": "boolean",
             "example": true
@@ -904,6 +919,9 @@
           "address",
           "phone",
           "email",
+          "companyRegNumber",
+          "contactName",
+          "contactPhone",
           "isActive"
         ]
       },
@@ -934,6 +952,24 @@
             "format": "email",
             "example": "office@acme.co.il",
             "maxLength": 255
+          },
+          "companyRegNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "512345678",
+            "maxLength": 20
+          },
+          "contactName": {
+            "type": "string",
+            "nullable": true,
+            "example": "Dana Levi",
+            "maxLength": 255
+          },
+          "contactPhone": {
+            "type": "string",
+            "nullable": true,
+            "example": "+972-50-1234567",
+            "maxLength": 50
           }
         },
         "required": [
@@ -967,6 +1003,24 @@
             "format": "email",
             "example": "office@acme.co.il",
             "maxLength": 255
+          },
+          "companyRegNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "512345678",
+            "maxLength": 20
+          },
+          "contactName": {
+            "type": "string",
+            "nullable": true,
+            "example": "Dana Levi",
+            "maxLength": 255
+          },
+          "contactPhone": {
+            "type": "string",
+            "nullable": true,
+            "example": "+972-50-1234567",
+            "maxLength": 50
           },
           "isActive": {
             "type": "boolean",
