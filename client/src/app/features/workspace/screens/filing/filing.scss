@@ -1,0 +1,23 @@
+// Component-scoped additions to the shared form styles (see src/styles.scss).
+
+.form-message {
+  margin: 0.75rem 0 0;
+  padding: 0.6rem 0.9rem;
+  border-radius: 6px;
+  font-size: 0.95rem;
+
+  &--success {
+    background: color-mix(in srgb, var(--success, #16a34a) 12%, white);
+    color: var(--success, #15803d);
+  }
+
+  &--error {
+    background: color-mix(in srgb, var(--danger, #ef4444) 12%, white);
+    color: var(--danger, #ef4444);
+  }
+}
+
+.upload-btn[disabled] {
+  opacity: 0.6;
+  cursor: progress;
+}

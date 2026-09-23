@@ -228,6 +228,69 @@
         ]
       }
     },
+    "/api/import-files/{accountNumber}": {
+      "post": {
+        "operationId": "ImportFilesController_uploadMultipleImportFiles",
+        "parameters": [
+          {
+            "name": "accountNumber",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "files"
+                ],
+                "properties": {
+                  "files": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UploadedImportFileDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "No files, or an unsafe file name."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "import-files"
+        ]
+      }
+    },
     "/api/orders": {
       "get": {
         "operationId": "OrdersController_findAll",
@@ -1125,6 +1188,42 @@
             "example": false
           }
         }
+      },
+      "UploadedImportFileDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "חשבון ספק.pdf",
+            "description": "Original file name, as uploaded."
+          },
+          "size": {
+            "type": "integer",
+            "example": 870400,
+            "description": "Size in bytes."
+          },
+          "mimeType": {
+            "type": "string",
+            "example": "application/pdf"
+          },
+          "relativePath": {
+            "type": "string",
+            "example": "1000/חשבון ספק.pdf",
+            "description": "Path relative to the storage root (`storage/` at the repo root)."
+          },
+          "uploadedAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-22T16:05:18.000Z"
+          }
+        },
+        "required": [
+          "name",
+          "size",
+          "mimeType",
+          "relativePath",
+          "uploadedAt"
+        ]
       },
       "OrderStatus": {
         "type": "string",

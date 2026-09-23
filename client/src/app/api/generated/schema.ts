@@ -84,6 +84,22 @@ export interface paths {
         patch: operations["CustomersController_update"];
         trace?: never;
     };
+    "/api/import-files/{accountNumber}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ImportFilesController_uploadMultipleImportFiles"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/orders": {
         parameters: {
             query?: never;
@@ -276,6 +292,30 @@ export interface components {
             contactPhone?: string | null;
             /** @example false */
             isActive?: boolean;
+        };
+        UploadedImportFileDto: {
+            /**
+             * @description Original file name, as uploaded.
+             * @example חשבון ספק.pdf
+             */
+            name: string;
+            /**
+             * @description Size in bytes.
+             * @example 870400
+             */
+            size: number;
+            /** @example application/pdf */
+            mimeType: string;
+            /**
+             * @description Path relative to the storage root (`storage/` at the repo root).
+             * @example 1000/חשבון ספק.pdf
+             */
+            relativePath: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-22T16:05:18.000Z
+             */
+            uploadedAt: string;
         };
         /** @enum {string} */
         OrderStatus: OrderStatus;
@@ -869,6 +909,40 @@ export interface operations {
             };
             /** @description No customer with that id */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ImportFilesController_uploadMultipleImportFiles: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountNumber: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    files: string[];
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadedImportFileDto"][];
+                };
+            };
+            /** @description No files, or an unsafe file name. */
+            400: {
                 headers: {
                     [name: string]: unknown;
                 };

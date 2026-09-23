@@ -20,3 +20,5 @@ export type ShipmentSummaryDto = components['schemas']['ShipmentSummaryDto'];
 export type ShipmentDto = components['schemas']['ShipmentDto'];
 export type CreateShipmentDto = components['schemas']['CreateShipmentDto'];
 export type UpdateShipmentDto = components['schemas']['UpdateShipmentDto'];
+
+export type UploadedImportFileDto = components['schemas']['UploadedImportFileDto'];

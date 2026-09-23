@@ -27,3 +27,6 @@ Thumbs.db
 
 # npm lockfiles (not tracked)
 package-lock.json
+
+# Uploaded import paperwork (server/src/import-files): storage/<accountNumber>/<file>
+storage/

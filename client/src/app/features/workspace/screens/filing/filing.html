@@ -5,7 +5,7 @@
     <div class="details-grid">
       <div class="detail-item">
         <span class="detail-label">מספר תיק</span>
-        <span class="detail-value">1000</span>
+        <span class="detail-value">{{ accountNumber() }}</span>
       </div>
       <div class="detail-item">
         <span class="detail-label">מספר זיהוי פנימי</span>
@@ -38,8 +38,26 @@
           <div style="color: var(--text-muted); font-size: 0.9rem">תמיכה בקבצי PDF, XLSX, תמונות</div>
         </div>
       </div>
-      <button type="button" class="upload-btn">העלה קבצים</button>
+      <input
+        #fileInput
+        type="file"
+        multiple
+        hidden
+        accept=".pdf,.xlsx,.xls,image/*"
+        aria-label="בחירת קבצים להעלאה"
+        (change)="onFilesSelected($event)"
+      />
+      <button type="button" class="upload-btn" [disabled]="uploading()" (click)="openFilePicker()">
+        {{ uploading() ? 'מעלה קבצים…' : 'העלה קבצים' }}
+      </button>
     </div>
+
+    @if (successMessage(); as message) {
+      <p class="form-message form-message--success" role="status">{{ message }}</p>
+    }
+    @if (errorMessage(); as message) {
+      <p class="form-message form-message--error" role="alert">{{ message }}</p>
+    }
 
     <table class="documents-table">
       <thead>
