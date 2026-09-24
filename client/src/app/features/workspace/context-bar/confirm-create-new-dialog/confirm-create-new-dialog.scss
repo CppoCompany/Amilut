@@ -1,0 +1,81 @@
+// Same shell as add-customer-dialog.scss / unsaved-changes-dialog.scss — this
+// app has no shared dialog component to extend, so the pattern is copied.
+
+:host {
+  display: contents;
+}
+
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.dialog-card {
+  width: 100%;
+  max-width: 480px;
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: var(--radius-lg, 12px);
+  box-shadow: var(--shadow-md, 0 4px 6px rgba(0, 0, 0, 0.07));
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border-color, #d8e0e9);
+  }
+
+  &__title {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--primary-blue, #0a3d82);
+  }
+
+  &__close {
+    border: 0;
+    background: transparent;
+    color: var(--text-muted, #64748b);
+    font-size: 1.1rem;
+    line-height: 1;
+    padding: 0.25rem 0.4rem;
+    border-radius: var(--radius-md, 8px);
+    cursor: pointer;
+
+    &:hover {
+      background: var(--bg-color, #f4f7f9);
+      color: var(--primary-blue, #0a3d82);
+    }
+  }
+
+  &__body {
+    padding: 1.25rem;
+
+    p {
+      margin: 0;
+    }
+  }
+
+  &__footer {
+    display: flex;
+    justify-content: flex-start;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+    border-top: 1px solid var(--border-color, #d8e0e9);
+    background: var(--bg-color, #f4f7f9);
+    border-radius: 0 0 var(--radius-lg, 12px) var(--radius-lg, 12px);
+  }
+}

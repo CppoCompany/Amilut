@@ -19,6 +19,8 @@ const ORDER: OrderDto = {
   paymentTerms: PaymentTerms.PREPAID,
   incoterm: Incoterm.CFR,
   destination: Destination.ASHDOD,
+  supplierId: null,
+  supplierName: null,
   factoryReadyDate: null,
   factoryPickupDate: null,
   departureDate: null,

@@ -1,0 +1,56 @@
+<nav class="context-bar" role="tablist" aria-label="פריטים פתוחים">
+  @for (item of activeContext.items(); track itemKey(item)) {
+    <div
+      #tabRef
+      class="context-bar__item"
+      [class.context-bar__item--current]="isCurrent(item)"
+      role="tab"
+      tabindex="0"
+      [attr.aria-selected]="isCurrent(item)"
+      [attr.data-key]="itemKey(item)"
+      [title]="fullLabel(item)"
+      (click)="activate(item)"
+      (keydown)="onTabKeydown($event, item)"
+    >
+      <i [class]="TYPE_ICON[item.type]" aria-hidden="true"></i>
+      <span class="context-bar__label">{{ item.label }}</span>
+
+      @if (item.dirty) {
+        <span class="context-bar__dirty-dot" [attr.title]="dirtyLabel" [attr.aria-label]="dirtyLabel"></span>
+      }
+      @if (statusLabel(item); as status) {
+        <span class="context-bar__badge">{{ status }}</span>
+      }
+
+      <button
+        type="button"
+        class="context-bar__close"
+        [attr.aria-label]="closeButtonLabel(item)"
+        (click)="requestClose(item, $event)"
+      >
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      </button>
+    </div>
+  } @empty {
+    <p class="context-bar__empty">{{ emptyLabel }}</p>
+  }
+</nav>
+
+@if (dialogs.pendingUnsavedChanges(); as item) {
+  <app-unsaved-changes-dialog
+    [item]="item"
+    (save)="dialogs.resolveUnsavedChanges('save')"
+    (discard)="dialogs.resolveUnsavedChanges('discard')"
+    (cancel)="dialogs.resolveUnsavedChanges('cancel')"
+  />
+}
+
+@if (dialogs.pendingCreateNew(); as pending) {
+  <app-confirm-create-new-dialog
+    [type]="pending.type"
+    [existingItem]="pending.existing"
+    (continueExisting)="dialogs.resolveCreateNew('continueExisting')"
+    (createNew)="dialogs.resolveCreateNew('createNew')"
+    (cancel)="dialogs.resolveCreateNew('cancel')"
+  />
+}

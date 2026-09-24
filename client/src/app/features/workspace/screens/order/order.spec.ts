@@ -39,6 +39,9 @@ const CUSTOMER: CustomerDto = {
   address: null,
   phone: null,
   email: null,
+  companyRegNumber: null,
+  contactName: null,
+  contactPhone: null,
   isActive: true,
 };
 
@@ -55,6 +58,8 @@ const SAVED_ORDER: OrderDto = {
   paymentTerms: PaymentTerms.PREPAID,
   incoterm: Incoterm.CFR,
   destination: Destination.ASHDOD,
+  supplierId: null,
+  supplierName: null,
   factoryReadyDate: null,
   factoryPickupDate: null,
   departureDate: null,
@@ -104,8 +109,9 @@ describe('OrderScreen', () => {
   it('should create and show the handler name from the auth user', () => {
     expect(fixture.componentInstance).toBeTruthy();
     expect(readonlyValue('פקיד מטפל')).toBe('דנה לוי');
-    expect(readonlyValue('מספר הזמנה פנימי')).toBe('—');
-    expect(readonlyValue('תאריך פתיחת הזמנה')).toBe('—');
+    // No real id/createdAt exist until the first save — see order.ts's orderNumber/creationDate.
+    expect(readonlyValue('מספר הזמנה פנימי')).toBe('יוקצה אוטומטית לאחר השמירה');
+    expect(readonlyValue('תאריך פתיחת הזמנה')).not.toBe('—'); // shows today's date pre-save
   });
 
   it('shows an error and makes no request when saving without a customer', () => {
@@ -209,6 +215,6 @@ describe('OrderScreen', () => {
     expect(internals.savedOrder()).toBeNull();
     expect(internals.form.getRawValue()['shippingLine']).toBe('');
     expect(internals.customerError()).toBeNull();
-    expect(readonlyValue('מספר הזמנה פנימי')).toBe('—');
+    expect(readonlyValue('מספר הזמנה פנימי')).toBe('יוקצה אוטומטית לאחר השמירה');
   });
 });
