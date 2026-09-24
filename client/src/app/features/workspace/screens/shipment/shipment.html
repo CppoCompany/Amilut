@@ -51,7 +51,14 @@
             <table class="data-table">
               <thead>
                 <tr>
-                  <th></th>
+                  <th>
+                    <input
+                      type="checkbox"
+                      aria-label="בחר הכל"
+                      [checked]="allVisibleSelected()"
+                      (change)="toggleSelectAll()"
+                    />
+                  </th>
                   <th>מספר הזמנה</th>
                   <th>לקוח</th>
                   <th>ספק</th>
@@ -60,7 +67,7 @@
               </thead>
               <tbody>
                 @for (order of selectableOrders(); track order.id) {
-                  <tr>
+                  <tr [class.data-table__row--selected]="isOrderSelected(order.id)">
                     <td>
                       <input
                         type="checkbox"
@@ -81,9 +88,10 @@
       </div>
 
       <div class="form-actions">
+        <span class="hint-text selection-count">{{ selectedOrderIds().size }} נבחרו</span>
         @if (editingAssociation()) {
           <button type="button" class="btn btn-secondary" (click)="cancelEditAssociation()">
-            ביטול
+            חזרה
           </button>
         }
         <button
@@ -114,21 +122,27 @@
       <div class="grid-row">
         <div class="form-group">
           <label>הזמנות</label>
-          <input
-            type="text"
-            class="form-control"
-            [value]="shipment.orders.length ? shipment.orders.map(o => o.id).join(', ') : '—'"
-            readonly
-          />
+          @if (shipment.orders.length) {
+            <div class="chip-list">
+              @for (order of shipment.orders; track order.id) {
+                <span class="chip">#{{ order.id }}</span>
+              }
+            </div>
+          } @else {
+            <p class="chip-list--empty">—</p>
+          }
         </div>
         <div class="form-group">
           <label>לקוחות</label>
-          <input
-            type="text"
-            class="form-control"
-            [value]="shipment.orders.length ? shipment.orders.map(o => o.customerName ?? '—').join(', ') : '—'"
-            readonly
-          />
+          @if (shipment.orders.length) {
+            <div class="chip-list">
+              @for (name of distinctCustomerNames(shipment); track name) {
+                <span class="chip">{{ name }}</span>
+              }
+            </div>
+          } @else {
+            <p class="chip-list--empty">—</p>
+          }
         </div>
         <div class="form-group">
           <label>&nbsp;</label>
@@ -175,11 +189,11 @@
           <div class="grid-row">
             <div class="form-group" style="grid-column: span 2">
               <label>סוג מסמך (Original / Sea Waybill / Telex Release)</label>
-              <div class="tabs-container">
+              <div class="choice-group">
                 @for (option of documentTypes; track option) {
                   <button
                     type="button"
-                    class="tab-btn"
+                    class="choice-btn"
                     [class.active]="documentType() === option"
                     (click)="documentType.set(option)"
                   >
@@ -387,19 +401,25 @@
             <div class="form-group">
               <label>Incoterms (מוגדר בהזמנה)</label>
               <input type="text" class="form-control" [value]="orderIncotermLabel()" readonly />
+              @if (hasMixedIncoterms()) {
+                <p class="hint-text">ערכים שונים בין ההזמנות בתיק</p>
+              }
             </div>
             <div class="form-group">
               <label>Freight Terms (מוגדר בהזמנה)</label>
               <input type="text" class="form-control" [value]="orderPaymentTermsLabel()" readonly />
+              @if (hasMixedPaymentTerms()) {
+                <p class="hint-text">ערכים שונים בין ההזמנות בתיק</p>
+              }
             </div>
           </div>
           <div class="grid-row">
             <div class="form-group">
               <label>Dangerous Goods</label>
-              <div class="tabs-container">
+              <div class="choice-group">
                 <button
                   type="button"
-                  class="tab-btn"
+                  class="choice-btn"
                   [class.active]="!dangerousGoods()"
                   (click)="dangerousGoods.set(false)"
                 >
@@ -407,7 +427,7 @@
                 </button>
                 <button
                   type="button"
-                  class="tab-btn"
+                  class="choice-btn"
                   [class.active]="dangerousGoods()"
                   (click)="dangerousGoods.set(true)"
                 >
@@ -478,19 +498,20 @@
       <p class="form-message form-message--error" role="alert">{{ message }}</p>
     }
 
-    <!-- Save action — only offered once the user reaches the last tab -->
-    @if (isLastTab()) {
-      <div class="form-actions">
-        <button type="submit" class="btn btn-primary" [disabled]="saving()">
-          @if (saving()) {
-            <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
-            שומר...
-          } @else {
-            שמור תיק
-          }
-        </button>
-      </div>
-    }
+    <!-- Save is available from every tab — the case already exists by this
+         point (created in the order-selection step), so there's no reason to
+         make the user click through all 9 tabs before they can save partial
+         progress on any one of them. -->
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary" [disabled]="saving()">
+        @if (saving()) {
+          <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
+          שומר...
+        } @else {
+          שמור תיק
+        }
+      </button>
+    </div>
   }
   }
 </form>

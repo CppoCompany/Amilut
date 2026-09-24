@@ -491,6 +491,10 @@ body {
   cursor: pointer;
 }
 
+.data-table__row--selected {
+  background: var(--light-blue-bg);
+}
+
 .data-table__empty {
   text-align: center;
   color: var(--text-muted);
@@ -682,6 +686,74 @@ body {
   background-color: white;
   color: var(--secondary-blue);
   box-shadow: var(--shadow-sm);
+}
+
+/* Choice group — single-select value pickers (order status, shipment type,
+   payment terms, incoterm, destination, document type, dangerous goods).
+   Deliberately styled differently from .tabs-container/.tab-btn (real
+   navigational tabs, e.g. the shipment screen's 9-section strip): picking a
+   value and switching what's on screen are different actions, so they
+   shouldn't look like the same widget. */
+.choice-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.choice-group--nested {
+  margin-top: 8px;
+}
+
+.choice-btn {
+  background: white;
+  border: 1.5px solid var(--border-color);
+  padding: 7px 16px;
+  border-radius: 999px;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-dark);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.choice-btn:hover {
+  border-color: var(--secondary-blue);
+}
+
+.choice-btn.active {
+  background-color: var(--secondary-blue);
+  border-color: var(--secondary-blue);
+  color: white;
+}
+
+.hint-text {
+  margin: 6px 0 0;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+/* Chip list — e.g. the orders/customers summary on a shipping case */
+.chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--light-blue-bg);
+  color: var(--primary-blue);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.chip-list--empty {
+  color: var(--text-muted);
+  font-size: 0.9rem;
 }
 
 /* Action Buttons */

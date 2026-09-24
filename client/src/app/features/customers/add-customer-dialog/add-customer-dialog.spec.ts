@@ -6,7 +6,17 @@ import type { CustomerDto } from '../../../api/models';
 import { AddCustomerDialog } from './add-customer-dialog';
 
 type DialogInternals = {
-  form: { setValue: (v: { name: string; address: string; phone: string; email: string }) => void };
+  form: {
+    setValue: (v: {
+      name: string;
+      address: string;
+      phone: string;
+      email: string;
+      companyRegNumber: string;
+      contactName: string;
+      contactPhone: string;
+    }) => void;
+  };
   onSubmit: () => void;
   error: () => string | null;
   saving: () => boolean;
@@ -18,6 +28,9 @@ const CREATED: CustomerDto = {
   address: null,
   phone: null,
   email: null,
+  companyRegNumber: null,
+  contactName: null,
+  contactPhone: null,
   isActive: true,
 };
 
@@ -58,7 +71,15 @@ describe('AddCustomerDialog', () => {
   });
 
   it('does not post when the form is invalid and shows Hebrew errors', () => {
-    internals.form.setValue({ name: '   ', address: '', phone: '', email: 'not-an-email' });
+    internals.form.setValue({
+      name: '   ',
+      address: '',
+      phone: '',
+      email: 'not-an-email',
+      companyRegNumber: '',
+      contactName: '',
+      contactPhone: '',
+    });
     internals.onSubmit();
     fixture.detectChanges();
 
@@ -77,6 +98,9 @@ describe('AddCustomerDialog', () => {
       address: '',
       phone: ' 050-1234567 ',
       email: 'a@b.com',
+      companyRegNumber: '12345', // Validators.pattern(/^\d*$/) rejects surrounding whitespace
+      contactName: ' Dana ',
+      contactPhone: ' 050-7654321 ',
     });
     internals.onSubmit();
     fixture.detectChanges();
@@ -94,6 +118,9 @@ describe('AddCustomerDialog', () => {
       address: null,
       phone: '050-1234567',
       email: 'a@b.com',
+      companyRegNumber: '12345',
+      contactName: 'Dana',
+      contactPhone: '050-7654321',
     });
     req.flush(CREATED);
     fixture.detectChanges();
@@ -104,7 +131,15 @@ describe('AddCustomerDialog', () => {
   });
 
   it('shows a server error line when the save fails', () => {
-    internals.form.setValue({ name: 'New Co', address: '', phone: '', email: '' });
+    internals.form.setValue({
+      name: 'New Co',
+      address: '',
+      phone: '',
+      email: '',
+      companyRegNumber: '',
+      contactName: '',
+      contactPhone: '',
+    });
     internals.onSubmit();
     http.expectOne('/api/customers').flush('boom', { status: 500, statusText: 'Server Error' });
     fixture.detectChanges();

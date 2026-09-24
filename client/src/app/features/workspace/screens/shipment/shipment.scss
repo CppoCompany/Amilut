@@ -11,6 +11,13 @@
   overflow-y: auto;
 }
 
+// `.form-actions` (src/styles.scss) is a flex row packed to one end; this
+// pushes the selection count to the opposite end from the action buttons.
+.selection-count {
+  margin-inline-end: auto;
+  align-self: center;
+}
+
 .field-error {
   margin: 0.35rem 0 0;
   font-size: 0.85rem;
