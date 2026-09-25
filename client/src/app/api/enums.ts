@@ -93,3 +93,14 @@ export const DESTINATIONS: readonly Destination[] = Object.values(Destination);
 export const INCOTERMS: readonly Incoterm[] = Object.values(Incoterm);
 export const SHIPMENT_DOCUMENT_TYPES: readonly ShipmentDocumentType[] =
   Object.values(ShipmentDocumentType);
+
+/**
+ * Destinations offered under each shipment type — sea shipments go to a port,
+ * air shipments go to the airport. This is a client-side UI convenience only
+ * (the server does not enforce a destination/shipment-type pairing).
+ */
+export const DESTINATIONS_BY_SHIPMENT_TYPE: Record<ShipmentType, readonly Destination[]> = {
+  [ShipmentType.SEA]: [Destination.ASHDOD, Destination.SOUTH_PORT, Destination.HAIFA],
+  [ShipmentType.AIR]: [Destination.BEN_GURION],
+  [ShipmentType.LAND]: DESTINATIONS,
+};
