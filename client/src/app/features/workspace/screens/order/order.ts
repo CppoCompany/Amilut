@@ -14,8 +14,7 @@ import { finalize } from 'rxjs';
 
 import {
   DESTINATION_LABELS,
-  DESTINATIONS,
-  Destination,
+  DESTINATIONS_BY_SHIPMENT_TYPE,
   INCOTERM_LABELS,
   INCOTERMS_BY_PAYMENT_TERMS,
   ORDER_STATUS_LABELS,
@@ -140,8 +139,12 @@ export class OrderScreen {
   protected readonly incoterm = linkedSignal(() => this.incotermOptions()[0]);
   protected readonly incotermLabels = INCOTERM_LABELS;
 
-  protected readonly destination = signal<Destination>(Destination.ASHDOD);
-  protected readonly destinations = DESTINATIONS;
+  /** Destinations offered for the current shipment type (sea ports vs. the airport). */
+  protected readonly destinationOptions = computed(
+    () => DESTINATIONS_BY_SHIPMENT_TYPE[this.shipmentType()],
+  );
+  /** Resets to the first allowed destination whenever the shipment type changes. */
+  protected readonly destination = linkedSignal(() => this.destinationOptions()[0]);
   protected readonly destinationLabels = DESTINATION_LABELS;
 
   // ── Transport-field visibility ─────────────────────────────────────────────
@@ -320,7 +323,7 @@ export class OrderScreen {
     this.shipmentType.set(ShipmentType.SEA);
     this.paymentTerms.set(PaymentTerms.PREPAID);
     this.incoterm.set(this.incotermOptions()[0]);
-    this.destination.set(Destination.ASHDOD);
+    this.destination.set(this.destinationOptions()[0]);
     this.selectedCustomer.set(null);
     this.selectedSupplier.set(null);
     this.savedOrder.set(null);
