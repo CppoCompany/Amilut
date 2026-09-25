@@ -71,11 +71,15 @@
               title="לחץ פעמיים לעריכה"
               (dblclick)="onEditOrder(order)"
             >
-              <td>{{ order.id }}</td>
+              <td class="data-table__numeric">{{ order.id }}</td>
               <td>{{ order.customerName ?? '—' }}</td>
               <td>{{ order.handlerName ?? '—' }}</td>
-              <td>{{ statusLabels[order.status] }}</td>
-              <td>{{ formatDate(order.createdAt) }}</td>
+              <td>
+                <span [class]="'status-pill status-pill--' + order.status">
+                  {{ statusLabels[order.status] }}
+                </span>
+              </td>
+              <td class="data-table__numeric">{{ formatDate(order.createdAt) }}</td>
             </tr>
           </tbody>
         </table>

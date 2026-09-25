@@ -74,13 +74,13 @@
               title="לחץ פעמיים לעריכה"
               (dblclick)="onEditCase(shipment)"
             >
-              <td>{{ shipment.id }}</td>
-              <td>{{ joinOrEmDash(shipment.orderIds) }}</td>
+              <td class="data-table__numeric">{{ shipment.id }}</td>
+              <td class="data-table__numeric">{{ joinOrEmDash(shipment.orderIds) }}</td>
               <td>{{ joinOrEmDash(shipment.customerNames) }}</td>
               <td>{{ shipment.billOfLadingNumber ?? '—' }}</td>
               <td>{{ shipment.documentType ? documentTypeLabels[shipment.documentType] : '—' }}</td>
               <td>{{ shipment.forwarderName ?? '—' }}</td>
-              <td>{{ formatDate(shipment.createdAt) }}</td>
+              <td class="data-table__numeric">{{ formatDate(shipment.createdAt) }}</td>
             </tr>
           </tbody>
         </table>

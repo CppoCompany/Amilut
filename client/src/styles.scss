@@ -468,8 +468,10 @@ body {
 /* Data grid */
 .data-table-wrapper {
   overflow-x: auto;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
+  overflow-y: hidden; /* clips to the rounded corners; inner viewport/list scrolls itself */
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  background: var(--card-bg);
 }
 
 .data-table {
@@ -480,28 +482,80 @@ body {
 
 .data-table th,
 .data-table td {
-  padding: 10px 14px;
+  padding: 14px 16px;
   text-align: right;
   white-space: nowrap;
 }
 
 .data-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   background: var(--bg-color);
   color: var(--text-muted);
   font-weight: 700;
   border-bottom: 1px solid var(--border-color);
 }
 
-.data-table tbody tr:not(:last-child) {
-  border-bottom: 1px solid var(--border-color);
+/* Zebra striping instead of a border under every row — hover and selected
+   states are declared after this (and, for selected, with higher
+   specificity) so they always win over the stripe. */
+.data-table tbody tr:nth-child(even) {
+  background: var(--bg-color);
 }
 
 .data-table tbody tr:hover {
   background: var(--light-blue-bg);
 }
 
+.data-table tbody tr.data-table__row--selected {
+  background: var(--light-blue-bg);
+}
+
 .data-table__row--clickable {
   cursor: pointer;
+}
+
+/* Numeric/id/date columns — tabular figures so digits line up vertically
+   when scanning a column of rows. */
+.data-table__numeric {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Status pills. Colors follow the order pipeline: neutral (just started) →
+   amber (waiting on someone) → blue (in motion) → green (done). */
+.status-pill {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.status-pill--preparing {
+  background: color-mix(in srgb, var(--text-muted) 18%, white);
+  color: var(--text-muted);
+}
+
+.status-pill--ready_for_pickup {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-pill--picked_up {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.status-pill--waiting_at_port {
+  background: #ffedd5;
+  color: #9a3412;
+}
+
+.status-pill--departed {
+  background: #d1fae5;
+  color: #065f46;
 }
 
 .data-table__row--selected {
