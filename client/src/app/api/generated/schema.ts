@@ -955,6 +955,7 @@ export interface operations {
             query?: {
                 customerId?: number;
                 handlerUserId?: number;
+                handlerName?: string;
                 supplierId?: number;
                 hasCase?: boolean;
                 status?: components["schemas"]["OrderStatus"];

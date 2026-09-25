@@ -145,6 +145,10 @@ export class OrdersService {
       params.push(query.handlerUserId);
       where.push(`o.handler_user_id = $${params.length}`);
     }
+    if (query.handlerName !== undefined) {
+      params.push(`%${query.handlerName}%`);
+      where.push(`u.name ILIKE $${params.length}`);
+    }
     if (query.supplierId !== undefined) {
       params.push(query.supplierId);
       where.push(`o.supplier_id = $${params.length}`);

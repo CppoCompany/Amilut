@@ -9,6 +9,8 @@ import type { CreateOrderDto, OrderDto, UpdateOrderDto } from './models';
 export interface ListOrdersParams {
   customerId?: number;
   handlerUserId?: number;
+  /** Substring match against the handler's name. */
+  handlerName?: string;
   supplierId?: number;
   /** `false` matches orders with no shipping case yet; `true` matches the opposite. */
   hasCase?: boolean;

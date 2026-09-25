@@ -27,7 +27,7 @@ export class MyOrdersScreen {
   private readonly nav = inject(NavigationService);
 
   // ── Filters (live — debounced, no apply button) ────────────────────────────
-  protected readonly filterHandlerUserId = signal('');
+  protected readonly filterHandlerName = signal('');
   protected readonly filterStatus = signal<OrderStatus | ''>('');
   protected readonly filterCreatedDate = signal('');
   protected readonly statuses = ORDER_STATUSES;
@@ -42,7 +42,7 @@ export class MyOrdersScreen {
     this.fetch();
 
     combineLatest([
-      toObservable(this.filterHandlerUserId),
+      toObservable(this.filterHandlerName),
       toObservable(this.filterStatus),
       toObservable(this.filterCreatedDate),
     ])
@@ -55,7 +55,7 @@ export class MyOrdersScreen {
   }
 
   protected clearFilters(): void {
-    this.filterHandlerUserId.set('');
+    this.filterHandlerName.set('');
     this.filterStatus.set('');
     this.filterCreatedDate.set('');
   }
@@ -78,12 +78,9 @@ export class MyOrdersScreen {
   private fetch(): void {
     const params: ListOrdersParams = { limit: MAX_ROWS };
 
-    const handlerIdText = this.filterHandlerUserId().trim();
-    if (handlerIdText) {
-      const handlerId = Number(handlerIdText);
-      if (Number.isInteger(handlerId) && handlerId > 0) {
-        params.handlerUserId = handlerId;
-      }
+    const handlerName = this.filterHandlerName().trim();
+    if (handlerName) {
+      params.handlerName = handlerName;
     }
     if (this.filterStatus()) {
       params.status = this.filterStatus() as OrderStatus;
