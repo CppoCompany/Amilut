@@ -307,6 +307,12 @@ export class OrderScreen {
 
   /** Clears everything so a fresh order can be entered. */
   protected onCancel(): void {
+    const hasUnsavedInput =
+      this.selectedCustomer() !== null || this.selectedSupplier() !== null || this.form.dirty;
+    if (hasUnsavedInput && !confirm('הפרטים שהוזנו יימחקו. לבטל בכל זאת?')) {
+      return;
+    }
+
     this.form.reset();
     this.shippingLine.close();
     this.airline.close();

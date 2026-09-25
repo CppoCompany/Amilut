@@ -38,13 +38,13 @@
     <h2 class="section-title">פרטי משלוח</h2>
 
     <div class="grid-row">
-      <div class="form-group" style="grid-column: span 2">
+      <div class="form-group">
         <label class="required">סטטוס הזמנה</label>
-        <div class="tabs-container">
+        <div class="choice-group">
           @for (option of statuses; track option) {
             <button
               type="button"
-              class="tab-btn"
+              class="choice-btn"
               [class.active]="status() === option"
               (click)="status.set(option)"
             >
@@ -53,16 +53,45 @@
           }
         </div>
       </div>
+
+      <div class="form-group">
+        <label class="required">תנאי תשלום הובלה (Incoterms)</label>
+        <div class="choice-group">
+          @for (option of paymentTermsOptions; track option) {
+            <button
+              type="button"
+              class="choice-btn"
+              [class.active]="paymentTerms() === option"
+              (click)="paymentTerms.set(option)"
+            >
+              {{ paymentTermsLabels[option] }}
+            </button>
+          }
+        </div>
+
+        <select
+          id="incoterm"
+          class="form-control"
+          style="margin-top: 8px; width: 40%"
+          [value]="incoterm()"
+          (change)="incoterm.set($any($event.target).value)"
+        >
+          @for (option of incotermOptions(); track option) {
+            <option [value]="option">{{ incotermLabels[option] }}</option>
+          }
+        </select>
+        <p class="hint-text">האפשרויות תלויות בתנאי התשלום שנבחרו למעלה</p>
+      </div>
     </div>
 
     <div class="grid-row">
       <div class="form-group">
         <label class="required">סוג משלוח</label>
-        <div class="tabs-container">
+        <div class="choice-group">
           @for (option of shipmentTypes; track option) {
             <button
               type="button"
-              class="tab-btn"
+              class="choice-btn"
               [class.active]="shipmentType() === option"
               (click)="shipmentType.set(option)"
             >
@@ -73,45 +102,12 @@
       </div>
 
       <div class="form-group">
-        <label class="required">תנאי תשלום הובלה (Incoterms)</label>
-        <div class="tabs-container">
-          @for (option of paymentTermsOptions; track option) {
-            <button
-              type="button"
-              class="tab-btn"
-              [class.active]="paymentTerms() === option"
-              (click)="paymentTerms.set(option)"
-            >
-              {{ paymentTermsLabels[option] }}
-            </button>
-          }
-        </div>
-
-        <div class="tabs-container sub-tabs-container">
-          <div class="tabs-row">
-            @for (option of incotermOptions(); track option) {
-              <button
-                type="button"
-                class="tab-btn"
-                [class.active]="incoterm() === option"
-                (click)="incoterm.set(option)"
-              >
-                {{ incotermLabels[option] }}
-              </button>
-            }
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="grid-row">
-      <div class="form-group" style="grid-column: span 2">
         <label class="required">יעד</label>
-        <div class="tabs-container">
+        <div class="choice-group">
           @for (option of destinations; track option) {
             <button
               type="button"
-              class="tab-btn"
+              class="choice-btn"
               [class.active]="destination() === option"
               (click)="destination.set(option)"
             >

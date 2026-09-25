@@ -11,6 +11,9 @@ const ACME: CustomerDto = {
   address: null,
   phone: null,
   email: null,
+  companyRegNumber: null,
+  contactName: null,
+  contactPhone: null,
   isActive: true,
 };
 
