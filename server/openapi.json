@@ -314,6 +314,15 @@
             }
           },
           {
+            "name": "handlerName",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "ברק",
+              "type": "string"
+            }
+          },
+          {
             "name": "supplierId",
             "required": false,
             "in": "query",
