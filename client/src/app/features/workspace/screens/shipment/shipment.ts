@@ -12,6 +12,7 @@ import { combineLatest, debounceTime, finalize, forkJoin, skip } from 'rxjs';
 
 import {
   INCOTERM_LABELS,
+  ORDER_STATUS_LABELS,
   PAYMENT_TERMS_LABELS,
   SHIPMENT_DOCUMENT_TYPE_LABELS,
   SHIPMENT_DOCUMENT_TYPES,
@@ -87,6 +88,7 @@ export class ShipmentScreen {
     return [...extra, ...base];
   });
   protected readonly selectedOrderIds = signal<ReadonlySet<number>>(new Set());
+  protected readonly orderStatusLabels = ORDER_STATUS_LABELS;
   protected readonly ordersLoading = signal(false);
   protected readonly ordersError = signal<string | null>(null);
   /** True while re-picking the orders of an already-created case. */

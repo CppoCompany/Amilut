@@ -1,0 +1,21 @@
+<div class="dialog-backdrop" (click)="onBackdropClick($event)">
+  <div
+    class="confirm-dialog"
+    role="alertdialog"
+    aria-modal="true"
+    aria-describedby="confirm-dialog-message"
+  >
+    <div class="confirm-dialog__icon">
+      <i class="fa-solid fa-trash-can" aria-hidden="true"></i>
+    </div>
+    <p id="confirm-dialog-message" class="confirm-dialog__message">{{ message() }}</p>
+    <div class="confirm-dialog__actions">
+      <button type="button" class="btn btn-secondary" (click)="onCancel()">
+        {{ cancelLabel() }}
+      </button>
+      <button type="button" class="btn btn-danger" (click)="onConfirm()">
+        {{ confirmLabel() }}
+      </button>
+    </div>
+  </div>
+</div>

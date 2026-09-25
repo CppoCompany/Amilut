@@ -65,6 +65,7 @@
               <th>סוג מסמך</th>
               <th>מוביל</th>
               <th>תאריך פתיחה</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -74,17 +75,32 @@
               title="לחץ פעמיים לעריכה"
               (dblclick)="onEditCase(shipment)"
             >
-              <td>{{ shipment.id }}</td>
-              <td>{{ joinOrEmDash(shipment.orderIds) }}</td>
+              <td class="data-table__numeric">{{ shipment.id }}</td>
+              <td class="data-table__numeric">{{ joinOrEmDash(shipment.orderIds) }}</td>
               <td>{{ joinOrEmDash(shipment.customerNames) }}</td>
               <td>{{ shipment.billOfLadingNumber ?? '—' }}</td>
               <td>{{ shipment.documentType ? documentTypeLabels[shipment.documentType] : '—' }}</td>
               <td>{{ shipment.forwarderName ?? '—' }}</td>
-              <td>{{ formatDate(shipment.createdAt) }}</td>
+              <td class="data-table__numeric">{{ formatDate(shipment.createdAt) }}</td>
+              <td>
+                <button
+                  type="button"
+                  class="icon-btn icon-btn--danger"
+                  [attr.aria-label]="'מחק תיק ' + shipment.id"
+                  [disabled]="isDeleting(shipment.id)"
+                  (click)="onDeleteCase(shipment, $event)"
+                >
+                  <i class="fa-solid fa-trash" aria-hidden="true"></i>
+                </button>
+              </td>
             </tr>
           </tbody>
         </table>
       </cdk-virtual-scroll-viewport>
     }
   </div>
+
+  @if (pendingDelete()) {
+    <app-confirm-dialog (confirmed)="confirmDelete()" (cancelled)="cancelDelete()" />
+  }
 </div>

@@ -75,10 +75,14 @@
                         (change)="toggleOrderSelection(order.id)"
                       />
                     </td>
-                    <td>{{ order.id }}</td>
+                    <td class="data-table__numeric">{{ order.id }}</td>
                     <td>{{ order.customerName ?? '—' }}</td>
                     <td>{{ order.supplierName ?? '—' }}</td>
-                    <td>{{ order.status }}</td>
+                    <td>
+                      <span [class]="'status-pill status-pill--' + order.status">
+                        {{ orderStatusLabels[order.status] }}
+                      </span>
+                    </td>
                   </tr>
                 }
               </tbody>
