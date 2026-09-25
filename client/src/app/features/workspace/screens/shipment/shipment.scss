@@ -18,6 +18,14 @@
   align-self: center;
 }
 
+// Groups the prev/next buttons so `.tab-nav-actions`'s `space-between`
+// (src/styles.scss) always has exactly two slots — this group and the Save
+// button — regardless of whether prev/next are 0, 1, or 2 buttons.
+.tab-nav-actions__tabs {
+  display: flex;
+  gap: 16px;
+}
+
 .field-error {
   margin: 0.35rem 0 0;
   font-size: 0.85rem;

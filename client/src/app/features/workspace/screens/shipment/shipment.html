@@ -459,20 +459,6 @@
       }
     }
 
-    <!-- Tab-to-tab navigation shortcuts -->
-    <div class="tab-nav-actions">
-      @if (previousTab(); as prev) {
-        <button type="button" class="btn btn-secondary" (click)="goToPreviousTab()">
-          → חזרה ל{{ prev.label }}
-        </button>
-      }
-      @if (nextTab(); as next) {
-        <button type="button" class="btn btn-primary" (click)="goToNextTab()">
-          מעבר ל{{ next.label }} ←
-        </button>
-      }
-    </div>
-
     <!-- Save feedback -->
     @if (successMessage(); as message) {
       <p class="form-message form-message--success" role="status">{{ message }}</p>
@@ -481,11 +467,24 @@
       <p class="form-message form-message--error" role="alert">{{ message }}</p>
     }
 
-    <!-- Save is available from every tab — the case already exists by this
-         point (created in the order-selection step), so there's no reason to
-         make the user click through all 9 tabs before they can save partial
-         progress on any one of them. -->
-    <div class="form-actions">
+    <!-- Tab-to-tab navigation shortcuts, plus Save — available from every tab
+         since the case already exists by this point (created in the
+         order-selection step), so there's no reason to make the user click
+         through all the tabs before they can save partial progress. -->
+    <div class="tab-nav-actions">
+      <div class="tab-nav-actions__tabs">
+        @if (previousTab(); as prev) {
+          <button type="button" class="btn btn-secondary" (click)="goToPreviousTab()">
+            → חזרה ל{{ prev.label }}
+          </button>
+        }
+        @if (nextTab(); as next) {
+          <button type="button" class="btn btn-primary" (click)="goToNextTab()">
+            מעבר ל{{ next.label }} ←
+          </button>
+        }
+      </div>
+
       <button type="submit" class="btn btn-primary" [disabled]="saving()">
         @if (saving()) {
           <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
