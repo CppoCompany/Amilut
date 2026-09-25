@@ -7,6 +7,7 @@ import { combineLatest, debounceTime, finalize, skip } from 'rxjs';
 import { ORDER_STATUS_LABELS, ORDER_STATUSES, OrderStatus } from '../../../../api/enums';
 import type { OrderDto } from '../../../../api/models';
 import { ListOrdersParams, OrdersApi } from '../../../../api/orders-api';
+import { ConfirmDialog } from '../../../../shared/confirm-dialog/confirm-dialog';
 import { SEARCH_DEBOUNCE_MS } from '../../../customers/customer-autocomplete/customer-autocomplete';
 import { NavigationService } from '../../navigation.service';
 
@@ -16,7 +17,7 @@ const MAX_ROWS = 200;
 /** "ההזמנות שלי" — filterable grid over all orders, virtual-scrolled. */
 @Component({
   selector: 'app-my-orders-screen',
-  imports: [FormsModule, ScrollingModule],
+  imports: [FormsModule, ScrollingModule, ConfirmDialog],
   templateUrl: './my-orders.html',
   styleUrl: './my-orders.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -37,6 +38,10 @@ export class MyOrdersScreen {
   protected readonly orders = signal<OrderDto[]>([]);
   protected readonly loading = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
+  /** Order ids currently being deleted — disables their row's delete button mid-request. */
+  protected readonly deletingIds = signal<ReadonlySet<number>>(new Set());
+  /** The order awaiting delete confirmation in the modal, or `null`. */
+  protected readonly pendingDelete = signal<OrderDto | null>(null);
 
   constructor() {
     this.fetch();
@@ -63,6 +68,46 @@ export class MyOrdersScreen {
   /** Double-click a row to edit that order in "יצירת הזמנה חדשה". */
   protected onEditOrder(order: OrderDto): void {
     this.nav.openOrderForEdit(order.id);
+  }
+
+  protected isDeleting(orderId: number): boolean {
+    return this.deletingIds().has(orderId);
+  }
+
+  /** Opens the confirm-delete modal for this row. */
+  protected onDeleteOrder(order: OrderDto, event: Event): void {
+    event.stopPropagation();
+    if (this.isDeleting(order.id)) return;
+    this.pendingDelete.set(order);
+  }
+
+  protected cancelDelete(): void {
+    this.pendingDelete.set(null);
+  }
+
+  /** Confirmed via the modal — deletes the order and removes its row from the grid. */
+  protected confirmDelete(): void {
+    const order = this.pendingDelete();
+    if (!order) return;
+    this.pendingDelete.set(null);
+
+    this.deletingIds.update((current) => new Set(current).add(order.id));
+    this.ordersApi
+      .remove(order.id)
+      .pipe(
+        finalize(() => {
+          this.deletingIds.update((current) => {
+            const next = new Set(current);
+            next.delete(order.id);
+            return next;
+          });
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: () => this.orders.update((rows) => rows.filter((row) => row.id !== order.id)),
+        error: () => this.errorMessage.set('מחיקת ההזמנה נכשלה'),
+      });
   }
 
   protected formatDate(iso: string): string {

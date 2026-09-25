@@ -795,6 +795,35 @@
         "tags": [
           "shipments"
         ]
+      },
+      "delete": {
+        "operationId": "ShipmentsController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "shipments"
+        ]
       }
     },
     "/api/shipments/{id}/orders": {

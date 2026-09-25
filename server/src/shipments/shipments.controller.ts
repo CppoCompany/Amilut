@@ -1,7 +1,19 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  ParseIntPipe,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiCreatedResponse,
+  ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiTags,
@@ -66,5 +78,13 @@ export class ShipmentsController {
     @Body() dto: ManageShipmentOrdersDto,
   ): Promise<ShipmentDto> {
     return this.shipments.updateOrders(id, dto.orderIds);
+  }
+
+  @Delete(':id')
+  @HttpCode(204)
+  @ApiNoContentResponse()
+  @ApiNotFoundResponse()
+  remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
+    return this.shipments.remove(id);
   }
 }

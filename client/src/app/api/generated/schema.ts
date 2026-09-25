@@ -174,7 +174,7 @@ export interface paths {
         get: operations["ShipmentsController_findById"];
         put?: never;
         post?: never;
-        delete?: never;
+        delete: operations["ShipmentsController_remove"];
         options?: never;
         head?: never;
         patch: operations["ShipmentsController_update"];
@@ -1185,6 +1185,31 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ShipmentDto"];
                 };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ShipmentsController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             404: {
                 headers: {

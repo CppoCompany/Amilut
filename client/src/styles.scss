@@ -869,6 +869,47 @@ body {
   background-color: var(--bg-color);
 }
 
+.btn-danger {
+  background-color: #ef4444;
+  color: white;
+  border: none;
+}
+
+.btn-danger:hover {
+  background-color: #dc2626;
+  box-shadow: var(--shadow-md);
+}
+
+/* Small icon-only buttons, e.g. the delete/trash action per grid row. */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.icon-btn:hover:not(:disabled) {
+  background: var(--bg-color);
+  color: var(--text-dark);
+}
+
+.icon-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.icon-btn--danger:hover:not(:disabled) {
+  background: color-mix(in srgb, #ef4444 12%, white);
+  color: #b91c1c;
+}
+
 /* Classification: small centered goods-description input */
 #classificationTabPanel .goods-input-wrapper {
   display: flex;

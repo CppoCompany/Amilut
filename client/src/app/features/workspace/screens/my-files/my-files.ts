@@ -7,6 +7,7 @@ import { combineLatest, debounceTime, finalize, skip } from 'rxjs';
 import { SHIPMENT_DOCUMENT_TYPE_LABELS } from '../../../../api/enums';
 import type { CustomerDto, ShipmentSummaryDto } from '../../../../api/models';
 import { ListShipmentsParams, ShipmentsApi } from '../../../../api/shipments-api';
+import { ConfirmDialog } from '../../../../shared/confirm-dialog/confirm-dialog';
 import {
   CustomerAutocomplete,
   SEARCH_DEBOUNCE_MS,
@@ -19,7 +20,7 @@ const MAX_ROWS = 200;
 /** "התיקים שלי" — filterable grid over all shipment files, virtual-scrolled. */
 @Component({
   selector: 'app-my-files-screen',
-  imports: [FormsModule, ScrollingModule, CustomerAutocomplete],
+  imports: [FormsModule, ScrollingModule, CustomerAutocomplete, ConfirmDialog],
   templateUrl: './my-files.html',
   styleUrl: './my-files.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -40,6 +41,10 @@ export class MyFilesScreen {
   protected readonly shipments = signal<ShipmentSummaryDto[]>([]);
   protected readonly loading = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
+  /** Case ids currently being deleted — disables their row's delete button mid-request. */
+  protected readonly deletingIds = signal<ReadonlySet<number>>(new Set());
+  /** The case awaiting delete confirmation in the modal, or `null`. */
+  protected readonly pendingDelete = signal<ShipmentSummaryDto | null>(null);
 
   constructor() {
     this.fetch();
@@ -70,6 +75,48 @@ export class MyFilesScreen {
 
   protected joinOrEmDash(values: readonly (string | number)[]): string {
     return values.length ? values.join(', ') : '—';
+  }
+
+  protected isDeleting(caseId: number): boolean {
+    return this.deletingIds().has(caseId);
+  }
+
+  /** Opens the confirm-delete modal for this row. */
+  protected onDeleteCase(shipment: ShipmentSummaryDto, event: Event): void {
+    event.stopPropagation();
+    if (this.isDeleting(shipment.id)) return;
+    this.pendingDelete.set(shipment);
+  }
+
+  protected cancelDelete(): void {
+    this.pendingDelete.set(null);
+  }
+
+  /** Confirmed via the modal — deletes the case and removes its row from the
+   *  grid. Its orders are freed back to unassigned automatically (server-side FK). */
+  protected confirmDelete(): void {
+    const shipment = this.pendingDelete();
+    if (!shipment) return;
+    this.pendingDelete.set(null);
+
+    this.deletingIds.update((current) => new Set(current).add(shipment.id));
+    this.shipmentsApi
+      .remove(shipment.id)
+      .pipe(
+        finalize(() => {
+          this.deletingIds.update((current) => {
+            const next = new Set(current);
+            next.delete(shipment.id);
+            return next;
+          });
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: () =>
+          this.shipments.update((rows) => rows.filter((row) => row.id !== shipment.id)),
+        error: () => this.errorMessage.set('מחיקת התיק נכשלה'),
+      });
   }
 
   protected formatDate(iso: string): string {
