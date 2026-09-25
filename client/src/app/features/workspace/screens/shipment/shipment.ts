@@ -34,16 +34,7 @@ import {
   toUpdateShipmentDto,
 } from './shipment-form.mapper';
 
-type ShipmentTab =
-  | 'document'
-  | 'forwarder'
-  | 'shipper'
-  | 'consignee'
-  | 'notify'
-  | 'cargo'
-  | 'tariff'
-  | 'terms'
-  | 'documents';
+type ShipmentTab = 'document' | 'parties' | 'cargo' | 'terms';
 
 /** Single batch fetched per filter change; rendering beyond this is virtualized, not paginated. */
 const MAX_ROWS = 200;
@@ -64,15 +55,10 @@ export class ShipmentScreen {
   private readonly nav = inject(NavigationService);
 
   protected readonly tabs: { id: ShipmentTab; label: string }[] = [
-    { id: 'document', label: 'זיהוי מסמך' },
-    { id: 'forwarder', label: 'מוביל' },
-    { id: 'shipper', label: 'שוגר' },
-    { id: 'consignee', label: 'נמען' },
-    { id: 'notify', label: 'Notify Party' },
-    { id: 'cargo', label: 'מטען' },
-    { id: 'tariff', label: 'מכס' },
-    { id: 'terms', label: 'תנאים' },
-    { id: 'documents', label: 'מסמכים' },
+    { id: 'document', label: 'זיהוי מסמך ומוביל' },
+    { id: 'parties', label: 'צדדים למשלוח' },
+    { id: 'cargo', label: 'מטען ומכס' },
+    { id: 'terms', label: 'תנאים ומסמכים' },
   ];
   protected readonly activeTab = signal<ShipmentTab>('document');
 

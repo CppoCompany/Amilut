@@ -170,7 +170,9 @@
     @switch (activeTab()) {
       @case ('document') {
         <section class="form-section">
-          <h2 class="section-title">זיהוי מסמך- Document Type & Number</h2>
+          <h2 class="section-title">זיהוי מסמך ומוביל</h2>
+
+          <h3 class="subsection-title">זיהוי מסמך - Document Type & Number</h3>
           <div class="grid-row">
             <div class="form-group">
               <label for="billOfLadingNumber">מספר Bill of Lading</label>
@@ -203,12 +205,8 @@
               </div>
             </div>
           </div>
-        </section>
-      }
 
-      @case ('forwarder') {
-        <section class="form-section">
-          <h2 class="section-title">מוביל-ForWarder</h2>
+          <h3 class="subsection-title">מוביל - Forwarder</h3>
           <div class="grid-row">
             <div class="form-group">
               <label for="forwarderName">שם המוביל</label>
@@ -256,17 +254,14 @@
               />
             </div>
           </div>
-          <div class="grid-row">
-            <button type="button" class="btn btn-primary btn-transmit">
-              <i class="fa-solid fa-paper-plane"></i> שדר למכס
-            </button>
-          </div>
         </section>
       }
 
-      @case ('shipper') {
+      @case ('parties') {
         <section class="form-section">
-          <h2 class="section-title">שוגר - Shipper</h2>
+          <h2 class="section-title">צדדים למשלוח</h2>
+
+          <h3 class="subsection-title">שוגר - Shipper</h3>
           <div class="grid-row">
             <div class="form-group">
               <label for="shipperName">שם השוגר</label>
@@ -277,12 +272,8 @@
               <input id="shipperAddress" type="text" class="form-control" formControlName="shipperAddress" />
             </div>
           </div>
-        </section>
-      }
 
-      @case ('consignee') {
-        <section class="form-section">
-          <h2 class="section-title">נמען - Consignee</h2>
+          <h3 class="subsection-title">נמען - Consignee</h3>
           <div class="grid-row">
             <div class="form-group">
               <label for="consigneeName">שם הנמען</label>
@@ -298,12 +289,8 @@
               />
             </div>
           </div>
-        </section>
-      }
 
-      @case ('notify') {
-        <section class="form-section">
-          <h2 class="section-title">Notify Party</h2>
+          <h3 class="subsection-title">Notify Party</h3>
           <div class="grid-row">
             <div class="form-group">
               <label for="notifyParty">Notification Party</label>
@@ -315,7 +302,9 @@
 
       @case ('cargo') {
         <section class="form-section">
-          <h2 class="section-title">מטען - Cargo</h2>
+          <h2 class="section-title">מטען ומכס</h2>
+
+          <h3 class="subsection-title">מטען - Cargo</h3>
           <div class="grid-row">
             <div class="form-group" style="grid-column: span 2">
               <label for="cargoDescription">תיאור המטען</label>
@@ -379,12 +368,8 @@
               />
             </div>
           </div>
-        </section>
-      }
 
-      @case ('tariff') {
-        <section class="form-section">
-          <h2 class="section-title">מכס - Tariff HS Code</h2>
+          <h3 class="subsection-title">מכס - Tariff HS Code</h3>
           <div class="grid-row">
             <div class="form-group">
               <label for="hsCode">HS Code</label>
@@ -396,7 +381,9 @@
 
       @case ('terms') {
         <section class="form-section">
-          <h2 class="section-title">תנאים-Terms</h2>
+          <h2 class="section-title">תנאים ומסמכים</h2>
+
+          <h3 class="subsection-title">תנאים - Terms</h3>
           <div class="grid-row">
             <div class="form-group">
               <label>Incoterms (מוגדר בהזמנה)</label>
@@ -447,12 +434,8 @@
               </div>
             }
           </div>
-        </section>
-      }
 
-      @case ('documents') {
-        <section class="form-section">
-          <h2 class="section-title">מסמכים - Documents</h2>
+          <h3 class="subsection-title">מסמכים - Documents</h3>
           <div class="grid-row">
             <div class="form-group">
               <label for="containerNumber">Container Number</label>
