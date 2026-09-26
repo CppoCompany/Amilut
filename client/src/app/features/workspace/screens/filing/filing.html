@@ -30,6 +30,24 @@
       </div>
     </div>
 
+    <div class="form-group document-type-group">
+      <label for="documentType" class="required">סוג מסמך</label>
+      <select
+        id="documentType"
+        class="form-control"
+        [value]="documentType() ?? ''"
+        (change)="onDocumentTypeChange($event)"
+      >
+        <option value="">בחר סוג מסמך</option>
+        @for (option of documentTypes; track option) {
+          <option [value]="option">{{ documentTypeLabels[option] }}</option>
+        }
+      </select>
+      @if (documentType() === null) {
+        <p class="hint-text">יש לבחור סוג מסמך לפני העלאת קבצים</p>
+      }
+    </div>
+
     <div class="upload-area">
       <div class="upload-instructions">
         <div class="upload-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
@@ -47,7 +65,12 @@
         aria-label="בחירת קבצים להעלאה"
         (change)="onFilesSelected($event)"
       />
-      <button type="button" class="upload-btn" [disabled]="uploading()" (click)="openFilePicker()">
+      <button
+        type="button"
+        class="upload-btn"
+        [disabled]="uploading() || documentType() === null"
+        (click)="openFilePicker()"
+      >
         {{ uploading() ? 'מעלה קבצים…' : 'העלה קבצים' }}
       </button>
     </div>
@@ -63,6 +86,7 @@
       <thead>
         <tr>
           <th>שם קובץ</th>
+          <th>סוג מסמך</th>
           <th>תאריך</th>
           <th>גודל</th>
           <th>פעולות</th>
@@ -72,6 +96,7 @@
         @for (doc of documents(); track doc.name) {
           <tr>
             <td>{{ doc.name }}</td>
+            <td>{{ doc.documentType ?? '—' }}</td>
             <td>{{ doc.date }}</td>
             <td>{{ doc.size }}</td>
             <td><button type="button" class="upload-btn" style="padding: 6px 10px">פתח</button></td>

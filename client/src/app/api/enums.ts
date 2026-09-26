@@ -8,6 +8,7 @@
  */
 import {
   Destination,
+  ImportDocumentType,
   Incoterm,
   OrderStatus,
   PaymentTerms,
@@ -15,7 +16,15 @@ import {
   ShipmentType,
 } from './generated/schema';
 
-export { Destination, Incoterm, OrderStatus, PaymentTerms, ShipmentDocumentType, ShipmentType };
+export {
+  Destination,
+  ImportDocumentType,
+  Incoterm,
+  OrderStatus,
+  PaymentTerms,
+  ShipmentDocumentType,
+  ShipmentType,
+};
 
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   [OrderStatus.PREPARING]: 'בהכנה',
@@ -85,6 +94,15 @@ export const SHIPMENT_DOCUMENT_TYPE_LABELS: Record<ShipmentDocumentType, string>
   [ShipmentDocumentType.TELEX_RELEASE]: 'Telex Release',
 };
 
+/** Kinds of import paperwork a file can be filed as ("תיוק ניירת יבוא"). */
+export const IMPORT_DOCUMENT_TYPE_LABELS: Record<ImportDocumentType, string> = {
+  [ImportDocumentType.SUPPLIER_INVOICE]: 'חשבון ספק',
+  [ImportDocumentType.BILL_OF_LADING]: 'שטר מטען',
+  [ImportDocumentType.MASTER_BILL_OF_LADING]: 'שטר מטען-מסטר',
+  [ImportDocumentType.PACKING_LIST]: 'מפרט אריזות',
+  [ImportDocumentType.CERTIFICATE_OF_ORIGIN]: 'תעודת שוק/מקור',
+};
+
 /** All members of each enum, in server declaration order — handy for rendering option lists. */
 export const ORDER_STATUSES: readonly OrderStatus[] = Object.values(OrderStatus);
 export const SHIPMENT_TYPES: readonly ShipmentType[] = Object.values(ShipmentType);
@@ -93,6 +111,8 @@ export const DESTINATIONS: readonly Destination[] = Object.values(Destination);
 export const INCOTERMS: readonly Incoterm[] = Object.values(Incoterm);
 export const SHIPMENT_DOCUMENT_TYPES: readonly ShipmentDocumentType[] =
   Object.values(ShipmentDocumentType);
+export const IMPORT_DOCUMENT_TYPES: readonly ImportDocumentType[] =
+  Object.values(ImportDocumentType);
 
 /**
  * Destinations offered under each shipment type — sea shipments go to a port,

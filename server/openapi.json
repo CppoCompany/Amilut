@@ -248,9 +248,13 @@
               "schema": {
                 "type": "object",
                 "required": [
+                  "documentType",
                   "files"
                 ],
                 "properties": {
+                  "documentType": {
+                    "$ref": "#/components/schemas/ImportDocumentType"
+                  },
                   "files": {
                     "type": "array",
                     "items": {
@@ -278,7 +282,10 @@
             }
           },
           "400": {
-            "description": "No files, or an unsafe file name."
+            "description": "No files, missing or invalid documentType, or an unsafe file name."
+          },
+          "404": {
+            "description": "No import case (order_account) with this account number."
           }
         },
         "security": [
@@ -1227,9 +1234,40 @@
           }
         }
       },
+      "ImportDocumentType": {
+        "type": "string",
+        "enum": [
+          "SUPPLIER_INVOICE",
+          "BILL_OF_LADING",
+          "MASTER_BILL_OF_LADING",
+          "PACKING_LIST",
+          "CERTIFICATE_OF_ORIGIN"
+        ],
+        "description": "Kind of paperwork this file represents.",
+        "x-enum-varnames": [
+          "SUPPLIER_INVOICE",
+          "BILL_OF_LADING",
+          "MASTER_BILL_OF_LADING",
+          "PACKING_LIST",
+          "CERTIFICATE_OF_ORIGIN"
+        ]
+      },
       "UploadedImportFileDto": {
         "type": "object",
         "properties": {
+          "id": {
+            "type": "integer",
+            "example": 42,
+            "description": "Id of the `import_account_files` row created for this file."
+          },
+          "documentType": {
+            "description": "Kind of paperwork this file represents.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ImportDocumentType"
+              }
+            ]
+          },
           "name": {
             "type": "string",
             "example": "חשבון ספק.pdf",
@@ -1256,6 +1294,8 @@
           }
         },
         "required": [
+          "id",
+          "documentType",
           "name",
           "size",
           "mimeType",

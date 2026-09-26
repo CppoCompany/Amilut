@@ -17,7 +17,13 @@
   }
 }
 
+// "סוג מסמך" picker above the drop zone — narrow like the order screen's selects.
+.document-type-group {
+  max-width: 360px;
+  margin-bottom: 12px;
+}
+
 .upload-btn[disabled] {
   opacity: 0.6;
-  cursor: progress;
+  cursor: not-allowed;
 }

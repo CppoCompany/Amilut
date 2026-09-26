@@ -1,6 +1,7 @@
 import type { INestApplication } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import type { OpenAPIObject } from '@nestjs/swagger';
+import { ImportDocumentType } from './import-files/import-files.enums';
 import {
   Destination,
   Incoterm,
@@ -26,6 +27,7 @@ export const NAMED_ENUMS: Record<string, Record<string, string>> = {
   Destination,
   Incoterm,
   ShipmentDocumentType,
+  ImportDocumentType,
 };
 
 type SchemaWithExtensions = {

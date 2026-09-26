@@ -11,6 +11,11 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize } from 'rxjs';
 
+import {
+  IMPORT_DOCUMENT_TYPE_LABELS,
+  IMPORT_DOCUMENT_TYPES,
+  ImportDocumentType,
+} from '../../../../api/enums';
 import { ImportFilesApi } from '../../../../api/import-files-api';
 import type { UploadedImportFileDto } from '../../../../api/models';
 
@@ -18,6 +23,8 @@ interface ShipmentDocument {
   name: string;
   date: string;
   size: string;
+  /** Hebrew label of the paperwork kind; absent for the mock rows that predate document types. */
+  documentType?: string;
 }
 
 const UPLOAD_FAILED = 'העלאת הקבצים נכשלה';
@@ -42,6 +49,11 @@ export class FilingScreen {
    */
   protected readonly accountNumber = signal(1000);
 
+  protected readonly documentTypes = IMPORT_DOCUMENT_TYPES;
+  protected readonly documentTypeLabels = IMPORT_DOCUMENT_TYPE_LABELS;
+  /** Kind of paperwork the next upload is filed as — the server requires it, so uploads are gated on it. */
+  protected readonly documentType = signal<ImportDocumentType | null>(null);
+
   protected readonly uploading = signal(false);
   protected readonly successMessage = signal<string | null>(null);
   protected readonly errorMessage = signal<string | null>(null);
@@ -59,9 +71,14 @@ export class FilingScreen {
     { name: 'ניירת כללית.pdf', date: '17/05/2025', size: '850 KB' },
   ]);
 
-  /** "העלה קבצים" → opens the native multi-file picker. */
+  protected onDocumentTypeChange(event: Event): void {
+    const value = (event.target as HTMLSelectElement).value;
+    this.documentType.set(isImportDocumentType(value) ? value : null);
+  }
+
+  /** "העלה קבצים" → opens the native multi-file picker (only once a document type is chosen). */
   protected openFilePicker(): void {
-    if (this.uploading()) return;
+    if (this.uploading() || this.documentType() === null) return;
     this.fileInput().nativeElement.click();
   }
 
@@ -76,12 +93,15 @@ export class FilingScreen {
 
   /** Sends `files` to the server and prepends the stored files to the documents table. */
   protected uploadMultipleImportFiles(files: File[]): void {
+    const documentType = this.documentType();
+    if (documentType === null) return;
+
     this.uploading.set(true);
     this.successMessage.set(null);
     this.errorMessage.set(null);
 
     this.importFilesApi
-      .uploadMultipleImportFiles(this.accountNumber(), files)
+      .uploadMultipleImportFiles(this.accountNumber(), documentType, files)
       .pipe(
         takeUntilDestroyed(this.destroyRef),
         finalize(() => this.uploading.set(false)),
@@ -109,7 +129,12 @@ function toShipmentDocument(file: UploadedImportFileDto): ShipmentDocument {
     name: file.name,
     date: formatDocumentDate(file.uploadedAt),
     size: formatFileSize(file.size),
+    documentType: IMPORT_DOCUMENT_TYPE_LABELS[file.documentType],
   };
+}
+
+function isImportDocumentType(value: string): value is ImportDocumentType {
+  return (IMPORT_DOCUMENT_TYPES as readonly string[]).includes(value);
 }
 
 /** `dd/MM/yyyy`, matching the existing rows in the documents table. */

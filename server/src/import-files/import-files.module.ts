@@ -6,7 +6,11 @@ import {
   defaultStorageDir,
 } from './import-files.service';
 
-/** File uploads for "תיוק ניירת יבוא" — stored on disk, no database table. */
+/**
+ * File uploads for "תיוק ניירת יבוא" — bytes stored on disk, one
+ * `import_account_files` row per file. `DatabaseService` comes from the
+ * global `DatabaseModule`, so nothing needs importing here.
+ */
 @Module({
   controllers: [ImportFilesController],
   providers: [

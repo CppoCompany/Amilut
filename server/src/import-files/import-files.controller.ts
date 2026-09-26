@@ -1,4 +1,5 @@
 import {
+  Body,
   Controller,
   Param,
   ParseIntPipe,
@@ -13,8 +14,14 @@ import {
   ApiBody,
   ApiConsumes,
   ApiCreatedResponse,
+  ApiNotFoundResponse,
   ApiTags,
+  getSchemaPath,
 } from '@nestjs/swagger';
+import {
+  IMPORT_DOCUMENT_TYPE_FIELD,
+  UploadImportFilesDto,
+} from './dto/upload-import-files.dto';
 import { UploadedImportFileDto } from './dto/uploaded-import-file.dto';
 import { ImportFilesService } from './import-files.service';
 
@@ -31,14 +38,21 @@ export const MAX_IMPORT_FILE_SIZE_BYTES = 25 * 1024 * 1024;
 export class ImportFilesController {
   constructor(private readonly importFiles: ImportFilesService) {}
 
-  /** Stores the uploaded files under `storage/<accountNumber>/`, keeping their names. */
+  /**
+   * Stores the uploaded files under `storage/<accountNumber>/` (keeping their
+   * names) and records one `import_account_files` row per file, all tagged
+   * with the `documentType` text field sent in the same multipart request.
+   */
   @Post(':accountNumber')
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {
       type: 'object',
-      required: [IMPORT_FILES_FIELD],
+      required: [IMPORT_DOCUMENT_TYPE_FIELD, IMPORT_FILES_FIELD],
       properties: {
+        [IMPORT_DOCUMENT_TYPE_FIELD]: {
+          $ref: getSchemaPath('ImportDocumentType'),
+        },
         [IMPORT_FILES_FIELD]: {
           type: 'array',
           items: { type: 'string', format: 'binary' },
@@ -47,7 +61,13 @@ export class ImportFilesController {
     },
   })
   @ApiCreatedResponse({ type: UploadedImportFileDto, isArray: true })
-  @ApiBadRequestResponse({ description: 'No files, or an unsafe file name.' })
+  @ApiBadRequestResponse({
+    description:
+      'No files, missing or invalid documentType, or an unsafe file name.',
+  })
+  @ApiNotFoundResponse({
+    description: 'No import case (order_account) with this account number.',
+  })
   @UseInterceptors(
     FilesInterceptor(IMPORT_FILES_FIELD, MAX_IMPORT_FILES_PER_UPLOAD, {
       limits: { fileSize: MAX_IMPORT_FILE_SIZE_BYTES },
@@ -58,8 +78,13 @@ export class ImportFilesController {
   )
   uploadMultipleImportFiles(
     @Param('accountNumber', ParseIntPipe) accountNumber: number,
+    @Body() body: UploadImportFilesDto,
     @UploadedFiles() files: Express.Multer.File[],
   ): Promise<UploadedImportFileDto[]> {
-    return this.importFiles.uploadMultipleImportFiles(accountNumber, files);
+    return this.importFiles.uploadMultipleImportFiles(
+      accountNumber,
+      body.documentType,
+      files,
+    );
   }
 }

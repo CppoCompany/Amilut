@@ -293,7 +293,19 @@ export interface components {
             /** @example false */
             isActive?: boolean;
         };
+        /**
+         * @description Kind of paperwork this file represents.
+         * @enum {string}
+         */
+        ImportDocumentType: ImportDocumentType;
         UploadedImportFileDto: {
+            /**
+             * @description Id of the `import_account_files` row created for this file.
+             * @example 42
+             */
+            id: number;
+            /** @description Kind of paperwork this file represents. */
+            documentType: components["schemas"]["ImportDocumentType"];
             /**
              * @description Original file name, as uploaded.
              * @example חשבון ספק.pdf
@@ -928,6 +940,7 @@ export interface operations {
         requestBody: {
             content: {
                 "multipart/form-data": {
+                    documentType: components["schemas"]["ImportDocumentType"];
                     files: string[];
                 };
             };
@@ -941,8 +954,15 @@ export interface operations {
                     "application/json": components["schemas"]["UploadedImportFileDto"][];
                 };
             };
-            /** @description No files, or an unsafe file name. */
+            /** @description No files, missing or invalid documentType, or an unsafe file name. */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No import case (order_account) with this account number. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1387,6 +1407,13 @@ export interface operations {
             };
         };
     };
+}
+export enum ImportDocumentType {
+    SUPPLIER_INVOICE = "SUPPLIER_INVOICE",
+    BILL_OF_LADING = "BILL_OF_LADING",
+    MASTER_BILL_OF_LADING = "MASTER_BILL_OF_LADING",
+    PACKING_LIST = "PACKING_LIST",
+    CERTIFICATE_OF_ORIGIN = "CERTIFICATE_OF_ORIGIN"
 }
 export enum OrderStatus {
     PREPARING = "preparing",
