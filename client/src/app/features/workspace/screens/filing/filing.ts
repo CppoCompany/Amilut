@@ -20,15 +20,25 @@ import { ImportFilesApi } from '../../../../api/import-files-api';
 import type { UploadedImportFileDto } from '../../../../api/models';
 import { CURRENT_CASE_NUMBER } from '../../current-case';
 
+/** One row of the documents table — a file stored on the server for the current case. */
 interface ShipmentDocument {
+  /** `import_account_files` row id; what the "open" action fetches. */
+  id: number;
   name: string;
   date: string;
   size: string;
-  /** Hebrew label of the paperwork kind; absent for the mock rows that predate document types. */
-  documentType?: string;
+  /** Hebrew label of the paperwork kind. */
+  documentType: string;
 }
 
 const UPLOAD_FAILED = 'העלאת הקבצים נכשלה';
+const LOAD_FAILED = 'טעינת רשימת הקבצים נכשלה';
+
+/**
+ * How long the blob URL handed to the viewer tab stays valid. The tab loads it
+ * within milliseconds; the delay only has to outlive a slow first paint.
+ */
+export const BLOB_URL_TTL_MS = 60_000;
 
 /** "תיוק ניירת יבוא" — import paperwork filing view. */
 @Component({
@@ -59,18 +69,15 @@ export class FilingScreen {
   protected readonly successMessage = signal<string | null>(null);
   protected readonly errorMessage = signal<string | null>(null);
 
-  protected readonly documents = signal<ShipmentDocument[]>([
-    { name: 'שטר מטען- מאסטרpdf', date: '18/05/2025', size: '1.2 MB' },
-    { name: 'שטר מטען- פנימי', date: '18/05/2025', size: '1.2 MB' },
-    { name: 'חשבון ספק.pdf', date: '17/05/2025', size: '850 KB' },
-    { name: 'מפרט אריזות.pdf', date: '17/05/2025', size: '850 KB' },
-    { name: 'תעודת שוק/תעודת מקור.pdf', date: '17/05/2025', size: '850 KB' },
-    { name: 'הצעת מחיר ללקוח.pdf', date: '17/05/2025', size: '850 KB' },
-    { name: 'חשבון מטענים.pdf', date: '17/05/2025', size: '850 KB' },
-    { name: 'אישורים.pdf', date: '17/05/2025', size: '850 KB' },
-    { name: 'רישיונות.pdf', date: '17/05/2025', size: '850 KB' },
-    { name: 'ניירת כללית.pdf', date: '17/05/2025', size: '850 KB' },
-  ]);
+  /** Files already stored for the case, newest first — loaded on init, extended by uploads. */
+  protected readonly documents = signal<ShipmentDocument[]>([]);
+  protected readonly loading = signal(false);
+  /** Row id of the file currently being fetched for viewing, if any. */
+  protected readonly openingId = signal<number | null>(null);
+
+  constructor() {
+    this.loadDocuments();
+  }
 
   protected onDocumentTypeChange(event: Event): void {
     const value = (event.target as HTMLSelectElement).value;
@@ -123,10 +130,66 @@ export class FilingScreen {
         error: (error: unknown) => this.errorMessage.set(uploadErrorMessage(error)),
       });
   }
+
+  /**
+   * "פתח" → shows the file in a new browser tab. The tab is opened
+   * synchronously inside the click (so popup blockers allow it) and pointed at
+   * the file once its bytes arrive through the authenticated HTTP client.
+   */
+  protected openDocument(doc: ShipmentDocument): void {
+    if (this.openingId() !== null) return;
+    this.openingId.set(doc.id);
+    this.errorMessage.set(null);
+
+    const viewer = window.open('', '_blank');
+
+    this.importFilesApi
+      .getImportFileBlob(this.accountNumber(), doc.id)
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => this.openingId.set(null)),
+      )
+      .subscribe({
+        next: (blob) => {
+          const url = URL.createObjectURL(blob);
+          if (viewer && !viewer.closed) {
+            viewer.location.href = url;
+          } else {
+            window.open(url, '_blank');
+          }
+          setTimeout(() => URL.revokeObjectURL(url), BLOB_URL_TTL_MS);
+        },
+        error: () => {
+          viewer?.close();
+          this.errorMessage.set(`פתיחת הקובץ "${doc.name}" נכשלה`);
+        },
+      });
+  }
+
+  /** Fills the documents table with the files already stored for the case. */
+  private loadDocuments(): void {
+    this.loading.set(true);
+    this.errorMessage.set(null);
+
+    this.importFilesApi
+      .listImportFiles(this.accountNumber())
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => this.loading.set(false)),
+      )
+      .subscribe({
+        next: (files) => this.documents.set(files.map(toShipmentDocument)),
+        error: () => {
+          this.documents.set([]);
+          this.errorMessage.set(LOAD_FAILED);
+        },
+      });
+  }
 }
 
 function toShipmentDocument(file: UploadedImportFileDto): ShipmentDocument {
   return {
+    id: file.id,
     name: file.name,
     date: formatDocumentDate(file.uploadedAt),
     size: formatFileSize(file.size),
@@ -138,7 +201,7 @@ function isImportDocumentType(value: string): value is ImportDocumentType {
   return (IMPORT_DOCUMENT_TYPES as readonly string[]).includes(value);
 }
 
-/** `dd/MM/yyyy`, matching the existing rows in the documents table. */
+/** `dd/MM/yyyy`, in the browser's local time. */
 export function formatDocumentDate(iso: string): string {
   const date = new Date(iso);
   const dd = String(date.getDate()).padStart(2, '0');
@@ -146,7 +209,7 @@ export function formatDocumentDate(iso: string): string {
   return `${dd}/${mm}/${date.getFullYear()}`;
 }
 
-/** `850 KB` / `1.2 MB`, matching the existing rows in the documents table. */
+/** `850 KB` / `1.2 MB`. */
 export function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;

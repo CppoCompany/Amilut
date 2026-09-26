@@ -1,5 +1,12 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  readdir,
+  rm,
+  writeFile,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
 import type { DatabaseService } from '../database/database.service';
@@ -9,7 +16,10 @@ import {
   ImportAccountFileData,
   ImportFilesService,
   SELECT_ACCOUNT_EXISTS_SQL,
+  SELECT_FILE_BY_ID_SQL,
+  SELECT_LATEST_FILES_SQL,
   SELECT_LATEST_SUPPLIER_INVOICE_ROWS_SQL,
+  resolveInsideStorage,
   safeFileName,
 } from './import-files.service';
 import { InvoiceExtractorService } from './invoice-extraction/invoice-extractor.service';
@@ -580,6 +590,197 @@ describe('ImportFilesService', () => {
       }
       expect(db.queryOne).not.toHaveBeenCalled();
       expect(db.query).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('listImportFiles', () => {
+    const FILE_B = {
+      documentType: INVOICE,
+      name: 'b.pdf',
+      size: 2,
+      mimeType: 'application/pdf',
+      relativePath: '1000/b.pdf',
+      uploadedAt: '2026-09-22T10:00:00.000Z',
+    };
+    const FILE_A = {
+      documentType: ImportDocumentType.PACKING_LIST,
+      name: 'a.pdf',
+      size: 1,
+      mimeType: 'application/pdf',
+      relativePath: '1000/a.pdf',
+      uploadedAt: '2026-09-21T10:00:00.000Z',
+    };
+
+    it('returns the rows the SQL yields as file descriptors (id + data), newest first', async () => {
+      db.queryOne.mockResolvedValue({ id: 1000 });
+      db.query.mockResolvedValue([
+        { id: 7, data: FILE_B },
+        { id: 3, data: FILE_A },
+      ]);
+
+      const result = await service.listImportFiles(1000);
+
+      expect(db.queryOne).toHaveBeenCalledWith(
+        SELECT_ACCOUNT_EXISTS_SQL,
+        [1000],
+      );
+      expect(db.query).toHaveBeenCalledWith(SELECT_LATEST_FILES_SQL, [1000]);
+      expect(result).toEqual([
+        { id: 7, ...FILE_B },
+        { id: 3, ...FILE_A },
+      ]);
+      // De-duplication, newest-first ordering and line-item stripping live in the SQL.
+      expect(SELECT_LATEST_FILES_SQL).toContain("DISTINCT ON (data->>'name')");
+      expect(SELECT_LATEST_FILES_SQL).toContain(
+        "data - 'lineItems' - 'extractionError'",
+      );
+      expect(SELECT_LATEST_FILES_SQL).toContain("(data->>'uploadedAt') DESC");
+      expect(SELECT_LATEST_FILES_SQL).toContain('WHERE account_id = $1');
+    });
+
+    it('returns [] for a case with no files', async () => {
+      db.queryOne.mockResolvedValue({ id: 1000 });
+      db.query.mockResolvedValue([]);
+
+      await expect(service.listImportFiles(1000)).resolves.toEqual([]);
+    });
+
+    it('rejects a bad account number and 404s an unknown case', async () => {
+      await expect(service.listImportFiles(0)).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      expect(db.queryOne).not.toHaveBeenCalled();
+
+      db.queryOne.mockResolvedValue(null);
+      await expect(service.listImportFiles(1000)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+      expect(db.query).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getImportFile', () => {
+    function fileRow(
+      relativePath: string,
+      extra: Partial<ImportAccountFileData> = {},
+    ) {
+      return {
+        id: 42,
+        data: {
+          documentType: INVOICE,
+          name: path.posix.basename(relativePath),
+          size: 1,
+          mimeType: 'application/pdf',
+          relativePath,
+          uploadedAt: '2026-09-22T10:00:00.000Z',
+          ...extra,
+        },
+      };
+    }
+
+    /** The account exists; the file lookup answers with `row`. */
+    function accountExistsWithFileRow(row: unknown) {
+      db.queryOne.mockImplementation((sql: string, params: unknown[]) =>
+        sql === SELECT_ACCOUNT_EXISTS_SQL
+          ? Promise.resolve({ id: params[0] })
+          : Promise.resolve(row),
+      );
+    }
+
+    async function putOnDisk(relativePath: string, content: string) {
+      const absolute = path.join(storageDir, relativePath);
+      await mkdir(path.dirname(absolute), { recursive: true });
+      await writeFile(absolute, content, 'utf8');
+      return absolute;
+    }
+
+    it('resolves the row to its file on disk with name, MIME type and size', async () => {
+      accountExistsWithFileRow(fileRow('1000/חשבון ספק.pdf'));
+      const absolutePath = await putOnDisk('1000/חשבון ספק.pdf', 'pdf-bytes');
+
+      const file = await service.getImportFile(1000, 42);
+
+      expect(db.queryOne).toHaveBeenCalledWith(
+        SELECT_FILE_BY_ID_SQL,
+        [42, 1000],
+      );
+      expect(file).toEqual({
+        absolutePath,
+        name: 'חשבון ספק.pdf',
+        mimeType: 'application/pdf',
+        size: 9,
+      });
+    });
+
+    it('falls back to application/octet-stream when the row has no MIME type', async () => {
+      accountExistsWithFileRow(fileRow('1000/blob.bin', { mimeType: '' }));
+      await putOnDisk('1000/blob.bin', 'x');
+
+      const file = await service.getImportFile(1000, 42);
+
+      expect(file.mimeType).toBe('application/octet-stream');
+    });
+
+    it('404s when no row with that id belongs to the case', async () => {
+      accountExistsWithFileRow(null);
+
+      await expect(service.getImportFile(1000, 42)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+    });
+
+    it('404s when the bytes are missing on disk', async () => {
+      accountExistsWithFileRow(fileRow('1000/gone.pdf'));
+
+      await expect(service.getImportFile(1000, 42)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+    });
+
+    it('refuses a stored path that escapes the storage root', async () => {
+      accountExistsWithFileRow(fileRow('../outside.txt'));
+      const outside = path.join(storageDir, '..', 'outside.txt');
+      await writeFile(outside, 'secret');
+      try {
+        await expect(service.getImportFile(1000, 42)).rejects.toBeInstanceOf(
+          NotFoundException,
+        );
+      } finally {
+        await rm(outside, { force: true });
+      }
+    });
+
+    it('rejects a non-positive file id and an unknown case before touching the disk', async () => {
+      db.queryOne.mockResolvedValue({ id: 1000 });
+      await expect(service.getImportFile(1000, 0)).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      expect(db.queryOne).toHaveBeenCalledTimes(1);
+
+      db.queryOne.mockReset();
+      db.queryOne.mockResolvedValue(null);
+      await expect(service.getImportFile(1000, 42)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+      expect(db.queryOne).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('resolveInsideStorage', () => {
+    it('returns the absolute path of a relative path inside the root', () => {
+      expect(resolveInsideStorage(storageDir, '1000/a.pdf')).toBe(
+        path.join(storageDir, '1000', 'a.pdf'),
+      );
+    });
+
+    it('returns null for the root itself and for anything that escapes it', () => {
+      expect(resolveInsideStorage(storageDir, '')).toBeNull();
+      expect(resolveInsideStorage(storageDir, '.')).toBeNull();
+      expect(resolveInsideStorage(storageDir, '../x.pdf')).toBeNull();
+      expect(resolveInsideStorage(storageDir, '1000/../../x.pdf')).toBeNull();
+      expect(
+        resolveInsideStorage(storageDir, path.resolve(storageDir, '..', 'x')),
+      ).toBeNull();
     });
   });
 });

@@ -91,9 +91,25 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        get: operations["ImportFilesController_listImportFiles"];
         put?: never;
         post: operations["ImportFilesController_uploadMultipleImportFiles"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/import-files/{accountNumber}/files/{fileId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ImportFilesController_getImportFile"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -972,6 +988,41 @@ export interface operations {
             };
         };
     };
+    ImportFilesController_listImportFiles: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountNumber: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadedImportFileDto"][];
+                };
+            };
+            /** @description accountNumber is not a positive integer. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No import case (order_account) with this account number. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     ImportFilesController_uploadMultipleImportFiles: {
         parameters: {
             query?: never;
@@ -1006,6 +1057,43 @@ export interface operations {
                 content?: never;
             };
             /** @description No import case (order_account) with this account number. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ImportFilesController_getImportFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountNumber: number;
+                fileId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The file contents, with Content-Type set to its MIME type. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
+                };
+            };
+            /** @description accountNumber or fileId is not a positive integer. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unknown case, no such file in that case, or the file is missing on disk. */
             404: {
                 headers: {
                     [name: string]: unknown;

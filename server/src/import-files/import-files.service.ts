@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, stat, writeFile } from 'node:fs/promises';
 import * as path from 'node:path';
 import type { PoolClient } from 'pg';
 import { DatabaseService } from '../database/database.service';
@@ -79,6 +79,32 @@ export const SELECT_LATEST_SUPPLIER_INVOICE_ROWS_SQL = `SELECT data FROM (
       ORDER BY data->>'name', id DESC
    ) latest
    ORDER BY (data->>'uploadedAt'), (data->>'name')`;
+
+/**
+ * The current (newest by id) row per file name for one account, newest upload
+ * first — what the filing screen's documents table shows. Supplier-invoice
+ * line items are stripped: the list only needs the file descriptor.
+ */
+export const SELECT_LATEST_FILES_SQL = `SELECT id, data - 'lineItems' - 'extractionError' AS data FROM (
+     SELECT DISTINCT ON (data->>'name') id, data
+       FROM import_account_files
+      WHERE account_id = $1
+      ORDER BY data->>'name', id DESC
+   ) latest
+   ORDER BY (data->>'uploadedAt') DESC, id DESC`;
+
+/** One file row by id, scoped to its account so a file can never be read through another case. */
+export const SELECT_FILE_BY_ID_SQL = `SELECT id, data FROM import_account_files
+   WHERE id = $1 AND account_id = $2`;
+
+/** A stored file resolved to its location on disk, ready to be streamed to the client. */
+export interface StoredImportFile {
+  /** Absolute path inside the storage root. */
+  absolutePath: string;
+  name: string;
+  mimeType: string;
+  size: number;
+}
 
 const PG_FOREIGN_KEY_VIOLATION = '23503';
 
@@ -181,16 +207,7 @@ export class ImportFilesService {
   async getSupplierInvoiceLineItems(
     accountNumber: number,
   ): Promise<InvoiceLineItemDto[]> {
-    if (!Number.isInteger(accountNumber) || accountNumber <= 0) {
-      throw new BadRequestException('accountNumber must be a positive integer');
-    }
-    const account = await this.db.queryOne<{ id: number }>(
-      SELECT_ACCOUNT_EXISTS_SQL,
-      [accountNumber],
-    );
-    if (!account) {
-      throw accountNotFound(accountNumber);
-    }
+    await this.assertAccountExists(accountNumber);
 
     const rows = await this.db.query<{ data: Partial<ImportAccountFileData> }>(
       SELECT_LATEST_SUPPLIER_INVOICE_ROWS_SQL,
@@ -201,6 +218,95 @@ export class ImportFilesService {
         ? data.lineItems.map(normaliseLineItem)
         : [],
     );
+  }
+
+  /**
+   * The files filed under the case, newest upload first, one entry per file
+   * name (a re-upload replaces the older row in the list). Line items are not
+   * included.
+   *
+   * @throws BadRequestException — bad account number.
+   * @throws NotFoundException — `accountNumber` is not an `order_account` id.
+   */
+  async listImportFiles(
+    accountNumber: number,
+  ): Promise<UploadedImportFileDto[]> {
+    await this.assertAccountExists(accountNumber);
+
+    const rows = await this.db.query<{
+      id: number;
+      data: Omit<ImportAccountFileData, 'lineItems' | 'extractionError'>;
+    }>(SELECT_LATEST_FILES_SQL, [accountNumber]);
+    return rows.map(({ id, data }) => ({ id, ...data }));
+  }
+
+  /**
+   * Locates file `fileId` of the case on disk so the controller can stream it.
+   * The path recorded in the row is re-validated against the storage root.
+   *
+   * @throws BadRequestException — bad account number or file id.
+   * @throws NotFoundException — unknown case, no such file in that case, or
+   *   the bytes are gone from disk.
+   */
+  async getImportFile(
+    accountNumber: number,
+    fileId: number,
+  ): Promise<StoredImportFile> {
+    await this.assertAccountExists(accountNumber);
+    if (!Number.isInteger(fileId) || fileId <= 0) {
+      throw new BadRequestException('fileId must be a positive integer');
+    }
+
+    const row = await this.db.queryOne<{
+      id: number;
+      data: Partial<ImportAccountFileData>;
+    }>(SELECT_FILE_BY_ID_SQL, [fileId, accountNumber]);
+    if (!row) {
+      throw fileNotFound(accountNumber, fileId);
+    }
+
+    const { name, mimeType, relativePath } = row.data;
+    if (typeof relativePath !== 'string' || typeof name !== 'string') {
+      throw fileNotFound(accountNumber, fileId);
+    }
+    const absolutePath = resolveInsideStorage(this.storageDir, relativePath);
+    if (absolutePath === null) {
+      throw fileNotFound(accountNumber, fileId);
+    }
+
+    let onDisk;
+    try {
+      onDisk = await stat(absolutePath);
+    } catch {
+      throw fileNotFound(accountNumber, fileId);
+    }
+    if (!onDisk.isFile()) {
+      throw fileNotFound(accountNumber, fileId);
+    }
+
+    return {
+      absolutePath,
+      name,
+      mimeType:
+        typeof mimeType === 'string' && mimeType !== ''
+          ? mimeType
+          : 'application/octet-stream',
+      size: onDisk.size,
+    };
+  }
+
+  /** Validates `accountNumber` and checks the case exists (outside a transaction). */
+  private async assertAccountExists(accountNumber: number): Promise<void> {
+    if (!Number.isInteger(accountNumber) || accountNumber <= 0) {
+      throw new BadRequestException('accountNumber must be a positive integer');
+    }
+    const account = await this.db.queryOne<{ id: number }>(
+      SELECT_ACCOUNT_EXISTS_SQL,
+      [accountNumber],
+    );
+    if (!account) {
+      throw accountNotFound(accountNumber);
+    }
   }
 
   /**
@@ -291,6 +397,37 @@ function accountNotFound(accountNumber: number): NotFoundException {
   return new NotFoundException(
     `Import case (account) ${accountNumber} not found`,
   );
+}
+
+function fileNotFound(
+  accountNumber: number,
+  fileId: number,
+): NotFoundException {
+  return new NotFoundException(
+    `File ${fileId} of import case (account) ${accountNumber} not found`,
+  );
+}
+
+/**
+ * Joins `relativePath` onto `storageDir` and returns the absolute path, or
+ * `null` when the result would land outside the storage root (a tampered or
+ * malformed row must never let a request read an arbitrary file).
+ */
+export function resolveInsideStorage(
+  storageDir: string,
+  relativePath: string,
+): string | null {
+  const root = path.resolve(storageDir);
+  const absolute = path.resolve(root, relativePath);
+  const relative = path.relative(root, absolute);
+  if (
+    relative === '' ||
+    relative.startsWith('..') ||
+    path.isAbsolute(relative)
+  ) {
+    return null;
+  }
+  return absolute;
 }
 
 /**

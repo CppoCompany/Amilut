@@ -21,6 +21,25 @@ export class ImportFilesApi {
   private readonly baseUrl = '/api/import-files';
 
   /**
+   * `GET /api/import-files/:accountNumber` — the files filed under the case,
+   * newest first, one per file name (a re-upload replaces the older entry).
+   */
+  listImportFiles(accountNumber: number): Observable<UploadedImportFileDto[]> {
+    return this.http.get<UploadedImportFileDto[]>(`${this.baseUrl}/${accountNumber}`);
+  }
+
+  /**
+   * `GET /api/import-files/:accountNumber/files/:fileId` — the bytes of one
+   * filed document, typed with its stored MIME type. Fetched through
+   * `HttpClient` (not a plain link) so the bearer token travels with it.
+   */
+  getImportFileBlob(accountNumber: number, fileId: number): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/${accountNumber}/files/${fileId}`, {
+      responseType: 'blob',
+    });
+  }
+
+  /**
    * `POST /api/import-files/:accountNumber` — stores every file under
    * `storage/<accountNumber>/` on the server, keeping the original names, and
    * records each one as a `documentType` document of that case. The server

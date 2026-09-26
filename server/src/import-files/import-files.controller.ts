@@ -5,6 +5,7 @@ import {
   Param,
   ParseIntPipe,
   Post,
+  StreamableFile,
   UploadedFiles,
   UseInterceptors,
 } from '@nestjs/common';
@@ -17,9 +18,11 @@ import {
   ApiCreatedResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
+  ApiProduces,
   ApiTags,
   getSchemaPath,
 } from '@nestjs/swagger';
+import { createReadStream } from 'node:fs';
 import {
   IMPORT_DOCUMENT_TYPE_FIELD,
   UploadImportFilesDto,
@@ -92,6 +95,54 @@ export class ImportFilesController {
   }
 
   /**
+   * The files filed under the case, newest first, one per file name — the
+   * rows of the filing screen's documents table. Line items are omitted.
+   */
+  @Get(':accountNumber')
+  @ApiOkResponse({ type: UploadedImportFileDto, isArray: true })
+  @ApiBadRequestResponse({
+    description: 'accountNumber is not a positive integer.',
+  })
+  @ApiNotFoundResponse({
+    description: 'No import case (order_account) with this account number.',
+  })
+  listImportFiles(
+    @Param('accountNumber', ParseIntPipe) accountNumber: number,
+  ): Promise<UploadedImportFileDto[]> {
+    return this.importFiles.listImportFiles(accountNumber);
+  }
+
+  /**
+   * Streams the bytes of one filed document so the client can open it. Served
+   * with the stored MIME type and an `inline` disposition, so PDFs and images
+   * open in the browser; anything else is offered as a download.
+   */
+  @Get(':accountNumber/files/:fileId')
+  @ApiProduces('application/octet-stream')
+  @ApiOkResponse({
+    description: 'The file contents, with Content-Type set to its MIME type.',
+    schema: { type: 'string', format: 'binary' },
+  })
+  @ApiBadRequestResponse({
+    description: 'accountNumber or fileId is not a positive integer.',
+  })
+  @ApiNotFoundResponse({
+    description:
+      'Unknown case, no such file in that case, or the file is missing on disk.',
+  })
+  async getImportFile(
+    @Param('accountNumber', ParseIntPipe) accountNumber: number,
+    @Param('fileId', ParseIntPipe) fileId: number,
+  ): Promise<StreamableFile> {
+    const file = await this.importFiles.getImportFile(accountNumber, fileId);
+    return new StreamableFile(createReadStream(file.absolutePath), {
+      type: file.mimeType,
+      disposition: inlineDisposition(file.name),
+      length: file.size,
+    });
+  }
+
+  /**
    * Goods lines of the supplier invoices filed for the case (newest upload of
    * each file name), concatenated in upload order — for the classification
    * screen. Empty when no supplier invoice has been filed yet.
@@ -109,4 +160,29 @@ export class ImportFilesController {
   ): Promise<InvoiceLineItemDto[]> {
     return this.importFiles.getSupplierInvoiceLineItems(accountNumber);
   }
+}
+
+/**
+ * `Content-Disposition` for viewing a file in the browser. File names are
+ * mostly Hebrew, which the header's plain `filename` cannot carry, so an
+ * RFC 5987 `filename*` holds the real name and `filename` an ASCII fallback.
+ */
+export function inlineDisposition(fileName: string): string {
+  const ascii =
+    Array.from(fileName, (c) => {
+      const code = c.charCodeAt(0);
+      // Printable ASCII only, minus the quote (0x22) and backslash (0x5c) that would break the quoted-string.
+      return code >= 0x20 && code <= 0x7e && code !== 0x22 && code !== 0x5c
+        ? c
+        : '_';
+    }).join('') || 'file';
+  return `inline; filename="${ascii}"; filename*=UTF-8''${rfc5987(fileName)}`;
+}
+
+/** Percent-encodes for an RFC 5987 `ext-value`; `encodeURIComponent` leaves these four characters bare. */
+function rfc5987(value: string): string {
+  return encodeURIComponent(value).replace(
+    /['()*]/g,
+    (c) => '%' + c.charCodeAt(0).toString(16).toUpperCase(),
+  );
 }

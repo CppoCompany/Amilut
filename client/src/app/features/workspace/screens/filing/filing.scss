@@ -27,3 +27,10 @@
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+// Placeholder row shown while the file list loads or when the case has no files yet.
+.documents-table .documents-empty td {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 20px 12px;
+}

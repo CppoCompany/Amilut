@@ -296,6 +296,98 @@
         "tags": [
           "import-files"
         ]
+      },
+      "get": {
+        "operationId": "ImportFilesController_listImportFiles",
+        "parameters": [
+          {
+            "name": "accountNumber",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UploadedImportFileDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "accountNumber is not a positive integer."
+          },
+          "404": {
+            "description": "No import case (order_account) with this account number."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "import-files"
+        ]
+      }
+    },
+    "/api/import-files/{accountNumber}/files/{fileId}": {
+      "get": {
+        "operationId": "ImportFilesController_getImportFile",
+        "parameters": [
+          {
+            "name": "accountNumber",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "fileId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The file contents, with Content-Type set to its MIME type.",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "accountNumber or fileId is not a positive integer."
+          },
+          "404": {
+            "description": "Unknown case, no such file in that case, or the file is missing on disk."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "import-files"
+        ]
       }
     },
     "/api/import-files/{accountNumber}/line-items": {

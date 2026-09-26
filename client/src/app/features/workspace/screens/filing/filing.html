@@ -93,13 +93,29 @@
         </tr>
       </thead>
       <tbody>
-        @for (doc of documents(); track doc.name) {
+        @for (doc of documents(); track doc.id) {
           <tr>
             <td>{{ doc.name }}</td>
-            <td>{{ doc.documentType ?? '—' }}</td>
+            <td>{{ doc.documentType }}</td>
             <td>{{ doc.date }}</td>
             <td>{{ doc.size }}</td>
-            <td><button type="button" class="upload-btn" style="padding: 6px 10px">פתח</button></td>
+            <td>
+              <button
+                type="button"
+                class="upload-btn open-btn"
+                [disabled]="openingId() !== null"
+                [attr.aria-label]="'פתח את ' + doc.name"
+                (click)="openDocument(doc)"
+              >
+                {{ openingId() === doc.id ? 'פותח…' : 'פתח' }}
+              </button>
+            </td>
+          </tr>
+        } @empty {
+          <tr class="documents-empty">
+            <td colspan="5">
+              {{ loading() ? 'טוען קבצים…' : 'לא הועלו קבצים לתיק זה עדיין' }}
+            </td>
           </tr>
         }
       </tbody>
