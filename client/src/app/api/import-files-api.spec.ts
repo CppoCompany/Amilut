@@ -4,7 +4,7 @@ import { TestBed } from '@angular/core/testing';
 
 import { ImportDocumentType } from './enums';
 import { IMPORT_DOCUMENT_TYPE_FIELD, IMPORT_FILES_FIELD, ImportFilesApi } from './import-files-api';
-import type { UploadedImportFileDto } from './models';
+import type { InvoiceLineItemDto, UploadedImportFileDto } from './models';
 
 describe('ImportFilesApi', () => {
   let api: ImportFilesApi;
@@ -47,6 +47,21 @@ describe('ImportFilesApi', () => {
     expect(body.get(IMPORT_DOCUMENT_TYPE_FIELD)).toBe(ImportDocumentType.SUPPLIER_INVOICE);
     const parts = body.getAll(IMPORT_FILES_FIELD) as File[];
     expect(parts.map((f) => f.name)).toEqual(['חשבון ספק.pdf', 'packing.xlsx']);
+
+    req.flush(response);
+    expect(result).toEqual(response);
+  });
+
+  it('getSupplierInvoiceLineItems GETs the line items of the case', () => {
+    const response: InvoiceLineItemDto[] = [
+      { item: 'Y8022-140BK', description: 'Light Fixtures', quantity: 15, price: 15.32, total: 229.8 },
+    ];
+
+    let result: InvoiceLineItemDto[] | undefined;
+    api.getSupplierInvoiceLineItems(1000).subscribe((r) => (result = r));
+
+    const req = http.expectOne('/api/import-files/1000/line-items');
+    expect(req.request.method).toBe('GET');
 
     req.flush(response);
     expect(result).toEqual(response);

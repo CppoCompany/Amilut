@@ -17,6 +17,12 @@
 
     <div class="form-section">
       <h3 class="section-title">Products</h3>
+      @if (loading()) {
+        <p class="products-loading">טוען פריטים…</p>
+      }
+      @if (errorMessage(); as message) {
+        <p class="form-message form-message--error" role="alert">{{ message }}</p>
+      }
       <div class="table-wrap" style="overflow: auto">
         <table class="documents-table" style="min-width: 900px">
           <thead>
@@ -36,13 +42,19 @@
               <tr>
                 <td>{{ product.sku }}</td>
                 <td>{{ product.name }}</td>
-                <td>{{ product.qty }}</td>
-                <td>{{ product.unitPrice }}</td>
-                <td>{{ product.totalPrice }}</td>
+                <td>{{ product.qty ?? '' }}</td>
+                <td>{{ product.unitPrice !== null ? (product.unitPrice | number: '1.2-2') : '' }}</td>
+                <td>{{ product.totalPrice !== null ? (product.totalPrice | number: '1.2-2') : '' }}</td>
                 <td>{{ product.tradeAgreement }}</td>
                 <td>{{ product.classificationCode }}</td>
                 <td>{{ product.approvals }}</td>
               </tr>
+            } @empty {
+              @if (!loading()) {
+                <tr class="products-empty">
+                  <td colspan="8">לא נמצאו פריטים מחשבון ספק — העלה חשבון ספק במסך תיוק ניירת יבוא</td>
+                </tr>
+              }
             }
           </tbody>
         </table>

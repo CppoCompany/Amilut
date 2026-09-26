@@ -100,6 +100,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/import-files/{accountNumber}/line-items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ImportFilesController_getSupplierInvoiceLineItems"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/orders": {
         parameters: {
             query?: never;
@@ -298,6 +314,27 @@ export interface components {
          * @enum {string}
          */
         ImportDocumentType: ImportDocumentType;
+        InvoiceLineItemDto: {
+            /**
+             * @description Item / part / model code as printed (may contain spaces).
+             * @example Y8022-140BK
+             */
+            item: string;
+            /** @example Light Fixtures */
+            description: string;
+            /** @example 15 */
+            quantity: number | null;
+            /**
+             * @description Unit price with the currency mark stripped.
+             * @example 15.32
+             */
+            price: number | null;
+            /**
+             * @description Line total with the currency mark stripped.
+             * @example 229.8
+             */
+            total: number | null;
+        };
         UploadedImportFileDto: {
             /**
              * @description Id of the `import_account_files` row created for this file.
@@ -328,6 +365,13 @@ export interface components {
              * @example 2026-09-22T16:05:18.000Z
              */
             uploadedAt: string;
+            /** @description Goods lines extracted from the file. Only present for SUPPLIER_INVOICE; empty when nothing could be extracted (see `extractionError`). */
+            lineItems?: components["schemas"]["InvoiceLineItemDto"][];
+            /**
+             * @description Why `lineItems` is empty: unreadable file, unsupported type or no table. Absent when extraction succeeded or was not attempted.
+             * @example No line-item table found
+             */
+            extractionError?: string;
         };
         /** @enum {string} */
         OrderStatus: OrderStatus;
@@ -955,6 +999,41 @@ export interface operations {
                 };
             };
             /** @description No files, missing or invalid documentType, or an unsafe file name. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No import case (order_account) with this account number. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ImportFilesController_getSupplierInvoiceLineItems: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountNumber: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceLineItemDto"][];
+                };
+            };
+            /** @description accountNumber is not a positive integer. */
             400: {
                 headers: {
                     [name: string]: unknown;

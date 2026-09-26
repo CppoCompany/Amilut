@@ -18,6 +18,7 @@ import {
 } from '../../../../api/enums';
 import { ImportFilesApi } from '../../../../api/import-files-api';
 import type { UploadedImportFileDto } from '../../../../api/models';
+import { CURRENT_CASE_NUMBER } from '../../current-case';
 
 interface ShipmentDocument {
   name: string;
@@ -44,10 +45,10 @@ export class FilingScreen {
 
   /**
    * The case ("מספר תיק") the uploaded files are filed under — this is the
-   * `order_account` id and names the folder on the server. Still the mock
-   * value shown in the header until the screen is wired to a selected case.
+   * `order_account` id and names the folder on the server. Still the shared
+   * placeholder shown in the header until the screen is wired to a selected case.
    */
-  protected readonly accountNumber = signal(1000);
+  protected readonly accountNumber = signal(CURRENT_CASE_NUMBER);
 
   protected readonly documentTypes = IMPORT_DOCUMENT_TYPES;
   protected readonly documentTypeLabels = IMPORT_DOCUMENT_TYPE_LABELS;

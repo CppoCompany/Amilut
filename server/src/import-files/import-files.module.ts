@@ -5,6 +5,7 @@ import {
   ImportFilesService,
   defaultStorageDir,
 } from './import-files.service';
+import { InvoiceExtractorService } from './invoice-extraction/invoice-extractor.service';
 
 /**
  * File uploads for "תיוק ניירת יבוא" — bytes stored on disk, one
@@ -15,6 +16,7 @@ import {
   controllers: [ImportFilesController],
   providers: [
     { provide: IMPORT_FILES_STORAGE_DIR, useFactory: defaultStorageDir },
+    InvoiceExtractorService,
     ImportFilesService,
   ],
   exports: [ImportFilesService],

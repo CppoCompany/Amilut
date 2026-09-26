@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   Param,
   ParseIntPipe,
   Post,
@@ -15,6 +16,7 @@ import {
   ApiConsumes,
   ApiCreatedResponse,
   ApiNotFoundResponse,
+  ApiOkResponse,
   ApiTags,
   getSchemaPath,
 } from '@nestjs/swagger';
@@ -22,6 +24,7 @@ import {
   IMPORT_DOCUMENT_TYPE_FIELD,
   UploadImportFilesDto,
 } from './dto/upload-import-files.dto';
+import { InvoiceLineItemDto } from './dto/invoice-line-item.dto';
 import { UploadedImportFileDto } from './dto/uploaded-import-file.dto';
 import { ImportFilesService } from './import-files.service';
 
@@ -86,5 +89,24 @@ export class ImportFilesController {
       body.documentType,
       files,
     );
+  }
+
+  /**
+   * Goods lines of the supplier invoices filed for the case (newest upload of
+   * each file name), concatenated in upload order — for the classification
+   * screen. Empty when no supplier invoice has been filed yet.
+   */
+  @Get(':accountNumber/line-items')
+  @ApiOkResponse({ type: InvoiceLineItemDto, isArray: true })
+  @ApiBadRequestResponse({
+    description: 'accountNumber is not a positive integer.',
+  })
+  @ApiNotFoundResponse({
+    description: 'No import case (order_account) with this account number.',
+  })
+  getSupplierInvoiceLineItems(
+    @Param('accountNumber', ParseIntPipe) accountNumber: number,
+  ): Promise<InvoiceLineItemDto[]> {
+    return this.importFiles.getSupplierInvoiceLineItems(accountNumber);
   }
 }

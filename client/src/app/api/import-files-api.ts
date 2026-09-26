@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import type { ImportDocumentType } from './enums';
-import type { UploadedImportFileDto } from './models';
+import type { InvoiceLineItemDto, UploadedImportFileDto } from './models';
 
 /** Multipart field name the server reads every file from (`ImportFilesController`). */
 export const IMPORT_FILES_FIELD = 'files';
@@ -37,5 +37,13 @@ export class ImportFilesApi {
       body.append(IMPORT_FILES_FIELD, file, file.name);
     }
     return this.http.post<UploadedImportFileDto[]>(`${this.baseUrl}/${accountNumber}`, body);
+  }
+
+  /**
+   * `GET /api/import-files/:accountNumber/line-items` — the line items the
+   * server extracted from every supplier invoice filed under that case.
+   */
+  getSupplierInvoiceLineItems(accountNumber: number): Observable<InvoiceLineItemDto[]> {
+    return this.http.get<InvoiceLineItemDto[]>(`${this.baseUrl}/${accountNumber}/line-items`);
   }
 }

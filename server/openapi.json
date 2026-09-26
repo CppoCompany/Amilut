@@ -298,6 +298,50 @@
         ]
       }
     },
+    "/api/import-files/{accountNumber}/line-items": {
+      "get": {
+        "operationId": "ImportFilesController_getSupplierInvoiceLineItems",
+        "parameters": [
+          {
+            "name": "accountNumber",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InvoiceLineItemDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "accountNumber is not a positive integer."
+          },
+          "404": {
+            "description": "No import case (order_account) with this account number."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "import-files"
+        ]
+      }
+    },
     "/api/orders": {
       "get": {
         "operationId": "OrdersController_findAll",
@@ -1252,6 +1296,44 @@
           "CERTIFICATE_OF_ORIGIN"
         ]
       },
+      "InvoiceLineItemDto": {
+        "type": "object",
+        "properties": {
+          "item": {
+            "type": "string",
+            "example": "Y8022-140BK",
+            "description": "Item / part / model code as printed (may contain spaces)."
+          },
+          "description": {
+            "type": "string",
+            "example": "Light Fixtures"
+          },
+          "quantity": {
+            "type": "number",
+            "nullable": true,
+            "example": 15
+          },
+          "price": {
+            "type": "number",
+            "nullable": true,
+            "example": 15.32,
+            "description": "Unit price with the currency mark stripped."
+          },
+          "total": {
+            "type": "number",
+            "nullable": true,
+            "example": 229.8,
+            "description": "Line total with the currency mark stripped."
+          }
+        },
+        "required": [
+          "item",
+          "description",
+          "quantity",
+          "price",
+          "total"
+        ]
+      },
       "UploadedImportFileDto": {
         "type": "object",
         "properties": {
@@ -1291,6 +1373,18 @@
             "type": "string",
             "format": "date-time",
             "example": "2026-09-22T16:05:18.000Z"
+          },
+          "lineItems": {
+            "description": "Goods lines extracted from the file. Only present for SUPPLIER_INVOICE; empty when nothing could be extracted (see `extractionError`).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InvoiceLineItemDto"
+            }
+          },
+          "extractionError": {
+            "type": "string",
+            "example": "No line-item table found",
+            "description": "Why `lineItems` is empty: unreadable file, unsupported type or no table. Absent when extraction succeeded or was not attempted."
           }
         },
         "required": [
