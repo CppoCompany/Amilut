@@ -6,7 +6,9 @@ import {
   IsEnum,
   IsInt,
   IsOptional,
+  IsString,
   Max,
+  MaxLength,
   Min,
 } from 'class-validator';
 import { OrderStatus } from '../orders.enums';
@@ -24,6 +26,13 @@ export class ListOrdersQuery {
   @Type(() => Number)
   @IsInt()
   handlerUserId?: number;
+
+  /** Substring match against the handler's name. */
+  @ApiPropertyOptional({ example: 'ברק' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  handlerName?: string;
 
   @ApiPropertyOptional({ type: 'integer', example: 1 })
   @IsOptional()

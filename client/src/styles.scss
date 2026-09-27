@@ -350,6 +350,19 @@ body {
   font-weight: 600;
 }
 
+/* Labels a sub-group inside a tab that combines what used to be several
+   separate tabs (e.g. the shipment screen's "זיהוי מסמך ומוביל" tab). */
+.subsection-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin: 24px 0 12px;
+}
+
+.subsection-title:first-of-type {
+  margin-top: 0;
+}
+
 .grid-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -455,8 +468,10 @@ body {
 /* Data grid */
 .data-table-wrapper {
   overflow-x: auto;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
+  overflow-y: hidden; /* clips to the rounded corners; inner viewport/list scrolls itself */
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  background: var(--card-bg);
 }
 
 .data-table {
@@ -467,28 +482,84 @@ body {
 
 .data-table th,
 .data-table td {
-  padding: 10px 14px;
+  padding: 14px 16px;
   text-align: right;
   white-space: nowrap;
 }
 
 .data-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   background: var(--bg-color);
   color: var(--text-muted);
   font-weight: 700;
   border-bottom: 1px solid var(--border-color);
 }
 
-.data-table tbody tr:not(:last-child) {
-  border-bottom: 1px solid var(--border-color);
+/* Zebra striping instead of a border under every row — hover and selected
+   states are declared after this (and, for selected, with higher
+   specificity) so they always win over the stripe. */
+.data-table tbody tr:nth-child(even) {
+  background: var(--bg-color);
 }
 
 .data-table tbody tr:hover {
   background: var(--light-blue-bg);
 }
 
+.data-table tbody tr.data-table__row--selected {
+  background: var(--light-blue-bg);
+}
+
 .data-table__row--clickable {
   cursor: pointer;
+}
+
+/* Numeric/id/date columns — tabular figures so digits line up vertically
+   when scanning a column of rows. */
+.data-table__numeric {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Status pills. Colors follow the order pipeline: neutral (just started) →
+   amber (waiting on someone) → blue (in motion) → green (done). */
+.status-pill {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.status-pill--preparing {
+  background: color-mix(in srgb, var(--text-muted) 18%, white);
+  color: var(--text-muted);
+}
+
+.status-pill--ready_for_pickup {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-pill--picked_up {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.status-pill--waiting_at_port {
+  background: #ffedd5;
+  color: #9a3412;
+}
+
+.status-pill--departed {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.data-table__row--selected {
+  background: var(--light-blue-bg);
 }
 
 .data-table__empty {
@@ -684,6 +755,74 @@ body {
   box-shadow: var(--shadow-sm);
 }
 
+/* Choice group — single-select value pickers (order status, shipment type,
+   payment terms, incoterm, destination, document type, dangerous goods).
+   Deliberately styled differently from .tabs-container/.tab-btn (real
+   navigational tabs, e.g. the shipment screen's 9-section strip): picking a
+   value and switching what's on screen are different actions, so they
+   shouldn't look like the same widget. */
+.choice-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.choice-group--nested {
+  margin-top: 8px;
+}
+
+.choice-btn {
+  background: white;
+  border: 1.5px solid var(--border-color);
+  padding: 7px 16px;
+  border-radius: 999px;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-dark);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.choice-btn:hover {
+  border-color: var(--secondary-blue);
+}
+
+.choice-btn.active {
+  background-color: var(--secondary-blue);
+  border-color: var(--secondary-blue);
+  color: white;
+}
+
+.hint-text {
+  margin: 6px 0 0;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+/* Chip list — e.g. the orders/customers summary on a shipping case */
+.chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--light-blue-bg);
+  color: var(--primary-blue);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.chip-list--empty {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
 /* Action Buttons */
 .form-actions {
   display: flex;
@@ -730,37 +869,45 @@ body {
   background-color: var(--bg-color);
 }
 
-/* Transmit to customs button */
-.btn-transmit {
-  background: linear-gradient(90deg, #ff7a00, #ff5a00);
+.btn-danger {
+  background-color: #ef4444;
   color: white;
-  padding: 10px 18px;
-  border-radius: 12px;
-  box-shadow: 0 6px 18px rgba(255, 90, 0, 0.18);
   border: none;
+}
+
+.btn-danger:hover {
+  background-color: #dc2626;
+  box-shadow: var(--shadow-md);
+}
+
+/* Small icon-only buttons, e.g. the delete/trash action per grid row. */
+.icon-btn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  font-weight: 700;
-  transition:
-    transform 0.12s ease,
-    box-shadow 0.12s ease,
-    opacity 0.12s ease;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: var(--transition);
 }
 
-.btn-transmit i {
-  font-size: 1rem;
-  opacity: 0.95;
+.icon-btn:hover:not(:disabled) {
+  background: var(--bg-color);
+  color: var(--text-dark);
 }
 
-.btn-transmit:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 24px rgba(255, 90, 0, 0.22);
+.icon-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
-.btn-transmit:active {
-  transform: translateY(0);
-  opacity: 0.95;
+.icon-btn--danger:hover:not(:disabled) {
+  background: color-mix(in srgb, #ef4444 12%, white);
+  color: #b91c1c;
 }
 
 /* Classification: small centered goods-description input */

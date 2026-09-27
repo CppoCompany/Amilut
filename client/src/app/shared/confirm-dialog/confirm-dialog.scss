@@ -1,0 +1,58 @@
+// Same backdrop pattern as add-customer-dialog.scss / add-supplier-dialog.scss
+// (this app has no shared dialog component to extend), but a simpler,
+// centered "alert" card rather than the header/body/footer form-dialog shell
+// — this is a yes/no decision, not a form.
+
+:host {
+  display: contents;
+}
+
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.confirm-dialog {
+  width: 100%;
+  max-width: 380px;
+  background: var(--card-bg, #fff);
+  border-radius: var(--radius-lg, 12px);
+  box-shadow: var(--shadow-md, 0 4px 6px rgba(0, 0, 0, 0.07));
+  padding: 28px 24px 24px;
+  text-align: center;
+}
+
+.confirm-dialog__icon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  background: color-mix(in srgb, #ef4444 12%, white);
+  color: #ef4444;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+}
+
+.confirm-dialog__message {
+  margin: 0 0 24px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+.confirm-dialog__actions {
+  display: flex;
+  gap: 12px;
+}
+
+.confirm-dialog__actions .btn {
+  flex: 1;
+}

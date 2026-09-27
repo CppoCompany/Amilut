@@ -16,6 +16,7 @@ import { ORDER_STATUS_LABELS, ORDER_STATUSES, OrderStatus } from '../../../../ap
 import type { OrderDto } from '../../../../api/models';
 import { ListOrdersParams, OrdersApi } from '../../../../api/orders-api';
 import { itemOpenGuard } from '../../../../core/guards/item-open.guard';
+import { ConfirmDialog } from '../../../../shared/confirm-dialog/confirm-dialog';
 import { SEARCH_DEBOUNCE_MS } from '../../../customers/customer-autocomplete/customer-autocomplete';
 import { NavigationService } from '../../navigation.service';
 
@@ -25,7 +26,7 @@ const MAX_ROWS = 200;
 /** "ההזמנות שלי" — filterable grid over all orders, virtual-scrolled. */
 @Component({
   selector: 'app-my-orders-screen',
-  imports: [FormsModule, ScrollingModule],
+  imports: [FormsModule, ScrollingModule, ConfirmDialog],
   templateUrl: './my-orders.html',
   styleUrl: './my-orders.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -37,7 +38,7 @@ export class MyOrdersScreen {
   private readonly injector = inject(Injector);
 
   // ── Filters (live — debounced, no apply button) ────────────────────────────
-  protected readonly filterHandlerUserId = signal('');
+  protected readonly filterHandlerName = signal('');
   protected readonly filterStatus = signal<OrderStatus | ''>('');
   protected readonly filterCreatedDate = signal('');
   protected readonly statuses = ORDER_STATUSES;
@@ -47,12 +48,16 @@ export class MyOrdersScreen {
   protected readonly orders = signal<OrderDto[]>([]);
   protected readonly loading = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
+  /** Order ids currently being deleted — disables their row's delete button mid-request. */
+  protected readonly deletingIds = signal<ReadonlySet<number>>(new Set());
+  /** The order awaiting delete confirmation in the modal, or `null`. */
+  protected readonly pendingDelete = signal<OrderDto | null>(null);
 
   constructor() {
     this.fetch();
 
     combineLatest([
-      toObservable(this.filterHandlerUserId),
+      toObservable(this.filterHandlerName),
       toObservable(this.filterStatus),
       toObservable(this.filterCreatedDate),
     ])
@@ -65,7 +70,7 @@ export class MyOrdersScreen {
   }
 
   protected clearFilters(): void {
-    this.filterHandlerUserId.set('');
+    this.filterHandlerName.set('');
     this.filterStatus.set('');
     this.filterCreatedDate.set('');
   }
@@ -76,6 +81,46 @@ export class MyOrdersScreen {
       itemOpenGuard({ type: 'order', id: String(order.id), label: `הזמנה #${order.id}` }),
     );
     if (allowed) this.nav.openOrderForEdit(order.id);
+  }
+
+  protected isDeleting(orderId: number): boolean {
+    return this.deletingIds().has(orderId);
+  }
+
+  /** Opens the confirm-delete modal for this row. */
+  protected onDeleteOrder(order: OrderDto, event: Event): void {
+    event.stopPropagation();
+    if (this.isDeleting(order.id)) return;
+    this.pendingDelete.set(order);
+  }
+
+  protected cancelDelete(): void {
+    this.pendingDelete.set(null);
+  }
+
+  /** Confirmed via the modal — deletes the order and removes its row from the grid. */
+  protected confirmDelete(): void {
+    const order = this.pendingDelete();
+    if (!order) return;
+    this.pendingDelete.set(null);
+
+    this.deletingIds.update((current) => new Set(current).add(order.id));
+    this.ordersApi
+      .remove(order.id)
+      .pipe(
+        finalize(() => {
+          this.deletingIds.update((current) => {
+            const next = new Set(current);
+            next.delete(order.id);
+            return next;
+          });
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: () => this.orders.update((rows) => rows.filter((row) => row.id !== order.id)),
+        error: () => this.errorMessage.set('מחיקת ההזמנה נכשלה'),
+      });
   }
 
   protected formatDate(iso: string): string {
@@ -91,12 +136,9 @@ export class MyOrdersScreen {
   private fetch(): void {
     const params: ListOrdersParams = { limit: MAX_ROWS };
 
-    const handlerIdText = this.filterHandlerUserId().trim();
-    if (handlerIdText) {
-      const handlerId = Number(handlerIdText);
-      if (Number.isInteger(handlerId) && handlerId > 0) {
-        params.handlerUserId = handlerId;
-      }
+    const handlerName = this.filterHandlerName().trim();
+    if (handlerName) {
+      params.handlerName = handlerName;
     }
     if (this.filterStatus()) {
       params.status = this.filterStatus() as OrderStatus;

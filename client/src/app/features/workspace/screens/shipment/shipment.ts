@@ -12,6 +12,7 @@ import { combineLatest, debounceTime, finalize, forkJoin, skip } from 'rxjs';
 
 import {
   INCOTERM_LABELS,
+  ORDER_STATUS_LABELS,
   PAYMENT_TERMS_LABELS,
   SHIPMENT_DOCUMENT_TYPE_LABELS,
   SHIPMENT_DOCUMENT_TYPES,
@@ -35,16 +36,7 @@ import {
   toUpdateShipmentDto,
 } from './shipment-form.mapper';
 
-type ShipmentTab =
-  | 'document'
-  | 'forwarder'
-  | 'shipper'
-  | 'consignee'
-  | 'notify'
-  | 'cargo'
-  | 'tariff'
-  | 'terms'
-  | 'documents';
+type ShipmentTab = 'document' | 'parties' | 'cargo' | 'terms';
 
 /** Single batch fetched per filter change; rendering beyond this is virtualized, not paginated. */
 const MAX_ROWS = 200;
@@ -66,21 +58,12 @@ export class ShipmentScreen {
   private readonly activeContext = inject(ActiveContextService);
 
   protected readonly tabs: { id: ShipmentTab; label: string }[] = [
-    { id: 'document', label: 'זיהוי מסמך' },
-    { id: 'forwarder', label: 'מוביל' },
-    { id: 'shipper', label: 'שוגר' },
-    { id: 'consignee', label: 'נמען' },
-    { id: 'notify', label: 'Notify Party' },
-    { id: 'cargo', label: 'מטען' },
-    { id: 'tariff', label: 'מכס' },
-    { id: 'terms', label: 'תנאים' },
-    { id: 'documents', label: 'מסמכים' },
+    { id: 'document', label: 'זיהוי מסמך ומוביל' },
+    { id: 'parties', label: 'צדדים למשלוח' },
+    { id: 'cargo', label: 'מטען ומכס' },
+    { id: 'terms', label: 'תנאים ומסמכים' },
   ];
   protected readonly activeTab = signal<ShipmentTab>('document');
-  /** Save is only offered once the user has reached the last tab. */
-  protected readonly isLastTab = computed(
-    () => this.activeTab() === this.tabs[this.tabs.length - 1].id,
-  );
 
   /** The tab right before the active one, or `null` on the first tab. */
   protected readonly previousTab = computed(() => {
@@ -107,6 +90,7 @@ export class ShipmentScreen {
     return [...extra, ...base];
   });
   protected readonly selectedOrderIds = signal<ReadonlySet<number>>(new Set());
+  protected readonly orderStatusLabels = ORDER_STATUS_LABELS;
   protected readonly ordersLoading = signal(false);
   protected readonly ordersError = signal<string | null>(null);
   /** True while re-picking the orders of an already-created case. */
@@ -144,6 +128,14 @@ export class ShipmentScreen {
   protected readonly orderPaymentTermsLabel = computed(() => this.joinDistinctLabels(
     this.associatedOrders().map((order) => PAYMENT_TERMS_LABELS[order.paymentTerms]),
   ));
+  /** True when the case's orders don't all share the same Incoterm/Freight Terms —
+   *  flags the aggregated label above as "multiple values", not a data error. */
+  protected readonly hasMixedIncoterms = computed(
+    () => new Set(this.associatedOrders().map((order) => order.incoterm)).size > 1,
+  );
+  protected readonly hasMixedPaymentTerms = computed(
+    () => new Set(this.associatedOrders().map((order) => order.paymentTerms)).size > 1,
+  );
 
   // ── Free-text / date / numeric fields ───────────────────────────────────────
   protected readonly form = this.fb.group({
@@ -215,6 +207,26 @@ export class ShipmentScreen {
     this.selectedOrderIds.set(next);
   }
 
+  /** Whether every currently-visible (filtered) order is selected — drives the header checkbox. */
+  protected allVisibleSelected(): boolean {
+    const visible = this.selectableOrders();
+    return visible.length > 0 && visible.every((order) => this.isOrderSelected(order.id));
+  }
+
+  /** Header checkbox: selects every visible order, or clears all of them if all are already selected. */
+  protected toggleSelectAll(): void {
+    const visible = this.selectableOrders();
+    if (this.allVisibleSelected()) {
+      this.selectedOrderIds.set(new Set());
+      return;
+    }
+    this.selectedOrderIds.set(new Set(visible.map((order) => order.id)));
+  }
+
+  protected distinctCustomerNames(shipment: ShipmentDto): string[] {
+    return [...new Set(shipment.orders.map((order) => order.customerName ?? '—'))];
+  }
+
   /** Loads an existing case (e.g. for editing) by its own id. */
   protected loadCase(caseId: number): void {
     if (this.loading()) return;
@@ -251,6 +263,14 @@ export class ShipmentScreen {
   protected onAssociate(): void {
     const orderIds = [...this.selectedOrderIds()];
     if (orderIds.length === 0 || this.saving()) return;
+
+    const existingBefore = this.existingShipment();
+    if (existingBefore) {
+      const removedCount = existingBefore.orders.filter((order) => !orderIds.includes(order.id)).length;
+      if (removedCount > 0 && !confirm(`הפעולה תסיר ${removedCount} הזמנות מהתיק. להמשיך?`)) {
+        return;
+      }
+    }
 
     this.successMessage.set(null);
     this.errorMessage.set(null);

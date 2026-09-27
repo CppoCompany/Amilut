@@ -54,4 +54,9 @@ export class ShipmentsApi {
   updateOrders(id: number, orderIds: number[]): Observable<ShipmentDto> {
     return this.http.patch<ShipmentDto>(`${this.baseUrl}/${id}/orders`, { orderIds });
   }
+
+  /** Hard delete — frees the case's orders back to unassigned. */
+  remove(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/${id}`);
+  }
 }

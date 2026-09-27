@@ -304,6 +304,19 @@ export class ShipmentsService {
 
     return this.findById(id);
   }
+
+  /** Hard delete — `orders.case_id` (ON DELETE SET NULL) frees this case's
+   *  orders back to unassigned automatically; no soft-delete column exists
+   *  on `order_account` today. */
+  async remove(id: number): Promise<void> {
+    const row = await this.db.queryOne<{ id: number }>(
+      'DELETE FROM order_account WHERE id = $1 RETURNING id',
+      [id],
+    );
+    if (!row) {
+      throw new NotFoundException(`Shipment ${id} not found`);
+    }
+  }
 }
 
 /** Throws NotFoundException listing any id in `orderIds` that doesn't exist. */

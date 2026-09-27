@@ -11,7 +11,8 @@ amilut_tax/
 ├── server/        NestJS 11 REST API (Node 22)
 ├── .claude/       Claude Code config for this project
 │   ├── agents/    Subagent definitions (none yet — see README)
-│   └── skills/    Project-scoped skills (none yet — see README)
+│   └── skills/    Project-scoped skills: ui-verify (browser check via Chrome DevTools MCP)
+├── .mcp.json      Project MCP servers: chrome-devtools (approve once with /mcp)
 └── CLAUDE.md      This file
 ```
 
@@ -149,3 +150,8 @@ is unreachable.
 - Do **not** use the `swing-trading-us-stocks` skill in this project.
 - Confirm with the user before introducing business logic for a screen that
   has not been specified yet.
+- After changing anything under `client/`, run the `ui-verify` skill: it opens
+  the app in Chrome through the `chrome-devtools` MCP server declared in
+  `.mcp.json` and reports PASS/FAIL per screen. Requires `npm run dev` and a
+  reachable PostgreSQL; the seeded login is in
+  `SQL-Migration/004_seed_admin_user.sql`.

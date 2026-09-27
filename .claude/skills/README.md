@@ -19,4 +19,8 @@ description: When to trigger this skill.
 Instructions / workflow for the skill.
 ```
 
-No skills are defined yet.
+Defined skills:
+
+- `ui-verify/` — opens the running app in Chrome through the project-scoped
+  `chrome-devtools` MCP server (`.mcp.json`) and verifies a screen or flow.
+  Invoke with `/ui-verify` or ask to "verify the UI in the browser".

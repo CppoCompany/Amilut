@@ -24,6 +24,7 @@ invoke the runner directly.
    - `010_create_suppliers_and_link_orders.sql` — `suppliers` table (mirrors `customers`) + `orders.supplier_id` FK
    - `011_add_contact_fields_to_customers.sql` — adds `company_reg_number`, `contact_name`, `contact_phone` to `customers`
    - `012_orders_case_id.sql` — flips case↔order to `orders.case_id` (1 case → many orders), replacing `order_account.order_id`
+   - `013_create_import_account_files.sql` — `import_account_files` table (documents uploaded to a case, JSONB descriptor), many → 1 `order_account`
    If the folder or files are missing, stop and tell Barak.
 
 2. **Determine the superuser password.** The runner needs the `postgres`

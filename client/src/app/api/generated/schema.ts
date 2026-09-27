@@ -84,6 +84,54 @@ export interface paths {
         patch: operations["CustomersController_update"];
         trace?: never;
     };
+    "/api/import-files/{accountNumber}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ImportFilesController_listImportFiles"];
+        put?: never;
+        post: operations["ImportFilesController_uploadMultipleImportFiles"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/import-files/{accountNumber}/files/{fileId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ImportFilesController_getImportFile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/import-files/{accountNumber}/line-items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ImportFilesController_getSupplierInvoiceLineItems"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/orders": {
         parameters: {
             query?: never;
@@ -158,7 +206,7 @@ export interface paths {
         get: operations["ShipmentsController_findById"];
         put?: never;
         post?: never;
-        delete?: never;
+        delete: operations["ShipmentsController_remove"];
         options?: never;
         head?: never;
         patch: operations["ShipmentsController_update"];
@@ -276,6 +324,70 @@ export interface components {
             contactPhone?: string | null;
             /** @example false */
             isActive?: boolean;
+        };
+        /**
+         * @description Kind of paperwork this file represents.
+         * @enum {string}
+         */
+        ImportDocumentType: ImportDocumentType;
+        InvoiceLineItemDto: {
+            /**
+             * @description Item / part / model code as printed (may contain spaces).
+             * @example Y8022-140BK
+             */
+            item: string;
+            /** @example Light Fixtures */
+            description: string;
+            /** @example 15 */
+            quantity: number | null;
+            /**
+             * @description Unit price with the currency mark stripped.
+             * @example 15.32
+             */
+            price: number | null;
+            /**
+             * @description Line total with the currency mark stripped.
+             * @example 229.8
+             */
+            total: number | null;
+        };
+        UploadedImportFileDto: {
+            /**
+             * @description Id of the `import_account_files` row created for this file.
+             * @example 42
+             */
+            id: number;
+            /** @description Kind of paperwork this file represents. */
+            documentType: components["schemas"]["ImportDocumentType"];
+            /**
+             * @description Original file name, as uploaded.
+             * @example חשבון ספק.pdf
+             */
+            name: string;
+            /**
+             * @description Size in bytes.
+             * @example 870400
+             */
+            size: number;
+            /** @example application/pdf */
+            mimeType: string;
+            /**
+             * @description Path relative to the storage root (`storage/` at the repo root).
+             * @example 1000/חשבון ספק.pdf
+             */
+            relativePath: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-22T16:05:18.000Z
+             */
+            uploadedAt: string;
+            /** @description Goods lines extracted from the file. Only present for SUPPLIER_INVOICE; empty when nothing could be extracted (see `extractionError`). */
+            lineItems?: components["schemas"]["InvoiceLineItemDto"][];
+            /**
+             * @description Why `lineItems` is empty: unreadable file, unsupported type or no table. Absent when extraction succeeded or was not attempted.
+             * @example No line-item table found
+             */
+            extractionError?: string;
         };
         /** @enum {string} */
         OrderStatus: OrderStatus;
@@ -876,11 +988,161 @@ export interface operations {
             };
         };
     };
+    ImportFilesController_listImportFiles: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountNumber: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadedImportFileDto"][];
+                };
+            };
+            /** @description accountNumber is not a positive integer. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No import case (order_account) with this account number. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ImportFilesController_uploadMultipleImportFiles: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountNumber: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    documentType: components["schemas"]["ImportDocumentType"];
+                    files: string[];
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadedImportFileDto"][];
+                };
+            };
+            /** @description No files, missing or invalid documentType, or an unsafe file name. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No import case (order_account) with this account number. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ImportFilesController_getImportFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountNumber: number;
+                fileId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The file contents, with Content-Type set to its MIME type. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
+                };
+            };
+            /** @description accountNumber or fileId is not a positive integer. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unknown case, no such file in that case, or the file is missing on disk. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ImportFilesController_getSupplierInvoiceLineItems: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountNumber: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceLineItemDto"][];
+                };
+            };
+            /** @description accountNumber is not a positive integer. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No import case (order_account) with this account number. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     OrdersController_findAll: {
         parameters: {
             query?: {
                 customerId?: number;
                 handlerUserId?: number;
+                handlerName?: string;
                 supplierId?: number;
                 hasCase?: boolean;
                 status?: components["schemas"]["OrderStatus"];
@@ -1119,6 +1381,31 @@ export interface operations {
             };
         };
     };
+    ShipmentsController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     ShipmentsController_update: {
         parameters: {
             query?: never;
@@ -1287,6 +1574,13 @@ export interface operations {
             };
         };
     };
+}
+export enum ImportDocumentType {
+    SUPPLIER_INVOICE = "SUPPLIER_INVOICE",
+    BILL_OF_LADING = "BILL_OF_LADING",
+    MASTER_BILL_OF_LADING = "MASTER_BILL_OF_LADING",
+    PACKING_LIST = "PACKING_LIST",
+    CERTIFICATE_OF_ORIGIN = "CERTIFICATE_OF_ORIGIN"
 }
 export enum OrderStatus {
     PREPARING = "preparing",

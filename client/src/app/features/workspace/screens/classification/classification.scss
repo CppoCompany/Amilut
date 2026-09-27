@@ -1,0 +1,24 @@
+// Component-scoped additions to the shared form styles (see src/styles.scss).
+
+.form-message {
+  margin: 0 0 0.75rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: 6px;
+  font-size: 0.95rem;
+
+  &--error {
+    background: color-mix(in srgb, var(--danger, #ef4444) 12%, white);
+    color: var(--danger, #ef4444);
+  }
+}
+
+.products-loading {
+  margin: 0 0 0.75rem;
+  color: var(--text-muted, #64748b);
+  font-size: 0.9rem;
+}
+
+.products-empty td {
+  color: var(--text-muted, #64748b);
+  text-align: center;
+}

@@ -233,7 +233,8 @@ describe('OrderScreen', () => {
     expect(internals.incoterm()).toBe(Incoterm.CFR);
   });
 
-  it('cancel clears the customer, the saved order and the form', () => {
+  it('cancel clears the customer, the saved order and the form after confirmation', () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
     internals.selectedCustomer.set(CUSTOMER);
     internals.form.patchValue({ shippingLine: 'Maersk' });
     internals.onSave();
@@ -244,6 +245,7 @@ describe('OrderScreen', () => {
     internals.onCancel();
     fixture.detectChanges();
 
+    expect(window.confirm).toHaveBeenCalled();
     expect(internals.selectedCustomer()).toBeNull();
     expect(internals.savedOrder()).toBeNull();
     expect(internals.form.getRawValue()['shippingLine']).toBe('');
@@ -253,5 +255,15 @@ describe('OrderScreen', () => {
     // ContextBar itself renders that as the Order Number/Customer/Supplier
     // tabs falling back to their empty, name-only state.
     expect(activeContext.byType('order')()).toEqual([]);
+  });
+
+  it('cancel does nothing if the confirmation is declined', () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    internals.selectedCustomer.set(CUSTOMER);
+
+    internals.onCancel();
+    fixture.detectChanges();
+
+    expect(internals.selectedCustomer()).toEqual(CUSTOMER);
   });
 });
