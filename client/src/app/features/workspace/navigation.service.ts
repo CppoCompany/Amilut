@@ -1,5 +1,8 @@
-import { computed, Injectable, signal } from '@angular/core';
+import { computed, inject, Injectable, Injector, runInInjectionContext, signal } from '@angular/core';
 
+import { canDeactivateCurrentItemGuard } from '../../core/guards/can-deactivate.guard';
+import { createNewGuard } from '../../core/guards/create-new.guard';
+import { DRAFT_ITEM_ID } from './active-context.model';
 import { PageKey, ScreenId, TreeChild, TreeNode } from './navigation.model';
 
 /**
@@ -12,6 +15,8 @@ import { PageKey, ScreenId, TreeChild, TreeNode } from './navigation.model';
  */
 @Injectable({ providedIn: 'root' })
 export class NavigationService {
+  private readonly injector = inject(Injector);
+
   /** The sidebar tree. Built by {@link setupTreeNavigation}. */
   readonly tree = signal<TreeNode[]>([]);
 
@@ -192,6 +197,29 @@ export class NavigationService {
     this.activePage.set(child.page);
   }
 
+  /**
+   * Guarded entry point for sidebar clicks. `selectChild` itself stays a
+   * plain, ungated primitive — it's also called internally by
+   * `openOrderForEdit`/`openCaseForEdit`/`goToMyOrders`/`goToMyFiles`, which
+   * are reached *after* a guard has already run (from `itemOpenGuard` or from
+   * this method itself), so gating `selectChild` directly would double-prompt.
+   */
+  async trySelectChild(child: TreeChild): Promise<void> {
+    let allowed: boolean;
+    if (child.page === 'order') {
+      allowed = await runInInjectionContext(this.injector, () =>
+        createNewGuard('order', { id: DRAFT_ITEM_ID, label: 'הזמנה חדשה' }),
+      );
+    } else if (child.page === 'shipment') {
+      allowed = await runInInjectionContext(this.injector, () =>
+        createNewGuard('file', { id: DRAFT_ITEM_ID, label: 'תיק חדש' }),
+      );
+    } else {
+      allowed = await runInInjectionContext(this.injector, () => canDeactivateCurrentItemGuard());
+    }
+    if (allowed) this.selectChild(child);
+  }
+
   /** Whether a child row is the highlighted one. */
   isChildActive(childId: string): boolean {
     return this.activeChildId() === childId;
@@ -221,5 +249,21 @@ export class NavigationService {
     } else {
       this.activePage.set('shipment');
     }
+  }
+
+  /** Fallback landing spot after closing the last open Order in the context bar. */
+  goToMyOrders(): void {
+    const child = this.tree()
+      .flatMap((node) => node.children)
+      .find((c) => c.page === 'myOrders');
+    if (child) this.selectChild(child);
+  }
+
+  /** Fallback landing spot after closing the last open File in the context bar. */
+  goToMyFiles(): void {
+    const child = this.tree()
+      .flatMap((node) => node.children)
+      .find((c) => c.page === 'myFiles');
+    if (child) this.selectChild(child);
   }
 }

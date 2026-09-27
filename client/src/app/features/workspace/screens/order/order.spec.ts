@@ -13,6 +13,7 @@ import {
 } from '../../../../api/enums';
 import type { CustomerDto, OrderDto } from '../../../../api/models';
 import { AuthService } from '../../../../core/auth/auth.service';
+import { ActiveContextService } from '../../active-context.service';
 import { OrderScreen } from './order';
 
 type OrderInternals = {
@@ -75,8 +76,18 @@ describe('OrderScreen', () => {
   let fixture: ComponentFixture<OrderScreen>;
   let internals: OrderInternals;
   let httpMock: HttpTestingController;
+  let activeContext: ActiveContextService;
 
   beforeEach(async () => {
+    // OrderScreen now pushes into ActiveContextService (its chip in the
+    // context bar), which persists to sessionStorage and rehydrates from it
+    // on construction. Without clearing, a previous test's saved order id
+    // (e.g. 1001) leaks in as a "still open" item, and the fresh
+    // ActiveContextService created for *this* test fires a real (mocked)
+    // GET /api/orders/1001 during rehydration that nothing here expects or
+    // flushes — leaving a permanently-pending request and failing `verify()`.
+    sessionStorage.clear();
+
     const authMock = {
       user: signal({ id: 7, email: 'dana@amilut.co.il', name: 'דנה לוי', role: 'user' }),
     };
@@ -91,12 +102,16 @@ describe('OrderScreen', () => {
     }).compileComponents();
 
     httpMock = TestBed.inject(HttpTestingController);
+    activeContext = TestBed.inject(ActiveContextService);
     fixture = TestBed.createComponent(OrderScreen);
     internals = fixture.componentInstance as unknown as OrderInternals;
     fixture.detectChanges();
   });
 
-  afterEach(() => httpMock.verify());
+  afterEach(() => {
+    httpMock.verify();
+    sessionStorage.clear();
+  });
 
   function readonlyValue(label: string): string {
     const groups = Array.from(
@@ -159,6 +174,22 @@ describe('OrderScreen', () => {
     expect(readonlyValue('תאריך פתיחת הזמנה')).not.toBe('—');
   });
 
+  it('populates the context bar only once the order is actually saved, not while filling the form', () => {
+    internals.selectedCustomer.set(CUSTOMER);
+    expect(activeContext.byType('order')().some((item) => item.meta?.['customerName'])).toBe(false);
+
+    internals.onSave();
+    httpMock.expectOne('/api/orders').flush(SAVED_ORDER);
+    fixture.detectChanges();
+
+    const orderItem = activeContext.byType('order')()[0];
+    expect(orderItem?.id).toBe('1001');
+    expect(orderItem?.meta).toEqual({
+      customerName: SAVED_ORDER.customerName,
+      supplierName: '',
+    });
+  });
+
   it('patches the saved order on subsequent saves instead of creating a duplicate', () => {
     internals.selectedCustomer.set(CUSTOMER);
     internals.onSave();
@@ -208,6 +239,8 @@ describe('OrderScreen', () => {
     internals.form.patchValue({ shippingLine: 'Maersk' });
     internals.onSave();
     httpMock.expectOne('/api/orders').flush(SAVED_ORDER);
+    fixture.detectChanges();
+    expect(activeContext.byType('order')().length).toBe(1); // populated by the save above
 
     internals.onCancel();
     fixture.detectChanges();
@@ -218,6 +251,10 @@ describe('OrderScreen', () => {
     expect(internals.form.getRawValue()['shippingLine']).toBe('');
     expect(internals.customerError()).toBeNull();
     expect(readonlyValue('מספר הזמנה פנימי')).toBe('יוקצה אוטומטית לאחר השמירה');
+    // "Leaving the order": the context bar's item for it is gone entirely —
+    // ContextBar itself renders that as the Order Number/Customer/Supplier
+    // tabs falling back to their empty, name-only state.
+    expect(activeContext.byType('order')()).toEqual([]);
   });
 
   it('cancel does nothing if the confirmation is declined', () => {

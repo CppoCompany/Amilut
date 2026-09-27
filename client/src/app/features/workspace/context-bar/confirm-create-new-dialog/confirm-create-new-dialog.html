@@ -1,0 +1,30 @@
+<div class="dialog-backdrop" (click)="onBackdropClick($event)">
+  <div
+    class="dialog-card"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="confirm-create-new-title"
+  >
+    <header class="dialog-card__header">
+      <h2 id="confirm-create-new-title" class="dialog-card__title">
+        <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+        {{ title() }}
+      </h2>
+      <button type="button" class="dialog-card__close" aria-label="סגור" (click)="onCancel()">
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      </button>
+    </header>
+
+    <div class="dialog-card__body">
+      <p>אפשר להמשיך לעבוד על הפריט הפתוח, או לפתוח פריט חדש.</p>
+    </div>
+
+    <footer class="dialog-card__footer">
+      <button type="button" class="btn btn-secondary" (click)="onCancel()">ביטול</button>
+      <button type="button" class="btn btn-secondary" (click)="onCreateNew()">צור חדש</button>
+      <button type="button" class="btn btn-primary" (click)="onContinueExisting()">
+        המשך בפריט הקיים
+      </button>
+    </footer>
+  </div>
+</div>

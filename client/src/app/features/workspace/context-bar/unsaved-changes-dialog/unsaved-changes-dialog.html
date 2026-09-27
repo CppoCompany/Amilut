@@ -1,0 +1,30 @@
+<div class="dialog-backdrop" (click)="onBackdropClick($event)">
+  <div
+    class="dialog-card"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="unsaved-changes-title"
+  >
+    <header class="dialog-card__header">
+      <h2 id="unsaved-changes-title" class="dialog-card__title">
+        <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+        שינויים שלא נשמרו
+      </h2>
+      <button type="button" class="dialog-card__close" aria-label="סגור" (click)="onCancel()">
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      </button>
+    </header>
+
+    <div class="dialog-card__body">
+      <p>יש שינויים שלא נשמרו ב{{ item().label }}. מה לעשות?</p>
+    </div>
+
+    <footer class="dialog-card__footer">
+      <button type="button" class="btn btn-secondary" (click)="onCancel()">ביטול</button>
+      <button type="button" class="btn btn-secondary discard-btn" (click)="onDiscard()">
+        בטל שינויים
+      </button>
+      <button type="button" class="btn btn-primary" (click)="onSave()">שמור</button>
+    </footer>
+  </div>
+</div>
