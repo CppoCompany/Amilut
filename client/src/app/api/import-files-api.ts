@@ -3,7 +3,12 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import type { ImportDocumentType } from './enums';
-import type { InvoiceLineItemDto, UploadedImportFileDto } from './models';
+import type {
+  InvoiceLineItemDto,
+  LineItemClassificationUpdateDto,
+  SaveLineItemClassificationsDto,
+  UploadedImportFileDto,
+} from './models';
 
 /** Multipart field name the server reads every file from (`ImportFilesController`). */
 export const IMPORT_FILES_FIELD = 'files';
@@ -64,5 +69,22 @@ export class ImportFilesApi {
    */
   getSupplierInvoiceLineItems(accountNumber: number): Observable<InvoiceLineItemDto[]> {
     return this.http.get<InvoiceLineItemDto[]>(`${this.baseUrl}/${accountNumber}/line-items`);
+  }
+
+  /**
+   * `PUT /api/import-files/:accountNumber/line-items/classification` — records
+   * the classification screen's columns against the stored supplier-invoice
+   * lines (`fileId` + `lineIndex` from the GET above) and returns the refreshed
+   * line list.
+   */
+  saveLineItemClassifications(
+    accountNumber: number,
+    items: readonly LineItemClassificationUpdateDto[],
+  ): Observable<InvoiceLineItemDto[]> {
+    const body: SaveLineItemClassificationsDto = { items: [...items] };
+    return this.http.put<InvoiceLineItemDto[]>(
+      `${this.baseUrl}/${accountNumber}/line-items/classification`,
+      body,
+    );
   }
 }

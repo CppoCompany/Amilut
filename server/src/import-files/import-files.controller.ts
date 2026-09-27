@@ -5,6 +5,7 @@ import {
   Param,
   ParseIntPipe,
   Post,
+  Put,
   StreamableFile,
   UploadedFiles,
   UseInterceptors,
@@ -28,6 +29,7 @@ import {
   UploadImportFilesDto,
 } from './dto/upload-import-files.dto';
 import { InvoiceLineItemDto } from './dto/invoice-line-item.dto';
+import { SaveLineItemClassificationsDto } from './dto/line-item-classification.dto';
 import { UploadedImportFileDto } from './dto/uploaded-import-file.dto';
 import { ImportFilesService } from './import-files.service';
 
@@ -159,6 +161,30 @@ export class ImportFilesController {
     @Param('accountNumber', ParseIntPipe) accountNumber: number,
   ): Promise<InvoiceLineItemDto[]> {
     return this.importFiles.getSupplierInvoiceLineItems(accountNumber);
+  }
+
+  /**
+   * Saves what the classification screen recorded against the case's supplier
+   * invoice lines (trade agreement, classification code, approvals, country)
+   * into the stored line items, and returns the refreshed line list.
+   */
+  @Put(':accountNumber/line-items/classification')
+  @ApiOkResponse({ type: InvoiceLineItemDto, isArray: true })
+  @ApiBadRequestResponse({
+    description:
+      'Invalid payload, a line index outside its file, or an unknown country id.',
+  })
+  @ApiNotFoundResponse({
+    description: 'Unknown case, or a fileId that is not a file of that case.',
+  })
+  saveLineItemClassifications(
+    @Param('accountNumber', ParseIntPipe) accountNumber: number,
+    @Body() body: SaveLineItemClassificationsDto,
+  ): Promise<InvoiceLineItemDto[]> {
+    return this.importFiles.saveLineItemClassifications(
+      accountNumber,
+      body.items,
+    );
   }
 }
 

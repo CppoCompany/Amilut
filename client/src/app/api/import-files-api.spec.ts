@@ -2,9 +2,13 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 
-import { ImportDocumentType } from './enums';
+import { ClassificationApproval, ImportDocumentType, TradeAgreement } from './enums';
 import { IMPORT_DOCUMENT_TYPE_FIELD, IMPORT_FILES_FIELD, ImportFilesApi } from './import-files-api';
-import type { InvoiceLineItemDto, UploadedImportFileDto } from './models';
+import type {
+  InvoiceLineItemDto,
+  LineItemClassificationUpdateDto,
+  UploadedImportFileDto,
+} from './models';
 
 const STORED_INVOICE: UploadedImportFileDto = {
   id: 42,
@@ -76,10 +80,24 @@ describe('ImportFilesApi', () => {
     expect(result).toEqual(response);
   });
 
+  const LINE_ITEM: InvoiceLineItemDto = {
+    fileId: 42,
+    lineIndex: 0,
+    item: 'Y8022-140BK',
+    description: 'Light Fixtures',
+    quantity: 15,
+    price: 15.32,
+    total: 229.8,
+    classification: {
+      tradeAgreement: null,
+      classificationCode: '',
+      approvals: [],
+      countryId: null,
+    },
+  };
+
   it('getSupplierInvoiceLineItems GETs the line items of the case', () => {
-    const response: InvoiceLineItemDto[] = [
-      { item: 'Y8022-140BK', description: 'Light Fixtures', quantity: 15, price: 15.32, total: 229.8 },
-    ];
+    const response: InvoiceLineItemDto[] = [LINE_ITEM];
 
     let result: InvoiceLineItemDto[] | undefined;
     api.getSupplierInvoiceLineItems(1000).subscribe((r) => (result = r));
@@ -89,5 +107,28 @@ describe('ImportFilesApi', () => {
 
     req.flush(response);
     expect(result).toEqual(response);
+  });
+
+  it('saveLineItemClassifications PUTs the items and returns the refreshed line items', () => {
+    const items: LineItemClassificationUpdateDto[] = [
+      {
+        fileId: 42,
+        lineIndex: 0,
+        tradeAgreement: TradeAgreement.EU,
+        classificationCode: '8539.50.00',
+        approvals: [ClassificationApproval.COSMETICS],
+        countryId: 106,
+      },
+    ];
+
+    let result: InvoiceLineItemDto[] | undefined;
+    api.saveLineItemClassifications(1000, items).subscribe((r) => (result = r));
+
+    const req = http.expectOne('/api/import-files/1000/line-items/classification');
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.body).toEqual({ items });
+
+    req.flush([LINE_ITEM]);
+    expect(result).toEqual([LINE_ITEM]);
   });
 });

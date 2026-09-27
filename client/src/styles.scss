@@ -912,20 +912,20 @@ body {
 
 /* Classification: small centered goods-description input */
 #classificationTabPanel .goods-input-wrapper {
-  display: flex;
-  justify-content: center;
+  display: block;
 }
 
 #classificationTabPanel .goods-input--small {
-  width: 24rem;
+  width: 100%;
+  max-width: 32rem;
 }
 
 #classificationTabPanel .goods-form-group {
-  align-items: center;
+  align-items: stretch;
 }
 
 #classificationTabPanel .goods-form-group > label {
-  text-align: center;
+  text-align: start;
   width: 100%;
 }
 

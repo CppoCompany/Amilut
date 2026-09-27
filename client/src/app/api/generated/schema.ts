@@ -52,6 +52,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/countries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CountriesController_findAll"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/customers": {
         parameters: {
             query?: never;
@@ -125,6 +141,22 @@ export interface paths {
         };
         get: operations["ImportFilesController_getSupplierInvoiceLineItems"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/import-files/{accountNumber}/line-items/classification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["ImportFilesController_saveLineItemClassifications"];
         post?: never;
         delete?: never;
         options?: never;
@@ -265,6 +297,14 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         LoginDto: Record<string, never>;
+        CountryDto: {
+            /** @example 106 */
+            id: number;
+            /** @example ישראל */
+            name: string;
+            /** @example IL */
+            key: string;
+        };
         CustomerDto: {
             /** @example 1 */
             id: number;
@@ -330,7 +370,38 @@ export interface components {
          * @enum {string}
          */
         ImportDocumentType: ImportDocumentType;
+        /** @enum {string} */
+        TradeAgreement: TradeAgreement;
+        /** @enum {string} */
+        ClassificationApproval: ClassificationApproval;
+        LineItemClassificationDto: {
+            /** @example eu */
+            tradeAgreement: components["schemas"]["TradeAgreement"] | null;
+            /** @example 8539.50.00 */
+            classificationCode: string;
+            /**
+             * @example [
+             *       "standard_or_declaration"
+             *     ]
+             */
+            approvals: components["schemas"]["ClassificationApproval"][];
+            /**
+             * @description `countries.id` of the origin country.
+             * @example 106
+             */
+            countryId: number | null;
+        };
         InvoiceLineItemDto: {
+            /**
+             * @description The `import_account_files` row (supplier invoice) this line came from.
+             * @example 42
+             */
+            fileId: number;
+            /**
+             * @description Position of the line inside that file's `lineItems`.
+             * @example 0
+             */
+            lineIndex: number;
             /**
              * @description Item / part / model code as printed (may contain spaces).
              * @example Y8022-140BK
@@ -350,6 +421,8 @@ export interface components {
              * @example 229.8
              */
             total: number | null;
+            /** @description What the classification screen recorded; empty defaults when never classified. */
+            classification: components["schemas"]["LineItemClassificationDto"];
         };
         UploadedImportFileDto: {
             /**
@@ -388,6 +461,36 @@ export interface components {
              * @example No line-item table found
              */
             extractionError?: string;
+        };
+        LineItemClassificationUpdateDto: {
+            /** @example eu */
+            tradeAgreement: components["schemas"]["TradeAgreement"] | null;
+            /** @example 8539.50.00 */
+            classificationCode: string;
+            /**
+             * @example [
+             *       "standard_or_declaration"
+             *     ]
+             */
+            approvals: components["schemas"]["ClassificationApproval"][];
+            /**
+             * @description `countries.id` of the origin country.
+             * @example 106
+             */
+            countryId: number | null;
+            /**
+             * @description The `import_account_files` row (supplier invoice) the line belongs to.
+             * @example 42
+             */
+            fileId: number;
+            /**
+             * @description Position of the line inside that file's `lineItems`.
+             * @example 0
+             */
+            lineIndex: number;
+        };
+        SaveLineItemClassificationsDto: {
+            items: components["schemas"]["LineItemClassificationUpdateDto"][];
         };
         /** @enum {string} */
         OrderStatus: OrderStatus;
@@ -882,6 +985,25 @@ export interface operations {
             };
         };
     };
+    CountriesController_findAll: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountryDto"][];
+                };
+            };
+        };
+    };
     CustomersController_search: {
         parameters: {
             query: {
@@ -1129,6 +1251,45 @@ export interface operations {
                 content?: never;
             };
             /** @description No import case (order_account) with this account number. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ImportFilesController_saveLineItemClassifications: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountNumber: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveLineItemClassificationsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceLineItemDto"][];
+                };
+            };
+            /** @description Invalid payload, a line index outside its file, or an unknown country id. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unknown case, or a fileId that is not a file of that case. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -1581,6 +1742,45 @@ export enum ImportDocumentType {
     MASTER_BILL_OF_LADING = "MASTER_BILL_OF_LADING",
     PACKING_LIST = "PACKING_LIST",
     CERTIFICATE_OF_ORIGIN = "CERTIFICATE_OF_ORIGIN"
+}
+export enum TradeAgreement {
+    GENERAL = "general",
+    USA = "usa",
+    UK = "uk",
+    EU = "eu",
+    CANADA = "canada",
+    EFTA = "efta",
+    TURKEY = "turkey",
+    MEXICO = "mexico",
+    COLOMBIA = "colombia",
+    UKRAINE = "ukraine",
+    GUATEMALA = "guatemala",
+    UAE = "uae",
+    PANAMA = "panama",
+    SOUTH_KOREA = "south_korea",
+    URUGUAY_MERCOSUR = "uruguay_mercosur",
+    BRAZIL_MERCOSUR = "brazil_mercosur",
+    PARAGUAY_MERCOSUR = "paraguay_mercosur",
+    ARGENTINA_MERCOSUR = "argentina_mercosur",
+    VIETNAM = "vietnam"
+}
+export enum ClassificationApproval {
+    PLANT_PROTECTION = "plant_protection",
+    FOOD_SERVICE = "food_service",
+    PHARMACY_DIVISION = "pharmacy_division",
+    STANDARD_OR_DECLARATION = "standard_or_declaration",
+    VETERINARY_SERVICE = "veterinary_service",
+    COSMETICS = "cosmetics",
+    FEED_QUALITY = "feed_quality",
+    MEDICAL_DEVICES = "medical_devices",
+    TRAFFIC_SAFETY_DEVICES_COMMITTEE = "traffic_safety_devices_committee",
+    TRANSPORT_MINISTRY_VEHICLES = "transport_ministry_vehicles",
+    DEFENSE_MINISTRY_ARMS_IMPORT = "defense_ministry_arms_import",
+    FISHERIES_DIVISION = "fisheries_division",
+    MECHANIZATION_TECHNOLOGY = "mechanization_technology",
+    RADIATION_COMMISSIONER = "radiation_commissioner",
+    SUSTAINABLE_ENERGY = "sustainable_energy",
+    VEHICLE_ACCREDITED_LAB = "vehicle_accredited_lab"
 }
 export enum OrderStatus {
     PREPARING = "preparing",

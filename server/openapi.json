@@ -58,6 +58,35 @@
         ]
       }
     },
+    "/api/countries": {
+      "get": {
+        "operationId": "CountriesController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CountryDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "countries"
+        ]
+      }
+    },
     "/api/customers": {
       "get": {
         "operationId": "CustomersController_search",
@@ -422,6 +451,60 @@
           },
           "404": {
             "description": "No import case (order_account) with this account number."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "import-files"
+        ]
+      }
+    },
+    "/api/import-files/{accountNumber}/line-items/classification": {
+      "put": {
+        "operationId": "ImportFilesController_saveLineItemClassifications",
+        "parameters": [
+          {
+            "name": "accountNumber",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveLineItemClassificationsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InvoiceLineItemDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid payload, a line index outside its file, or an unknown country id."
+          },
+          "404": {
+            "description": "Unknown case, or a fileId that is not a file of that case."
           }
         },
         "security": [
@@ -1209,6 +1292,30 @@
         "type": "object",
         "properties": {}
       },
+      "CountryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 106
+          },
+          "name": {
+            "type": "string",
+            "example": "ישראל"
+          },
+          "key": {
+            "type": "string",
+            "example": "IL",
+            "minLength": 2,
+            "maxLength": 2
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "key"
+        ]
+      },
       "CustomerDto": {
         "type": "object",
         "properties": {
@@ -1388,9 +1495,143 @@
           "CERTIFICATE_OF_ORIGIN"
         ]
       },
+      "TradeAgreement": {
+        "type": "string",
+        "enum": [
+          "general",
+          "usa",
+          "uk",
+          "eu",
+          "canada",
+          "efta",
+          "turkey",
+          "mexico",
+          "colombia",
+          "ukraine",
+          "guatemala",
+          "uae",
+          "panama",
+          "south_korea",
+          "uruguay_mercosur",
+          "brazil_mercosur",
+          "paraguay_mercosur",
+          "argentina_mercosur",
+          "vietnam"
+        ],
+        "x-enum-varnames": [
+          "GENERAL",
+          "USA",
+          "UK",
+          "EU",
+          "CANADA",
+          "EFTA",
+          "TURKEY",
+          "MEXICO",
+          "COLOMBIA",
+          "UKRAINE",
+          "GUATEMALA",
+          "UAE",
+          "PANAMA",
+          "SOUTH_KOREA",
+          "URUGUAY_MERCOSUR",
+          "BRAZIL_MERCOSUR",
+          "PARAGUAY_MERCOSUR",
+          "ARGENTINA_MERCOSUR",
+          "VIETNAM"
+        ]
+      },
+      "ClassificationApproval": {
+        "type": "string",
+        "enum": [
+          "plant_protection",
+          "food_service",
+          "pharmacy_division",
+          "standard_or_declaration",
+          "veterinary_service",
+          "cosmetics",
+          "feed_quality",
+          "medical_devices",
+          "traffic_safety_devices_committee",
+          "transport_ministry_vehicles",
+          "defense_ministry_arms_import",
+          "fisheries_division",
+          "mechanization_technology",
+          "radiation_commissioner",
+          "sustainable_energy",
+          "vehicle_accredited_lab"
+        ],
+        "x-enum-varnames": [
+          "PLANT_PROTECTION",
+          "FOOD_SERVICE",
+          "PHARMACY_DIVISION",
+          "STANDARD_OR_DECLARATION",
+          "VETERINARY_SERVICE",
+          "COSMETICS",
+          "FEED_QUALITY",
+          "MEDICAL_DEVICES",
+          "TRAFFIC_SAFETY_DEVICES_COMMITTEE",
+          "TRANSPORT_MINISTRY_VEHICLES",
+          "DEFENSE_MINISTRY_ARMS_IMPORT",
+          "FISHERIES_DIVISION",
+          "MECHANIZATION_TECHNOLOGY",
+          "RADIATION_COMMISSIONER",
+          "SUSTAINABLE_ENERGY",
+          "VEHICLE_ACCREDITED_LAB"
+        ]
+      },
+      "LineItemClassificationDto": {
+        "type": "object",
+        "properties": {
+          "tradeAgreement": {
+            "nullable": true,
+            "example": "eu",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TradeAgreement"
+              }
+            ]
+          },
+          "classificationCode": {
+            "type": "string",
+            "example": "8539.50.00",
+            "maxLength": 100
+          },
+          "approvals": {
+            "type": "array",
+            "example": [
+              "standard_or_declaration"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/ClassificationApproval"
+            }
+          },
+          "countryId": {
+            "type": "integer",
+            "nullable": true,
+            "example": 106,
+            "description": "`countries.id` of the origin country."
+          }
+        },
+        "required": [
+          "tradeAgreement",
+          "classificationCode",
+          "approvals",
+          "countryId"
+        ]
+      },
       "InvoiceLineItemDto": {
         "type": "object",
         "properties": {
+          "fileId": {
+            "type": "integer",
+            "example": 42,
+            "description": "The `import_account_files` row (supplier invoice) this line came from."
+          },
+          "lineIndex": {
+            "type": "integer",
+            "example": 0,
+            "description": "Position of the line inside that file's `lineItems`."
+          },
           "item": {
             "type": "string",
             "example": "Y8022-140BK",
@@ -1416,14 +1657,25 @@
             "nullable": true,
             "example": 229.8,
             "description": "Line total with the currency mark stripped."
+          },
+          "classification": {
+            "description": "What the classification screen recorded; empty defaults when never classified.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LineItemClassificationDto"
+              }
+            ]
           }
         },
         "required": [
+          "fileId",
+          "lineIndex",
           "item",
           "description",
           "quantity",
           "price",
-          "total"
+          "total",
+          "classification"
         ]
       },
       "UploadedImportFileDto": {
@@ -1487,6 +1739,72 @@
           "mimeType",
           "relativePath",
           "uploadedAt"
+        ]
+      },
+      "LineItemClassificationUpdateDto": {
+        "type": "object",
+        "properties": {
+          "tradeAgreement": {
+            "nullable": true,
+            "example": "eu",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TradeAgreement"
+              }
+            ]
+          },
+          "classificationCode": {
+            "type": "string",
+            "example": "8539.50.00",
+            "maxLength": 100
+          },
+          "approvals": {
+            "type": "array",
+            "example": [
+              "standard_or_declaration"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/ClassificationApproval"
+            }
+          },
+          "countryId": {
+            "type": "integer",
+            "nullable": true,
+            "example": 106,
+            "description": "`countries.id` of the origin country."
+          },
+          "fileId": {
+            "type": "integer",
+            "example": 42,
+            "description": "The `import_account_files` row (supplier invoice) the line belongs to."
+          },
+          "lineIndex": {
+            "type": "integer",
+            "example": 0,
+            "description": "Position of the line inside that file's `lineItems`."
+          }
+        },
+        "required": [
+          "tradeAgreement",
+          "classificationCode",
+          "approvals",
+          "countryId",
+          "fileId",
+          "lineIndex"
+        ]
+      },
+      "SaveLineItemClassificationsDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LineItemClassificationUpdateDto"
+            }
+          }
+        },
+        "required": [
+          "items"
         ]
       },
       "OrderStatus": {

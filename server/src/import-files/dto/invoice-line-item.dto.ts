@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { LineItemClassificationDto } from './line-item-classification.dto';
 
 /**
  * One row of the goods table extracted from a supplier invoice.
@@ -8,6 +9,21 @@ import { ApiProperty } from '@nestjs/swagger';
  * `nullable` so the client can render an empty cell instead of failing.
  */
 export class InvoiceLineItemDto {
+  @ApiProperty({
+    type: 'integer',
+    example: 42,
+    description:
+      'The `import_account_files` row (supplier invoice) this line came from.',
+  })
+  fileId!: number;
+
+  @ApiProperty({
+    type: 'integer',
+    example: 0,
+    description: "Position of the line inside that file's `lineItems`.",
+  })
+  lineIndex!: number;
+
   @ApiProperty({
     example: 'Y8022-140BK',
     description: 'Item / part / model code as printed (may contain spaces).',
@@ -35,4 +51,11 @@ export class InvoiceLineItemDto {
     description: 'Line total with the currency mark stripped.',
   })
   total!: number | null;
+
+  @ApiProperty({
+    type: LineItemClassificationDto,
+    description:
+      'What the classification screen recorded; empty defaults when never classified.',
+  })
+  classification!: LineItemClassificationDto;
 }

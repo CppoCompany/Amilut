@@ -5,6 +5,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
+import { CountriesModule } from './countries/countries.module';
 import { CustomersModule } from './customers/customers.module';
 import { DatabaseModule } from './database/database.module';
 import { ImportFilesModule } from './import-files/import-files.module';
@@ -17,6 +18,7 @@ import { SuppliersModule } from './suppliers/suppliers.module';
     ConfigModule.forRoot({ isGlobal: true }),
     DatabaseModule,
     AuthModule,
+    CountriesModule,
     CustomersModule,
     ImportFilesModule,
     OrdersModule,

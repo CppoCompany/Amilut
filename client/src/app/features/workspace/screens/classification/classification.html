@@ -23,36 +23,89 @@
       @if (errorMessage(); as message) {
         <p class="form-message form-message--error" role="alert">{{ message }}</p>
       }
+      @if (countriesError(); as message) {
+        <p class="form-message form-message--error" role="alert">{{ message }}</p>
+      }
       <div class="table-wrap" style="overflow: auto">
-        <table class="documents-table" style="min-width: 900px">
+        <table class="documents-table products-table">
           <thead>
             <tr>
               <th>מק"ט</th>
-              <th>שם מוצר</th>
               <th>כמות</th>
               <th>מחיר ליחידה</th>
               <th>מחיר כללי</th>
-              <th>הסכם מחר</th>
+              <th>הסכם סחר</th>
               <th>קוד סיווג</th>
               <th>אישורים</th>
+              <th>מדינות</th>
             </tr>
           </thead>
           <tbody>
-            @for (product of products(); track $index) {
+            @for (product of products(); track $index; let i = $index) {
               <tr>
                 <td>{{ product.sku }}</td>
-                <td>{{ product.name }}</td>
                 <td>{{ product.qty ?? '' }}</td>
-                <td>{{ product.unitPrice !== null ? (product.unitPrice | number: '1.2-2') : '' }}</td>
-                <td>{{ product.totalPrice !== null ? (product.totalPrice | number: '1.2-2') : '' }}</td>
-                <td>{{ product.tradeAgreement }}</td>
-                <td>{{ product.classificationCode }}</td>
-                <td>{{ product.approvals }}</td>
+                <td>
+                  {{ product.unitPrice !== null ? (product.unitPrice | number: '1.2-2') : '' }}
+                </td>
+                <td>
+                  {{ product.totalPrice !== null ? (product.totalPrice | number: '1.2-2') : '' }}
+                </td>
+                <td>
+                  <select
+                    class="form-control trade-agreement-select"
+                    [attr.aria-label]="'הסכם סחר לשורה ' + (i + 1)"
+                    (change)="onTradeAgreementChange(i, $event)"
+                  >
+                    <option value="" [selected]="product.tradeAgreement === null">בחר הסכם</option>
+                    @for (option of tradeAgreementOptions; track option) {
+                      <option [value]="option" [selected]="product.tradeAgreement === option">
+                        {{ tradeAgreementLabels[option] }}
+                      </option>
+                    }
+                  </select>
+                </td>
+                <td>
+                  <input
+                    class="form-control classification-code-input"
+                    dir="ltr"
+                    maxlength="100"
+                    [attr.aria-label]="'קוד סיווג לשורה ' + (i + 1)"
+                    [value]="product.classificationCode"
+                    (input)="onClassificationCodeChange(i, $event)"
+                  />
+                </td>
+                <td>
+                  <app-multi-select
+                    class="approvals-select"
+                    [options]="approvalOptions"
+                    [selected]="product.approvals"
+                    [ariaLabel]="'אישורים לשורה ' + (i + 1)"
+                    placeholder="ללא"
+                    (selectedChange)="onApprovalsChange(i, $event)"
+                  />
+                </td>
+                <td>
+                  <select
+                    class="form-control country-select"
+                    [attr.aria-label]="'מדינה לשורה ' + (i + 1)"
+                    (change)="onCountryChange(i, $event)"
+                  >
+                    <option value="" [selected]="product.countryId === null">בחר מדינה</option>
+                    @for (country of countries(); track country.id) {
+                      <option [value]="country.id" [selected]="product.countryId === country.id">
+                        {{ country.name }}
+                      </option>
+                    }
+                  </select>
+                </td>
               </tr>
             } @empty {
               @if (!loading()) {
                 <tr class="products-empty">
-                  <td colspan="8">לא נמצאו פריטים מחשבון ספק — העלה חשבון ספק במסך תיוק ניירת יבוא</td>
+                  <td colspan="8">
+                    לא נמצאו פריטים מחשבון ספק — העלה חשבון ספק במסך תיוק ניירת יבוא
+                  </td>
                 </tr>
               }
             }
@@ -69,8 +122,17 @@
       <textarea id="notes" class="form-control" rows="4" formControlName="notes"></textarea>
     </div>
 
+    @if (saveMessage(); as message) {
+      <p class="form-message form-message--success" role="status">{{ message }}</p>
+    }
+    @if (saveError(); as message) {
+      <p class="form-message form-message--error" role="alert">{{ message }}</p>
+    }
+
     <div class="form-actions">
-      <button type="submit" class="btn btn-primary">שמור סיווג</button>
+      <button type="submit" class="btn btn-primary" [disabled]="saving()">
+        {{ saving() ? 'שומר…' : 'שמור סיווג' }}
+      </button>
     </div>
   </form>
 </section>

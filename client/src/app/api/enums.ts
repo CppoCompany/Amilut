@@ -7,6 +7,7 @@
  * compilation here until a label is provided.
  */
 import {
+  ClassificationApproval,
   Destination,
   ImportDocumentType,
   Incoterm,
@@ -14,9 +15,11 @@ import {
   PaymentTerms,
   ShipmentDocumentType,
   ShipmentType,
+  TradeAgreement,
 } from './generated/schema';
 
 export {
+  ClassificationApproval,
   Destination,
   ImportDocumentType,
   Incoterm,
@@ -24,6 +27,7 @@ export {
   PaymentTerms,
   ShipmentDocumentType,
   ShipmentType,
+  TradeAgreement,
 };
 
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
@@ -103,6 +107,51 @@ export const IMPORT_DOCUMENT_TYPE_LABELS: Record<ImportDocumentType, string> = {
   [ImportDocumentType.CERTIFICATE_OF_ORIGIN]: 'תעודת שוק/מקור',
 };
 
+/** Regulatory approvals a classified product line may need ("אישורים" on the classification screen, multi-select). */
+export const CLASSIFICATION_APPROVAL_LABELS: Record<ClassificationApproval, string> = {
+  [ClassificationApproval.PLANT_PROTECTION]: 'אישור הגנת הצומח',
+  [ClassificationApproval.FOOD_SERVICE]: 'אישור שירות המזון',
+  [ClassificationApproval.PHARMACY_DIVISION]: 'אישור אגף הרוקחות',
+  [ClassificationApproval.STANDARD_OR_DECLARATION]: 'ת"ר/הצהרה',
+  [ClassificationApproval.VETERINARY_SERVICE]: 'אישור השירות הוטרינרי',
+  [ClassificationApproval.COSMETICS]: 'אישור תמרוקים',
+  [ClassificationApproval.FEED_QUALITY]: 'אישור טיב מספוא',
+  [ClassificationApproval.MEDICAL_DEVICES]: 'אישור אמ"ר',
+  [ClassificationApproval.TRAFFIC_SAFETY_DEVICES_COMMITTEE]:
+    'אישור הועדה הבין משרדית להתקני תנועה ובטיחות',
+  [ClassificationApproval.TRANSPORT_MINISTRY_VEHICLES]: 'משרד התחבורה – אגף הרכב ושירותי תחזוקה',
+  [ClassificationApproval.DEFENSE_MINISTRY_ARMS_IMPORT]:
+    'אישור משרד הביטחון - היחידה לרישוי יבוא אמל"ח',
+  [ClassificationApproval.FISHERIES_DIVISION]: 'אישור אגף הדיג',
+  [ClassificationApproval.MECHANIZATION_TECHNOLOGY]: 'אישור מיכון וטכנולוגיה',
+  [ClassificationApproval.RADIATION_COMMISSIONER]: 'אישור הממונה על הקרינה',
+  [ClassificationApproval.SUSTAINABLE_ENERGY]: 'אישור אנרגיה מקיימת',
+  [ClassificationApproval.VEHICLE_ACCREDITED_LAB]: 'אישור מעבדה מוסמכת לרכב',
+};
+
+/** Trade agreement a product line is declared under ("הסכם סחר" on the classification screen). */
+export const TRADE_AGREEMENT_LABELS: Record<TradeAgreement, string> = {
+  [TradeAgreement.GENERAL]: 'כללי',
+  [TradeAgreement.USA]: 'ארה"ב',
+  [TradeAgreement.UK]: 'בריטניה (הממלכה המאוחדת)',
+  [TradeAgreement.EU]: 'איחוד',
+  [TradeAgreement.CANADA]: 'קנדה',
+  [TradeAgreement.EFTA]: 'אפט"א',
+  [TradeAgreement.TURKEY]: 'טורקיה',
+  [TradeAgreement.MEXICO]: 'מקסיקו',
+  [TradeAgreement.COLOMBIA]: 'קולומביה',
+  [TradeAgreement.UKRAINE]: 'אוקראינה',
+  [TradeAgreement.GUATEMALA]: 'גואטמלה',
+  [TradeAgreement.UAE]: 'איחוד האמירויות',
+  [TradeAgreement.PANAMA]: 'הסכם פנמה',
+  [TradeAgreement.SOUTH_KOREA]: 'קוריאה הדרומית',
+  [TradeAgreement.URUGUAY_MERCOSUR]: 'אורוגוואי -- מרקוסור',
+  [TradeAgreement.BRAZIL_MERCOSUR]: 'ברזיל -- מרקוסור',
+  [TradeAgreement.PARAGUAY_MERCOSUR]: 'פרגוואי -- מרקוסור',
+  [TradeAgreement.ARGENTINA_MERCOSUR]: 'ארגנטינה -- מרקוסור',
+  [TradeAgreement.VIETNAM]: 'וייטנאם',
+};
+
 /** All members of each enum, in server declaration order — handy for rendering option lists. */
 export const ORDER_STATUSES: readonly OrderStatus[] = Object.values(OrderStatus);
 export const SHIPMENT_TYPES: readonly ShipmentType[] = Object.values(ShipmentType);
@@ -113,6 +162,9 @@ export const SHIPMENT_DOCUMENT_TYPES: readonly ShipmentDocumentType[] =
   Object.values(ShipmentDocumentType);
 export const IMPORT_DOCUMENT_TYPES: readonly ImportDocumentType[] =
   Object.values(ImportDocumentType);
+export const CLASSIFICATION_APPROVALS: readonly ClassificationApproval[] =
+  Object.values(ClassificationApproval);
+export const TRADE_AGREEMENTS: readonly TradeAgreement[] = Object.values(TradeAgreement);
 
 /**
  * Destinations offered under each shipment type — sea shipments go to a port,

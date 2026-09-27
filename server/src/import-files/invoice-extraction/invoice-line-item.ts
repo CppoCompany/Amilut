@@ -1,3 +1,5 @@
+import type { LineItemClassification } from '../line-item-classification';
+
 /**
  * One row of the goods table of a supplier invoice, as extracted from the
  * uploaded file. Stored inside `import_account_files.data.lineItems`.
@@ -11,6 +13,8 @@ export interface InvoiceLineItem {
   price: number;
   /** Line total, currency stripped. */
   total: number;
+  /** Set by the classification screen; absent until the line is classified. */
+  classification?: LineItemClassification;
 }
 
 /**

@@ -1,0 +1,44 @@
+<button
+  #toggleButton
+  type="button"
+  class="form-control multi-select__toggle"
+  [attr.aria-label]="ariaLabel()"
+  [attr.aria-expanded]="open()"
+  aria-haspopup="listbox"
+  (click)="toggle(toggleButton)"
+>
+  <span
+    class="multi-select__summary"
+    [class.multi-select__summary--placeholder]="selected().length === 0"
+  >
+    {{ summary() }}
+  </span>
+  <i class="fa-solid fa-chevron-down multi-select__chevron" aria-hidden="true"></i>
+</button>
+
+@if (open()) {
+  <ul
+    class="multi-select__menu"
+    role="listbox"
+    aria-multiselectable="true"
+    [style.top.px]="menuTop()"
+    [style.bottom.px]="menuBottom()"
+    [style.right.px]="menuRight()"
+    [style.min-width.px]="menuMinWidth()"
+    [style.max-height.px]="menuMaxHeight()"
+  >
+    @for (option of options(); track option.value) {
+      <li role="option" [attr.aria-selected]="isSelected(option.value)">
+        <label class="multi-select__option">
+          <input
+            type="checkbox"
+            [value]="option.value"
+            [checked]="isSelected(option.value)"
+            (change)="onToggleOption(option.value, $any($event.target).checked)"
+          />
+          <span>{{ option.label }}</span>
+        </label>
+      </li>
+    }
+  </ul>
+}

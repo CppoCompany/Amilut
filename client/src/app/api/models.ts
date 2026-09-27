@@ -23,3 +23,10 @@ export type UpdateShipmentDto = components['schemas']['UpdateShipmentDto'];
 
 export type UploadedImportFileDto = components['schemas']['UploadedImportFileDto'];
 export type InvoiceLineItemDto = components['schemas']['InvoiceLineItemDto'];
+export type LineItemClassificationDto = components['schemas']['LineItemClassificationDto'];
+export type LineItemClassificationUpdateDto =
+  components['schemas']['LineItemClassificationUpdateDto'];
+export type SaveLineItemClassificationsDto =
+  components['schemas']['SaveLineItemClassificationsDto'];
+
+export type CountryDto = components['schemas']['CountryDto'];

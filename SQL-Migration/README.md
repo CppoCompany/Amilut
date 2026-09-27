@@ -20,6 +20,7 @@ wired to `npm run db:generate`.
 | `011_add_contact_fields_to_customers.sql` | Adds `company_reg_number` (ח״פ), `contact_name`, `contact_phone` (איש קשר) to `customers` | `Amilut` | `Admin` (via `SET ROLE`) |
 | `012_orders_case_id.sql` | Flips case↔order to `orders.case_id` (1 case → many orders), replacing `order_account.order_id` | `Amilut` | `Admin` (via `SET ROLE`) |
 | `013_create_import_account_files.sql` | `import_account_files` table (documents uploaded to a case), many → 1 `order_account`, descriptor in JSONB | `Amilut` | `Admin` (via `SET ROLE`) |
+| `014_create_countries.sql` | `countries` lookup table (Hebrew name + ISO 3166-1 alpha-2 `key`) seeded with all 242 countries | `Amilut` | `Admin` (via `SET ROLE`) |
 | `run-migrations.mjs` | Applies `001`, then every other `NNN_*.sql` in name order | — | — |
 
 Every step is **idempotent** — re-running does nothing if the objects already exist.
@@ -76,9 +77,15 @@ Amilut
 │              created_at, updated_at)
 │              -- created as `shipments` by 005, renamed by 006;
 │              -- was 1:1 with orders.order_id until 012 flipped it to orders.case_id
-└── import_account_files (id, account_id → order_account.id [ON DELETE CASCADE],
-               data [JSONB: documentType, fileName, size, mimeType,
-               relativePath, uploadedAt], created_at)
+├── import_account_files (id, account_id → order_account.id [ON DELETE CASCADE],
+│              data [JSONB: documentType, name, size, mimeType, relativePath,
+│              uploadedAt; for SUPPLIER_INVOICE also lineItems[] — each with
+│              item, description, quantity, price, total and, once the
+│              classification screen saved it, classification {tradeAgreement,
+│              classificationCode, approvals[], countryId → countries.id}],
+│              created_at)
+└── countries (id, name [Hebrew], key [ISO 3166-1 alpha-2, UNIQUE])
+               -- lookup table, seeded by 014 with 242 rows
 
 Enum-like columns (`status`, `shipment_type`, `payment_terms`, `incoterm`,
 `destination` in `orders`; `document_type` in `order_account`)

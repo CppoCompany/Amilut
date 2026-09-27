@@ -10,18 +10,26 @@ import {
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
 import type { DatabaseService } from '../database/database.service';
+import {
+  ClassificationApproval,
+  TradeAgreement,
+} from '../classification/classification.enums';
 import { ImportDocumentType } from './import-files.enums';
 import {
   INSERT_IMPORT_ACCOUNT_FILE_SQL,
   ImportAccountFileData,
   ImportFilesService,
   SELECT_ACCOUNT_EXISTS_SQL,
+  SELECT_EXISTING_COUNTRY_IDS_SQL,
+  SELECT_FILE_BY_ID_FOR_UPDATE_SQL,
   SELECT_FILE_BY_ID_SQL,
   SELECT_LATEST_FILES_SQL,
   SELECT_LATEST_SUPPLIER_INVOICE_ROWS_SQL,
+  UPDATE_FILE_DATA_SQL,
   resolveInsideStorage,
   safeFileName,
 } from './import-files.service';
+import { EMPTY_LINE_ITEM_CLASSIFICATION } from './line-item-classification';
 import { InvoiceExtractorService } from './invoice-extraction/invoice-extractor.service';
 import {
   InvoiceExtractionResult,
@@ -203,7 +211,14 @@ describe('ImportFilesService', () => {
       const data = insertedData();
       expect(data.lineItems).toEqual([LINE_ITEM]);
       expect(data).not.toHaveProperty('extractionError');
-      expect(result[0].lineItems).toEqual([LINE_ITEM]);
+      expect(result[0].lineItems).toEqual([
+        {
+          ...LINE_ITEM,
+          fileId: 1,
+          lineIndex: 0,
+          classification: EMPTY_LINE_ITEM_CLASSIFICATION,
+        },
+      ]);
       expect(result[0].extractionError).toBeUndefined();
     });
 
@@ -445,12 +460,18 @@ describe('ImportFilesService', () => {
       total: 7,
     };
 
+    let nextRowId = 1;
+    beforeEach(() => {
+      nextRowId = 1;
+    });
+
     function invoiceRow(
       name: string,
       uploadedAt: string,
       extra: Partial<ImportAccountFileData> = {},
-    ): { data: ImportAccountFileData } {
+    ): { id: number; data: ImportAccountFileData } {
       return {
+        id: nextRowId++,
         data: {
           documentType: INVOICE,
           name,
@@ -464,7 +485,7 @@ describe('ImportFilesService', () => {
     }
 
     /** `db.queryOne` finds the account; `db.query` answers the line-item SQL with `rows`. */
-    function accountExistsWithRows(rows: { data: unknown }[]) {
+    function accountExistsWithRows(rows: { id?: number; data: unknown }[]) {
       db.queryOne.mockImplementation((sql: string, params: unknown[]) =>
         sql === SELECT_ACCOUNT_EXISTS_SQL
           ? Promise.resolve({ id: params[0] })
@@ -512,7 +533,47 @@ describe('ImportFilesService', () => {
       expect(SELECT_LATEST_SUPPLIER_INVOICE_ROWS_SQL).toContain(
         "data->>'documentType' = $2",
       );
-      expect(result).toEqual([SECOND_ITEM]);
+      expect(result).toEqual([
+        {
+          ...SECOND_ITEM,
+          fileId: 1,
+          lineIndex: 0,
+          classification: EMPTY_LINE_ITEM_CLASSIFICATION,
+        },
+      ]);
+    });
+
+    it('returns the stored classification of a line, normalised', async () => {
+      accountExistsWithRows([
+        invoiceRow('a.pdf', '2026-09-20T10:00:00.000Z', {
+          lineItems: [
+            {
+              ...LINE_ITEM,
+              classification: {
+                tradeAgreement: TradeAgreement.EU,
+                classificationCode: '8539.50.00',
+                approvals: [
+                  ClassificationApproval.STANDARD_OR_DECLARATION,
+                  ClassificationApproval.STANDARD_OR_DECLARATION,
+                  'bogus',
+                ],
+                countryId: 106,
+              } as unknown as InvoiceLineItem['classification'],
+            },
+            { ...SECOND_ITEM, classification: { countryId: -3 } as never },
+          ],
+        }),
+      ]);
+
+      const [first, second] = await service.getSupplierInvoiceLineItems(1000);
+
+      expect(first.classification).toEqual({
+        tradeAgreement: TradeAgreement.EU,
+        classificationCode: '8539.50.00',
+        approvals: [ClassificationApproval.STANDARD_OR_DECLARATION],
+        countryId: 106,
+      });
+      expect(second.classification).toEqual(EMPTY_LINE_ITEM_CLASSIFICATION);
     });
 
     it('concatenates the items of several invoices in the order the SQL returns them (uploadedAt)', async () => {
@@ -529,10 +590,14 @@ describe('ImportFilesService', () => {
         }),
       ]);
 
-      await expect(service.getSupplierInvoiceLineItems(1000)).resolves.toEqual([
-        LINE_ITEM,
-        SECOND_ITEM,
-        LINE_ITEM,
+      const result = await service.getSupplierInvoiceLineItems(1000);
+
+      expect(
+        result.map(({ item, fileId, lineIndex }) => [item, fileId, lineIndex]),
+      ).toEqual([
+        [LINE_ITEM.item, 1, 0],
+        [SECOND_ITEM.item, 3, 0],
+        [LINE_ITEM.item, 3, 1],
       ]);
     });
 
@@ -540,6 +605,7 @@ describe('ImportFilesService', () => {
       accountExistsWithRows([
         invoiceRow('no-items.pdf', '2026-09-20T10:00:00.000Z'),
         {
+          id: 2,
           data: {
             ...invoiceRow('partial.pdf', '2026-09-21T10:00:00.000Z').data,
             lineItems: [
@@ -553,20 +619,35 @@ describe('ImportFilesService', () => {
 
       await expect(service.getSupplierInvoiceLineItems(1000)).resolves.toEqual([
         {
+          fileId: 2,
+          lineIndex: 0,
           item: 'ONLY-CODE',
           description: '',
           quantity: null,
           price: null,
           total: null,
+          classification: EMPTY_LINE_ITEM_CLASSIFICATION,
         },
         {
+          fileId: 2,
+          lineIndex: 1,
           item: '',
           description: 'no numbers',
           quantity: null,
           price: null,
           total: null,
+          classification: EMPTY_LINE_ITEM_CLASSIFICATION,
         },
-        { item: '', description: '', quantity: null, price: null, total: null },
+        {
+          fileId: 2,
+          lineIndex: 2,
+          item: '',
+          description: '',
+          quantity: null,
+          price: null,
+          total: null,
+          classification: EMPTY_LINE_ITEM_CLASSIFICATION,
+        },
       ]);
     });
 
@@ -590,6 +671,163 @@ describe('ImportFilesService', () => {
       }
       expect(db.queryOne).not.toHaveBeenCalled();
       expect(db.query).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('saveLineItemClassifications', () => {
+    const FILE_DATA: ImportAccountFileData = {
+      documentType: INVOICE,
+      name: 'a.pdf',
+      size: 1,
+      mimeType: 'application/pdf',
+      relativePath: '1000/a.pdf',
+      uploadedAt: '2026-09-20T10:00:00.000Z',
+      lineItems: [
+        LINE_ITEM,
+        { ...LINE_ITEM, item: 'Z-100', description: 'Cables' },
+      ],
+    };
+
+    const UPDATE = {
+      fileId: 42,
+      lineIndex: 1,
+      tradeAgreement: TradeAgreement.USA,
+      classificationCode: ' 8544.42 ',
+      approvals: [
+        ClassificationApproval.STANDARD_OR_DECLARATION,
+        ClassificationApproval.STANDARD_OR_DECLARATION,
+      ],
+      countryId: 106,
+    };
+
+    /** Transaction client: account exists, countries exist, file 42 holds FILE_DATA, updates succeed. */
+    function fileRowExists(data: ImportAccountFileData | null = FILE_DATA) {
+      client.query.mockImplementation((sql: string, params: unknown[]) => {
+        if (sql === SELECT_ACCOUNT_EXISTS_SQL) {
+          return Promise.resolve({ rows: [{ id: params[0] }] });
+        }
+        if (sql === SELECT_EXISTING_COUNTRY_IDS_SQL) {
+          return Promise.resolve({
+            rows: (params[0] as number[])
+              .filter((id) => id !== 999)
+              .map((id) => ({ id })),
+          });
+        }
+        if (sql === SELECT_FILE_BY_ID_FOR_UPDATE_SQL) {
+          return Promise.resolve({
+            rows: params[0] === 42 && data ? [{ id: 42, data }] : [],
+          });
+        }
+        if (sql === UPDATE_FILE_DATA_SQL) {
+          return Promise.resolve({ rows: [], rowCount: 1 });
+        }
+        return Promise.reject(new Error(`Unexpected SQL: ${sql}`));
+      });
+      // The refreshed list read after the transaction.
+      db.queryOne.mockResolvedValue({ id: 1000 });
+      db.query.mockResolvedValue([]);
+    }
+
+    it('writes the classification into the stored line and returns the refreshed list', async () => {
+      fileRowExists();
+
+      const result = await service.saveLineItemClassifications(1000, [UPDATE]);
+
+      const calls = client.query.mock.calls as [string, unknown[]][];
+      const updateCall = calls.find(([sql]) => sql === UPDATE_FILE_DATA_SQL);
+      expect(updateCall).toBeDefined();
+      const [, params] = updateCall as [string, unknown[]];
+      expect(params[0]).toBe(42);
+      expect(params[2]).toBe(1000);
+      const written = JSON.parse(params[1] as string) as ImportAccountFileData;
+      expect(written.name).toBe('a.pdf');
+      expect(written.lineItems?.[0]).toEqual(LINE_ITEM); // untouched
+      expect(written.lineItems?.[1]).toEqual({
+        ...LINE_ITEM,
+        item: 'Z-100',
+        description: 'Cables',
+        classification: {
+          tradeAgreement: TradeAgreement.USA,
+          classificationCode: '8544.42',
+          approvals: [ClassificationApproval.STANDARD_OR_DECLARATION],
+          countryId: 106,
+        },
+      });
+      expect(client.query).toHaveBeenCalledWith(
+        SELECT_FILE_BY_ID_FOR_UPDATE_SQL,
+        [42, 1000],
+      );
+      expect(SELECT_FILE_BY_ID_FOR_UPDATE_SQL).toContain('FOR UPDATE');
+      // Refreshed via the normal read path.
+      expect(db.query).toHaveBeenCalledWith(
+        SELECT_LATEST_SUPPLIER_INVOICE_ROWS_SQL,
+        [1000, INVOICE],
+      );
+      expect(result).toEqual([]);
+    });
+
+    it('does not open a transaction for an empty batch', async () => {
+      fileRowExists();
+
+      await service.saveLineItemClassifications(1000, []);
+
+      expect(db.transaction).not.toHaveBeenCalled();
+      expect(db.query).toHaveBeenCalledWith(
+        SELECT_LATEST_SUPPLIER_INVOICE_ROWS_SQL,
+        [1000, INVOICE],
+      );
+    });
+
+    it('rejects a line index outside the file and writes nothing', async () => {
+      fileRowExists();
+
+      await expect(
+        service.saveLineItemClassifications(1000, [
+          { ...UPDATE, lineIndex: 2 },
+        ]),
+      ).rejects.toMatchObject({
+        constructor: BadRequestException,
+        message: 'File 42 has no line item at index 2',
+      });
+      expect(client.query).not.toHaveBeenCalledWith(
+        UPDATE_FILE_DATA_SQL,
+        expect.anything(),
+      );
+    });
+
+    it('404s a fileId that is not a file of the case', async () => {
+      fileRowExists();
+
+      await expect(
+        service.saveLineItemClassifications(1000, [{ ...UPDATE, fileId: 7 }]),
+      ).rejects.toMatchObject({
+        constructor: NotFoundException,
+        message: 'File 7 of import case (account) 1000 not found',
+      });
+    });
+
+    it('rejects an unknown country id before touching any file', async () => {
+      fileRowExists();
+
+      await expect(
+        service.saveLineItemClassifications(1000, [
+          { ...UPDATE, countryId: 999 },
+        ]),
+      ).rejects.toMatchObject({
+        constructor: BadRequestException,
+        message: 'Unknown country id(s): 999',
+      });
+      expect(client.query).not.toHaveBeenCalledWith(
+        SELECT_FILE_BY_ID_FOR_UPDATE_SQL,
+        expect.anything(),
+      );
+    });
+
+    it('rejects a bad account number without querying', async () => {
+      await expect(
+        service.saveLineItemClassifications(0, [UPDATE]),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(db.transaction).not.toHaveBeenCalled();
     });
   });
 

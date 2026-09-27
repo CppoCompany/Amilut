@@ -9,6 +9,7 @@ import * as path from 'node:path';
 import type { PoolClient } from 'pg';
 import { DatabaseService } from '../database/database.service';
 import { InvoiceLineItemDto } from './dto/invoice-line-item.dto';
+import { LineItemClassificationUpdateDto } from './dto/line-item-classification.dto';
 import { UploadedImportFileDto } from './dto/uploaded-import-file.dto';
 import { ImportDocumentType } from './import-files.enums';
 import {
@@ -19,6 +20,10 @@ import {
   InvoiceExtractionResult,
   InvoiceLineItem,
 } from './invoice-extraction/invoice-line-item';
+import {
+  LineItemClassification,
+  normaliseLineItemClassification,
+} from './line-item-classification';
 
 /** Injection token for the absolute directory that holds `<accountNumber>/<file>`. */
 export const IMPORT_FILES_STORAGE_DIR = 'IMPORT_FILES_STORAGE_DIR';
@@ -72,8 +77,8 @@ export const INSERT_IMPORT_ACCOUNT_FILE_SQL = `INSERT INTO import_account_files 
  * account, oldest upload first. Re-uploading a file adds a new row, so the
  * highest id per name is the one whose line items are live.
  */
-export const SELECT_LATEST_SUPPLIER_INVOICE_ROWS_SQL = `SELECT data FROM (
-     SELECT DISTINCT ON (data->>'name') data
+export const SELECT_LATEST_SUPPLIER_INVOICE_ROWS_SQL = `SELECT id, data FROM (
+     SELECT DISTINCT ON (data->>'name') id, data
        FROM import_account_files
       WHERE account_id = $1 AND data->>'documentType' = $2
       ORDER BY data->>'name', id DESC
@@ -96,6 +101,19 @@ export const SELECT_LATEST_FILES_SQL = `SELECT id, data - 'lineItems' - 'extract
 /** One file row by id, scoped to its account so a file can never be read through another case. */
 export const SELECT_FILE_BY_ID_SQL = `SELECT id, data FROM import_account_files
    WHERE id = $1 AND account_id = $2`;
+
+/** Same as SELECT_FILE_BY_ID_SQL but locks the row for the rest of the transaction. */
+export const SELECT_FILE_BY_ID_FOR_UPDATE_SQL = `${SELECT_FILE_BY_ID_SQL}
+   FOR UPDATE`;
+
+/** Replaces the whole JSON descriptor of one file row. */
+export const UPDATE_FILE_DATA_SQL = `UPDATE import_account_files
+   SET data = $2::jsonb
+   WHERE id = $1 AND account_id = $3`;
+
+/** Which of the given country ids exist. */
+export const SELECT_EXISTING_COUNTRY_IDS_SQL =
+  'SELECT id FROM countries WHERE id = ANY($1::int[])';
 
 /** A stored file resolved to its location on disk, ready to be streamed to the client. */
 export interface StoredImportFile {
@@ -189,7 +207,18 @@ export class ImportFilesService {
           ...extractions.get(file),
         };
         const id = await insertFileRow(client, accountNumber, data);
-        results.push({ id, ...data });
+        const { lineItems, ...descriptor } = data;
+        results.push({
+          id,
+          ...descriptor,
+          ...(lineItems
+            ? {
+                lineItems: lineItems.map((item, lineIndex) =>
+                  normaliseLineItem(item, id, lineIndex),
+                ),
+              }
+            : {}),
+        });
       }
       return results;
     });
@@ -209,15 +238,90 @@ export class ImportFilesService {
   ): Promise<InvoiceLineItemDto[]> {
     await this.assertAccountExists(accountNumber);
 
-    const rows = await this.db.query<{ data: Partial<ImportAccountFileData> }>(
-      SELECT_LATEST_SUPPLIER_INVOICE_ROWS_SQL,
-      [accountNumber, ImportDocumentType.SUPPLIER_INVOICE],
-    );
-    return rows.flatMap(({ data }) =>
+    const rows = await this.db.query<{
+      id: number;
+      data: Partial<ImportAccountFileData>;
+    }>(SELECT_LATEST_SUPPLIER_INVOICE_ROWS_SQL, [
+      accountNumber,
+      ImportDocumentType.SUPPLIER_INVOICE,
+    ]);
+    return rows.flatMap(({ id, data }) =>
       Array.isArray(data?.lineItems)
-        ? data.lineItems.map(normaliseLineItem)
+        ? data.lineItems.map((item, lineIndex) =>
+            normaliseLineItem(item, id, lineIndex),
+          )
         : [],
     );
+  }
+
+  /**
+   * Records the classification screen's columns (trade agreement,
+   * classification code, approvals, country) against the stored supplier
+   * invoice lines they belong to, then returns the refreshed line list.
+   * Each item names its line by `fileId` + `lineIndex` as handed out by
+   * {@link getSupplierInvoiceLineItems}. All updates run in one transaction:
+   * either every line is written or none is.
+   *
+   * @throws BadRequestException — bad account number, a line index outside
+   *   the file's items, or an unknown country id.
+   * @throws NotFoundException — unknown case, or a `fileId` that is not a
+   *   file of that case.
+   */
+  async saveLineItemClassifications(
+    accountNumber: number,
+    items: LineItemClassificationUpdateDto[],
+  ): Promise<InvoiceLineItemDto[]> {
+    if (!Number.isInteger(accountNumber) || accountNumber <= 0) {
+      throw new BadRequestException('accountNumber must be a positive integer');
+    }
+
+    if (items.length > 0) {
+      await this.db.transaction(async (client) => {
+        await assertAccountExists(client, accountNumber);
+        await assertCountriesExist(client, items);
+
+        const byFile = new Map<number, LineItemClassificationUpdateDto[]>();
+        for (const item of items) {
+          byFile.set(item.fileId, [...(byFile.get(item.fileId) ?? []), item]);
+        }
+
+        for (const [fileId, updates] of byFile) {
+          const found = await client.query<{
+            id: number;
+            data: Partial<ImportAccountFileData>;
+          }>(SELECT_FILE_BY_ID_FOR_UPDATE_SQL, [fileId, accountNumber]);
+          const row = found.rows[0];
+          if (!row) {
+            throw fileNotFound(accountNumber, fileId);
+          }
+          const lineItems = Array.isArray(row.data.lineItems)
+            ? [...row.data.lineItems]
+            : [];
+          for (const update of updates) {
+            const current = lineItems[update.lineIndex] as
+              | InvoiceLineItem
+              | null
+              | undefined;
+            if (update.lineIndex >= lineItems.length || current == null) {
+              throw new BadRequestException(
+                `File ${fileId} has no line item at index ${update.lineIndex}`,
+              );
+            }
+            lineItems[update.lineIndex] = {
+              ...current,
+              classification: toClassification(update),
+            };
+          }
+          await client.query(UPDATE_FILE_DATA_SQL, [
+            fileId,
+            JSON.stringify({ ...row.data, lineItems }),
+            accountNumber,
+          ]);
+        }
+      });
+    }
+
+    return this.getSupplierInvoiceLineItems(accountNumber);
   }
 
   /**
@@ -378,15 +482,58 @@ function translateWriteError(err: unknown, accountNumber: number): unknown {
 /** Fills in fields a stored line item may lack so the client always gets the full shape. */
 function normaliseLineItem(
   raw: Partial<InvoiceLineItem> | null,
+  fileId: number,
+  lineIndex: number,
 ): InvoiceLineItemDto {
   const item = raw ?? {};
   return {
+    fileId,
+    lineIndex,
     item: typeof item.item === 'string' ? item.item : '',
     description: typeof item.description === 'string' ? item.description : '',
     quantity: numberOrNull(item.quantity),
     price: numberOrNull(item.price),
     total: numberOrNull(item.total),
+    classification: normaliseLineItemClassification(item.classification),
   };
+}
+
+/** Keeps only the classification fields of an update (drops fileId / lineIndex) and de-duplicates approvals. */
+function toClassification(
+  update: LineItemClassificationUpdateDto,
+): LineItemClassification {
+  return {
+    tradeAgreement: update.tradeAgreement ?? null,
+    classificationCode: update.classificationCode.trim(),
+    approvals: Array.from(new Set(update.approvals)),
+    countryId: update.countryId ?? null,
+  };
+}
+
+/** Rejects the batch when any referenced `countryId` is not a `countries` row. */
+async function assertCountriesExist(
+  client: PoolClient,
+  items: LineItemClassificationUpdateDto[],
+): Promise<void> {
+  const wanted = Array.from(
+    new Set(
+      items
+        .map((item) => item.countryId)
+        .filter((id): id is number => typeof id === 'number'),
+    ),
+  );
+  if (wanted.length === 0) return;
+  const found = await client.query<{ id: number }>(
+    SELECT_EXISTING_COUNTRY_IDS_SQL,
+    [wanted],
+  );
+  const existing = new Set(found.rows.map((row) => row.id));
+  const missing = wanted.filter((id) => !existing.has(id));
+  if (missing.length > 0) {
+    throw new BadRequestException(
+      `Unknown country id(s): ${missing.join(', ')}`,
+    );
+  }
 }
 
 function numberOrNull(value: unknown): number | null {

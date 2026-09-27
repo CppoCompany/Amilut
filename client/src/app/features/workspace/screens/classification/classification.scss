@@ -6,6 +6,11 @@
   border-radius: 6px;
   font-size: 0.95rem;
 
+  &--success {
+    background: color-mix(in srgb, var(--success, #16a34a) 12%, white);
+    color: var(--success, #15803d);
+  }
+
   &--error {
     background: color-mix(in srgb, var(--danger, #ef4444) 12%, white);
     color: var(--danger, #ef4444);
@@ -21,4 +26,48 @@
 .products-empty td {
   color: var(--text-muted, #64748b);
   text-align: center;
+}
+
+// Compact grid: fits the content area next to the sidebar at 1366px without
+// horizontal scrolling (the wrapper's overflow: auto stays as a fallback).
+.products-table {
+  th,
+  td {
+    padding: 8px 6px;
+    font-size: 0.9rem;
+    white-space: nowrap;
+  }
+
+  // Number columns are short — don't let them take spare width.
+  td:nth-child(-n + 4),
+  th:nth-child(-n + 4) {
+    width: 1%;
+  }
+}
+
+.trade-agreement-select,
+.classification-code-input,
+.country-select,
+.approvals-select .multi-select__toggle {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.9rem;
+}
+
+// Fixed control widths: a <select>'s intrinsic width is its longest option,
+// which would otherwise force the column (and the table) wider than the screen.
+.trade-agreement-select {
+  width: 8.5rem;
+}
+
+.classification-code-input {
+  width: 5.5rem;
+}
+
+.approvals-select {
+  display: block;
+  width: 10rem;
+}
+
+.country-select {
+  width: 9rem;
 }
