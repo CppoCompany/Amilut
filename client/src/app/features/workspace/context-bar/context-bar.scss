@@ -1,47 +1,56 @@
-// Logical properties throughout (margin-inline-*, padding-inline-*) so the
-// close button and item order flip correctly for LTR too — this app defaults
-// to dir="rtl" (index.html) but nothing here should hardcode a side.
+// Logical properties throughout (margin-inline-*, padding-inline-*, inset-
+// inline-*) so the divider lines, close button and item order all flip
+// correctly for LTR too — this app defaults to dir="rtl" (index.html) but
+// nothing here should hardcode a side.
 
 .context-bar {
   display: flex;
-  align-items: stretch;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
   overflow-x: auto;
   background: var(--card-bg, #fff);
-  border-bottom: 1px solid var(--border-color, #d8e0e9);
-}
-
-.context-bar__empty {
-  margin: 0;
-  padding-block: 0.4rem;
-  color: var(--text-muted, #64748b);
-  font-size: 0.9rem;
+  border: 1px solid var(--border-color, #d8e0e9);
+  border-radius: var(--radius-md, 8px);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
 .context-bar__item {
+  position: relative;
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding-inline: 0.75rem;
-  padding-block: 0.4rem;
-  border-radius: var(--radius-md, 8px);
-  border: 1px solid var(--border-color, #d8e0e9);
-  background: var(--bg-color, #f4f7f9);
+  flex-direction: column;
+  justify-content: center;
+  flex: 1 1 0;
+  min-width: 140px;
+  gap: 0.2rem;
+  padding-inline: 1rem;
+  padding-block: 0.55rem;
   color: var(--text-dark, #1f2937);
-  cursor: pointer;
+  cursor: default;
   white-space: nowrap;
-  max-width: 220px;
+  text-align: start;
+
+  // One shared divider between adjacent cells, not a border per cell — so the
+  // strip reads as one continuous bar, exactly like the reference toolbar.
+  & + & {
+    border-inline-start: 1px solid var(--border-color, #d8e0e9);
+  }
 
   &:focus-visible {
     outline: 2px solid var(--primary-blue, #0a3d82);
-    outline-offset: 1px;
+    outline-offset: -2px;
+  }
+
+  // Order Number / Shipping Case, once a real item is open: clickable, and
+  // subtly (not solidly, to keep every tab's base look the same) marked when
+  // it's the current screen.
+  &:not(&--static) {
+    cursor: pointer;
+
+    &:hover {
+      background: var(--bg-color, #f4f7f9);
+    }
   }
 
   &--current {
-    background: var(--primary-blue, #0a3d82);
-    border-color: var(--primary-blue, #0a3d82);
-    color: #fff;
+    box-shadow: inset 0 -2px 0 var(--primary-blue, #0a3d82);
   }
 }
 
@@ -50,43 +59,68 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   min-width: 0;
+  font-size: 0.72rem;
+  color: var(--text-muted, #64748b);
+}
+
+.context-bar__value-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.context-bar__value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
 }
 
 .context-bar__dirty-dot {
+  position: absolute;
+  top: 0.5rem;
+  inset-inline-start: 0.5rem;
   inline-size: 0.5rem;
   block-size: 0.5rem;
   border-radius: 50%;
   background: #f59e0b;
-  flex-shrink: 0;
 }
 
 .context-bar__badge {
   padding-inline: 0.4rem;
   border-radius: var(--radius-sm, 4px);
-  background: rgba(255, 255, 255, 0.25);
+  background: var(--bg-color, #f4f7f9);
+  color: var(--text-dark, #1f2937);
   font-size: 0.75rem;
+  font-weight: 400;
   flex-shrink: 0;
 }
 
-.context-bar__item:not(.context-bar__item--current) .context-bar__badge {
-  background: var(--border-color, #d8e0e9);
-}
-
+// Hidden until the cell is hovered/focused, so the strip stays as clean as
+// the reference toolbar when there's nothing to act on.
 .context-bar__close {
+  position: absolute;
+  top: 0.4rem;
+  inset-inline-end: 0.4rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin-inline-start: 0.25rem;
   border: 0;
   background: transparent;
-  color: inherit;
-  opacity: 0.75;
+  color: var(--text-muted, #64748b);
+  opacity: 0;
   border-radius: var(--radius-sm, 4px);
   cursor: pointer;
-  flex-shrink: 0;
 
   &:hover {
-    opacity: 1;
     background: rgba(0, 0, 0, 0.08);
   }
+}
+
+.context-bar__item:hover .context-bar__close,
+.context-bar__item:focus-within .context-bar__close {
+  opacity: 1;
 }

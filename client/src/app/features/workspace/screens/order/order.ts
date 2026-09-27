@@ -7,6 +7,7 @@ import {
   inject,
   linkedSignal,
   signal,
+  untracked,
 } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
@@ -33,8 +34,8 @@ import { OrdersApi } from '../../../../api/orders-api';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { CustomerAutocomplete } from '../../../customers/customer-autocomplete/customer-autocomplete';
 import { SupplierAutocomplete } from '../../../suppliers/supplier-autocomplete/supplier-autocomplete';
+import { ActiveContextService } from '../../active-context.service';
 import { NavigationService } from '../../navigation.service';
-import { WorkspaceContextService } from '../../workspace-context.service';
 import { Autocomplete } from './autocomplete';
 import {
   EMPTY_ORDER_FORM_VALUE,
@@ -87,7 +88,7 @@ export class OrderScreen {
   private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly nav = inject(NavigationService);
-  private readonly workspaceContext = inject(WorkspaceContextService);
+  private readonly activeContext = inject(ActiveContextService);
 
   // ── Customer / Supplier ─────────────────────────────────────────────────────
   protected readonly selectedCustomer = signal<CustomerDto | null>(null);
@@ -181,19 +182,36 @@ export class OrderScreen {
       this.loadOrderForEditing(editOrderId);
     }
 
-    // Mirrors the workspace shell's info bar to whatever the user is currently
-    // working on: cards are always shown, blank until a customer is picked or
-    // an order loaded, then live. Cleared on destroy so navigating away blanks
-    // the panel again.
+    // Populates the context bar's Order Number / Customer Name / Supplier Name
+    // tabs — but only once there's a real, saved order to show: a chip already
+    // exists by the time this screen mounts (opened by whichever guard led
+    // here: createNewGuard for "יצירת הזמנה חדשה", itemOpenGuard for a
+    // double-click in "ההזמנות שלי"), and it's the draft's generic label with
+    // no meta until then, which is exactly the tabs' empty/name-only state.
+    // Fires both right after a fresh save and right after loading an existing
+    // order for editing (`loadOrderForEditing` also sets `savedOrder`) —
+    // switching `id` from the draft to the real order id evicts the draft
+    // chip automatically (single-per-type mode).
     effect(() => {
-      const customer = this.selectedCustomer();
       const saved = this.savedOrder();
-      this.workspaceContext.set({
-        orderNumber: saved ? String(saved.id) : '',
-        customerName: customer?.name ?? saved?.customerName ?? '',
+      if (!saved) return;
+      // untracked: ActiveContextService.open() reads its own `_items`/`_currentId`
+      // signals internally (existing-item lookup, then persist()) — without
+      // untracked, those reads register as dependencies of *this* effect, and
+      // the write those same calls perform immediately re-triggers it, spinning
+      // forever.
+      untracked(() => {
+        this.activeContext.open({
+          type: 'order',
+          id: String(saved.id),
+          label: `הזמנה #${saved.id}`,
+          meta: {
+            customerName: saved.customerName ?? '',
+            supplierName: saved.supplierName ?? '',
+          },
+        });
       });
     });
-    this.destroyRef.onDestroy(() => this.workspaceContext.clear());
   }
 
   protected pickShippingLine(value: string): void {
@@ -305,8 +323,14 @@ export class OrderScreen {
       });
   }
 
-  /** Clears everything so a fresh order can be entered. */
+  /** Clears everything so a fresh order can be entered. Also leaves the order
+   *  in the context bar (subtask: "when leaving the current order"), which
+   *  reverts the Order Number / Customer Name / Supplier Name tabs to their
+   *  empty, name-only state — the tabs themselves stay visible. */
   protected onCancel(): void {
+    const current = this.activeContext.byType('order')()[0];
+    if (current) this.activeContext.close('order', current.id);
+
     this.form.reset();
     this.shippingLine.close();
     this.airline.close();
