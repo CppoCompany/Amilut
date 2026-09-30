@@ -2,7 +2,9 @@ import { HttpErrorResponse } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   DestroyRef,
+  effect,
   ElementRef,
   inject,
   signal,
@@ -18,7 +20,8 @@ import {
 } from '../../../../api/enums';
 import { ImportFilesApi } from '../../../../api/import-files-api';
 import type { UploadedImportFileDto } from '../../../../api/models';
-import { CURRENT_CASE_NUMBER } from '../../current-case';
+import { ActiveContextService } from '../../active-context.service';
+import { NavigationService } from '../../navigation.service';
 
 /** One row of the documents table — a file stored on the server for the current case. */
 interface ShipmentDocument {
@@ -50,15 +53,24 @@ export const BLOB_URL_TTL_MS = 60_000;
 export class FilingScreen {
   private readonly importFilesApi = inject(ImportFilesApi);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly activeContext = inject(ActiveContextService);
+  private readonly nav = inject(NavigationService);
 
   private readonly fileInput = viewChild.required<ElementRef<HTMLInputElement>>('fileInput');
 
   /**
    * The case ("מספר תיק") the uploaded files are filed under — this is the
-   * `order_account` id and names the folder on the server. Still the shared
-   * placeholder shown in the header until the screen is wired to a selected case.
+   * `order_account` id and names the folder on the server. Read from whichever
+   * case is currently open in the context bar (`ActiveContextService`'s single
+   * `'file'` item); `null` while no case is open, or while it's only a
+   * not-yet-saved draft (no real id to file documents under yet).
    */
-  protected readonly accountNumber = signal(CURRENT_CASE_NUMBER);
+  protected readonly selectedCaseId = computed<number | null>(() => {
+    const item = this.activeContext.byType('file')()[0];
+    if (!item) return null;
+    const id = Number(item.id);
+    return Number.isInteger(id) && id > 0 ? id : null;
+  });
 
   protected readonly documentTypes = IMPORT_DOCUMENT_TYPES;
   protected readonly documentTypeLabels = IMPORT_DOCUMENT_TYPE_LABELS;
@@ -76,7 +88,22 @@ export class FilingScreen {
   protected readonly openingId = signal<number | null>(null);
 
   constructor() {
-    this.loadDocuments();
+    // Loads (or clears) the documents table whenever which case is open
+    // changes — covers a case being selected, and one being closed again via
+    // the context bar's X button while this screen stays mounted.
+    effect(() => {
+      const caseId = this.selectedCaseId();
+      if (caseId === null) {
+        this.documents.set([]);
+        return;
+      }
+      this.loadDocuments(caseId);
+    });
+  }
+
+  /** "בחירת תיק" → the empty state's only action when no case is open. */
+  protected goToMyFiles(): void {
+    this.nav.goToMyFiles();
   }
 
   protected onDocumentTypeChange(event: Event): void {
@@ -102,14 +129,15 @@ export class FilingScreen {
   /** Sends `files` to the server and prepends the stored files to the documents table. */
   protected uploadMultipleImportFiles(files: File[]): void {
     const documentType = this.documentType();
-    if (documentType === null) return;
+    const caseId = this.selectedCaseId();
+    if (documentType === null || caseId === null) return;
 
     this.uploading.set(true);
     this.successMessage.set(null);
     this.errorMessage.set(null);
 
     this.importFilesApi
-      .uploadMultipleImportFiles(this.accountNumber(), documentType, files)
+      .uploadMultipleImportFiles(caseId, documentType, files)
       .pipe(
         takeUntilDestroyed(this.destroyRef),
         finalize(() => this.uploading.set(false)),
@@ -137,14 +165,15 @@ export class FilingScreen {
    * the file once its bytes arrive through the authenticated HTTP client.
    */
   protected openDocument(doc: ShipmentDocument): void {
-    if (this.openingId() !== null) return;
+    const caseId = this.selectedCaseId();
+    if (this.openingId() !== null || caseId === null) return;
     this.openingId.set(doc.id);
     this.errorMessage.set(null);
 
     const viewer = window.open('', '_blank');
 
     this.importFilesApi
-      .getImportFileBlob(this.accountNumber(), doc.id)
+      .getImportFileBlob(caseId, doc.id)
       .pipe(
         takeUntilDestroyed(this.destroyRef),
         finalize(() => this.openingId.set(null)),
@@ -167,12 +196,12 @@ export class FilingScreen {
   }
 
   /** Fills the documents table with the files already stored for the case. */
-  private loadDocuments(): void {
+  private loadDocuments(caseId: number): void {
     this.loading.set(true);
     this.errorMessage.set(null);
 
     this.importFilesApi
-      .listImportFiles(this.accountNumber())
+      .listImportFiles(caseId)
       .pipe(
         takeUntilDestroyed(this.destroyRef),
         finalize(() => this.loading.set(false)),
