@@ -1,13 +1,5 @@
 import { ScrollingModule } from '@angular/cdk/scrolling';
-import {
-  ChangeDetectionStrategy,
-  Component,
-  DestroyRef,
-  Injector,
-  inject,
-  runInInjectionContext,
-  signal,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { combineLatest, debounceTime, finalize, skip } from 'rxjs';
@@ -15,7 +7,6 @@ import { combineLatest, debounceTime, finalize, skip } from 'rxjs';
 import { SHIPMENT_DOCUMENT_TYPE_LABELS } from '../../../../api/enums';
 import type { CustomerDto, ShipmentSummaryDto } from '../../../../api/models';
 import { ListShipmentsParams, ShipmentsApi } from '../../../../api/shipments-api';
-import { itemOpenGuard } from '../../../../core/guards/item-open.guard';
 import { ConfirmDialog } from '../../../../shared/confirm-dialog/confirm-dialog';
 import {
   CustomerAutocomplete,
@@ -38,7 +29,6 @@ export class MyFilesScreen {
   private readonly shipmentsApi = inject(ShipmentsApi);
   private readonly destroyRef = inject(DestroyRef);
   private readonly nav = inject(NavigationService);
-  private readonly injector = inject(Injector);
 
   protected readonly documentTypeLabels = SHIPMENT_DOCUMENT_TYPE_LABELS;
 
@@ -79,11 +69,8 @@ export class MyFilesScreen {
   }
 
   /** Double-click a row to edit that case in "יצירת תיק חדש". */
-  protected async onEditCase(shipment: ShipmentSummaryDto): Promise<void> {
-    const allowed = await runInInjectionContext(this.injector, () =>
-      itemOpenGuard({ type: 'file', id: String(shipment.id), label: `תיק #${shipment.id}` }),
-    );
-    if (allowed) this.nav.openCaseForEdit(shipment.id);
+  protected onEditCase(shipment: ShipmentSummaryDto): void {
+    this.nav.openCaseForEdit(shipment.id);
   }
 
   protected joinOrEmDash(values: readonly (string | number)[]): string {

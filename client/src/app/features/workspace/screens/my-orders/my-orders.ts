@@ -1,13 +1,5 @@
 import { ScrollingModule } from '@angular/cdk/scrolling';
-import {
-  ChangeDetectionStrategy,
-  Component,
-  DestroyRef,
-  Injector,
-  inject,
-  runInInjectionContext,
-  signal,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { combineLatest, debounceTime, finalize, skip } from 'rxjs';
@@ -15,7 +7,6 @@ import { combineLatest, debounceTime, finalize, skip } from 'rxjs';
 import { ORDER_STATUS_LABELS, ORDER_STATUSES, OrderStatus } from '../../../../api/enums';
 import type { OrderDto } from '../../../../api/models';
 import { ListOrdersParams, OrdersApi } from '../../../../api/orders-api';
-import { itemOpenGuard } from '../../../../core/guards/item-open.guard';
 import { ConfirmDialog } from '../../../../shared/confirm-dialog/confirm-dialog';
 import { SEARCH_DEBOUNCE_MS } from '../../../customers/customer-autocomplete/customer-autocomplete';
 import { NavigationService } from '../../navigation.service';
@@ -35,7 +26,6 @@ export class MyOrdersScreen {
   private readonly ordersApi = inject(OrdersApi);
   private readonly destroyRef = inject(DestroyRef);
   private readonly nav = inject(NavigationService);
-  private readonly injector = inject(Injector);
 
   // ── Filters (live — debounced, no apply button) ────────────────────────────
   protected readonly filterHandlerName = signal('');
@@ -76,11 +66,8 @@ export class MyOrdersScreen {
   }
 
   /** Double-click a row to edit that order in "יצירת הזמנה חדשה". */
-  protected async onEditOrder(order: OrderDto): Promise<void> {
-    const allowed = await runInInjectionContext(this.injector, () =>
-      itemOpenGuard({ type: 'order', id: String(order.id), label: `הזמנה #${order.id}` }),
-    );
-    if (allowed) this.nav.openOrderForEdit(order.id);
+  protected onEditOrder(order: OrderDto): void {
+    this.nav.openOrderForEdit(order.id);
   }
 
   protected isDeleting(orderId: number): boolean {

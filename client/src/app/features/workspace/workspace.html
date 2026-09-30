@@ -59,7 +59,7 @@
                   href="#"
                   class="tree-child-item"
                   [class.active]="nav.isChildActive(child.id)"
-                  (click)="$event.preventDefault(); nav.trySelectChild(child)"
+                  (click)="$event.preventDefault(); nav.selectChild(child)"
                 >
                   <i [class]="child.icon"></i>
                   <span>{{ child.label }}</span>
@@ -74,8 +74,6 @@
 
   <!-- Content Area -->
   <main class="content-area">
-    <app-context-bar />
-
     <div class="page-tab-panel active" role="tabpanel">
       @switch (nav.activeScreen()) {
         @case ('order') {

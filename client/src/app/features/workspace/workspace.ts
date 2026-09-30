@@ -1,7 +1,6 @@
 import { Component, inject } from '@angular/core';
 
 import { AuthService } from '../../core/auth/auth.service';
-import { ContextBar } from './context-bar/context-bar';
 import { NavigationService } from './navigation.service';
 import { ClassificationScreen } from './screens/classification/classification';
 import { FilingScreen } from './screens/filing/filing';
@@ -15,14 +14,11 @@ import { ShipmentScreen } from './screens/shipment/shipment';
 /**
  * Workspace shell: top header, sidebar tree, and the content area whose screen
  * is chosen by {@link NavigationService}. The sidebar is driven by the service's
- * tree model, and `nav.activeScreen()` decides which panel is rendered. The
- * context bar (`ContextBar`) reads its own state from `ActiveContextService`
- * independently of all of this.
+ * tree model, and `nav.activeScreen()` decides which panel is rendered.
  */
 @Component({
   selector: 'app-workspace',
   imports: [
-    ContextBar,
     OrderScreen,
     FilingScreen,
     ShipmentScreen,

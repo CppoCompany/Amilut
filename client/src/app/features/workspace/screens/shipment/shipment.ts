@@ -26,7 +26,6 @@ import {
   SEARCH_DEBOUNCE_MS,
 } from '../../../customers/customer-autocomplete/customer-autocomplete';
 import { SupplierAutocomplete } from '../../../suppliers/supplier-autocomplete/supplier-autocomplete';
-import { ActiveContextService } from '../../active-context.service';
 import { NavigationService } from '../../navigation.service';
 import {
   EMPTY_SHIPMENT_FORM_VALUE,
@@ -55,7 +54,6 @@ export class ShipmentScreen {
   private readonly shipmentsApi = inject(ShipmentsApi);
   private readonly destroyRef = inject(DestroyRef);
   private readonly nav = inject(NavigationService);
-  private readonly activeContext = inject(ActiveContextService);
 
   protected readonly tabs: { id: ShipmentTab; label: string }[] = [
     { id: 'document', label: 'זיהוי מסמך ומוביל' },
@@ -321,7 +319,6 @@ export class ShipmentScreen {
       .subscribe({
         next: (shipment) => {
           this.existingShipment.set(shipment);
-          this.syncCaseContext(shipment);
           this.successMessage.set(`התיק נשמר — מספר תיק ${shipment.id}`);
         },
         error: (error: unknown) => this.errorMessage.set(saveErrorMessage(error)),
@@ -353,30 +350,10 @@ export class ShipmentScreen {
     this.documentType.set(shipment?.documentType ?? null);
     this.dangerousGoods.set(shipment?.dangerousGoods ?? false);
     this.form.reset(shipment ? shipmentToFormValue(shipment) : EMPTY_SHIPMENT_FORM_VALUE);
-    if (shipment) {
-      this.syncCaseContext(shipment);
-    } else {
+    if (!shipment) {
       this.selectedOrderIds.set(new Set());
     }
     this.loadAssociatedOrders(shipment);
-  }
-
-  /** Populates the context bar's Shipping Case / Cargo Description / Transaction
-   *  Number / Customs Declaration Number / Bill of Lading Number tabs — called
-   *  only when a case has just been created, loaded, or saved, never live as
-   *  the form is typed into. */
-  private syncCaseContext(shipment: ShipmentDto): void {
-    this.activeContext.open({
-      type: 'file',
-      id: String(shipment.id),
-      label: `תיק #${shipment.id}`,
-      meta: {
-        cargoDescription: shipment.cargoDescription ?? '',
-        transactionNumber: shipment.transactionNumber ?? '',
-        manifestNumber: shipment.manifestNumber ?? '',
-        billOfLadingNumber: shipment.billOfLadingNumber ?? '',
-      },
-    });
   }
 
   private loadAssociatedOrders(shipment: ShipmentDto | null): void {

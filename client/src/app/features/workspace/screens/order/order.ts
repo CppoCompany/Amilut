@@ -3,11 +3,9 @@ import {
   Component,
   DestroyRef,
   computed,
-  effect,
   inject,
   linkedSignal,
   signal,
-  untracked,
 } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
@@ -33,7 +31,6 @@ import { OrdersApi } from '../../../../api/orders-api';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { CustomerAutocomplete } from '../../../customers/customer-autocomplete/customer-autocomplete';
 import { SupplierAutocomplete } from '../../../suppliers/supplier-autocomplete/supplier-autocomplete';
-import { ActiveContextService } from '../../active-context.service';
 import { NavigationService } from '../../navigation.service';
 import { Autocomplete } from './autocomplete';
 import {
@@ -87,7 +84,6 @@ export class OrderScreen {
   private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly nav = inject(NavigationService);
-  private readonly activeContext = inject(ActiveContextService);
 
   // ── Customer / Supplier ─────────────────────────────────────────────────────
   protected readonly selectedCustomer = signal<CustomerDto | null>(null);
@@ -184,37 +180,6 @@ export class OrderScreen {
       this.nav.editOrderId.set(null);
       this.loadOrderForEditing(editOrderId);
     }
-
-    // Populates the context bar's Order Number / Customer Name / Supplier Name
-    // tabs — but only once there's a real, saved order to show: a chip already
-    // exists by the time this screen mounts (opened by whichever guard led
-    // here: createNewGuard for "יצירת הזמנה חדשה", itemOpenGuard for a
-    // double-click in "ההזמנות שלי"), and it's the draft's generic label with
-    // no meta until then, which is exactly the tabs' empty/name-only state.
-    // Fires both right after a fresh save and right after loading an existing
-    // order for editing (`loadOrderForEditing` also sets `savedOrder`) —
-    // switching `id` from the draft to the real order id evicts the draft
-    // chip automatically (single-per-type mode).
-    effect(() => {
-      const saved = this.savedOrder();
-      if (!saved) return;
-      // untracked: ActiveContextService.open() reads its own `_items`/`_currentId`
-      // signals internally (existing-item lookup, then persist()) — without
-      // untracked, those reads register as dependencies of *this* effect, and
-      // the write those same calls perform immediately re-triggers it, spinning
-      // forever.
-      untracked(() => {
-        this.activeContext.open({
-          type: 'order',
-          id: String(saved.id),
-          label: `הזמנה #${saved.id}`,
-          meta: {
-            customerName: saved.customerName ?? '',
-            supplierName: saved.supplierName ?? '',
-          },
-        });
-      });
-    });
   }
 
   protected pickShippingLine(value: string): void {
@@ -326,13 +291,8 @@ export class OrderScreen {
       });
   }
 
-  /** Clears everything so a fresh order can be entered. Also leaves the order
-   *  in the context bar (subtask: "when leaving the current order"), which
-   *  reverts the Order Number / Customer Name / Supplier Name tabs to their
-   *  empty, name-only state — the tabs themselves stay visible. */
+  /** Clears everything so a fresh order can be entered. */
   protected onCancel(): void {
-    const current = this.activeContext.byType('order')()[0];
-    if (current) this.activeContext.close('order', current.id);
     const hasUnsavedInput =
       this.selectedCustomer() !== null || this.selectedSupplier() !== null || this.form.dirty;
     if (hasUnsavedInput && !confirm('הפרטים שהוזנו יימחקו. לבטל בכל זאת?')) {
