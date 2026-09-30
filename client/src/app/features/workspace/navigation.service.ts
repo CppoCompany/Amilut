@@ -3,7 +3,13 @@ import { computed, inject, Injectable, Injector, runInInjectionContext, signal }
 import { canDeactivateCurrentItemGuard } from '../../core/guards/can-deactivate.guard';
 import { createNewGuard } from '../../core/guards/create-new.guard';
 import { DRAFT_ITEM_ID } from './active-context.model';
-import { PageKey, ScreenId, TreeChild, TreeNode } from './navigation.model';
+import { isTreeChildGroup, PageKey, ScreenId, TreeChild, TreeEntry } from './navigation.model';
+
+/** All leaf rows in the tree, whether a plain top-level row or nested inside
+ *  an expandable group — the flat list `selectChild`'s callers search by page. */
+function flattenLeaves(tree: readonly TreeEntry[]): TreeChild[] {
+  return tree.flatMap((entry) => (isTreeChildGroup(entry) ? entry.children : [entry]));
+}
 
 /**
  * Owns the sidebar tree and decides which content screen is visible.
@@ -18,7 +24,7 @@ export class NavigationService {
   private readonly injector = inject(Injector);
 
   /** The sidebar tree. Built by {@link setupTreeNavigation}. */
-  readonly tree = signal<TreeNode[]>([]);
+  readonly tree = signal<TreeEntry[]>([]);
 
   /** Ids of the nodes currently expanded. */
   private readonly expandedNodes = signal<ReadonlySet<string>>(new Set());
@@ -64,41 +70,55 @@ export class NavigationService {
    * default landing page. Mirrors the mock's `setupTreeNavigation()`.
    */
   setupTreeNavigation(): void {
-    const tree: TreeNode[] = [
+    const tree: TreeEntry[] = [
       {
-        id: 'workstations',
-        label: 'תחנות עבודה',
-        icon: 'fa-solid fa-desktop',
+        id: 'ws-orders-group',
+        label: 'הזמנות',
+        icon: 'fa-solid fa-file-invoice',
         children: [
+          { id: 'ws-my-orders', page: 'myOrders', label: 'ההזמנות שלי', icon: 'fa-solid fa-list' },
           { id: 'ws-order', page: 'order', label: 'יצירת הזמנה חדשה', icon: 'fa-solid fa-file-invoice' },
-          { id: 'ws-filing', page: 'filing', label: 'תיוק ניירת יבוא', icon: 'fa-solid fa-file-import' },
-          { id: 'ws-shipment', page: 'shipment', label: 'יצירת תיק שילוח', icon: 'fa-solid fa-truck-fast' },
-          { id: 'ws-classification', page: 'classification', label: 'סיווג', icon: 'fa-solid fa-tags' },
+        ],
+      },
+      { id: 'ws-filing', page: 'filing', label: 'תיוק ניירת יבוא', icon: 'fa-solid fa-file-import' },
+      {
+        id: 'ws-shipment-group',
+        label: 'תיקי שילוח',
+        icon: 'fa-solid fa-truck-fast',
+        children: [
+          { id: 'ws-my-files', page: 'myFiles', label: 'התיקים שלי', icon: 'fa-solid fa-folder-open' },
           {
-            id: 'ws-post-classification',
-            page: 'placeholder',
-            label: 'השלמה לאחר סיווג',
-            icon: 'fa-solid fa-check-double',
-          },
-          {
-            id: 'ws-doc-review',
-            page: 'placeholder',
-            label: 'ביקורת מסמכים',
-            icon: 'fa-solid fa-magnifying-glass',
-          },
-          {
-            id: 'ws-transmit',
-            page: 'placeholder',
-            label: 'שידור הצהרה למכס',
-            icon: 'fa-solid fa-file-signature',
-          },
-          {
-            id: 'ws-land-transport',
-            page: 'placeholder',
-            label: 'תיאום הובלה יבשתית',
-            icon: 'fa-solid fa-file-signature',
+            id: 'ws-shipment',
+            page: 'shipment',
+            label: 'יצירת תיק שילוח',
+            icon: 'fa-solid fa-truck-fast',
           },
         ],
+      },
+      { id: 'ws-classification', page: 'classification', label: 'סיווג', icon: 'fa-solid fa-tags' },
+      {
+        id: 'ws-post-classification',
+        page: 'placeholder',
+        label: 'השלמה לאחר סיווג',
+        icon: 'fa-solid fa-check-double',
+      },
+      {
+        id: 'ws-doc-review',
+        page: 'placeholder',
+        label: 'ביקורת מסמכים',
+        icon: 'fa-solid fa-magnifying-glass',
+      },
+      {
+        id: 'ws-transmit',
+        page: 'placeholder',
+        label: 'שידור הצהרה למכס',
+        icon: 'fa-solid fa-file-signature',
+      },
+      {
+        id: 'ws-land-transport',
+        page: 'placeholder',
+        label: 'תיאום הובלה יבשתית',
+        icon: 'fa-solid fa-file-signature',
       },
       {
         id: 'importDeclaration',
@@ -143,15 +163,6 @@ export class NavigationService {
           },
         ],
       },
-      {
-        id: 'shipmentSelect',
-        label: 'בחר משלוח',
-        icon: 'fa-solid fa-folder-tree',
-        children: [
-          { id: 'ws-my-orders', page: 'myOrders', label: 'ההזמנות שלי', icon: 'fa-solid fa-list' },
-          { id: 'ws-my-files', page: 'myFiles', label: 'התיקים שלי', icon: 'fa-solid fa-folder-open' },
-        ],
-      },
     ];
 
     this.tree.set(tree);
@@ -167,9 +178,11 @@ export class NavigationService {
     this.screenMap.set('search', 'placeholder');
     this.screenMap.set('placeholder', 'placeholder');
 
-    // Default landing: first node open, first row selected (matches the mock).
-    this.expandedNodes.set(new Set([tree[0].id]));
-    const first = tree[0].children[0];
+    // Default landing: unchanged from before the Orders group existed — still
+    // "יצירת הזמנה חדשה" — with the group that now contains it expanded, so
+    // the highlighted row is visible rather than hidden inside a collapsed group.
+    this.expandedNodes.set(new Set(['ws-orders-group']));
+    const first = flattenLeaves(tree).find((c) => c.id === 'ws-order')!;
     this.activePage.set(first.page);
     this.activeChildId.set(first.id);
   }
@@ -190,11 +203,26 @@ export class NavigationService {
     return this.expandedNodes().has(nodeId);
   }
 
-  /** Select a child row: highlight it and show its screen. */
+  /** Select a child row: highlight it, show its screen, and reveal it if its
+   *  sub-group happens to be collapsed — the active row should never be
+   *  hidden. */
   selectChild(child: TreeChild): void {
     if (!this.screenMap.has(child.page)) return;
     this.activeChildId.set(child.id);
     this.activePage.set(child.page);
+    this.expandGroupContaining(child.id);
+  }
+
+  /** Expands whichever group (if any) directly contains this leaf id. */
+  private expandGroupContaining(childId: string): void {
+    for (const entry of this.tree()) {
+      if (isTreeChildGroup(entry) && entry.children.some((c) => c.id === childId)) {
+        if (!this.expandedNodes().has(entry.id)) {
+          this.expandedNodes.update((set) => new Set(set).add(entry.id));
+        }
+        return;
+      }
+    }
   }
 
   /**
@@ -228,9 +256,7 @@ export class NavigationService {
   /** Navigate to the order screen with `orderId` queued up for it to load and edit. */
   openOrderForEdit(orderId: number): void {
     this.editOrderId.set(orderId);
-    const child = this.tree()
-      .flatMap((node) => node.children)
-      .find((c) => c.page === 'order');
+    const child = flattenLeaves(this.tree()).find((c) => c.page === 'order');
     if (child) {
       this.selectChild(child);
     } else {
@@ -241,9 +267,7 @@ export class NavigationService {
   /** Navigate to the shipment/case screen with `caseId` queued up for editing. */
   openCaseForEdit(caseId: number): void {
     this.editCaseId.set(caseId);
-    const child = this.tree()
-      .flatMap((node) => node.children)
-      .find((c) => c.page === 'shipment');
+    const child = flattenLeaves(this.tree()).find((c) => c.page === 'shipment');
     if (child) {
       this.selectChild(child);
     } else {
@@ -253,17 +277,13 @@ export class NavigationService {
 
   /** Fallback landing spot after closing the last open Order in the context bar. */
   goToMyOrders(): void {
-    const child = this.tree()
-      .flatMap((node) => node.children)
-      .find((c) => c.page === 'myOrders');
+    const child = flattenLeaves(this.tree()).find((c) => c.page === 'myOrders');
     if (child) this.selectChild(child);
   }
 
   /** Fallback landing spot after closing the last open File in the context bar. */
   goToMyFiles(): void {
-    const child = this.tree()
-      .flatMap((node) => node.children)
-      .find((c) => c.page === 'myFiles');
+    const child = flattenLeaves(this.tree()).find((c) => c.page === 'myFiles');
     if (child) this.selectChild(child);
   }
 }
