@@ -1,0 +1,105 @@
+import { TestBed } from '@angular/core/testing';
+
+import { isTreeChildGroup, TreeChild } from './navigation.model';
+import { NavigationService } from './navigation.service';
+
+describe('NavigationService', () => {
+  let nav: NavigationService;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({});
+    nav = TestBed.inject(NavigationService);
+  });
+
+  function flattenLeaves(): TreeChild[] {
+    return nav.tree().flatMap((entry) => (isTreeChildGroup(entry) ? entry.children : [entry]));
+  }
+
+  it('replaces the old flat "Create New Order"/"Create Shipping Case" rows with expandable groups, directly in the top-level list', () => {
+    const ordersGroup = nav.tree().find((entry) => entry.id === 'ws-orders-group');
+    const shipmentGroup = nav.tree().find((entry) => entry.id === 'ws-shipment-group');
+
+    expect(ordersGroup && isTreeChildGroup(ordersGroup)).toBe(true);
+    expect(shipmentGroup && isTreeChildGroup(shipmentGroup)).toBe(true);
+    if (!ordersGroup || !shipmentGroup || !isTreeChildGroup(ordersGroup) || !isTreeChildGroup(shipmentGroup)) {
+      throw new Error('groups not found');
+    }
+
+    expect(ordersGroup.label).toBe('הזמנות');
+    expect(ordersGroup.children.map((c) => c.page)).toEqual(['myOrders', 'order']);
+
+    expect(shipmentGroup.label).toBe('תיקי שילוח');
+    expect(shipmentGroup.children.map((c) => c.page)).toEqual(['myFiles', 'shipment']);
+  });
+
+  it('removes the old standalone "בחר משלוח" (Select Shipment) node entirely', () => {
+    expect(nav.tree().some((entry) => entry.id === 'shipmentSelect')).toBe(false);
+  });
+
+  it('removes the "תחנות עבודה" wrapper — its rows are now top-level, not nested under it', () => {
+    expect(nav.tree().some((entry) => entry.id === 'workstations')).toBe(false);
+    // Rows that used to live only inside it are now directly in the top-level list.
+    expect(nav.tree().some((entry) => entry.id === 'ws-filing')).toBe(true);
+    expect(nav.tree().some((entry) => entry.id === 'ws-classification')).toBe(true);
+  });
+
+  it('still exposes every previously-reachable page after the restructure', () => {
+    const pages = flattenLeaves().map((c) => c.page);
+    expect(pages).toEqual(
+      expect.arrayContaining(['myOrders', 'order', 'myFiles', 'shipment', 'filing', 'classification']),
+    );
+  });
+
+  it('defaults to "יצירת הזמנה חדשה", with its group expanded', () => {
+    expect(nav.activeScreen()).toBe('order');
+    expect(nav.isChildActive('ws-order')).toBe(true);
+    expect(nav.isNodeExpanded('ws-orders-group')).toBe(true);
+  });
+
+  it('toggles a group independently of other groups', () => {
+    expect(nav.isNodeExpanded('ws-shipment-group')).toBe(false);
+    nav.toggleNode('ws-shipment-group');
+    expect(nav.isNodeExpanded('ws-shipment-group')).toBe(true);
+    expect(nav.isNodeExpanded('ws-orders-group')).toBe(true); // untouched, still its default-expanded state
+
+    nav.toggleNode('ws-shipment-group');
+    expect(nav.isNodeExpanded('ws-shipment-group')).toBe(false);
+  });
+
+  it('selecting a leaf inside a collapsed group both activates it and reveals its group', () => {
+    expect(nav.isNodeExpanded('ws-shipment-group')).toBe(false);
+
+    const myFiles = flattenLeaves().find((c) => c.page === 'myFiles')!;
+    nav.selectChild(myFiles);
+
+    expect(nav.activeScreen()).toBe('myFiles');
+    expect(nav.isChildActive('ws-my-files')).toBe(true);
+    expect(nav.isNodeExpanded('ws-shipment-group')).toBe(true);
+  });
+
+  it('openOrderForEdit finds the order row nested inside the Orders group', () => {
+    nav.openOrderForEdit(1001);
+
+    expect(nav.editOrderId()).toBe(1001);
+    expect(nav.activeScreen()).toBe('order');
+    expect(nav.isChildActive('ws-order')).toBe(true);
+  });
+
+  it('openCaseForEdit finds the shipment row nested inside the Shipping Cases group', () => {
+    nav.openCaseForEdit(2002);
+
+    expect(nav.editCaseId()).toBe(2002);
+    expect(nav.activeScreen()).toBe('shipment');
+    expect(nav.isChildActive('ws-shipment')).toBe(true);
+  });
+
+  it('goToMyOrders/goToMyFiles still resolve to the relocated My Orders/My Cases rows', () => {
+    nav.goToMyOrders();
+    expect(nav.activeScreen()).toBe('myOrders');
+    expect(nav.isChildActive('ws-my-orders')).toBe(true);
+
+    nav.goToMyFiles();
+    expect(nav.activeScreen()).toBe('myFiles');
+    expect(nav.isChildActive('ws-my-files')).toBe(true);
+  });
+});

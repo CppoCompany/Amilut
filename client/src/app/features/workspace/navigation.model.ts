@@ -29,7 +29,8 @@ export type ScreenId =
   | 'myFiles'
   | 'placeholder';
 
-/** A leaf item under a tree node — one row in the sidebar. */
+/** A leaf item — one clickable row in the sidebar, whether at the top level
+ *  or nested inside a {@link TreeChildGroup}. */
 export interface TreeChild {
   /** Stable, unique id used to track which row is highlighted. */
   id: string;
@@ -41,14 +42,28 @@ export interface TreeChild {
   icon: string;
 }
 
-/** A collapsible top-level node in the sidebar tree. */
-export interface TreeNode {
-  /** Stable, unique id for the node. */
+/**
+ * An expandable group of leaf rows — e.g. "הזמנות" bundling "ההזמנות שלי" +
+ * "יצירת הזמנה חדשה" under one collapsible row with its own arrow.
+ * Expands/collapses via `NavigationService.toggleNode`/`isNodeExpanded` (ids
+ * just have to be unique across the whole tree). Distinguished from a
+ * {@link TreeChild} by having `children` instead of `page` — see
+ * {@link isTreeChildGroup}.
+ */
+export interface TreeChildGroup {
+  /** Stable, unique id for the group (used for expand/collapse state). */
   id: string;
-  /** Node label (Hebrew). */
+  /** Group label (Hebrew). */
   label: string;
   /** Font Awesome icon class. */
   icon: string;
-  /** Child rows shown when the node is expanded. */
+  /** Leaf rows shown when the group is expanded. */
   children: TreeChild[];
+}
+
+/** One row in the sidebar tree — either a plain leaf, or an expandable group of leaves. */
+export type TreeEntry = TreeChild | TreeChildGroup;
+
+export function isTreeChildGroup(entry: TreeEntry): entry is TreeChildGroup {
+  return 'children' in entry;
 }

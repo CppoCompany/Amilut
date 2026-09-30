@@ -5,9 +5,6 @@
     <span>עמילות מכס & שילוח</span>
   </div>
   <div class="header-left">
-    <div class="header-actions">
-      <button type="button">תחנות עבודה</button>
-    </div>
     <div class="user-info">
       <span>שלום, {{ auth.user()?.name }}</span>
       <i class="fa-solid fa-circle-user fa-lg"></i>
@@ -33,41 +30,55 @@
       תפריט ראשי
     </div>
     <ul class="sidebar-menu">
-      @for (node of nav.tree(); track node.id) {
-        <li class="tree-node">
-          <button
-            type="button"
-            class="tree-node-toggle"
-            [class.active]="nav.isNodeExpanded(node.id)"
-            [attr.aria-expanded]="nav.isNodeExpanded(node.id)"
-            (click)="nav.toggleNode(node.id)"
-          >
-            <span class="tree-node-label">
-              <i [class]="node.icon"></i>
-              <span>{{ node.label }}</span>
-            </span>
-            <i
-              class="fa-solid"
-              [class.fa-chevron-down]="nav.isNodeExpanded(node.id)"
-              [class.fa-chevron-left]="!nav.isNodeExpanded(node.id)"
-            ></i>
-          </button>
-          <ul class="tree-node-children" [class.open]="nav.isNodeExpanded(node.id)">
-            @for (child of node.children; track child.id) {
-              <li>
-                <a
-                  href="#"
-                  class="tree-child-item"
-                  [class.active]="nav.isChildActive(child.id)"
-                  (click)="$event.preventDefault(); nav.trySelectChild(child)"
-                >
-                  <i [class]="child.icon"></i>
-                  <span>{{ child.label }}</span>
-                </a>
-              </li>
-            }
-          </ul>
-        </li>
+      @for (entry of nav.tree(); track entry.id) {
+        @if (isGroup(entry)) {
+          <li class="tree-node">
+            <button
+              type="button"
+              class="tree-node-toggle"
+              [class.active]="nav.isNodeExpanded(entry.id)"
+              [attr.aria-expanded]="nav.isNodeExpanded(entry.id)"
+              (click)="nav.toggleNode(entry.id)"
+            >
+              <span class="tree-node-label">
+                <i [class]="entry.icon"></i>
+                <span>{{ entry.label }}</span>
+              </span>
+              <i
+                class="fa-solid"
+                [class.fa-chevron-down]="nav.isNodeExpanded(entry.id)"
+                [class.fa-chevron-left]="!nav.isNodeExpanded(entry.id)"
+              ></i>
+            </button>
+            <ul class="tree-node-children" [class.open]="nav.isNodeExpanded(entry.id)">
+              @for (child of entry.children; track child.id) {
+                <li>
+                  <a
+                    href="#"
+                    class="tree-child-item"
+                    [class.active]="nav.isChildActive(child.id)"
+                    (click)="$event.preventDefault(); nav.trySelectChild(child)"
+                  >
+                    <i [class]="child.icon"></i>
+                    <span>{{ child.label }}</span>
+                  </a>
+                </li>
+              }
+            </ul>
+          </li>
+        } @else {
+          <li>
+            <a
+              href="#"
+              class="tree-child-item"
+              [class.active]="nav.isChildActive(entry.id)"
+              (click)="$event.preventDefault(); nav.trySelectChild(entry)"
+            >
+              <i [class]="entry.icon"></i>
+              <span>{{ entry.label }}</span>
+            </a>
+          </li>
+        }
       }
     </ul>
   </aside>
