@@ -1,4 +1,6 @@
 <form class="order-form" [formGroup]="form" (ngSubmit)="onSave()" novalidate>
+  <div class="page-title">{{ pageTitle() }}</div>
+
   @if (loadError(); as message) {
     <p class="form-message form-message--error" role="alert">{{ message }}</p>
   }

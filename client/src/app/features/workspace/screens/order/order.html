@@ -1,4 +1,6 @@
 <form class="order-form" [formGroup]="form" (ngSubmit)="onSave()" novalidate>
+  <div class="page-title">{{ pageTitle() }}</div>
+
   <!-- Section: Customer Information -->
   <section class="form-section">
     <h2 class="section-title">פרטי לקוח ופתיחה</h2>

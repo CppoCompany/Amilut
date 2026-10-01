@@ -3,6 +3,7 @@ import {
   Component,
   DestroyRef,
   computed,
+  effect,
   inject,
   signal,
 } from '@angular/core';
@@ -108,6 +109,19 @@ export class ShipmentScreen {
     this.existingShipment() ? 'עדכן שיוך' : 'שיוך לתיק שילוח',
   );
 
+  /**
+   * Set once, by how this screen was reached — a double-click in "התיקים
+   * שלי" (edit) vs. the sidebar's "יצירת תיק שילוח" (create) — never by
+   * `existingShipment()`'s null-ness. A brand-new case still reads "יצירת
+   * תיק שילוח" after its orders are associated/saved, since the user's
+   * intent was to create one; only entering via an existing case's edit
+   * flow reads "עדכון תיק שילוח".
+   */
+  protected readonly isEditingExisting = signal(false);
+  protected readonly pageTitle = computed(() =>
+    this.isEditingExisting() ? 'עדכון תיק שילוח' : 'יצירת תיק שילוח',
+  );
+
   // ── Save state ──────────────────────────────────────────────────────────────
   protected readonly saving = signal(false);
   protected readonly successMessage = signal<string | null>(null);
@@ -182,8 +196,24 @@ export class ShipmentScreen {
     const editCaseId = this.nav.editCaseId();
     if (editCaseId !== null) {
       this.nav.editCaseId.set(null);
+      this.isEditingExisting.set(true);
       this.loadCase(editCaseId);
     }
+
+    // "יצירת תיק שילוח" in the sidebar bumps this even when this screen is
+    // already mounted (mid-edit of a different case — the page doesn't
+    // change, so the component isn't recreated). Skip the first firing: that
+    // one just reflects whatever the counter already was when this instance
+    // was constructed, not a fresh click.
+    let skipFirst = true;
+    effect(() => {
+      this.nav.newCaseRequested();
+      if (skipFirst) {
+        skipFirst = false;
+        return;
+      }
+      this.resetToNewCase();
+    });
   }
 
   protected clearFilters(): void {
@@ -354,6 +384,19 @@ export class ShipmentScreen {
       this.selectedOrderIds.set(new Set());
     }
     this.loadAssociatedOrders(shipment);
+  }
+
+  /** Blanks the screen back to the order-selection step for a fresh case —
+   *  triggered by explicitly clicking "יצירת תיק שילוח" while already mid-edit
+   *  of a different case (no confirmation: it's a deliberate navigation). */
+  private resetToNewCase(): void {
+    this.applyShipment(null);
+    this.editingAssociation.set(false);
+    this.activeTab.set('document');
+    this.successMessage.set(null);
+    this.errorMessage.set(null);
+    this.loadError.set(null);
+    this.isEditingExisting.set(false);
   }
 
   private loadAssociatedOrders(shipment: ShipmentDto | null): void {

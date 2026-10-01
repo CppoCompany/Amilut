@@ -3,6 +3,7 @@ import {
   Component,
   DestroyRef,
   computed,
+  effect,
   inject,
   linkedSignal,
   signal,
@@ -102,6 +103,18 @@ export class OrderScreen {
   /** True while an existing order is being fetched for editing (see the constructor). */
   protected readonly loadingOrder = signal(false);
 
+  /**
+   * Set once, by how this screen was reached — a double-click in "ההזמנות
+   * שלי" (edit) vs. the sidebar's "יצירת הזמנה חדשה" (create) — never by
+   * `savedOrder()`'s null-ness. A brand-new order still reads "יצירת הזמנה
+   * חדשה" after its first save, since the user's intent was to create one;
+   * only entering via an existing order's edit flow reads "עדכון הזמנה".
+   */
+  protected readonly isEditingExisting = signal(false);
+  protected readonly pageTitle = computed(() =>
+    this.isEditingExisting() ? 'עדכון הזמנה' : 'יצירת הזמנה חדשה',
+  );
+
   // ── Read-only header fields ────────────────────────────────────────────────
   /** A real order id only exists once the server has inserted the row. */
   protected readonly orderNumber = computed(() => {
@@ -178,8 +191,24 @@ export class OrderScreen {
     const editOrderId = this.nav.editOrderId();
     if (editOrderId !== null) {
       this.nav.editOrderId.set(null);
+      this.isEditingExisting.set(true);
       this.loadOrderForEditing(editOrderId);
     }
+
+    // "יצירת הזמנה חדשה" in the sidebar bumps this even when this screen is
+    // already mounted (mid-edit of a different order — the page doesn't
+    // change, so the component isn't recreated). Skip the first firing: that
+    // one just reflects whatever the counter already was when this instance
+    // was constructed, not a fresh click.
+    let skipFirst = true;
+    effect(() => {
+      this.nav.newOrderRequested();
+      if (skipFirst) {
+        skipFirst = false;
+        return;
+      }
+      this.resetForm();
+    });
   }
 
   protected pickShippingLine(value: string): void {
@@ -298,7 +327,13 @@ export class OrderScreen {
     if (hasUnsavedInput && !confirm('הפרטים שהוזנו יימחקו. לבטל בכל זאת?')) {
       return;
     }
+    this.resetForm();
+  }
 
+  /** Blanks the form for a fresh order — shared by `onCancel` (after
+   *  confirmation) and the "יצירת הזמנה חדשה" sidebar reset (no confirmation:
+   *  it's an explicit navigation, not an accidental click). */
+  private resetForm(): void {
     this.form.reset();
     this.shippingLine.close();
     this.airline.close();
@@ -313,5 +348,6 @@ export class OrderScreen {
     this.submitAttempted.set(false);
     this.successMessage.set(null);
     this.errorMessage.set(null);
+    this.isEditingExisting.set(false);
   }
 }
