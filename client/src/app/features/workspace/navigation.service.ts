@@ -1,8 +1,5 @@
-import { computed, inject, Injectable, Injector, runInInjectionContext, signal } from '@angular/core';
+import { computed, Injectable, signal } from '@angular/core';
 
-import { canDeactivateCurrentItemGuard } from '../../core/guards/can-deactivate.guard';
-import { createNewGuard } from '../../core/guards/create-new.guard';
-import { DRAFT_ITEM_ID } from './active-context.model';
 import { isTreeChildGroup, PageKey, ScreenId, TreeChild, TreeEntry } from './navigation.model';
 
 /** All leaf rows in the tree, whether a plain top-level row or nested inside
@@ -21,8 +18,6 @@ function flattenLeaves(tree: readonly TreeEntry[]): TreeChild[] {
  */
 @Injectable({ providedIn: 'root' })
 export class NavigationService {
-  private readonly injector = inject(Injector);
-
   /** The sidebar tree. Built by {@link setupTreeNavigation}. */
   readonly tree = signal<TreeEntry[]>([]);
 
@@ -60,6 +55,16 @@ export class NavigationService {
    * Consumed once — the shipment screen clears it immediately after reading it.
    */
   readonly editCaseId = signal<number | null>(null);
+
+  /**
+   * Bumped each time "יצירת הזמנה חדשה"/"יצירת תיק שילוח" is explicitly
+   * selected from the sidebar (see {@link selectChild}) — the order/shipment
+   * screens watch this to reset to a blank draft even when already mounted
+   * (navigating there doesn't change `activePage`, so the component instance
+   * — and whatever existing order/case it was editing — otherwise persists).
+   */
+  readonly newOrderRequested = signal(0);
+  readonly newCaseRequested = signal(0);
 
   constructor() {
     this.setupTreeNavigation();
@@ -203,14 +208,26 @@ export class NavigationService {
     return this.expandedNodes().has(nodeId);
   }
 
-  /** Select a child row: highlight it, show its screen, and reveal it if its
-   *  sub-group happens to be collapsed — the active row should never be
-   *  hidden. */
+  /**
+   * Select a child row: highlight it, show its screen, and reveal it if its
+   * sub-group happens to be collapsed — the active row should never be
+   * hidden. "יצירת הזמנה חדשה"/"יצירת תיק שילוח" are the only rows on the
+   * `order`/`shipment` pages, so clicking either one always means "start a
+   * fresh draft" — bump the matching counter so the screen (which may already
+   * be mounted mid-edit of a different order/case, since the page doesn't
+   * change) resets instead of silently keeping the old one on screen.
+   */
   selectChild(child: TreeChild): void {
     if (!this.screenMap.has(child.page)) return;
-    this.activeChildId.set(child.id);
-    this.activePage.set(child.page);
-    this.expandGroupContaining(child.id);
+    if (child.page === 'order') this.newOrderRequested.update((n) => n + 1);
+    if (child.page === 'shipment') this.newCaseRequested.update((n) => n + 1);
+    this.setActiveRow(child.page, child.id);
+  }
+
+  private setActiveRow(page: PageKey, childId: string): void {
+    this.activeChildId.set(childId);
+    this.activePage.set(page);
+    this.expandGroupContaining(childId);
   }
 
   /** Expands whichever group (if any) directly contains this leaf id. */
@@ -225,51 +242,32 @@ export class NavigationService {
     }
   }
 
-  /**
-   * Guarded entry point for sidebar clicks. `selectChild` itself stays a
-   * plain, ungated primitive — it's also called internally by
-   * `openOrderForEdit`/`openCaseForEdit`/`goToMyOrders`/`goToMyFiles`, which
-   * are reached *after* a guard has already run (from `itemOpenGuard` or from
-   * this method itself), so gating `selectChild` directly would double-prompt.
-   */
-  async trySelectChild(child: TreeChild): Promise<void> {
-    let allowed: boolean;
-    if (child.page === 'order') {
-      allowed = await runInInjectionContext(this.injector, () =>
-        createNewGuard('order', { id: DRAFT_ITEM_ID, label: 'הזמנה חדשה' }),
-      );
-    } else if (child.page === 'shipment') {
-      allowed = await runInInjectionContext(this.injector, () =>
-        createNewGuard('file', { id: DRAFT_ITEM_ID, label: 'תיק חדש' }),
-      );
-    } else {
-      allowed = await runInInjectionContext(this.injector, () => canDeactivateCurrentItemGuard());
-    }
-    if (allowed) this.selectChild(child);
-  }
-
   /** Whether a child row is the highlighted one. */
   isChildActive(childId: string): boolean {
     return this.activeChildId() === childId;
   }
 
-  /** Navigate to the order screen with `orderId` queued up for it to load and edit. */
+  /** Navigate to the order screen with `orderId` queued up for it to load and
+   *  edit — highlights "ההזמנות שלי" (not "יצירת הזמנה חדשה"), since editing
+   *  an existing order was reached from there, not from the create-new row. */
   openOrderForEdit(orderId: number): void {
     this.editOrderId.set(orderId);
-    const child = flattenLeaves(this.tree()).find((c) => c.page === 'order');
-    if (child) {
-      this.selectChild(child);
+    const myOrders = flattenLeaves(this.tree()).find((c) => c.page === 'myOrders');
+    if (myOrders) {
+      this.setActiveRow('order', myOrders.id);
     } else {
       this.activePage.set('order');
     }
   }
 
-  /** Navigate to the shipment/case screen with `caseId` queued up for editing. */
+  /** Navigate to the shipment/case screen with `caseId` queued up for editing
+   *  — highlights "התיקים שלי" (not "יצירת תיק שילוח"), same reasoning as
+   *  {@link openOrderForEdit}. */
   openCaseForEdit(caseId: number): void {
     this.editCaseId.set(caseId);
-    const child = flattenLeaves(this.tree()).find((c) => c.page === 'shipment');
-    if (child) {
-      this.selectChild(child);
+    const myFiles = flattenLeaves(this.tree()).find((c) => c.page === 'myFiles');
+    if (myFiles) {
+      this.setActiveRow('shipment', myFiles.id);
     } else {
       this.activePage.set('shipment');
     }

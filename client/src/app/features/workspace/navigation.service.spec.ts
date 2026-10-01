@@ -77,19 +77,47 @@ describe('NavigationService', () => {
     expect(nav.isNodeExpanded('ws-shipment-group')).toBe(true);
   });
 
-  it('openOrderForEdit finds the order row nested inside the Orders group', () => {
+  it('openOrderForEdit shows the order screen but highlights "ההזמנות שלי", not "יצירת הזמנה חדשה"', () => {
     nav.openOrderForEdit(1001);
 
     expect(nav.editOrderId()).toBe(1001);
     expect(nav.activeScreen()).toBe('order');
-    expect(nav.isChildActive('ws-order')).toBe(true);
+    expect(nav.isChildActive('ws-my-orders')).toBe(true);
+    expect(nav.isChildActive('ws-order')).toBe(false);
   });
 
-  it('openCaseForEdit finds the shipment row nested inside the Shipping Cases group', () => {
+  it('openCaseForEdit shows the shipment screen but highlights "התיקים שלי", not "יצירת תיק שילוח"', () => {
     nav.openCaseForEdit(2002);
 
     expect(nav.editCaseId()).toBe(2002);
     expect(nav.activeScreen()).toBe('shipment');
+    expect(nav.isChildActive('ws-my-files')).toBe(true);
+    expect(nav.isChildActive('ws-shipment')).toBe(false);
+  });
+
+  it('selectChild on "יצירת הזמנה חדשה" bumps newOrderRequested (so the mounted screen resets even if it doesn\'t remount)', () => {
+    nav.openOrderForEdit(1001); // now editing an existing order, "ההזמnות שלי" highlighted
+    const before = nav.newOrderRequested();
+
+    const createNew = flattenLeaves().find((c) => c.page === 'order')!;
+    nav.selectChild(createNew);
+
+    expect(nav.newOrderRequested()).toBe(before + 1);
+    expect(nav.isChildActive('ws-order')).toBe(true);
+    // Unrelated clicks must never bump it.
+    const before2 = nav.newOrderRequested();
+    nav.selectChild(flattenLeaves().find((c) => c.page === 'myOrders')!);
+    expect(nav.newOrderRequested()).toBe(before2);
+  });
+
+  it('selectChild on "יצירת תיק שילוח" bumps newCaseRequested the same way', () => {
+    nav.openCaseForEdit(2002);
+    const before = nav.newCaseRequested();
+
+    const createNew = flattenLeaves().find((c) => c.page === 'shipment')!;
+    nav.selectChild(createNew);
+
+    expect(nav.newCaseRequested()).toBe(before + 1);
     expect(nav.isChildActive('ws-shipment')).toBe(true);
   });
 

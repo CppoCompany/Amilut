@@ -3,6 +3,7 @@ import {
   Component,
   DestroyRef,
   computed,
+  effect,
   inject,
   signal,
 } from '@angular/core';
@@ -26,7 +27,6 @@ import {
   SEARCH_DEBOUNCE_MS,
 } from '../../../customers/customer-autocomplete/customer-autocomplete';
 import { SupplierAutocomplete } from '../../../suppliers/supplier-autocomplete/supplier-autocomplete';
-import { ActiveContextService } from '../../active-context.service';
 import { NavigationService } from '../../navigation.service';
 import {
   EMPTY_SHIPMENT_FORM_VALUE,
@@ -55,7 +55,6 @@ export class ShipmentScreen {
   private readonly shipmentsApi = inject(ShipmentsApi);
   private readonly destroyRef = inject(DestroyRef);
   private readonly nav = inject(NavigationService);
-  private readonly activeContext = inject(ActiveContextService);
 
   protected readonly tabs: { id: ShipmentTab; label: string }[] = [
     { id: 'document', label: 'זיהוי מסמך ומוביל' },
@@ -108,6 +107,19 @@ export class ShipmentScreen {
   );
   protected readonly associateButtonLabel = computed(() =>
     this.existingShipment() ? 'עדכן שיוך' : 'שיוך לתיק שילוח',
+  );
+
+  /**
+   * Set once, by how this screen was reached — a double-click in "התיקים
+   * שלי" (edit) vs. the sidebar's "יצירת תיק שילוח" (create) — never by
+   * `existingShipment()`'s null-ness. A brand-new case still reads "יצירת
+   * תיק שילוח" after its orders are associated/saved, since the user's
+   * intent was to create one; only entering via an existing case's edit
+   * flow reads "עדכון תיק שילוח".
+   */
+  protected readonly isEditingExisting = signal(false);
+  protected readonly pageTitle = computed(() =>
+    this.isEditingExisting() ? 'עדכון תיק שילוח' : 'יצירת תיק שילוח',
   );
 
   // ── Save state ──────────────────────────────────────────────────────────────
@@ -184,8 +196,24 @@ export class ShipmentScreen {
     const editCaseId = this.nav.editCaseId();
     if (editCaseId !== null) {
       this.nav.editCaseId.set(null);
+      this.isEditingExisting.set(true);
       this.loadCase(editCaseId);
     }
+
+    // "יצירת תיק שילוח" in the sidebar bumps this even when this screen is
+    // already mounted (mid-edit of a different case — the page doesn't
+    // change, so the component isn't recreated). Skip the first firing: that
+    // one just reflects whatever the counter already was when this instance
+    // was constructed, not a fresh click.
+    let skipFirst = true;
+    effect(() => {
+      this.nav.newCaseRequested();
+      if (skipFirst) {
+        skipFirst = false;
+        return;
+      }
+      this.resetToNewCase();
+    });
   }
 
   protected clearFilters(): void {
@@ -321,7 +349,6 @@ export class ShipmentScreen {
       .subscribe({
         next: (shipment) => {
           this.existingShipment.set(shipment);
-          this.syncCaseContext(shipment);
           this.successMessage.set(`התיק נשמר — מספר תיק ${shipment.id}`);
         },
         error: (error: unknown) => this.errorMessage.set(saveErrorMessage(error)),
@@ -353,30 +380,23 @@ export class ShipmentScreen {
     this.documentType.set(shipment?.documentType ?? null);
     this.dangerousGoods.set(shipment?.dangerousGoods ?? false);
     this.form.reset(shipment ? shipmentToFormValue(shipment) : EMPTY_SHIPMENT_FORM_VALUE);
-    if (shipment) {
-      this.syncCaseContext(shipment);
-    } else {
+    if (!shipment) {
       this.selectedOrderIds.set(new Set());
     }
     this.loadAssociatedOrders(shipment);
   }
 
-  /** Populates the context bar's Shipping Case / Cargo Description / Transaction
-   *  Number / Customs Declaration Number / Bill of Lading Number tabs — called
-   *  only when a case has just been created, loaded, or saved, never live as
-   *  the form is typed into. */
-  private syncCaseContext(shipment: ShipmentDto): void {
-    this.activeContext.open({
-      type: 'file',
-      id: String(shipment.id),
-      label: `תיק #${shipment.id}`,
-      meta: {
-        cargoDescription: shipment.cargoDescription ?? '',
-        transactionNumber: shipment.transactionNumber ?? '',
-        manifestNumber: shipment.manifestNumber ?? '',
-        billOfLadingNumber: shipment.billOfLadingNumber ?? '',
-      },
-    });
+  /** Blanks the screen back to the order-selection step for a fresh case —
+   *  triggered by explicitly clicking "יצירת תיק שילוח" while already mid-edit
+   *  of a different case (no confirmation: it's a deliberate navigation). */
+  private resetToNewCase(): void {
+    this.applyShipment(null);
+    this.editingAssociation.set(false);
+    this.activeTab.set('document');
+    this.successMessage.set(null);
+    this.errorMessage.set(null);
+    this.loadError.set(null);
+    this.isEditingExisting.set(false);
   }
 
   private loadAssociatedOrders(shipment: ShipmentDto | null): void {

@@ -13,7 +13,7 @@ import {
 } from '../../../../api/enums';
 import type { CustomerDto, OrderDto } from '../../../../api/models';
 import { AuthService } from '../../../../core/auth/auth.service';
-import { ActiveContextService } from '../../active-context.service';
+import { NavigationService } from '../../navigation.service';
 import { OrderScreen } from './order';
 
 type OrderInternals = {
@@ -26,6 +26,7 @@ type OrderInternals = {
   paymentTerms: WritableSignal<PaymentTerms>;
   incoterm: WritableSignal<Incoterm>;
   shipmentType: WritableSignal<ShipmentType>;
+  pageTitle: () => string;
   form: {
     patchValue: (v: Partial<Record<string, string>>) => void;
     getRawValue: () => Record<string, string>;
@@ -76,18 +77,9 @@ describe('OrderScreen', () => {
   let fixture: ComponentFixture<OrderScreen>;
   let internals: OrderInternals;
   let httpMock: HttpTestingController;
-  let activeContext: ActiveContextService;
+  let nav: NavigationService;
 
   beforeEach(async () => {
-    // OrderScreen now pushes into ActiveContextService (its chip in the
-    // context bar), which persists to sessionStorage and rehydrates from it
-    // on construction. Without clearing, a previous test's saved order id
-    // (e.g. 1001) leaks in as a "still open" item, and the fresh
-    // ActiveContextService created for *this* test fires a real (mocked)
-    // GET /api/orders/1001 during rehydration that nothing here expects or
-    // flushes — leaving a permanently-pending request and failing `verify()`.
-    sessionStorage.clear();
-
     const authMock = {
       user: signal({ id: 7, email: 'dana@amilut.co.il', name: 'דנה לוי', role: 'user' }),
     };
@@ -102,16 +94,22 @@ describe('OrderScreen', () => {
     }).compileComponents();
 
     httpMock = TestBed.inject(HttpTestingController);
-    activeContext = TestBed.inject(ActiveContextService);
-    fixture = TestBed.createComponent(OrderScreen);
-    internals = fixture.componentInstance as unknown as OrderInternals;
-    fixture.detectChanges();
+    nav = TestBed.inject(NavigationService);
   });
 
   afterEach(() => {
     httpMock.verify();
+    vi.restoreAllMocks();
     sessionStorage.clear();
   });
+
+  /** Creates the component now — call after any `nav` setup a test needs in
+   *  place before the constructor runs (e.g. `nav.editOrderId.set(...)`). */
+  function createFixture(): void {
+    fixture = TestBed.createComponent(OrderScreen);
+    internals = fixture.componentInstance as unknown as OrderInternals;
+    fixture.detectChanges();
+  }
 
   function readonlyValue(label: string): string {
     const groups = Array.from(
@@ -121,7 +119,12 @@ describe('OrderScreen', () => {
     return (group?.querySelector('input') as HTMLInputElement).value;
   }
 
+  function pageTitleText(): string {
+    return fixture.nativeElement.querySelector('.page-title')?.textContent?.trim() ?? '';
+  }
+
   it('should create and show the handler name from the auth user', () => {
+    createFixture();
     expect(fixture.componentInstance).toBeTruthy();
     expect(readonlyValue('פקיד מטפל')).toBe('דנה לוי');
     // No real id/createdAt exist until the first save — see order.ts's orderNumber/creationDate.
@@ -130,6 +133,7 @@ describe('OrderScreen', () => {
   });
 
   it('shows an error and makes no request when saving without a customer', () => {
+    createFixture();
     internals.onSave();
     fixture.detectChanges();
 
@@ -141,6 +145,7 @@ describe('OrderScreen', () => {
   });
 
   it('posts a CreateOrderDto without server-owned fields and renders the order number', () => {
+    createFixture();
     internals.selectedCustomer.set(CUSTOMER);
     internals.form.patchValue({ factoryReadyDate: '2026-09-01', shippingLine: 'ZIM', etaDate: '' });
     internals.onSave();
@@ -174,23 +179,8 @@ describe('OrderScreen', () => {
     expect(readonlyValue('תאריך פתיחת הזמנה')).not.toBe('—');
   });
 
-  it('populates the context bar only once the order is actually saved, not while filling the form', () => {
-    internals.selectedCustomer.set(CUSTOMER);
-    expect(activeContext.byType('order')().some((item) => item.meta?.['customerName'])).toBe(false);
-
-    internals.onSave();
-    httpMock.expectOne('/api/orders').flush(SAVED_ORDER);
-    fixture.detectChanges();
-
-    const orderItem = activeContext.byType('order')()[0];
-    expect(orderItem?.id).toBe('1001');
-    expect(orderItem?.meta).toEqual({
-      customerName: SAVED_ORDER.customerName,
-      supplierName: '',
-    });
-  });
-
   it('patches the saved order on subsequent saves instead of creating a duplicate', () => {
+    createFixture();
     internals.selectedCustomer.set(CUSTOMER);
     internals.onSave();
     httpMock.expectOne({ method: 'POST', url: '/api/orders' }).flush(SAVED_ORDER);
@@ -206,6 +196,7 @@ describe('OrderScreen', () => {
   });
 
   it('shows a Hebrew error with the server message when saving fails', () => {
+    createFixture();
     internals.selectedCustomer.set(CUSTOMER);
     internals.onSave();
 
@@ -220,6 +211,7 @@ describe('OrderScreen', () => {
   });
 
   it('resets incoterm to the first allowed code when payment terms change', () => {
+    createFixture();
     expect(internals.incoterm()).toBe(INCOTERMS_BY_PAYMENT_TERMS[PaymentTerms.PREPAID][0]);
 
     internals.incoterm.set(Incoterm.CIP);
@@ -234,13 +226,13 @@ describe('OrderScreen', () => {
   });
 
   it('cancel clears the customer, the saved order and the form after confirmation', () => {
+    createFixture();
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     internals.selectedCustomer.set(CUSTOMER);
     internals.form.patchValue({ shippingLine: 'Maersk' });
     internals.onSave();
     httpMock.expectOne('/api/orders').flush(SAVED_ORDER);
     fixture.detectChanges();
-    expect(activeContext.byType('order')().length).toBe(1); // populated by the save above
 
     internals.onCancel();
     fixture.detectChanges();
@@ -251,13 +243,10 @@ describe('OrderScreen', () => {
     expect(internals.form.getRawValue()['shippingLine']).toBe('');
     expect(internals.customerError()).toBeNull();
     expect(readonlyValue('מספר הזמנה פנימי')).toBe('יוקצה אוטומטית לאחר השמירה');
-    // "Leaving the order": the context bar's item for it is gone entirely —
-    // ContextBar itself renders that as the Order Number/Customer/Supplier
-    // tabs falling back to their empty, name-only state.
-    expect(activeContext.byType('order')()).toEqual([]);
   });
 
   it('cancel does nothing if the confirmation is declined', () => {
+    createFixture();
     vi.spyOn(window, 'confirm').mockReturnValue(false);
     internals.selectedCustomer.set(CUSTOMER);
 
@@ -265,5 +254,66 @@ describe('OrderScreen', () => {
     fixture.detectChanges();
 
     expect(internals.selectedCustomer()).toEqual(CUSTOMER);
+  });
+
+  describe('page title / create vs. edit mode', () => {
+    it('shows the "create" title when opened fresh (no queued editOrderId)', () => {
+      createFixture();
+      expect(internals.pageTitle()).toBe('יצירת הזמנה חדשה');
+      expect(pageTitleText()).toBe('יצירת הזמנה חדשה');
+    });
+
+    it('shows the "update" title when opened via a queued editOrderId, even before the fetch resolves', () => {
+      nav.editOrderId.set(1001);
+      createFixture();
+
+      expect(internals.pageTitle()).toBe('עדכון הזמנה');
+      httpMock.expectOne('/api/orders/1001').flush(SAVED_ORDER);
+      fixture.detectChanges();
+      expect(internals.pageTitle()).toBe('עדכון הזמנה'); // unaffected by the load resolving
+    });
+
+    it('stays on the "create" title after a brand-new order is saved for the first time', () => {
+      createFixture();
+      internals.selectedCustomer.set(CUSTOMER);
+      internals.onSave();
+      httpMock.expectOne('/api/orders').flush(SAVED_ORDER);
+      fixture.detectChanges();
+
+      // Saved successfully, but this session's intent was always "create new".
+      expect(internals.pageTitle()).toBe('יצירת הזמנה חדשה');
+    });
+
+    it('cancel reverts the title back to "create" after editing an existing order', () => {
+      nav.editOrderId.set(1001);
+      createFixture();
+      httpMock.expectOne('/api/orders/1001').flush(SAVED_ORDER);
+      fixture.detectChanges();
+      expect(internals.pageTitle()).toBe('עדכון הזמנה');
+
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
+      internals.onCancel();
+      fixture.detectChanges();
+
+      expect(internals.pageTitle()).toBe('יצירת הזמנה חדשה');
+    });
+
+    it('resets to a blank "create" draft when "יצירת הזמנה חדשה" is re-selected while mid-edit, with no confirmation', () => {
+      nav.editOrderId.set(1001);
+      createFixture();
+      httpMock.expectOne('/api/orders/1001').flush(SAVED_ORDER);
+      fixture.detectChanges();
+      expect(internals.selectedCustomer()?.id).toBe(3);
+      expect(internals.pageTitle()).toBe('עדכון הזמנה');
+
+      const confirmSpy = vi.spyOn(window, 'confirm');
+      nav.newOrderRequested.update((n) => n + 1); // same signal `selectChild` bumps on that sidebar click
+      fixture.detectChanges(); // flushes the effect watching newOrderRequested
+
+      expect(confirmSpy).not.toHaveBeenCalled();
+      expect(internals.selectedCustomer()).toBeNull();
+      expect(internals.savedOrder()).toBeNull();
+      expect(internals.pageTitle()).toBe('יצירת הזמנה חדשה');
+    });
   });
 });
