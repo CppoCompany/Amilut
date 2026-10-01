@@ -171,7 +171,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        get: operations["MblController_findAll"];
         put?: never;
         post: operations["MblController_create"];
         delete?: never;
@@ -274,70 +274,6 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["OrdersController_update"];
-        trace?: never;
-    };
-    "/api/shipments": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["ShipmentsController_findAll"];
-        put?: never;
-        post: operations["ShipmentsController_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/shipments/by-order/{orderId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["ShipmentsController_findByOrderId"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/shipments/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["ShipmentsController_findById"];
-        put?: never;
-        post?: never;
-        delete: operations["ShipmentsController_remove"];
-        options?: never;
-        head?: never;
-        patch: operations["ShipmentsController_update"];
-        trace?: never;
-    };
-    "/api/shipments/{id}/orders": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch: operations["ShipmentsController_updateOrders"];
         trace?: never;
     };
     "/api/suppliers": {
@@ -576,6 +512,36 @@ export interface components {
         MblShippingType: MblShippingType;
         /** @enum {string} */
         SeaMethod: SeaMethod;
+        MblSummaryDto: {
+            /** @example 1 */
+            id: number;
+            shippingType: components["schemas"]["MblShippingType"];
+            seaMethod: components["schemas"]["SeaMethod"] | null;
+            /** @example MBL-987654321 */
+            mblNumber: string | null;
+            /** @example MAERSK LINE */
+            carrierName: string | null;
+            /** @example 3 */
+            hblCount: number;
+            /**
+             * @example [
+             *       1000,
+             *       1002
+             *     ]
+             */
+            orderIds: number[];
+            /**
+             * @example [
+             *       "ACME Ltd."
+             *     ]
+             */
+            customerNames: string[];
+            /**
+             * Format: date-time
+             * @example 2026-09-01T08:30:00.000Z
+             */
+            createdAt: string;
+        };
         /** @enum {string} */
         PaymentTerms: PaymentTerms;
         CreateMblContainerDto: {
@@ -1052,244 +1018,6 @@ export interface components {
             /** @example LY001 */
             flightNumber?: string;
         };
-        /** @enum {string} */
-        ShipmentDocumentType: ShipmentDocumentType;
-        ShipmentSummaryDto: {
-            /** @example 1 */
-            id: number;
-            /**
-             * @example [
-             *       1000,
-             *       1002
-             *     ]
-             */
-            orderIds: number[];
-            /**
-             * @example [
-             *       "ACME Ltd."
-             *     ]
-             */
-            customerNames: string[];
-            /** @example NEXF123456789 */
-            billOfLadingNumber: string | null;
-            documentType: components["schemas"]["ShipmentDocumentType"] | null;
-            /** @example MSC Mediterranean Shipping Co. */
-            forwarderName: string | null;
-            /**
-             * Format: date-time
-             * @example 2026-09-01T08:30:00.000Z
-             */
-            createdAt: string;
-        };
-        ShipmentOrderSummaryDto: {
-            /** @example 1000 */
-            id: number;
-            /** @example ACME Ltd. */
-            customerName: string | null;
-        };
-        ShipmentDto: {
-            /** @example 1000 */
-            id: number;
-            orders: components["schemas"]["ShipmentOrderSummaryDto"][];
-            /**
-             * Format: date-time
-             * @example 2026-09-01T08:30:00.000Z
-             */
-            createdAt: string;
-            /**
-             * Format: date-time
-             * @example 2026-09-01T08:30:00.000Z
-             */
-            updatedAt: string;
-            /** @example NEXF123456789 */
-            billOfLadingNumber: string | null;
-            documentType: components["schemas"]["ShipmentDocumentType"] | null;
-            /**
-             * Format: date
-             * @example 2026-05-27
-             */
-            blIssueDate: string | null;
-            /** @example MSC Mediterranean Shipping Co. */
-            forwarderName: string | null;
-            /** @example VN624A */
-            voyageFlightNumber: string | null;
-            /** @example MSC NAPOLI */
-            vesselName: string | null;
-            /** @example NAPOLI */
-            portOfLoading: string | null;
-            /** @example HAIFA */
-            portOfDischarge: string | null;
-            /** @example 264768 */
-            manifestNumber: string | null;
-            /** @example 12345A22 */
-            transactionNumber: string | null;
-            /** @example Shanghai Tech Components Co., Ltd */
-            shipperName: string | null;
-            /** @example אלי ויזל 5 */
-            shipperAddress: string | null;
-            /** @example NexTrade Import Ltd */
-            consigneeName: string | null;
-            /** @example שמעון פרס 11 */
-            consigneeAddress: string | null;
-            /** @example NexFreight Logistics - Israel */
-            notifyParty: string | null;
-            /** @example Electronic Components - Motherboards & Power Units */
-            cargoDescription: string | null;
-            /** @example 120 */
-            packageCount: number | null;
-            /** @example Cartons */
-            packageUnit: string | null;
-            /** @example 1850 */
-            grossWeightKg: number | null;
-            /** @example 1720 */
-            netWeightKg: number | null;
-            /** @example 9.8 */
-            volumeCbm: number | null;
-            /** @example 8504 */
-            hsCode: string | null;
-            /** @example false */
-            dangerousGoods: boolean;
-            /** @example Class 9 */
-            dangerousGoodsImoClass: string | null;
-            /** @example MSCU7845123 */
-            containerNumber: string | null;
-            /** @example 40HC */
-            containerType: string | null;
-            /** @example SH98765421 */
-            containerSealNumber: string | null;
-        };
-        CreateShipmentDto: {
-            /**
-             * @example [
-             *       1000,
-             *       1002
-             *     ]
-             */
-            orderIds: number[];
-            /** @example NEXF123456789 */
-            billOfLadingNumber?: string;
-            documentType?: components["schemas"]["ShipmentDocumentType"];
-            /**
-             * Format: date
-             * @example 2026-05-27
-             */
-            blIssueDate?: string;
-            /** @example MSC Mediterranean Shipping Co. */
-            forwarderName?: string;
-            /** @example VN624A */
-            voyageFlightNumber?: string;
-            /** @example MSC NAPOLI */
-            vesselName?: string;
-            /** @example NAPOLI */
-            portOfLoading?: string;
-            /** @example HAIFA */
-            portOfDischarge?: string;
-            /** @example 264768 */
-            manifestNumber?: string;
-            /** @example 12345A22 */
-            transactionNumber?: string;
-            /** @example Shanghai Tech Components Co., Ltd */
-            shipperName?: string;
-            /** @example אלי ויזל 5 */
-            shipperAddress?: string;
-            /** @example NexTrade Import Ltd */
-            consigneeName?: string;
-            /** @example שמעון פרס 11 */
-            consigneeAddress?: string;
-            /** @example NexFreight Logistics - Israel */
-            notifyParty?: string;
-            /** @example Electronic Components - Motherboards & Power Units */
-            cargoDescription?: string;
-            /** @example 120 */
-            packageCount?: number;
-            /** @example Cartons */
-            packageUnit?: string;
-            /** @example 1850 */
-            grossWeightKg?: number;
-            /** @example 1720 */
-            netWeightKg?: number;
-            /** @example 9.8 */
-            volumeCbm?: number;
-            /** @example 8504 */
-            hsCode?: string;
-            /** @default false */
-            dangerousGoods: boolean;
-            /** @example Class 9 */
-            dangerousGoodsImoClass?: string;
-            /** @example MSCU7845123 */
-            containerNumber?: string;
-            /** @example 40HC */
-            containerType?: string;
-            /** @example SH98765421 */
-            containerSealNumber?: string;
-        };
-        UpdateShipmentDto: {
-            /** @example NEXF123456789 */
-            billOfLadingNumber?: string;
-            documentType?: components["schemas"]["ShipmentDocumentType"];
-            /**
-             * Format: date
-             * @example 2026-05-27
-             */
-            blIssueDate?: string;
-            /** @example MSC Mediterranean Shipping Co. */
-            forwarderName?: string;
-            /** @example VN624A */
-            voyageFlightNumber?: string;
-            /** @example MSC NAPOLI */
-            vesselName?: string;
-            /** @example NAPOLI */
-            portOfLoading?: string;
-            /** @example HAIFA */
-            portOfDischarge?: string;
-            /** @example 264768 */
-            manifestNumber?: string;
-            /** @example 12345A22 */
-            transactionNumber?: string;
-            /** @example Shanghai Tech Components Co., Ltd */
-            shipperName?: string;
-            /** @example אלי ויזל 5 */
-            shipperAddress?: string;
-            /** @example NexTrade Import Ltd */
-            consigneeName?: string;
-            /** @example שמעון פרס 11 */
-            consigneeAddress?: string;
-            /** @example NexFreight Logistics - Israel */
-            notifyParty?: string;
-            /** @example Electronic Components - Motherboards & Power Units */
-            cargoDescription?: string;
-            /** @example 120 */
-            packageCount?: number;
-            /** @example Cartons */
-            packageUnit?: string;
-            /** @example 1850 */
-            grossWeightKg?: number;
-            /** @example 1720 */
-            netWeightKg?: number;
-            /** @example 9.8 */
-            volumeCbm?: number;
-            /** @example 8504 */
-            hsCode?: string;
-            /** @default false */
-            dangerousGoods: boolean;
-            /** @example Class 9 */
-            dangerousGoodsImoClass?: string;
-            /** @example MSCU7845123 */
-            containerNumber?: string;
-            /** @example 40HC */
-            containerType?: string;
-            /** @example SH98765421 */
-            containerSealNumber?: string;
-        };
-        ManageShipmentOrdersDto: {
-            /**
-             * @example [
-             *       1000,
-             *       1002
-             *     ]
-             */
-            orderIds: number[];
-        };
         SupplierDto: {
             /** @example 1 */
             id: number;
@@ -1709,6 +1437,31 @@ export interface operations {
             };
         };
     };
+    MblController_findAll: {
+        parameters: {
+            query?: {
+                customerId?: number;
+                carrierName?: string;
+                caseNumber?: number;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MblSummaryDto"][];
+                };
+            };
+        };
+    };
     MblController_create: {
         parameters: {
             query?: never;
@@ -1987,6 +1740,7 @@ export interface operations {
                 handlerName?: string;
                 supplierId?: number;
                 hasCase?: boolean;
+                hasHbl?: boolean;
                 status?: components["schemas"]["OrderStatus"];
                 createdDate?: string;
                 includeInactive?: boolean;
@@ -2105,201 +1859,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OrderDto"];
-                };
-            };
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    ShipmentsController_findAll: {
-        parameters: {
-            query?: {
-                customerId?: number;
-                forwarderName?: string;
-                caseNumber?: number;
-                limit?: number;
-                offset?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ShipmentSummaryDto"][];
-                };
-            };
-        };
-    };
-    ShipmentsController_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateShipmentDto"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ShipmentDto"];
-                };
-            };
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    ShipmentsController_findByOrderId: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                orderId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ShipmentDto"];
-                };
-            };
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    ShipmentsController_findById: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ShipmentDto"];
-                };
-            };
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    ShipmentsController_remove: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    ShipmentsController_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateShipmentDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ShipmentDto"];
-                };
-            };
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    ShipmentsController_updateOrders: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ManageShipmentOrdersDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ShipmentDto"];
                 };
             };
             404: {
@@ -2509,9 +2068,4 @@ export enum Destination {
     SOUTH_PORT = "south_port",
     HAIFA = "haifa",
     BEN_GURION = "ben_gurion"
-}
-export enum ShipmentDocumentType {
-    ORIGINAL = "original",
-    SEA_WAYBILL = "sea_waybill",
-    TELEX_RELEASE = "telex_release"
 }

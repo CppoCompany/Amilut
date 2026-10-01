@@ -11,7 +11,6 @@ import { DatabaseModule } from './database/database.module';
 import { ImportFilesModule } from './import-files/import-files.module';
 import { MblModule } from './mbl/mbl.module';
 import { OrdersModule } from './orders/orders.module';
-import { ShipmentsModule } from './shipments/shipments.module';
 import { SuppliersModule } from './suppliers/suppliers.module';
 
 @Module({
@@ -24,7 +23,6 @@ import { SuppliersModule } from './suppliers/suppliers.module';
     ImportFilesModule,
     MblModule,
     OrdersModule,
-    ShipmentsModule,
     SuppliersModule,
   ],
   controllers: [AppController],

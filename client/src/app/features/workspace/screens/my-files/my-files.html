@@ -12,13 +12,13 @@
     </div>
 
     <div class="form-group">
-      <label for="filterForwarderName">מוביל</label>
+      <label for="filterCarrierName">מוביל</label>
       <input
-        id="filterForwarderName"
+        id="filterCarrierName"
         type="text"
         class="form-control"
-        placeholder="לדוגמה MSC"
-        [(ngModel)]="filterForwarderName"
+        placeholder="לדוגמה Maersk"
+        [(ngModel)]="filterCarrierName"
       />
     </div>
 
@@ -29,7 +29,7 @@
         type="text"
         inputmode="numeric"
         class="form-control"
-        placeholder="לדוגמה 1000"
+        placeholder="לדוגמה 1"
         [(ngModel)]="filterCaseNumber"
       />
     </div>
@@ -49,9 +49,9 @@
   }
 
   <div class="data-table-wrapper">
-    @if (loading() && shipments().length === 0) {
+    @if (loading() && cases().length === 0) {
       <p class="data-table__empty">טוען...</p>
-    } @else if (shipments().length === 0) {
+    } @else if (cases().length === 0) {
       <p class="data-table__empty">לא נמצאו תיקים</p>
     } @else {
       <cdk-virtual-scroll-viewport itemSize="49" class="data-table-viewport">
@@ -59,10 +59,11 @@
           <thead>
             <tr>
               <th>מספר תיק</th>
+              <th>שיטת משלוח</th>
+              <th>מספר MBL</th>
               <th>מספרי הזמנות</th>
               <th>לקוחות</th>
-              <th>Bill of Lading</th>
-              <th>סוג מסמך</th>
+              <th>תיקי HBL</th>
               <th>מוביל</th>
               <th>תאריך פתיחה</th>
               <th></th>
@@ -70,25 +71,26 @@
           </thead>
           <tbody>
             <tr
-              *cdkVirtualFor="let shipment of shipments(); trackBy: trackById"
+              *cdkVirtualFor="let mblCase of cases(); trackBy: trackById"
               class="data-table__row--clickable"
               title="לחץ פעמיים לעריכה"
-              (dblclick)="onEditCase(shipment)"
+              (dblclick)="onEditCase(mblCase)"
             >
-              <td class="data-table__numeric">{{ shipment.id }}</td>
-              <td class="data-table__numeric">{{ joinOrEmDash(shipment.orderIds) }}</td>
-              <td>{{ joinOrEmDash(shipment.customerNames) }}</td>
-              <td>{{ shipment.billOfLadingNumber ?? '—' }}</td>
-              <td>{{ shipment.documentType ? documentTypeLabels[shipment.documentType] : '—' }}</td>
-              <td>{{ shipment.forwarderName ?? '—' }}</td>
-              <td class="data-table__numeric">{{ formatDate(shipment.createdAt) }}</td>
+              <td class="data-table__numeric">{{ mblCase.id }}</td>
+              <td>{{ methodLabel(mblCase) }}</td>
+              <td>{{ mblCase.mblNumber ?? '—' }}</td>
+              <td class="data-table__numeric">{{ joinOrEmDash(mblCase.orderIds) }}</td>
+              <td>{{ joinOrEmDash(mblCase.customerNames) }}</td>
+              <td class="data-table__numeric">{{ mblCase.hblCount }}</td>
+              <td>{{ mblCase.carrierName ?? '—' }}</td>
+              <td class="data-table__numeric">{{ formatDate(mblCase.createdAt) }}</td>
               <td>
                 <button
                   type="button"
                   class="icon-btn icon-btn--danger"
-                  [attr.aria-label]="'מחק תיק ' + shipment.id"
-                  [disabled]="isDeleting(shipment.id)"
-                  (click)="onDeleteCase(shipment, $event)"
+                  [attr.aria-label]="'מחק תיק ' + mblCase.id"
+                  [disabled]="isDeleting(mblCase.id)"
+                  (click)="onDeleteCase(mblCase, $event)"
                 >
                   <i class="fa-solid fa-trash" aria-hidden="true"></i>
                 </button>

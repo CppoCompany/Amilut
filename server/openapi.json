@@ -518,6 +518,82 @@
       }
     },
     "/api/mbl": {
+      "get": {
+        "operationId": "MblController_findAll",
+        "parameters": [
+          {
+            "name": "customerId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "carrierName",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "Maersk",
+              "type": "string"
+            }
+          },
+          {
+            "name": "caseNumber",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "offset",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "default": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MblSummaryDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "mbl"
+        ]
+      },
       "post": {
         "operationId": "MblController_create",
         "parameters": [],
@@ -952,6 +1028,14 @@
             }
           },
           {
+            "name": "hasHbl",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
             "name": "status",
             "required": false,
             "in": "query",
@@ -1169,320 +1253,6 @@
         ],
         "tags": [
           "orders"
-        ]
-      }
-    },
-    "/api/shipments": {
-      "get": {
-        "operationId": "ShipmentsController_findAll",
-        "parameters": [
-          {
-            "name": "customerId",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "example": 1,
-              "type": "integer"
-            }
-          },
-          {
-            "name": "forwarderName",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "example": "MSC",
-              "type": "string"
-            }
-          },
-          {
-            "name": "caseNumber",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "example": 1000,
-              "type": "integer"
-            }
-          },
-          {
-            "name": "limit",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "minimum": 1,
-              "maximum": 200,
-              "default": 50,
-              "type": "integer"
-            }
-          },
-          {
-            "name": "offset",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "minimum": 0,
-              "default": 0,
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ShipmentSummaryDto"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "shipments"
-        ]
-      },
-      "post": {
-        "operationId": "ShipmentsController_create",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateShipmentDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ShipmentDto"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "shipments"
-        ]
-      }
-    },
-    "/api/shipments/by-order/{orderId}": {
-      "get": {
-        "operationId": "ShipmentsController_findByOrderId",
-        "parameters": [
-          {
-            "name": "orderId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ShipmentDto"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "shipments"
-        ]
-      }
-    },
-    "/api/shipments/{id}": {
-      "get": {
-        "operationId": "ShipmentsController_findById",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ShipmentDto"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "shipments"
-        ]
-      },
-      "patch": {
-        "operationId": "ShipmentsController_update",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateShipmentDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ShipmentDto"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "shipments"
-        ]
-      },
-      "delete": {
-        "operationId": "ShipmentsController_remove",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": ""
-          },
-          "404": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "shipments"
-        ]
-      }
-    },
-    "/api/shipments/{id}/orders": {
-      "patch": {
-        "operationId": "ShipmentsController_updateOrders",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ManageShipmentOrdersDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ShipmentDto"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "shipments"
         ]
       }
     },
@@ -2217,6 +1987,79 @@
           "FCL_LCL",
           "LCL_LCL",
           "GROUPAGE_FCL"
+        ]
+      },
+      "MblSummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "shippingType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MblShippingType"
+              }
+            ]
+          },
+          "seaMethod": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SeaMethod"
+              }
+            ]
+          },
+          "mblNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "MBL-987654321"
+          },
+          "carrierName": {
+            "type": "string",
+            "nullable": true,
+            "example": "MAERSK LINE"
+          },
+          "hblCount": {
+            "type": "integer",
+            "example": 3
+          },
+          "orderIds": {
+            "example": [
+              1000,
+              1002
+            ],
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "customerNames": {
+            "example": [
+              "ACME Ltd."
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-01T08:30:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "shippingType",
+          "seaMethod",
+          "mblNumber",
+          "carrierName",
+          "hblCount",
+          "orderIds",
+          "customerNames",
+          "createdAt"
         ]
       },
       "PaymentTerms": {
@@ -3448,558 +3291,6 @@
             "example": "LY001"
           }
         }
-      },
-      "ShipmentDocumentType": {
-        "type": "string",
-        "enum": [
-          "original",
-          "sea_waybill",
-          "telex_release"
-        ],
-        "x-enum-varnames": [
-          "ORIGINAL",
-          "SEA_WAYBILL",
-          "TELEX_RELEASE"
-        ]
-      },
-      "ShipmentSummaryDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "example": 1
-          },
-          "orderIds": {
-            "example": [
-              1000,
-              1002
-            ],
-            "type": "array",
-            "items": {
-              "type": "integer"
-            }
-          },
-          "customerNames": {
-            "example": [
-              "ACME Ltd."
-            ],
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "billOfLadingNumber": {
-            "type": "string",
-            "nullable": true,
-            "example": "NEXF123456789"
-          },
-          "documentType": {
-            "nullable": true,
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/ShipmentDocumentType"
-              }
-            ]
-          },
-          "forwarderName": {
-            "type": "string",
-            "nullable": true,
-            "example": "MSC Mediterranean Shipping Co."
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time",
-            "example": "2026-09-01T08:30:00.000Z"
-          }
-        },
-        "required": [
-          "id",
-          "orderIds",
-          "customerNames",
-          "billOfLadingNumber",
-          "documentType",
-          "forwarderName",
-          "createdAt"
-        ]
-      },
-      "ShipmentOrderSummaryDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "example": 1000
-          },
-          "customerName": {
-            "type": "string",
-            "nullable": true,
-            "example": "ACME Ltd."
-          }
-        },
-        "required": [
-          "id",
-          "customerName"
-        ]
-      },
-      "ShipmentDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "example": 1000
-          },
-          "orders": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ShipmentOrderSummaryDto"
-            }
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time",
-            "example": "2026-09-01T08:30:00.000Z"
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time",
-            "example": "2026-09-01T08:30:00.000Z"
-          },
-          "billOfLadingNumber": {
-            "type": "string",
-            "nullable": true,
-            "example": "NEXF123456789"
-          },
-          "documentType": {
-            "nullable": true,
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/ShipmentDocumentType"
-              }
-            ]
-          },
-          "blIssueDate": {
-            "type": "string",
-            "format": "date",
-            "nullable": true,
-            "example": "2026-05-27"
-          },
-          "forwarderName": {
-            "type": "string",
-            "nullable": true,
-            "example": "MSC Mediterranean Shipping Co."
-          },
-          "voyageFlightNumber": {
-            "type": "string",
-            "nullable": true,
-            "example": "VN624A"
-          },
-          "vesselName": {
-            "type": "string",
-            "nullable": true,
-            "example": "MSC NAPOLI"
-          },
-          "portOfLoading": {
-            "type": "string",
-            "nullable": true,
-            "example": "NAPOLI"
-          },
-          "portOfDischarge": {
-            "type": "string",
-            "nullable": true,
-            "example": "HAIFA"
-          },
-          "manifestNumber": {
-            "type": "string",
-            "nullable": true,
-            "example": "264768"
-          },
-          "transactionNumber": {
-            "type": "string",
-            "nullable": true,
-            "example": "12345A22"
-          },
-          "shipperName": {
-            "type": "string",
-            "nullable": true,
-            "example": "Shanghai Tech Components Co., Ltd"
-          },
-          "shipperAddress": {
-            "type": "string",
-            "nullable": true,
-            "example": "אלי ויזל 5"
-          },
-          "consigneeName": {
-            "type": "string",
-            "nullable": true,
-            "example": "NexTrade Import Ltd"
-          },
-          "consigneeAddress": {
-            "type": "string",
-            "nullable": true,
-            "example": "שמעון פרס 11"
-          },
-          "notifyParty": {
-            "type": "string",
-            "nullable": true,
-            "example": "NexFreight Logistics - Israel"
-          },
-          "cargoDescription": {
-            "type": "string",
-            "nullable": true,
-            "example": "Electronic Components - Motherboards & Power Units"
-          },
-          "packageCount": {
-            "type": "integer",
-            "nullable": true,
-            "example": 120
-          },
-          "packageUnit": {
-            "type": "string",
-            "nullable": true,
-            "example": "Cartons"
-          },
-          "grossWeightKg": {
-            "type": "number",
-            "nullable": true,
-            "example": 1850
-          },
-          "netWeightKg": {
-            "type": "number",
-            "nullable": true,
-            "example": 1720
-          },
-          "volumeCbm": {
-            "type": "number",
-            "nullable": true,
-            "example": 9.8
-          },
-          "hsCode": {
-            "type": "string",
-            "nullable": true,
-            "example": "8504"
-          },
-          "dangerousGoods": {
-            "type": "boolean",
-            "example": false
-          },
-          "dangerousGoodsImoClass": {
-            "type": "string",
-            "nullable": true,
-            "example": "Class 9"
-          },
-          "containerNumber": {
-            "type": "string",
-            "nullable": true,
-            "example": "MSCU7845123"
-          },
-          "containerType": {
-            "type": "string",
-            "nullable": true,
-            "example": "40HC"
-          },
-          "containerSealNumber": {
-            "type": "string",
-            "nullable": true,
-            "example": "SH98765421"
-          }
-        },
-        "required": [
-          "id",
-          "orders",
-          "createdAt",
-          "updatedAt",
-          "billOfLadingNumber",
-          "documentType",
-          "blIssueDate",
-          "forwarderName",
-          "voyageFlightNumber",
-          "vesselName",
-          "portOfLoading",
-          "portOfDischarge",
-          "manifestNumber",
-          "transactionNumber",
-          "shipperName",
-          "shipperAddress",
-          "consigneeName",
-          "consigneeAddress",
-          "notifyParty",
-          "cargoDescription",
-          "packageCount",
-          "packageUnit",
-          "grossWeightKg",
-          "netWeightKg",
-          "volumeCbm",
-          "hsCode",
-          "dangerousGoods",
-          "dangerousGoodsImoClass",
-          "containerNumber",
-          "containerType",
-          "containerSealNumber"
-        ]
-      },
-      "CreateShipmentDto": {
-        "type": "object",
-        "properties": {
-          "orderIds": {
-            "example": [
-              1000,
-              1002
-            ],
-            "type": "array",
-            "items": {
-              "type": "integer"
-            }
-          },
-          "billOfLadingNumber": {
-            "type": "string",
-            "example": "NEXF123456789"
-          },
-          "documentType": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/ShipmentDocumentType"
-              }
-            ]
-          },
-          "blIssueDate": {
-            "type": "string",
-            "format": "date",
-            "example": "2026-05-27"
-          },
-          "forwarderName": {
-            "type": "string",
-            "example": "MSC Mediterranean Shipping Co."
-          },
-          "voyageFlightNumber": {
-            "type": "string",
-            "example": "VN624A"
-          },
-          "vesselName": {
-            "type": "string",
-            "example": "MSC NAPOLI"
-          },
-          "portOfLoading": {
-            "type": "string",
-            "example": "NAPOLI"
-          },
-          "portOfDischarge": {
-            "type": "string",
-            "example": "HAIFA"
-          },
-          "manifestNumber": {
-            "type": "string",
-            "example": "264768"
-          },
-          "transactionNumber": {
-            "type": "string",
-            "example": "12345A22"
-          },
-          "shipperName": {
-            "type": "string",
-            "example": "Shanghai Tech Components Co., Ltd"
-          },
-          "shipperAddress": {
-            "type": "string",
-            "example": "אלי ויזל 5"
-          },
-          "consigneeName": {
-            "type": "string",
-            "example": "NexTrade Import Ltd"
-          },
-          "consigneeAddress": {
-            "type": "string",
-            "example": "שמעון פרס 11"
-          },
-          "notifyParty": {
-            "type": "string",
-            "example": "NexFreight Logistics - Israel"
-          },
-          "cargoDescription": {
-            "type": "string",
-            "example": "Electronic Components - Motherboards & Power Units"
-          },
-          "packageCount": {
-            "type": "integer",
-            "example": 120
-          },
-          "packageUnit": {
-            "type": "string",
-            "example": "Cartons"
-          },
-          "grossWeightKg": {
-            "type": "number",
-            "example": 1850
-          },
-          "netWeightKg": {
-            "type": "number",
-            "example": 1720
-          },
-          "volumeCbm": {
-            "type": "number",
-            "example": 9.8
-          },
-          "hsCode": {
-            "type": "string",
-            "example": "8504"
-          },
-          "dangerousGoods": {
-            "type": "boolean",
-            "default": false
-          },
-          "dangerousGoodsImoClass": {
-            "type": "string",
-            "example": "Class 9"
-          },
-          "containerNumber": {
-            "type": "string",
-            "example": "MSCU7845123"
-          },
-          "containerType": {
-            "type": "string",
-            "example": "40HC"
-          },
-          "containerSealNumber": {
-            "type": "string",
-            "example": "SH98765421"
-          }
-        },
-        "required": [
-          "orderIds"
-        ]
-      },
-      "UpdateShipmentDto": {
-        "type": "object",
-        "properties": {
-          "billOfLadingNumber": {
-            "type": "string",
-            "example": "NEXF123456789"
-          },
-          "documentType": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/ShipmentDocumentType"
-              }
-            ]
-          },
-          "blIssueDate": {
-            "type": "string",
-            "format": "date",
-            "example": "2026-05-27"
-          },
-          "forwarderName": {
-            "type": "string",
-            "example": "MSC Mediterranean Shipping Co."
-          },
-          "voyageFlightNumber": {
-            "type": "string",
-            "example": "VN624A"
-          },
-          "vesselName": {
-            "type": "string",
-            "example": "MSC NAPOLI"
-          },
-          "portOfLoading": {
-            "type": "string",
-            "example": "NAPOLI"
-          },
-          "portOfDischarge": {
-            "type": "string",
-            "example": "HAIFA"
-          },
-          "manifestNumber": {
-            "type": "string",
-            "example": "264768"
-          },
-          "transactionNumber": {
-            "type": "string",
-            "example": "12345A22"
-          },
-          "shipperName": {
-            "type": "string",
-            "example": "Shanghai Tech Components Co., Ltd"
-          },
-          "shipperAddress": {
-            "type": "string",
-            "example": "אלי ויזל 5"
-          },
-          "consigneeName": {
-            "type": "string",
-            "example": "NexTrade Import Ltd"
-          },
-          "consigneeAddress": {
-            "type": "string",
-            "example": "שמעון פרס 11"
-          },
-          "notifyParty": {
-            "type": "string",
-            "example": "NexFreight Logistics - Israel"
-          },
-          "cargoDescription": {
-            "type": "string",
-            "example": "Electronic Components - Motherboards & Power Units"
-          },
-          "packageCount": {
-            "type": "integer",
-            "example": 120
-          },
-          "packageUnit": {
-            "type": "string",
-            "example": "Cartons"
-          },
-          "grossWeightKg": {
-            "type": "number",
-            "example": 1850
-          },
-          "netWeightKg": {
-            "type": "number",
-            "example": 1720
-          },
-          "volumeCbm": {
-            "type": "number",
-            "example": 9.8
-          },
-          "hsCode": {
-            "type": "string",
-            "example": "8504"
-          },
-          "dangerousGoods": {
-            "type": "boolean",
-            "default": false
-          },
-          "dangerousGoodsImoClass": {
-            "type": "string",
-            "example": "Class 9"
-          },
-          "containerNumber": {
-            "type": "string",
-            "example": "MSCU7845123"
-          },
-          "containerType": {
-            "type": "string",
-            "example": "40HC"
-          },
-          "containerSealNumber": {
-            "type": "string",
-            "example": "SH98765421"
-          }
-        }
-      },
-      "ManageShipmentOrdersDto": {
-        "type": "object",
-        "properties": {
-          "orderIds": {
-            "example": [
-              1000,
-              1002
-            ],
-            "type": "array",
-            "items": {
-              "type": "integer"
-            }
-          }
-        },
-        "required": [
-          "orderIds"
-        ]
       },
       "SupplierDto": {
         "type": "object",

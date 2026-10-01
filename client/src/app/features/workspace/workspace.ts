@@ -11,7 +11,6 @@ import { MyOrdersScreen } from './screens/my-orders/my-orders';
 import { OrderScreen } from './screens/order/order';
 import { PlaceholderScreen } from './screens/placeholder/placeholder';
 import { ShipmentCaseWizardScreen } from './screens/shipment-case-wizard/shipment-case-wizard';
-import { ShipmentScreen } from './screens/shipment/shipment';
 
 /**
  * Workspace shell: top header, sidebar tree, and the content area whose screen
@@ -23,7 +22,6 @@ import { ShipmentScreen } from './screens/shipment/shipment';
   imports: [
     OrderScreen,
     FilingScreen,
-    ShipmentScreen,
     ShipmentCaseWizardScreen,
     ClassificationScreen,
     ImportDeclarationScreen,

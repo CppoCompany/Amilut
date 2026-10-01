@@ -10,7 +10,6 @@
 export type PageKey =
   | 'order'
   | 'filing'
-  | 'shipment'
   | 'shipmentCaseWizard'
   | 'classification'
   | 'importDeclaration'
@@ -23,7 +22,6 @@ export type PageKey =
 export type ScreenId =
   | 'order'
   | 'filing'
-  | 'shipment'
   | 'shipmentCaseWizard'
   | 'classification'
   | 'importDeclaration'

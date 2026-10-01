@@ -1,8 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-/** Kept local to this module rather than importing `shipments`' equivalent —
- *  the two "case" concepts (legacy `order_account` vs. the new MBL/HBL flow)
- *  are deliberately independent, not sharing types across modules. */
+/** One order summary embedded in `HblDto.orders`. */
 export class HblOrderSummaryDto {
   @ApiProperty({ type: 'integer', example: 1000 })
   id!: number;

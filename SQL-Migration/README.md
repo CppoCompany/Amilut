@@ -22,6 +22,7 @@ wired to `npm run db:generate`.
 | `013_create_import_account_files.sql` | `import_account_files` table (documents uploaded to a case), many → 1 `order_account`, descriptor in JSONB | `Amilut` | `Admin` (via `SET ROLE`) |
 | `014_create_countries.sql` | `countries` lookup table (Hebrew name + ISO 3166-1 alpha-2 `key`) seeded with all 242 countries | `Amilut` | `Admin` (via `SET ROLE`) |
 | `015_create_mbl_hbl.sql` | New MBL/HBL shipping-case workflow: `mbl`, `mbl_container`, `hbl` tables + `orders.hbl_id` FK — parallel to (not replacing) `order_account`/`orders.case_id` | `Amilut` | `Admin` (via `SET ROLE`) |
+| `016_remove_legacy_shipment_cases.sql` | Deletes all rows from `order_account` — the old shipping-case workflow (and its `ShipmentsModule`/`ShipmentScreen`) has been fully replaced by MBL/HBL; the table/column themselves are left in place, just unused | `Amilut` | `Admin` (via `SET ROLE`) |
 | `run-migrations.mjs` | Applies `001`, then every other `NNN_*.sql` in name order | — | — |
 
 Every step is **idempotent** — re-running does nothing if the objects already exist.

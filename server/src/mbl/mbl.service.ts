@@ -2,8 +2,10 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { DatabaseService } from '../database/database.service';
 import { PaymentTerms } from '../orders/orders.enums';
 import { CreateMblDto } from './dto/create-mbl.dto';
+import { ListMblQuery } from './dto/list-mbl.query';
 import { CreateMblContainerDto, MblContainerDto } from './dto/mbl-container.dto';
 import { MblDto } from './dto/mbl.dto';
+import { MblSummaryDto } from './dto/mbl-summary.dto';
 import { UpdateMblDto } from './dto/update-mbl.dto';
 import { MblShippingType, SeaMethod } from './mbl.enums';
 import { assertCustomerExists } from './mbl-validation.util';
@@ -50,6 +52,18 @@ interface MblContainerRow {
   cargo_description: string | null;
   gross_weight_kg: string | null;
   volume_cbm: string | null;
+}
+
+interface MblSummaryRow {
+  id: number;
+  shipping_type: MblShippingType;
+  sea_method: SeaMethod | null;
+  mbl_number: string | null;
+  carrier_name: string | null;
+  hbl_count: string;
+  order_ids: number[] | null;
+  customer_names: string[] | null;
+  created_at: Date | string;
 }
 
 /** DTO property → `mbl` column, for every field writable after creation
@@ -124,9 +138,63 @@ const CONTAINER_SELECT = `
    WHERE mbl_id = $1
    ORDER BY id`;
 
+/** Aggregated across every HBL under the MBL (not `mbl.customer_id`, which is
+ *  only ever set for `fcl_lcl`) — this is the "התיקים שלי" grid's data source. */
+const MBL_SUMMARY_SELECT = `
+  SELECT m.id,
+         m.shipping_type,
+         m.sea_method,
+         m.mbl_number,
+         m.carrier_name,
+         m.created_at,
+         count(DISTINCT h.id) AS hbl_count,
+         array_agg(DISTINCT o.id) FILTER (WHERE o.id IS NOT NULL) AS order_ids,
+         array_agg(DISTINCT c.name) FILTER (WHERE c.name IS NOT NULL) AS customer_names
+    FROM mbl m
+    LEFT JOIN hbl       h ON h.mbl_id = m.id
+    LEFT JOIN orders    o ON o.hbl_id = h.id
+    LEFT JOIN customers c ON c.id = h.customer_id`;
+
 @Injectable()
 export class MblService {
   constructor(private readonly db: DatabaseService) {}
+
+  /** "התיקים שלי" — every MBL, newest first, with its HBLs' orders/customers
+   *  aggregated in. `customerId` matches any HBL using that customer (which
+   *  for `fcl_lcl` is every HBL, since they all share the MBL's own customer). */
+  async findAll(query: ListMblQuery): Promise<MblSummaryDto[]> {
+    const where: string[] = [];
+    const params: unknown[] = [];
+
+    if (query.customerId !== undefined) {
+      params.push(query.customerId);
+      where.push(`EXISTS (SELECT 1 FROM hbl h2 WHERE h2.mbl_id = m.id AND h2.customer_id = $${params.length})`);
+    }
+    if (query.carrierName !== undefined) {
+      params.push(`%${query.carrierName}%`);
+      where.push(`m.carrier_name ILIKE $${params.length}`);
+    }
+    if (query.caseNumber !== undefined) {
+      params.push(query.caseNumber);
+      where.push(`m.id = $${params.length}`);
+    }
+
+    params.push(query.limit ?? 50);
+    const limitIdx = params.length;
+    params.push(query.offset ?? 0);
+    const offsetIdx = params.length;
+
+    const whereClause = where.length ? `WHERE ${where.join(' AND ')}` : '';
+    const rows = await this.db.query<MblSummaryRow>(
+      `${MBL_SUMMARY_SELECT}
+       ${whereClause}
+       GROUP BY m.id, m.shipping_type, m.sea_method, m.mbl_number, m.carrier_name, m.created_at
+       ORDER BY m.id DESC
+       LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+      params,
+    );
+    return rows.map(toMblSummaryDto);
+  }
 
   /** Opens a new MBL. `seaMethod` is required iff `shippingType = 'sea'`;
    *  `containers` is required iff `seaMethod = 'groupage_fcl'` (the only
@@ -184,7 +252,7 @@ export class MblService {
   }
 
   /** Patches the provided fields. `containers` (when provided) REPLACES the
-   *  full set, same semantics as `PATCH /shipments/:id/orders`. */
+   *  full set, not a merge. */
   async update(id: number, dto: UpdateMblDto): Promise<MblDto> {
     if (dto.customerId !== undefined) {
       await assertCustomerExists(this.db, dto.customerId);
@@ -334,5 +402,19 @@ function toMblDto(row: MblRow, containers: MblContainerRow[]): MblDto {
     containers: containers.map(toMblContainerDto),
     createdAt: toIsoString(row.created_at),
     updatedAt: toIsoString(row.updated_at),
+  };
+}
+
+function toMblSummaryDto(row: MblSummaryRow): MblSummaryDto {
+  return {
+    id: row.id,
+    shippingType: row.shipping_type,
+    seaMethod: row.sea_method,
+    mblNumber: row.mbl_number,
+    carrierName: row.carrier_name,
+    hblCount: Number(row.hbl_count),
+    orderIds: row.order_ids ?? [],
+    customerNames: row.customer_names ?? [],
+    createdAt: toIsoString(row.created_at),
   };
 }

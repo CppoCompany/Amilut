@@ -1,7 +1,16 @@
+<div class="page-title">{{ isEditingExisting() ? 'עדכון תיק שילוח' : 'יצירת תיק שילוח חדש' }}</div>
+
+@if (loadingCase()) {
+  <section class="form-section">
+    <p class="hint-text">טוען תיק...</p>
+  </section>
+} @else if (loadCaseError(); as message) {
+  <section class="form-section">
+    <p class="form-message form-message--error" role="alert">{{ message }}</p>
+  </section>
+} @else {
 <div class="wizard-layout">
   <div class="wizard-main">
-    <div class="page-title">יצירת תיק שילוח חדש</div>
-
     @if (shippingType() === null) {
       <section class="form-section">
         <h2 class="section-title">שלב 1 — בחירת סוג משלוח</h2>
@@ -18,19 +27,33 @@
       </section>
     } @else if (shippingType() === MblShippingType.AIR) {
       <section class="form-section">
-        <button type="button" class="btn btn-secondary back-btn" (click)="backToShippingType()">
-          <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
-          חזרה לבחירת סוג משלוח
-        </button>
+        @if (isEditingExisting()) {
+          <button type="button" class="btn btn-secondary back-btn" (click)="backToMyFiles()">
+            <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+            חזרה לתיקים שלי
+          </button>
+        } @else {
+          <button type="button" class="btn btn-secondary back-btn" (click)="backToShippingType()">
+            <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+            חזרה לבחירת סוג משלוח
+          </button>
+        }
         <h2 class="section-title">משלוח אווירי</h2>
         <p class="hint-text">תהליך יצירת תיק למשלוח אווירי ייבנה בשלב מאוחר יותר.</p>
       </section>
     } @else if (seaMethod(); as method) {
       <section class="form-section">
-        <button type="button" class="btn btn-secondary back-btn" (click)="backToSeaMethod()">
-          <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
-          חזרה לבחירת שיטת שילוח
-        </button>
+        @if (isEditingExisting()) {
+          <button type="button" class="btn btn-secondary back-btn" (click)="backToMyFiles()">
+            <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+            חזרה לתיקים שלי
+          </button>
+        } @else {
+          <button type="button" class="btn btn-secondary back-btn" (click)="backToSeaMethod()">
+            <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+            חזרה לבחירת שיטת שילוח
+          </button>
+        }
         <h2 class="section-title">
           {{ SEA_METHOD_LABELS[method] }} — {{ !savedMbl() || editingMbl() ? 'טופס MBL' : 'יצירת תיקי HBL' }}
         </h2>
@@ -340,7 +363,7 @@
             </div>
           }
 
-          @if (canAddAnotherHbl() || editingHblId() !== null) {
+          @if (showHblForm()) {
             <form class="hbl-form" [formGroup]="hblForm" (ngSubmit)="onSaveHbl()" novalidate>
               <h3 class="subsection-title">
                 {{ editingHblId() !== null ? 'עריכת תיק HBL' : hbls().length ? 'הוספת תיק HBL נוסף' : 'יצירת תיק HBL' }}
@@ -585,9 +608,7 @@
               }
 
               <div class="form-actions">
-                @if (editingHblId() !== null) {
-                  <button type="button" class="btn btn-secondary" (click)="cancelEditHbl()">ביטול</button>
-                }
+                <button type="button" class="btn btn-secondary" (click)="closeHblForm()">ביטול</button>
                 <button type="submit" class="btn btn-primary" [disabled]="savingHbl()">
                   @if (savingHbl()) {
                     <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
@@ -598,6 +619,13 @@
                 </button>
               </div>
             </form>
+          } @else if (canAddAnotherHbl()) {
+            <div class="form-actions">
+              <button type="button" class="btn btn-primary" (click)="openNewHblForm()">
+                <i class="fa-solid fa-plus" aria-hidden="true"></i>
+                {{ hbls().length ? 'הוספת תיק HBL נוסף' : 'יצירת תיק HBL' }}
+              </button>
+            </div>
           } @else {
             <p class="hint-text">תיק ה-HBL היחיד עבור FCL/FCL כבר נוצר.</p>
           }
@@ -739,3 +767,4 @@
     }
   </aside>
 </div>
+}

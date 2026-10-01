@@ -50,9 +50,9 @@ export class NavigationService {
   readonly editOrderId = signal<number | null>(null);
 
   /**
-   * Case id another screen (e.g. a double-click in "התיקים שלי") wants the
-   * shipment/case screen to load for editing, set via {@link openCaseForEdit}.
-   * Consumed once — the shipment screen clears it immediately after reading it.
+   * MBL id another screen (e.g. a double-click in "התיקים שלי") wants the
+   * shipping-case wizard to load for editing, set via {@link openCaseForEdit}.
+   * Consumed once — the wizard screen clears it immediately after reading it.
    */
   readonly editCaseId = signal<number | null>(null);
 
@@ -175,7 +175,6 @@ export class NavigationService {
     // page → screen. Repeated/unbuilt pages fall back to the placeholder screen.
     this.screenMap.set('order', 'order');
     this.screenMap.set('filing', 'filing');
-    this.screenMap.set('shipment', 'shipment');
     this.screenMap.set('shipmentCaseWizard', 'shipmentCaseWizard');
     this.screenMap.set('classification', 'classification');
     this.screenMap.set('importDeclaration', 'importDeclaration');
@@ -261,18 +260,16 @@ export class NavigationService {
     }
   }
 
-  /** Navigate to the *legacy* shipment/case screen (`order_account`, pre-MBL/
-   *  HBL) with `caseId` queued up for editing — existing cases stay on this
-   *  flow permanently; only brand-new cases go through `shipmentCaseWizard`.
-   *  Highlights "התיקים שלי" (not "יצירת תיק שילוח"), same reasoning as
-   *  {@link openOrderForEdit}. */
+  /** Navigate to the shipping-case wizard with `caseId` (an MBL id) queued up
+   *  for it to load and edit. Highlights "התיקים שלי" (not "יצירת תיק
+   *  שילוח"), same reasoning as {@link openOrderForEdit}. */
   openCaseForEdit(caseId: number): void {
     this.editCaseId.set(caseId);
     const myFiles = flattenLeaves(this.tree()).find((c) => c.page === 'myFiles');
     if (myFiles) {
-      this.setActiveRow('shipment', myFiles.id);
+      this.setActiveRow('shipmentCaseWizard', myFiles.id);
     } else {
-      this.activePage.set('shipment');
+      this.activePage.set('shipmentCaseWizard');
     }
   }
 

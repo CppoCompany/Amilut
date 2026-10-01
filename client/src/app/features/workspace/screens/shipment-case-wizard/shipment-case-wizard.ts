@@ -48,11 +48,10 @@ const SEA_METHOD_DESCRIPTIONS: Record<SeaMethod, string> = {
 /** Single batch fetched per filter change; rendering beyond this is not paginated. */
 const MAX_ROWS = 200;
 
-/** "יצירת תיק שילוח" — the new MBL/HBL shipping-case workflow. Separate from
- *  (and does not replace) the legacy `ShipmentScreen`, which still handles
- *  every `order_account` case created before this workflow existed, reached
- *  only via "התיקים שלי" → double-click (see `NavigationService.openCaseForEdit`).
- *  This screen is reached only via "יצירת תיק שילוח" in the sidebar. */
+/** "יצירת תיק שילוח" — the MBL/HBL shipping-case workflow. The only shipping-case
+ *  screen in the app: reached either via "יצירת תיק שילוח" in the sidebar (a
+ *  blank draft), or via a double-click in "התיקים שלי" to load an existing MBL
+ *  for editing (see `NavigationService.openCaseForEdit`/`editCaseId`). */
 @Component({
   selector: 'app-shipment-case-wizard-screen',
   imports: [ReactiveFormsModule, CustomerAutocomplete, SupplierAutocomplete],
@@ -164,15 +163,14 @@ export class ShipmentCaseWizardScreen {
     remarks: [EMPTY_HBL_FORM_VALUE.remarks],
   });
 
-  // Optional order association, scoped to orders with no HBL yet — same
-  // filter+checkbox pattern as the legacy ShipmentScreen's order-selection step.
+  // Optional order association, scoped to orders with no HBL yet — a
+  // filter+checkbox grid over `GET /orders?hasHbl=false`.
   protected readonly hblOrderFilterCustomer = signal<CustomerDto | null>(null);
   protected readonly hblOrderFilterSupplier = signal<SupplierDto | null>(null);
   private readonly hblOrderCandidates = signal<OrderDto[]>([]);
   /** The HBL-being-edited's own already-associated orders, merged into the
-   *  candidate grid below so they stay visible/checked (same reasoning as
-   *  `ShipmentScreen.selectableOrders`: they're excluded by `hasHbl: false`
-   *  precisely because they're already on this HBL). */
+   *  candidate grid below so they stay visible/checked — they're excluded by
+   *  `hasHbl: false` precisely because they're already on this HBL. */
   private readonly editingHblAssociatedOrders = signal<OrderDto[]>([]);
   protected readonly hblOrderCandidatesDisplay = computed(() => {
     const base = this.hblOrderCandidates();
@@ -187,11 +185,33 @@ export class ShipmentCaseWizardScreen {
 
   protected readonly savingHbl = signal(false);
   protected readonly hblSaveError = signal<string | null>(null);
+  /** Whether the create/edit HBL form is currently open — collapsed by default
+   *  behind an explicit "+ הוספת תיק HBL נוסף" button (see `openNewHblForm`),
+   *  so creating more than one HBL is a clearly visible, deliberate action. */
+  protected readonly showHblForm = signal(false);
+
+  // ── Loading an existing case for edit (double-click in "התיקים שלי") ────────
+  /** True once an existing MBL was loaded for editing — disables the step-1/2
+   *  back navigation (the method is fixed at creation) in favor of a single
+   *  "חזרה לתיקים שלי" button. */
+  protected readonly isEditingExisting = signal(false);
+  protected readonly loadingCase = signal(false);
+  protected readonly loadCaseError = signal<string | null>(null);
 
   constructor() {
+    // A double-click on a row in "התיקים שלי" queues an MBL id here (see
+    // NavigationService.openCaseForEdit) before switching to this screen.
+    // Consume it once immediately so a later, ordinary navigation back to this
+    // screen (e.g. via the sidebar) starts with a blank draft as usual.
+    const editCaseId = this.nav.editCaseId();
+    if (editCaseId !== null) {
+      this.nav.editCaseId.set(null);
+      this.loadCaseForEdit(editCaseId);
+    }
+
     // Filter changes only ever fire after the HBL step's first fetch (triggered
     // by a successful MBL save, see `onSaveMbl`) — `skip(1)` just guards against
-    // the subscription's own initial emission, same pattern as `ShipmentScreen`.
+    // the subscription's own initial emission.
     combineLatest([toObservable(this.hblOrderFilterCustomer), toObservable(this.hblOrderFilterSupplier)])
       .pipe(skip(1), debounceTime(SEARCH_DEBOUNCE_MS), takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.fetchHblOrderCandidates());
@@ -229,6 +249,13 @@ export class ShipmentCaseWizardScreen {
   protected backToSeaMethod(): void {
     this.resetMblState();
     this.seaMethod.set(null);
+  }
+
+  /** The only "back" available once an existing case was loaded for edit —
+   *  its shipping type/method are fixed at creation, so there's no step 1/2
+   *  to go back to. */
+  protected backToMyFiles(): void {
+    this.nav.goToMyFiles();
   }
 
   protected containerControls() {
@@ -362,6 +389,13 @@ export class ShipmentCaseWizardScreen {
     this.hblSelectedOrderIds.set(new Set(visible.map((order) => order.id)));
   }
 
+  /** Opens a blank form for a brand-new HBL — the explicit "+ הוספת תיק HBL
+   *  נוסף" action (or "+ יצירת תיק HBL" for the first one). */
+  protected openNewHblForm(): void {
+    this.resetHblForm();
+    this.showHblForm.set(true);
+  }
+
   /** Loads an already-saved HBL (from the sidebar tree or the created-HBL list)
    *  into the form for editing — `customerId`/`containerId` stay as they were. */
   protected startEditHbl(hbl: HblDto): void {
@@ -369,6 +403,7 @@ export class ShipmentCaseWizardScreen {
     this.hblSelectedOrderIds.set(new Set(hbl.orders.map((order) => order.id)));
     this.hblSaveError.set(null);
     this.editingHblId.set(hbl.id);
+    this.showHblForm.set(true);
 
     if (hbl.orders.length === 0) {
       this.editingHblAssociatedOrders.set([]);
@@ -382,7 +417,9 @@ export class ShipmentCaseWizardScreen {
       });
   }
 
-  protected cancelEditHbl(): void {
+  /** Closes the create/edit form without saving, collapsing back to the
+   *  "+ הוספת תיק HBL נוסף" button. */
+  protected closeHblForm(): void {
     this.resetHblForm();
     this.fetchHblOrderCandidates();
   }
@@ -505,11 +542,37 @@ export class ShipmentCaseWizardScreen {
     this.savingHbl.set(false);
     this.editingHblId.set(null);
     this.editingHblAssociatedOrders.set([]);
+    this.showHblForm.set(false);
+  }
+
+  /** Loads an existing MBL (and its HBLs) for editing — reached only via a
+   *  double-click in "התיקים שלי" (see `NavigationService.openCaseForEdit`).
+   *  Jumps straight to the HBL step; there's no step 1/2 to show since the
+   *  shipping type/method are already fixed. */
+  private loadCaseForEdit(mblId: number): void {
+    this.loadingCase.set(true);
+    this.loadCaseError.set(null);
+    this.mblApi
+      .getById(mblId)
+      .pipe(finalize(() => this.loadingCase.set(false)), takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (mbl) => {
+          this.shippingType.set(mbl.shippingType);
+          this.seaMethod.set(mbl.seaMethod);
+          this.savedMbl.set(mbl);
+          this.isEditingExisting.set(true);
+          this.loadHbls(mbl.id);
+          this.fetchHblOrderCandidates();
+        },
+        error: () => this.loadCaseError.set('טעינת התיק נכשלה'),
+      });
   }
 
   private reset(): void {
     this.shippingType.set(null);
     this.seaMethod.set(null);
+    this.isEditingExisting.set(false);
+    this.loadCaseError.set(null);
     this.resetMblState();
   }
 }

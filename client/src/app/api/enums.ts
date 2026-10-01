@@ -15,7 +15,6 @@ import {
   OrderStatus,
   PaymentTerms,
   SeaMethod,
-  ShipmentDocumentType,
   ShipmentType,
   TradeAgreement,
 } from './generated/schema';
@@ -29,7 +28,6 @@ export {
   OrderStatus,
   PaymentTerms,
   SeaMethod,
-  ShipmentDocumentType,
   ShipmentType,
   TradeAgreement,
 };
@@ -112,12 +110,6 @@ export const DESTINATION_LABELS: Record<Destination, string> = {
   [Destination.BEN_GURION]: 'נתב"ג',
 };
 
-export const SHIPMENT_DOCUMENT_TYPE_LABELS: Record<ShipmentDocumentType, string> = {
-  [ShipmentDocumentType.ORIGINAL]: 'Original',
-  [ShipmentDocumentType.SEA_WAYBILL]: 'Sea Waybill',
-  [ShipmentDocumentType.TELEX_RELEASE]: 'Telex Release',
-};
-
 /** Kinds of import paperwork a file can be filed as ("תיוק ניירת יבוא"). */
 export const IMPORT_DOCUMENT_TYPE_LABELS: Record<ImportDocumentType, string> = {
   [ImportDocumentType.SUPPLIER_INVOICE]: 'חשבון ספק',
@@ -178,8 +170,6 @@ export const SHIPMENT_TYPES: readonly ShipmentType[] = Object.values(ShipmentTyp
 export const PAYMENT_TERMS: readonly PaymentTerms[] = Object.values(PaymentTerms);
 export const DESTINATIONS: readonly Destination[] = Object.values(Destination);
 export const INCOTERMS: readonly Incoterm[] = Object.values(Incoterm);
-export const SHIPMENT_DOCUMENT_TYPES: readonly ShipmentDocumentType[] =
-  Object.values(ShipmentDocumentType);
 export const IMPORT_DOCUMENT_TYPES: readonly ImportDocumentType[] =
   Object.values(ImportDocumentType);
 export const CLASSIFICATION_APPROVALS: readonly ClassificationApproval[] =

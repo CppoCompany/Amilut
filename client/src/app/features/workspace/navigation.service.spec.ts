@@ -93,11 +93,11 @@ describe('NavigationService', () => {
     expect(nav.isChildActive('ws-order')).toBe(false);
   });
 
-  it('openCaseForEdit shows the shipment screen but highlights "התיקים שלי", not "יצירת תיק שילוח"', () => {
+  it('openCaseForEdit shows the shipping-case wizard but highlights "התיקים שלי", not "יצירת תיק שילוח"', () => {
     nav.openCaseForEdit(2002);
 
     expect(nav.editCaseId()).toBe(2002);
-    expect(nav.activeScreen()).toBe('shipment');
+    expect(nav.activeScreen()).toBe('shipmentCaseWizard');
     expect(nav.isChildActive('ws-my-files')).toBe(true);
     expect(nav.isChildActive('ws-shipment')).toBe(false);
   });
