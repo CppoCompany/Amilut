@@ -29,7 +29,7 @@ describe('NavigationService', () => {
     expect(ordersGroup.children.map((c) => c.page)).toEqual(['myOrders', 'order']);
 
     expect(shipmentGroup.label).toBe('תיקי שילוח');
-    expect(shipmentGroup.children.map((c) => c.page)).toEqual(['myFiles', 'shipment']);
+    expect(shipmentGroup.children.map((c) => c.page)).toEqual(['myFiles', 'shipmentCaseWizard']);
   });
 
   it('removes the old standalone "בחר משלוח" (Select Shipment) node entirely', () => {
@@ -46,7 +46,14 @@ describe('NavigationService', () => {
   it('still exposes every previously-reachable page after the restructure', () => {
     const pages = flattenLeaves().map((c) => c.page);
     expect(pages).toEqual(
-      expect.arrayContaining(['myOrders', 'order', 'myFiles', 'shipment', 'filing', 'classification']),
+      expect.arrayContaining([
+        'myOrders',
+        'order',
+        'myFiles',
+        'shipmentCaseWizard',
+        'filing',
+        'classification',
+      ]),
     );
   });
 
@@ -114,7 +121,7 @@ describe('NavigationService', () => {
     nav.openCaseForEdit(2002);
     const before = nav.newCaseRequested();
 
-    const createNew = flattenLeaves().find((c) => c.page === 'shipment')!;
+    const createNew = flattenLeaves().find((c) => c.page === 'shipmentCaseWizard')!;
     nav.selectChild(createNew);
 
     expect(nav.newCaseRequested()).toBe(before + 1);

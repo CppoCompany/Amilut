@@ -94,7 +94,7 @@ export class NavigationService {
           { id: 'ws-my-files', page: 'myFiles', label: 'התיקים שלי', icon: 'fa-solid fa-folder-open' },
           {
             id: 'ws-shipment',
-            page: 'shipment',
+            page: 'shipmentCaseWizard',
             label: 'יצירת תיק שילוח',
             icon: 'fa-solid fa-truck-fast',
           },
@@ -176,6 +176,7 @@ export class NavigationService {
     this.screenMap.set('order', 'order');
     this.screenMap.set('filing', 'filing');
     this.screenMap.set('shipment', 'shipment');
+    this.screenMap.set('shipmentCaseWizard', 'shipmentCaseWizard');
     this.screenMap.set('classification', 'classification');
     this.screenMap.set('importDeclaration', 'importDeclaration');
     this.screenMap.set('myOrders', 'myOrders');
@@ -212,15 +213,15 @@ export class NavigationService {
    * Select a child row: highlight it, show its screen, and reveal it if its
    * sub-group happens to be collapsed — the active row should never be
    * hidden. "יצירת הזמנה חדשה"/"יצירת תיק שילוח" are the only rows on the
-   * `order`/`shipment` pages, so clicking either one always means "start a
-   * fresh draft" — bump the matching counter so the screen (which may already
-   * be mounted mid-edit of a different order/case, since the page doesn't
-   * change) resets instead of silently keeping the old one on screen.
+   * `order`/`shipmentCaseWizard` pages, so clicking either one always means
+   * "start a fresh draft" — bump the matching counter so the screen (which
+   * may already be mounted mid-draft, since the page doesn't change) resets
+   * instead of silently keeping the old one on screen.
    */
   selectChild(child: TreeChild): void {
     if (!this.screenMap.has(child.page)) return;
     if (child.page === 'order') this.newOrderRequested.update((n) => n + 1);
-    if (child.page === 'shipment') this.newCaseRequested.update((n) => n + 1);
+    if (child.page === 'shipmentCaseWizard') this.newCaseRequested.update((n) => n + 1);
     this.setActiveRow(child.page, child.id);
   }
 
@@ -260,8 +261,10 @@ export class NavigationService {
     }
   }
 
-  /** Navigate to the shipment/case screen with `caseId` queued up for editing
-   *  — highlights "התיקים שלי" (not "יצירת תיק שילוח"), same reasoning as
+  /** Navigate to the *legacy* shipment/case screen (`order_account`, pre-MBL/
+   *  HBL) with `caseId` queued up for editing — existing cases stay on this
+   *  flow permanently; only brand-new cases go through `shipmentCaseWizard`.
+   *  Highlights "התיקים שלי" (not "יצירת תיק שילוח"), same reasoning as
    *  {@link openOrderForEdit}. */
   openCaseForEdit(caseId: number): void {
     this.editCaseId.set(caseId);

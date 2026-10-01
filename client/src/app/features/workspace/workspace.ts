@@ -10,6 +10,7 @@ import { MyFilesScreen } from './screens/my-files/my-files';
 import { MyOrdersScreen } from './screens/my-orders/my-orders';
 import { OrderScreen } from './screens/order/order';
 import { PlaceholderScreen } from './screens/placeholder/placeholder';
+import { ShipmentCaseWizardScreen } from './screens/shipment-case-wizard/shipment-case-wizard';
 import { ShipmentScreen } from './screens/shipment/shipment';
 
 /**
@@ -23,6 +24,7 @@ import { ShipmentScreen } from './screens/shipment/shipment';
     OrderScreen,
     FilingScreen,
     ShipmentScreen,
+    ShipmentCaseWizardScreen,
     ClassificationScreen,
     ImportDeclarationScreen,
     MyOrdersScreen,

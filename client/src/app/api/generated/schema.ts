@@ -164,6 +164,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/mbl": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["MblController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/mbl/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MblController_findById"];
+        put?: never;
+        post?: never;
+        delete: operations["MblController_remove"];
+        options?: never;
+        head?: never;
+        patch: operations["MblController_update"];
+        trace?: never;
+    };
+    "/api/hbl": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["HblController_findByMblId"];
+        put?: never;
+        post: operations["HblController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/hbl/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["HblController_findById"];
+        put?: never;
+        post?: never;
+        delete: operations["HblController_remove"];
+        options?: never;
+        head?: never;
+        patch: operations["HblController_update"];
+        trace?: never;
+    };
+    "/api/hbl/{id}/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["HblController_updateOrders"];
+        trace?: never;
+    };
     "/api/orders": {
         parameters: {
             query?: never;
@@ -493,11 +573,342 @@ export interface components {
             items: components["schemas"]["LineItemClassificationUpdateDto"][];
         };
         /** @enum {string} */
+        MblShippingType: MblShippingType;
+        /** @enum {string} */
+        SeaMethod: SeaMethod;
+        /** @enum {string} */
+        PaymentTerms: PaymentTerms;
+        CreateMblContainerDto: {
+            /** @example MSKU1234567 */
+            containerNumber?: string;
+            /** @example TCLU1234567 */
+            containerSealNumber?: string;
+            /** @example CONSOLIDATED CARGO (3 PARTIES / 3 INTERNAL B/Ls) */
+            cargoDescription?: string;
+            /** @example 5400 */
+            grossWeightKg?: number;
+            /** @example 25.5 */
+            volumeCbm?: number;
+        };
+        CreateMblDto: {
+            shippingType: components["schemas"]["MblShippingType"];
+            seaMethod?: components["schemas"]["SeaMethod"];
+            /** @example 3 */
+            customerId?: number;
+            /** @example MBL-987654321 */
+            mblNumber?: string;
+            /** @example BKG-456789 */
+            bookingNumber?: string;
+            /** @example EVER GLORY */
+            vesselName?: string;
+            /** @example 062W */
+            voyageNumber?: string;
+            /** @example Shanghai, China */
+            portOfLoading?: string;
+            /** @example Haifa, Israel */
+            portOfDischarge?: string;
+            /** @example Haifa, Israel */
+            finalDestination?: string;
+            /** @example GLOBAL CONSOLIDATION LTD. */
+            shipperName?: string;
+            /** @example No. 12, Seaport Road, Shanghai, China */
+            shipperAddress?: string;
+            /** @example TO ORDER OF MAERSK LINE (As per House B/L) */
+            consigneeName?: string;
+            consigneeAddress?: string;
+            /** @example EREZ LOGISTICS LTD. */
+            notifyPartyName?: string;
+            /** @example Haifa, Israel */
+            notifyPartyAddress?: string;
+            /** @example MSKU1234567 */
+            containerNumber?: string;
+            /** @example TCLU1234567 */
+            containerSealNumber?: string;
+            /** @example CONSOLIDATED CARGO */
+            cargoDescription?: string;
+            /** @example 5400 */
+            grossWeightKg?: number;
+            /** @example 25.5 */
+            volumeCbm?: number;
+            freightTerms?: components["schemas"]["PaymentTerms"];
+            /** @example CY/CFS */
+            receiptDeliveryType?: string;
+            /** @example SHANGHAI */
+            placeOfIssue?: string;
+            /**
+             * Format: date
+             * @example 2026-09-20
+             */
+            dateOfIssue?: string;
+            /** @example MAERSK LINE */
+            carrierName?: string;
+            containers?: components["schemas"]["CreateMblContainerDto"][];
+        };
+        MblContainerDto: {
+            /** @example 1 */
+            id: number;
+            /** @example MSKU1234567 */
+            containerNumber: string | null;
+            /** @example TCLU1234567 */
+            containerSealNumber: string | null;
+            /** @example CONSOLIDATED CARGO */
+            cargoDescription: string | null;
+            /** @example 5400 */
+            grossWeightKg: number | null;
+            /** @example 25.5 */
+            volumeCbm: number | null;
+        };
+        MblDto: {
+            /** @example 1 */
+            id: number;
+            shippingType: components["schemas"]["MblShippingType"];
+            seaMethod: components["schemas"]["SeaMethod"] | null;
+            /** @example 3 */
+            customerId: number | null;
+            /** @example ACME Ltd. */
+            customerName: string | null;
+            /** @example MBL-987654321 */
+            mblNumber: string | null;
+            /** @example BKG-456789 */
+            bookingNumber: string | null;
+            /** @example EVER GLORY */
+            vesselName: string | null;
+            /** @example 062W */
+            voyageNumber: string | null;
+            /** @example Shanghai, China */
+            portOfLoading: string | null;
+            /** @example Haifa, Israel */
+            portOfDischarge: string | null;
+            /** @example Haifa, Israel */
+            finalDestination: string | null;
+            /** @example GLOBAL CONSOLIDATION LTD. */
+            shipperName: string | null;
+            shipperAddress: string | null;
+            /** @example TO ORDER OF MAERSK LINE (As per House B/L) */
+            consigneeName: string | null;
+            consigneeAddress: string | null;
+            /** @example EREZ LOGISTICS LTD. */
+            notifyPartyName: string | null;
+            notifyPartyAddress: string | null;
+            /** @example MSKU1234567 */
+            containerNumber: string | null;
+            /** @example TCLU1234567 */
+            containerSealNumber: string | null;
+            /** @example CONSOLIDATED CARGO */
+            cargoDescription: string | null;
+            /** @example 5400 */
+            grossWeightKg: number | null;
+            /** @example 25.5 */
+            volumeCbm: number | null;
+            freightTerms: components["schemas"]["PaymentTerms"] | null;
+            /** @example CY/CFS */
+            receiptDeliveryType: string | null;
+            /** @example SHANGHAI */
+            placeOfIssue: string | null;
+            /**
+             * Format: date
+             * @example 2026-09-20
+             */
+            dateOfIssue: string | null;
+            /** @example MAERSK LINE */
+            carrierName: string | null;
+            containers: components["schemas"]["MblContainerDto"][];
+            /**
+             * Format: date-time
+             * @example 2026-09-20T08:30:00.000Z
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-20T08:30:00.000Z
+             */
+            updatedAt: string;
+        };
+        UpdateMblDto: {
+            /** @example 3 */
+            customerId?: number;
+            /** @example MBL-987654321 */
+            mblNumber?: string;
+            /** @example BKG-456789 */
+            bookingNumber?: string;
+            /** @example EVER GLORY */
+            vesselName?: string;
+            /** @example 062W */
+            voyageNumber?: string;
+            /** @example Shanghai, China */
+            portOfLoading?: string;
+            /** @example Haifa, Israel */
+            portOfDischarge?: string;
+            /** @example Haifa, Israel */
+            finalDestination?: string;
+            /** @example GLOBAL CONSOLIDATION LTD. */
+            shipperName?: string;
+            /** @example No. 12, Seaport Road, Shanghai, China */
+            shipperAddress?: string;
+            /** @example TO ORDER OF MAERSK LINE (As per House B/L) */
+            consigneeName?: string;
+            consigneeAddress?: string;
+            /** @example EREZ LOGISTICS LTD. */
+            notifyPartyName?: string;
+            /** @example Haifa, Israel */
+            notifyPartyAddress?: string;
+            /** @example MSKU1234567 */
+            containerNumber?: string;
+            /** @example TCLU1234567 */
+            containerSealNumber?: string;
+            /** @example CONSOLIDATED CARGO */
+            cargoDescription?: string;
+            /** @example 5400 */
+            grossWeightKg?: number;
+            /** @example 25.5 */
+            volumeCbm?: number;
+            freightTerms?: components["schemas"]["PaymentTerms"];
+            /** @example CY/CFS */
+            receiptDeliveryType?: string;
+            /** @example SHANGHAI */
+            placeOfIssue?: string;
+            /**
+             * Format: date
+             * @example 2026-09-20
+             */
+            dateOfIssue?: string;
+            /** @example MAERSK LINE */
+            carrierName?: string;
+            containers?: components["schemas"]["CreateMblContainerDto"][];
+        };
+        HblOrderSummaryDto: {
+            /** @example 1000 */
+            id: number;
+            /** @example ACME Ltd. */
+            customerName: string | null;
+        };
+        HblDto: {
+            /** @example 1 */
+            id: number;
+            /** @example 1 */
+            mblId: number;
+            /** @example 1 */
+            containerId: number | null;
+            /** @example 3 */
+            customerId: number;
+            /** @example ACME Ltd. */
+            customerName: string | null;
+            /** @example 1 */
+            sequenceNumber: number;
+            /** @example IB-001 */
+            iblNumber: string | null;
+            /** @example HBL-ERZ-2026-001 */
+            hblNumber: string | null;
+            /** @example Alpha Tools Co. */
+            shipperName: string | null;
+            shipperAddress: string | null;
+            /** @example אלפא בע"מ */
+            consigneeName: string | null;
+            consigneeAddress: string | null;
+            notifyPartyName: string | null;
+            notifyPartyAddress: string | null;
+            /** @example Hand Tools (assorted) */
+            cargoDescription: string | null;
+            /** @example 120 cartons */
+            quantity: string | null;
+            /** @example 1850 */
+            grossWeightKg: number | null;
+            /** @example 8.5 */
+            volumeCbm: number | null;
+            /** @example LCL - 3 PARTIES / CY/CFS */
+            remarks: string | null;
+            orders: components["schemas"]["HblOrderSummaryDto"][];
+            /**
+             * Format: date-time
+             * @example 2026-09-20T08:30:00.000Z
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-20T08:30:00.000Z
+             */
+            updatedAt: string;
+        };
+        CreateHblDto: {
+            /** @example 1000 */
+            mblId: number;
+            /** @example 1 */
+            containerId?: number;
+            /** @example 3 */
+            customerId: number;
+            /** @example HBL-ERZ-2026-001 */
+            hblNumber?: string;
+            /** @example Alpha Tools Co. */
+            shipperName?: string;
+            /** @example Shanghai, China */
+            shipperAddress?: string;
+            /** @example אלפא בע"מ */
+            consigneeName?: string;
+            /** @example Tel Aviv, Israel */
+            consigneeAddress?: string;
+            /** @example Alpha Tools Co. */
+            notifyPartyName?: string;
+            /** @example Shanghai, China */
+            notifyPartyAddress?: string;
+            /** @example Hand Tools (assorted) */
+            cargoDescription?: string;
+            /** @example 120 cartons */
+            quantity?: string;
+            /** @example 1850 */
+            grossWeightKg?: number;
+            /** @example 8.5 */
+            volumeCbm?: number;
+            /** @example LCL - 3 PARTIES / CY/CFS */
+            remarks?: string;
+            /**
+             * @example [
+             *       1000
+             *     ]
+             */
+            orderIds?: number[];
+        };
+        UpdateHblDto: {
+            /** @example 1 */
+            containerId?: number;
+            /** @example 3 */
+            customerId?: number;
+            /** @example HBL-ERZ-2026-001 */
+            hblNumber?: string;
+            /** @example Alpha Tools Co. */
+            shipperName?: string;
+            /** @example Shanghai, China */
+            shipperAddress?: string;
+            /** @example אלפא בע"מ */
+            consigneeName?: string;
+            /** @example Tel Aviv, Israel */
+            consigneeAddress?: string;
+            /** @example Alpha Tools Co. */
+            notifyPartyName?: string;
+            /** @example Shanghai, China */
+            notifyPartyAddress?: string;
+            /** @example Hand Tools (assorted) */
+            cargoDescription?: string;
+            /** @example 120 cartons */
+            quantity?: string;
+            /** @example 1850 */
+            grossWeightKg?: number;
+            /** @example 8.5 */
+            volumeCbm?: number;
+            /** @example LCL - 3 PARTIES / CY/CFS */
+            remarks?: string;
+        };
+        ManageHblOrdersDto: {
+            /**
+             * @example [
+             *       1000
+             *     ]
+             */
+            orderIds: number[];
+        };
+        /** @enum {string} */
         OrderStatus: OrderStatus;
         /** @enum {string} */
         ShipmentType: ShipmentType;
-        /** @enum {string} */
-        PaymentTerms: PaymentTerms;
         /** @enum {string} */
         Incoterm: Incoterm;
         /** @enum {string} */
@@ -1298,6 +1709,276 @@ export interface operations {
             };
         };
     };
+    MblController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateMblDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MblDto"];
+                };
+            };
+        };
+    };
+    MblController_findById: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MblDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    MblController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    MblController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMblDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MblDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    HblController_findByMblId: {
+        parameters: {
+            query: {
+                mblId: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HblDto"][];
+                };
+            };
+        };
+    };
+    HblController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateHblDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HblDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    HblController_findById: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HblDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    HblController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    HblController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateHblDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HblDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    HblController_updateOrders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ManageHblOrdersDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HblDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     OrdersController_findAll: {
         parameters: {
             query?: {
@@ -1782,6 +2463,20 @@ export enum ClassificationApproval {
     SUSTAINABLE_ENERGY = "sustainable_energy",
     VEHICLE_ACCREDITED_LAB = "vehicle_accredited_lab"
 }
+export enum MblShippingType {
+    SEA = "sea",
+    AIR = "air"
+}
+export enum SeaMethod {
+    FCL_FCL = "fcl_fcl",
+    FCL_LCL = "fcl_lcl",
+    LCL_LCL = "lcl_lcl",
+    GROUPAGE_FCL = "groupage_fcl"
+}
+export enum PaymentTerms {
+    PREPAID = "prepaid",
+    COLLECT = "collect"
+}
 export enum OrderStatus {
     PREPARING = "preparing",
     READY_FOR_PICKUP = "ready_for_pickup",
@@ -1793,10 +2488,6 @@ export enum ShipmentType {
     SEA = "sea",
     AIR = "air",
     LAND = "land"
-}
-export enum PaymentTerms {
-    PREPAID = "prepaid",
-    COLLECT = "collect"
 }
 export enum Incoterm {
     CFR = "CFR",

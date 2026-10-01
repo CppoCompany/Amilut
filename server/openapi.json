@@ -517,6 +517,392 @@
         ]
       }
     },
+    "/api/mbl": {
+      "post": {
+        "operationId": "MblController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMblDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MblDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "mbl"
+        ]
+      }
+    },
+    "/api/mbl/{id}": {
+      "get": {
+        "operationId": "MblController_findById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MblDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "mbl"
+        ]
+      },
+      "patch": {
+        "operationId": "MblController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMblDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MblDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "mbl"
+        ]
+      },
+      "delete": {
+        "operationId": "MblController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "mbl"
+        ]
+      }
+    },
+    "/api/hbl": {
+      "get": {
+        "operationId": "HblController_findByMblId",
+        "parameters": [
+          {
+            "name": "mblId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "example": 1000,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HblDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "hbl"
+        ]
+      },
+      "post": {
+        "operationId": "HblController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateHblDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HblDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "hbl"
+        ]
+      }
+    },
+    "/api/hbl/{id}": {
+      "get": {
+        "operationId": "HblController_findById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HblDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "hbl"
+        ]
+      },
+      "patch": {
+        "operationId": "HblController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateHblDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HblDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "hbl"
+        ]
+      },
+      "delete": {
+        "operationId": "HblController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "hbl"
+        ]
+      }
+    },
+    "/api/hbl/{id}/orders": {
+      "patch": {
+        "operationId": "HblController_updateOrders",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManageHblOrdersDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HblDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "hbl"
+        ]
+      }
+    },
     "/api/orders": {
       "get": {
         "operationId": "OrdersController_findAll",
@@ -1807,6 +2193,852 @@
           "items"
         ]
       },
+      "MblShippingType": {
+        "type": "string",
+        "enum": [
+          "sea",
+          "air"
+        ],
+        "x-enum-varnames": [
+          "SEA",
+          "AIR"
+        ]
+      },
+      "SeaMethod": {
+        "type": "string",
+        "enum": [
+          "fcl_fcl",
+          "fcl_lcl",
+          "lcl_lcl",
+          "groupage_fcl"
+        ],
+        "x-enum-varnames": [
+          "FCL_FCL",
+          "FCL_LCL",
+          "LCL_LCL",
+          "GROUPAGE_FCL"
+        ]
+      },
+      "PaymentTerms": {
+        "type": "string",
+        "enum": [
+          "prepaid",
+          "collect"
+        ],
+        "x-enum-varnames": [
+          "PREPAID",
+          "COLLECT"
+        ]
+      },
+      "CreateMblContainerDto": {
+        "type": "object",
+        "properties": {
+          "containerNumber": {
+            "type": "string",
+            "example": "MSKU1234567"
+          },
+          "containerSealNumber": {
+            "type": "string",
+            "example": "TCLU1234567"
+          },
+          "cargoDescription": {
+            "type": "string",
+            "example": "CONSOLIDATED CARGO (3 PARTIES / 3 INTERNAL B/Ls)"
+          },
+          "grossWeightKg": {
+            "type": "number",
+            "example": 5400
+          },
+          "volumeCbm": {
+            "type": "number",
+            "example": 25.5
+          }
+        }
+      },
+      "CreateMblDto": {
+        "type": "object",
+        "properties": {
+          "shippingType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MblShippingType"
+              }
+            ]
+          },
+          "seaMethod": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SeaMethod"
+              }
+            ]
+          },
+          "customerId": {
+            "type": "integer",
+            "example": 3
+          },
+          "mblNumber": {
+            "type": "string",
+            "example": "MBL-987654321"
+          },
+          "bookingNumber": {
+            "type": "string",
+            "example": "BKG-456789"
+          },
+          "vesselName": {
+            "type": "string",
+            "example": "EVER GLORY"
+          },
+          "voyageNumber": {
+            "type": "string",
+            "example": "062W"
+          },
+          "portOfLoading": {
+            "type": "string",
+            "example": "Shanghai, China"
+          },
+          "portOfDischarge": {
+            "type": "string",
+            "example": "Haifa, Israel"
+          },
+          "finalDestination": {
+            "type": "string",
+            "example": "Haifa, Israel"
+          },
+          "shipperName": {
+            "type": "string",
+            "example": "GLOBAL CONSOLIDATION LTD."
+          },
+          "shipperAddress": {
+            "type": "string",
+            "example": "No. 12, Seaport Road, Shanghai, China"
+          },
+          "consigneeName": {
+            "type": "string",
+            "example": "TO ORDER OF MAERSK LINE (As per House B/L)"
+          },
+          "consigneeAddress": {
+            "type": "string"
+          },
+          "notifyPartyName": {
+            "type": "string",
+            "example": "EREZ LOGISTICS LTD."
+          },
+          "notifyPartyAddress": {
+            "type": "string",
+            "example": "Haifa, Israel"
+          },
+          "containerNumber": {
+            "type": "string",
+            "example": "MSKU1234567"
+          },
+          "containerSealNumber": {
+            "type": "string",
+            "example": "TCLU1234567"
+          },
+          "cargoDescription": {
+            "type": "string",
+            "example": "CONSOLIDATED CARGO"
+          },
+          "grossWeightKg": {
+            "type": "number",
+            "example": 5400
+          },
+          "volumeCbm": {
+            "type": "number",
+            "example": 25.5
+          },
+          "freightTerms": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PaymentTerms"
+              }
+            ]
+          },
+          "receiptDeliveryType": {
+            "type": "string",
+            "example": "CY/CFS"
+          },
+          "placeOfIssue": {
+            "type": "string",
+            "example": "SHANGHAI"
+          },
+          "dateOfIssue": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-09-20"
+          },
+          "carrierName": {
+            "type": "string",
+            "example": "MAERSK LINE"
+          },
+          "containers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateMblContainerDto"
+            }
+          }
+        },
+        "required": [
+          "shippingType"
+        ]
+      },
+      "MblContainerDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "containerNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "MSKU1234567"
+          },
+          "containerSealNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "TCLU1234567"
+          },
+          "cargoDescription": {
+            "type": "string",
+            "nullable": true,
+            "example": "CONSOLIDATED CARGO"
+          },
+          "grossWeightKg": {
+            "type": "number",
+            "nullable": true,
+            "example": 5400
+          },
+          "volumeCbm": {
+            "type": "number",
+            "nullable": true,
+            "example": 25.5
+          }
+        },
+        "required": [
+          "id",
+          "containerNumber",
+          "containerSealNumber",
+          "cargoDescription",
+          "grossWeightKg",
+          "volumeCbm"
+        ]
+      },
+      "MblDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "shippingType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MblShippingType"
+              }
+            ]
+          },
+          "seaMethod": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SeaMethod"
+              }
+            ]
+          },
+          "customerId": {
+            "type": "integer",
+            "nullable": true,
+            "example": 3
+          },
+          "customerName": {
+            "type": "string",
+            "nullable": true,
+            "example": "ACME Ltd."
+          },
+          "mblNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "MBL-987654321"
+          },
+          "bookingNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "BKG-456789"
+          },
+          "vesselName": {
+            "type": "string",
+            "nullable": true,
+            "example": "EVER GLORY"
+          },
+          "voyageNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "062W"
+          },
+          "portOfLoading": {
+            "type": "string",
+            "nullable": true,
+            "example": "Shanghai, China"
+          },
+          "portOfDischarge": {
+            "type": "string",
+            "nullable": true,
+            "example": "Haifa, Israel"
+          },
+          "finalDestination": {
+            "type": "string",
+            "nullable": true,
+            "example": "Haifa, Israel"
+          },
+          "shipperName": {
+            "type": "string",
+            "nullable": true,
+            "example": "GLOBAL CONSOLIDATION LTD."
+          },
+          "shipperAddress": {
+            "type": "string",
+            "nullable": true
+          },
+          "consigneeName": {
+            "type": "string",
+            "nullable": true,
+            "example": "TO ORDER OF MAERSK LINE (As per House B/L)"
+          },
+          "consigneeAddress": {
+            "type": "string",
+            "nullable": true
+          },
+          "notifyPartyName": {
+            "type": "string",
+            "nullable": true,
+            "example": "EREZ LOGISTICS LTD."
+          },
+          "notifyPartyAddress": {
+            "type": "string",
+            "nullable": true
+          },
+          "containerNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "MSKU1234567"
+          },
+          "containerSealNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "TCLU1234567"
+          },
+          "cargoDescription": {
+            "type": "string",
+            "nullable": true,
+            "example": "CONSOLIDATED CARGO"
+          },
+          "grossWeightKg": {
+            "type": "number",
+            "nullable": true,
+            "example": 5400
+          },
+          "volumeCbm": {
+            "type": "number",
+            "nullable": true,
+            "example": 25.5
+          },
+          "freightTerms": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PaymentTerms"
+              }
+            ]
+          },
+          "receiptDeliveryType": {
+            "type": "string",
+            "nullable": true,
+            "example": "CY/CFS"
+          },
+          "placeOfIssue": {
+            "type": "string",
+            "nullable": true,
+            "example": "SHANGHAI"
+          },
+          "dateOfIssue": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "example": "2026-09-20"
+          },
+          "carrierName": {
+            "type": "string",
+            "nullable": true,
+            "example": "MAERSK LINE"
+          },
+          "containers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MblContainerDto"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-20T08:30:00.000Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-20T08:30:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "shippingType",
+          "seaMethod",
+          "customerId",
+          "customerName",
+          "mblNumber",
+          "bookingNumber",
+          "vesselName",
+          "voyageNumber",
+          "portOfLoading",
+          "portOfDischarge",
+          "finalDestination",
+          "shipperName",
+          "shipperAddress",
+          "consigneeName",
+          "consigneeAddress",
+          "notifyPartyName",
+          "notifyPartyAddress",
+          "containerNumber",
+          "containerSealNumber",
+          "cargoDescription",
+          "grossWeightKg",
+          "volumeCbm",
+          "freightTerms",
+          "receiptDeliveryType",
+          "placeOfIssue",
+          "dateOfIssue",
+          "carrierName",
+          "containers",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "UpdateMblDto": {
+        "type": "object",
+        "properties": {
+          "customerId": {
+            "type": "integer",
+            "example": 3
+          },
+          "mblNumber": {
+            "type": "string",
+            "example": "MBL-987654321"
+          },
+          "bookingNumber": {
+            "type": "string",
+            "example": "BKG-456789"
+          },
+          "vesselName": {
+            "type": "string",
+            "example": "EVER GLORY"
+          },
+          "voyageNumber": {
+            "type": "string",
+            "example": "062W"
+          },
+          "portOfLoading": {
+            "type": "string",
+            "example": "Shanghai, China"
+          },
+          "portOfDischarge": {
+            "type": "string",
+            "example": "Haifa, Israel"
+          },
+          "finalDestination": {
+            "type": "string",
+            "example": "Haifa, Israel"
+          },
+          "shipperName": {
+            "type": "string",
+            "example": "GLOBAL CONSOLIDATION LTD."
+          },
+          "shipperAddress": {
+            "type": "string",
+            "example": "No. 12, Seaport Road, Shanghai, China"
+          },
+          "consigneeName": {
+            "type": "string",
+            "example": "TO ORDER OF MAERSK LINE (As per House B/L)"
+          },
+          "consigneeAddress": {
+            "type": "string"
+          },
+          "notifyPartyName": {
+            "type": "string",
+            "example": "EREZ LOGISTICS LTD."
+          },
+          "notifyPartyAddress": {
+            "type": "string",
+            "example": "Haifa, Israel"
+          },
+          "containerNumber": {
+            "type": "string",
+            "example": "MSKU1234567"
+          },
+          "containerSealNumber": {
+            "type": "string",
+            "example": "TCLU1234567"
+          },
+          "cargoDescription": {
+            "type": "string",
+            "example": "CONSOLIDATED CARGO"
+          },
+          "grossWeightKg": {
+            "type": "number",
+            "example": 5400
+          },
+          "volumeCbm": {
+            "type": "number",
+            "example": 25.5
+          },
+          "freightTerms": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PaymentTerms"
+              }
+            ]
+          },
+          "receiptDeliveryType": {
+            "type": "string",
+            "example": "CY/CFS"
+          },
+          "placeOfIssue": {
+            "type": "string",
+            "example": "SHANGHAI"
+          },
+          "dateOfIssue": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-09-20"
+          },
+          "carrierName": {
+            "type": "string",
+            "example": "MAERSK LINE"
+          },
+          "containers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateMblContainerDto"
+            }
+          }
+        }
+      },
+      "HblOrderSummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1000
+          },
+          "customerName": {
+            "type": "string",
+            "nullable": true,
+            "example": "ACME Ltd."
+          }
+        },
+        "required": [
+          "id",
+          "customerName"
+        ]
+      },
+      "HblDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "mblId": {
+            "type": "integer",
+            "example": 1
+          },
+          "containerId": {
+            "type": "integer",
+            "nullable": true,
+            "example": 1
+          },
+          "customerId": {
+            "type": "integer",
+            "example": 3
+          },
+          "customerName": {
+            "type": "string",
+            "nullable": true,
+            "example": "ACME Ltd."
+          },
+          "sequenceNumber": {
+            "type": "integer",
+            "example": 1
+          },
+          "iblNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "IB-001"
+          },
+          "hblNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "HBL-ERZ-2026-001"
+          },
+          "shipperName": {
+            "type": "string",
+            "nullable": true,
+            "example": "Alpha Tools Co."
+          },
+          "shipperAddress": {
+            "type": "string",
+            "nullable": true
+          },
+          "consigneeName": {
+            "type": "string",
+            "nullable": true,
+            "example": "אלפא בע\"מ"
+          },
+          "consigneeAddress": {
+            "type": "string",
+            "nullable": true
+          },
+          "notifyPartyName": {
+            "type": "string",
+            "nullable": true
+          },
+          "notifyPartyAddress": {
+            "type": "string",
+            "nullable": true
+          },
+          "cargoDescription": {
+            "type": "string",
+            "nullable": true,
+            "example": "Hand Tools (assorted)"
+          },
+          "quantity": {
+            "type": "string",
+            "nullable": true,
+            "example": "120 cartons"
+          },
+          "grossWeightKg": {
+            "type": "number",
+            "nullable": true,
+            "example": 1850
+          },
+          "volumeCbm": {
+            "type": "number",
+            "nullable": true,
+            "example": 8.5
+          },
+          "remarks": {
+            "type": "string",
+            "nullable": true,
+            "example": "LCL - 3 PARTIES / CY/CFS"
+          },
+          "orders": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HblOrderSummaryDto"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-20T08:30:00.000Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-20T08:30:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "mblId",
+          "containerId",
+          "customerId",
+          "customerName",
+          "sequenceNumber",
+          "iblNumber",
+          "hblNumber",
+          "shipperName",
+          "shipperAddress",
+          "consigneeName",
+          "consigneeAddress",
+          "notifyPartyName",
+          "notifyPartyAddress",
+          "cargoDescription",
+          "quantity",
+          "grossWeightKg",
+          "volumeCbm",
+          "remarks",
+          "orders",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "CreateHblDto": {
+        "type": "object",
+        "properties": {
+          "mblId": {
+            "type": "integer",
+            "example": 1000
+          },
+          "containerId": {
+            "type": "integer",
+            "example": 1
+          },
+          "customerId": {
+            "type": "integer",
+            "example": 3
+          },
+          "hblNumber": {
+            "type": "string",
+            "example": "HBL-ERZ-2026-001"
+          },
+          "shipperName": {
+            "type": "string",
+            "example": "Alpha Tools Co."
+          },
+          "shipperAddress": {
+            "type": "string",
+            "example": "Shanghai, China"
+          },
+          "consigneeName": {
+            "type": "string",
+            "example": "אלפא בע\"מ"
+          },
+          "consigneeAddress": {
+            "type": "string",
+            "example": "Tel Aviv, Israel"
+          },
+          "notifyPartyName": {
+            "type": "string",
+            "example": "Alpha Tools Co."
+          },
+          "notifyPartyAddress": {
+            "type": "string",
+            "example": "Shanghai, China"
+          },
+          "cargoDescription": {
+            "type": "string",
+            "example": "Hand Tools (assorted)"
+          },
+          "quantity": {
+            "type": "string",
+            "example": "120 cartons"
+          },
+          "grossWeightKg": {
+            "type": "number",
+            "example": 1850
+          },
+          "volumeCbm": {
+            "type": "number",
+            "example": 8.5
+          },
+          "remarks": {
+            "type": "string",
+            "example": "LCL - 3 PARTIES / CY/CFS"
+          },
+          "orderIds": {
+            "example": [
+              1000
+            ],
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          }
+        },
+        "required": [
+          "mblId",
+          "customerId"
+        ]
+      },
+      "UpdateHblDto": {
+        "type": "object",
+        "properties": {
+          "containerId": {
+            "type": "integer",
+            "example": 1
+          },
+          "customerId": {
+            "type": "integer",
+            "example": 3
+          },
+          "hblNumber": {
+            "type": "string",
+            "example": "HBL-ERZ-2026-001"
+          },
+          "shipperName": {
+            "type": "string",
+            "example": "Alpha Tools Co."
+          },
+          "shipperAddress": {
+            "type": "string",
+            "example": "Shanghai, China"
+          },
+          "consigneeName": {
+            "type": "string",
+            "example": "אלפא בע\"מ"
+          },
+          "consigneeAddress": {
+            "type": "string",
+            "example": "Tel Aviv, Israel"
+          },
+          "notifyPartyName": {
+            "type": "string",
+            "example": "Alpha Tools Co."
+          },
+          "notifyPartyAddress": {
+            "type": "string",
+            "example": "Shanghai, China"
+          },
+          "cargoDescription": {
+            "type": "string",
+            "example": "Hand Tools (assorted)"
+          },
+          "quantity": {
+            "type": "string",
+            "example": "120 cartons"
+          },
+          "grossWeightKg": {
+            "type": "number",
+            "example": 1850
+          },
+          "volumeCbm": {
+            "type": "number",
+            "example": 8.5
+          },
+          "remarks": {
+            "type": "string",
+            "example": "LCL - 3 PARTIES / CY/CFS"
+          }
+        }
+      },
+      "ManageHblOrdersDto": {
+        "type": "object",
+        "properties": {
+          "orderIds": {
+            "example": [
+              1000
+            ],
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          }
+        },
+        "required": [
+          "orderIds"
+        ]
+      },
       "OrderStatus": {
         "type": "string",
         "enum": [
@@ -1835,17 +3067,6 @@
           "SEA",
           "AIR",
           "LAND"
-        ]
-      },
-      "PaymentTerms": {
-        "type": "string",
-        "enum": [
-          "prepaid",
-          "collect"
-        ],
-        "x-enum-varnames": [
-          "PREPAID",
-          "COLLECT"
         ]
       },
       "Incoterm": {

@@ -51,6 +51,19 @@ export class ListOrdersQuery {
   @IsBoolean()
   hasCase?: boolean;
 
+  /** `false` matches orders with no HBL yet (`hbl_id IS NULL`); `true` matches the opposite.
+   *  Parallel to `hasCase` — the legacy `order_account` flow and the new MBL/HBL flow each
+   *  have their own, independent association column on `orders`. */
+  @ApiPropertyOptional({ type: 'boolean' })
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    value === undefined
+      ? undefined
+      : value === true || value === 'true' || value === '1' || value === 1,
+  )
+  @IsBoolean()
+  hasHbl?: boolean;
+
   @ApiPropertyOptional({ enum: OrderStatus, enumName: 'OrderStatus' })
   @IsOptional()
   @IsEnum(OrderStatus)

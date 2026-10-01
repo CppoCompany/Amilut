@@ -21,6 +21,17 @@ export type ShipmentDto = components['schemas']['ShipmentDto'];
 export type CreateShipmentDto = components['schemas']['CreateShipmentDto'];
 export type UpdateShipmentDto = components['schemas']['UpdateShipmentDto'];
 
+export type MblDto = components['schemas']['MblDto'];
+export type CreateMblDto = components['schemas']['CreateMblDto'];
+export type UpdateMblDto = components['schemas']['UpdateMblDto'];
+export type MblContainerDto = components['schemas']['MblContainerDto'];
+export type CreateMblContainerDto = components['schemas']['CreateMblContainerDto'];
+
+export type HblDto = components['schemas']['HblDto'];
+export type CreateHblDto = components['schemas']['CreateHblDto'];
+export type UpdateHblDto = components['schemas']['UpdateHblDto'];
+export type HblOrderSummaryDto = components['schemas']['HblOrderSummaryDto'];
+
 export type UploadedImportFileDto = components['schemas']['UploadedImportFileDto'];
 export type InvoiceLineItemDto = components['schemas']['InvoiceLineItemDto'];
 export type LineItemClassificationDto = components['schemas']['LineItemClassificationDto'];

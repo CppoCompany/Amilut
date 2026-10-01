@@ -6,6 +6,7 @@ import {
   TradeAgreement,
 } from './classification/classification.enums';
 import { ImportDocumentType } from './import-files/import-files.enums';
+import { MblShippingType, SeaMethod } from './mbl/mbl.enums';
 import {
   Destination,
   Incoterm,
@@ -34,6 +35,8 @@ export const NAMED_ENUMS: Record<string, Record<string, string>> = {
   ImportDocumentType,
   ClassificationApproval,
   TradeAgreement,
+  MblShippingType,
+  SeaMethod,
 };
 
 type SchemaWithExtensions = {

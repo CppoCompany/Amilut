@@ -156,6 +156,9 @@ export class OrdersService {
     if (query.hasCase !== undefined) {
       where.push(query.hasCase ? 'o.case_id IS NOT NULL' : 'o.case_id IS NULL');
     }
+    if (query.hasHbl !== undefined) {
+      where.push(query.hasHbl ? 'o.hbl_id IS NOT NULL' : 'o.hbl_id IS NULL');
+    }
     if (query.status !== undefined) {
       params.push(query.status);
       where.push(`o.status = $${params.length}`);
