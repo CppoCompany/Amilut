@@ -8,7 +8,10 @@ import { CountriesApi } from '../../../../api/countries-api';
 import {
   CLASSIFICATION_APPROVAL_LABELS,
   CLASSIFICATION_APPROVALS,
+  CLASSIFICATION_LICENSE_LABELS,
+  CLASSIFICATION_LICENSES,
   ClassificationApproval,
+  ClassificationLicense,
   TRADE_AGREEMENT_LABELS,
   TRADE_AGREEMENTS,
   TradeAgreement,
@@ -35,6 +38,7 @@ interface Product {
   tradeAgreement: TradeAgreement | null;
   classificationCode: string;
   approvals: ClassificationApproval[];
+  licenses: ClassificationLicense[];
   /** `countries.id` of the selected country, or `null` when none is selected. */
   countryId: number | null;
 }
@@ -55,6 +59,9 @@ export class ClassificationScreen {
 
   protected readonly approvalOptions: readonly MultiSelectOption[] = CLASSIFICATION_APPROVALS.map(
     (value) => ({ value, label: CLASSIFICATION_APPROVAL_LABELS[value] }),
+  );
+  protected readonly licenseOptions: readonly MultiSelectOption[] = CLASSIFICATION_LICENSES.map(
+    (value) => ({ value, label: CLASSIFICATION_LICENSE_LABELS[value] }),
   );
   protected readonly tradeAgreementOptions = TRADE_AGREEMENTS;
   protected readonly tradeAgreementLabels = TRADE_AGREEMENT_LABELS;
@@ -101,6 +108,11 @@ export class ClassificationScreen {
     this.patchRow(index, { approvals: values.filter(isClassificationApproval) });
   }
 
+  /** Stores the licenses ticked in a row's multi-select (values outside the enum are dropped). */
+  protected onLicensesChange(index: number, values: readonly string[]): void {
+    this.patchRow(index, { licenses: values.filter(isClassificationLicense) });
+  }
+
   /** Stores the country picked in a row's dropdown (empty option → `null`). */
   protected onCountryChange(index: number, event: Event): void {
     const value = (event.target as HTMLSelectElement).value;
@@ -125,6 +137,7 @@ export class ClassificationScreen {
               tradeAgreement: row.tradeAgreement,
               classificationCode: row.classificationCode.trim(),
               approvals: row.approvals,
+              licenses: row.licenses,
               countryId: row.countryId,
             },
           ],
@@ -217,6 +230,7 @@ export function toProduct(item: InvoiceLineItemDto): Product {
       : null,
     classificationCode: classification.classificationCode ?? '',
     approvals: (classification.approvals ?? []).filter(isClassificationApproval),
+    licenses: (classification.licenses ?? []).filter(isClassificationLicense),
     countryId: classification.countryId ?? null,
   };
 }
@@ -239,6 +253,7 @@ function emptyProduct(): Product {
     tradeAgreement: null,
     classificationCode: '',
     approvals: [],
+    licenses: [],
     countryId: null,
   };
 }
@@ -246,6 +261,12 @@ function emptyProduct(): Product {
 function isClassificationApproval(value: unknown): value is ClassificationApproval {
   return (
     typeof value === 'string' && (CLASSIFICATION_APPROVALS as readonly string[]).includes(value)
+  );
+}
+
+function isClassificationLicense(value: unknown): value is ClassificationLicense {
+  return (
+    typeof value === 'string' && (CLASSIFICATION_LICENSES as readonly string[]).includes(value)
   );
 }
 

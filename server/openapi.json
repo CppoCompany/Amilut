@@ -1579,6 +1579,33 @@
           "VEHICLE_ACCREDITED_LAB"
         ]
       },
+      "ClassificationLicense": {
+        "type": "string",
+        "enum": [
+          "industry_administration",
+          "environment_administration",
+          "transport_vehicle_division",
+          "transport_heavy_equipment",
+          "minamata_commissioner",
+          "vehicle_parts_trade",
+          "public_security_firearms",
+          "agriculture_foreign_trade",
+          "pest_control_preparation",
+          "health_pharmacy_division"
+        ],
+        "x-enum-varnames": [
+          "INDUSTRY_ADMINISTRATION",
+          "ENVIRONMENT_ADMINISTRATION",
+          "TRANSPORT_VEHICLE_DIVISION",
+          "TRANSPORT_HEAVY_EQUIPMENT",
+          "MINAMATA_COMMISSIONER",
+          "VEHICLE_PARTS_TRADE",
+          "PUBLIC_SECURITY_FIREARMS",
+          "AGRICULTURE_FOREIGN_TRADE",
+          "PEST_CONTROL_PREPARATION",
+          "HEALTH_PHARMACY_DIVISION"
+        ]
+      },
       "LineItemClassificationDto": {
         "type": "object",
         "properties": {
@@ -1605,6 +1632,15 @@
               "$ref": "#/components/schemas/ClassificationApproval"
             }
           },
+          "licenses": {
+            "type": "array",
+            "example": [
+              "health_pharmacy_division"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/ClassificationLicense"
+            }
+          },
           "countryId": {
             "type": "integer",
             "nullable": true,
@@ -1616,6 +1652,7 @@
           "tradeAgreement",
           "classificationCode",
           "approvals",
+          "licenses",
           "countryId"
         ]
       },
@@ -1767,6 +1804,15 @@
               "$ref": "#/components/schemas/ClassificationApproval"
             }
           },
+          "licenses": {
+            "type": "array",
+            "example": [
+              "health_pharmacy_division"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/ClassificationLicense"
+            }
+          },
           "countryId": {
             "type": "integer",
             "nullable": true,
@@ -1788,6 +1834,7 @@
           "tradeAgreement",
           "classificationCode",
           "approvals",
+          "licenses",
           "countryId",
           "fileId",
           "lineIndex"

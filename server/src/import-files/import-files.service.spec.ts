@@ -12,6 +12,7 @@ import * as path from 'node:path';
 import type { DatabaseService } from '../database/database.service';
 import {
   ClassificationApproval,
+  ClassificationLicense,
   TradeAgreement,
 } from '../classification/classification.enums';
 import { ImportDocumentType } from './import-files.enums';
@@ -557,6 +558,7 @@ describe('ImportFilesService', () => {
                   ClassificationApproval.STANDARD_OR_DECLARATION,
                   'bogus',
                 ],
+                licenses: [ClassificationLicense.VEHICLE_PARTS_TRADE, 'nope'],
                 countryId: 106,
               } as unknown as InvoiceLineItem['classification'],
             },
@@ -571,6 +573,7 @@ describe('ImportFilesService', () => {
         tradeAgreement: TradeAgreement.EU,
         classificationCode: '8539.50.00',
         approvals: [ClassificationApproval.STANDARD_OR_DECLARATION],
+        licenses: [ClassificationLicense.VEHICLE_PARTS_TRADE],
         countryId: 106,
       });
       expect(second.classification).toEqual(EMPTY_LINE_ITEM_CLASSIFICATION);
@@ -697,6 +700,10 @@ describe('ImportFilesService', () => {
         ClassificationApproval.STANDARD_OR_DECLARATION,
         ClassificationApproval.STANDARD_OR_DECLARATION,
       ],
+      licenses: [
+        ClassificationLicense.HEALTH_PHARMACY_DIVISION,
+        ClassificationLicense.HEALTH_PHARMACY_DIVISION,
+      ],
       countryId: 106,
     };
 
@@ -750,6 +757,7 @@ describe('ImportFilesService', () => {
           tradeAgreement: TradeAgreement.USA,
           classificationCode: '8544.42',
           approvals: [ClassificationApproval.STANDARD_OR_DECLARATION],
+          licenses: [ClassificationLicense.HEALTH_PHARMACY_DIVISION],
           countryId: 106,
         },
       });

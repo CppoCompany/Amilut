@@ -2,7 +2,11 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { ClassificationApproval, TradeAgreement } from '../../../../api/enums';
+import {
+  ClassificationApproval,
+  ClassificationLicense,
+  TradeAgreement,
+} from '../../../../api/enums';
 import type { CountryDto, InvoiceLineItemDto } from '../../../../api/models';
 import { CURRENT_CASE_NUMBER } from '../../current-case';
 import { ClassificationScreen, goodsDescriptionOf } from './classification';
@@ -20,6 +24,7 @@ const EMPTY_CLASSIFICATION = {
   tradeAgreement: null,
   classificationCode: '',
   approvals: [],
+  licenses: [],
   countryId: null,
 };
 
@@ -91,7 +96,7 @@ describe('ClassificationScreen', () => {
     );
     return trs.map((tr) =>
       Array.from(tr.querySelectorAll('td')).map((td) => {
-        const control = td.querySelector('select, input');
+        const control = td.querySelector('select, input:not([type="checkbox"])');
         if (control) return (control as HTMLSelectElement | HTMLInputElement).value;
         const summary = td.querySelector('.multi-select__summary');
         return (summary ?? td).textContent?.trim() ?? '';
@@ -166,11 +171,12 @@ describe('ClassificationScreen', () => {
       'הסכם סחר',
       'קוד סיווג',
       'אישורים',
+      'רישיונות',
       'מדינות',
     ]);
     expect(rows()).toEqual([
-      ['Y8022-140BK', '15', '15.32', '229.80', '', '', 'ללא', ''],
-      ['ABC-1', '', '', '', '', '', 'ללא', ''],
+      ['Y8022-140BK', '15', '15.32', '229.80', '', '', 'ללא', 'ללא', ''],
+      ['ABC-1', '', '', '', '', '', 'ללא', 'ללא', ''],
     ]);
     expect(goodsDescription().value).toBe('Light Fixtures, Cable');
     expect(fixture.nativeElement.querySelector('.products-empty')).toBeNull();
@@ -188,13 +194,24 @@ describe('ClassificationScreen', () => {
             ClassificationApproval.STANDARD_OR_DECLARATION,
             ClassificationApproval.COSMETICS,
           ],
+          licenses: [ClassificationLicense.VEHICLE_PARTS_TRADE],
           countryId: 162,
         },
       }),
     ]);
 
     expect(rows()).toEqual([
-      ['Y8022-140BK', '15', '15.32', '229.80', 'eu', '8539.50.00', '2 נבחרו', '162'],
+      [
+        'Y8022-140BK',
+        '15',
+        '15.32',
+        '229.80',
+        'eu',
+        '8539.50.00',
+        '2 נבחרו',
+        'רישיון לסחר במוצרי תעבורה (0212)',
+        '162',
+      ],
     ]);
   });
 
@@ -204,7 +221,7 @@ describe('ClassificationScreen', () => {
 
     const empty = fixture.nativeElement.querySelector('.products-empty td') as HTMLTableCellElement;
     expect(empty).toBeTruthy();
-    expect(empty.colSpan).toBe(8);
+    expect(empty.colSpan).toBe(9);
     expect(empty.textContent?.trim()).toBe(
       'לא נמצאו פריטים מחשבון ספק — העלה חשבון ספק במסך תיוק ניירת יבוא',
     );
@@ -232,7 +249,7 @@ describe('ClassificationScreen', () => {
     (fixture.nativeElement.querySelector('.btn-secondary') as HTMLButtonElement).click();
     fixture.detectChanges();
 
-    expect(rows()).toEqual([['', '', '', '', '', '', 'ללא', '']]);
+    expect(rows()).toEqual([['', '', '', '', '', '', 'ללא', 'ללא', '']]);
   });
 
   it('offers every trade agreement in Hebrew and keeps a choice on its own row', () => {
@@ -287,6 +304,40 @@ describe('ClassificationScreen', () => {
     expect(approvalToggles()[1].textContent?.trim()).toBe('ללא');
   });
 
+  it('offers the ten licenses as a multi-select and keeps the ticked ones on their own row', () => {
+    flushCountries();
+    flushLineItems([lineItem(), lineItem({ lineIndex: 1, item: 'B' })]);
+
+    const toggles = Array.from(
+      fixture.nativeElement.querySelectorAll(
+        '.licenses-select .multi-select__toggle',
+      ) as NodeListOf<HTMLButtonElement>,
+    );
+    expect(toggles[0].getAttribute('aria-label')).toBe('רישיונות לשורה 1');
+    toggles[0].click();
+    fixture.detectChanges();
+
+    const boxes = Array.from(
+      fixture.nativeElement.querySelectorAll(
+        '.multi-select__menu input',
+      ) as NodeListOf<HTMLInputElement>,
+    );
+    expect(boxes).toHaveLength(10);
+    const labels = Array.from(
+      fixture.nativeElement.querySelectorAll(
+        '.multi-select__menu label',
+      ) as NodeListOf<HTMLElement>,
+    ).map((l) => l.textContent?.trim());
+    expect(labels[0]).toBe('רישיון מינהל התעשיות (משרד הכלכלה)');
+    expect(labels).toContain('רישיון תחבורה – (משרד התחבורה - אגף צמ"א)');
+    expect(labels[9]).toBe('רישיון משרד הבריאות – (משרד הבריאות - אגף הרוקחות)');
+
+    boxes.find((b) => b.value === ClassificationLicense.MINAMATA_COMMISSIONER)!.click();
+    fixture.detectChanges();
+    expect(rows()[0][7]).toBe('רישיון הממונה לפי תקנות מינמטה (0608) (המשרד להגנת הסביבה)');
+    expect(rows()[1][7]).toBe('ללא');
+  });
+
   it('renders the countries dropdown from the lookup endpoint and keeps a choice on its own row', () => {
     flushCountries();
     flushLineItems([lineItem(), lineItem({ lineIndex: 1, item: 'B' })]);
@@ -333,6 +384,20 @@ describe('ClassificationScreen', () => {
       ).find((b) => b.value === ClassificationApproval.MEDICAL_DEVICES) as HTMLInputElement
     ).click();
     fixture.detectChanges();
+    (
+      fixture.nativeElement.querySelector(
+        '.licenses-select .multi-select__toggle',
+      ) as HTMLButtonElement
+    ).click();
+    fixture.detectChanges();
+    (
+      Array.from(
+        fixture.nativeElement.querySelectorAll(
+          '.multi-select__menu input',
+        ) as NodeListOf<HTMLInputElement>,
+      ).find((b) => b.value === ClassificationLicense.AGRICULTURE_FOREIGN_TRADE) as HTMLInputElement
+    ).click();
+    fixture.detectChanges();
     change(countrySelects()[0], '106');
 
     // A hand-added row has nowhere to be stored and must not be sent.
@@ -352,6 +417,7 @@ describe('ClassificationScreen', () => {
           tradeAgreement: TradeAgreement.CANADA,
           classificationCode: '8539.50.00',
           approvals: [ClassificationApproval.MEDICAL_DEVICES],
+          licenses: [ClassificationLicense.AGRICULTURE_FOREIGN_TRADE],
           countryId: 106,
         },
         {
@@ -360,6 +426,7 @@ describe('ClassificationScreen', () => {
           tradeAgreement: null,
           classificationCode: '',
           approvals: [],
+          licenses: [],
           countryId: null,
         },
       ],
@@ -373,6 +440,7 @@ describe('ClassificationScreen', () => {
           tradeAgreement: TradeAgreement.CANADA,
           classificationCode: '8539.50.00',
           approvals: [ClassificationApproval.MEDICAL_DEVICES],
+          licenses: [ClassificationLicense.AGRICULTURE_FOREIGN_TRADE],
           countryId: 106,
         },
       }),
@@ -385,9 +453,19 @@ describe('ClassificationScreen', () => {
     );
     expect(submitButton().disabled).toBe(false);
     expect(rows()).toEqual([
-      ['Y8022-140BK', '15', '15.32', '229.80', 'canada', '8539.50.00', 'אישור אמ"ר', '106'],
-      ['B', '15', '15.32', '229.80', '', '', 'ללא', ''],
-      ['', '', '', '', '', '', 'ללא', ''],
+      [
+        'Y8022-140BK',
+        '15',
+        '15.32',
+        '229.80',
+        'canada',
+        '8539.50.00',
+        'אישור אמ"ר',
+        'רישיון חקלאות (משרד החקלאות - המרכז לסחר חוץ)',
+        '106',
+      ],
+      ['B', '15', '15.32', '229.80', '', '', 'ללא', 'ללא', ''],
+      ['', '', '', '', '', '', 'ללא', 'ללא', ''],
     ]);
   });
 

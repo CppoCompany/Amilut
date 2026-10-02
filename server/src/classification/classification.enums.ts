@@ -41,6 +41,36 @@ export enum ClassificationApproval {
 }
 
 /**
+ * Import license a classified product line may require. A line can need
+ * several, so the client stores an array of these in the "רישיונות" column
+ * of the classification screen.
+ *
+ * Hebrew UI labels (owned by the client):
+ * - INDUSTRY_ADMINISTRATION        → רישיון מינהל התעשיות (משרד הכלכלה)
+ * - ENVIRONMENT_ADMINISTRATION     → רישיון מינהל סביבה ופיתוח בר קיימא (משרד הכלכלה)
+ * - TRANSPORT_VEHICLE_DIVISION     → רישיון תחבורה (משרד התחבורה - אגף הרכב)
+ * - TRANSPORT_HEAVY_EQUIPMENT      → רישיון תחבורה – (משרד התחבורה - אגף צמ"א)
+ * - MINAMATA_COMMISSIONER          → רישיון הממונה לפי תקנות מינמטה (0608) (המשרד להגנת הסביבה)
+ * - VEHICLE_PARTS_TRADE            → רישיון לסחר במוצרי תעבורה (0212)
+ * - PUBLIC_SECURITY_FIREARMS       → רישיון המשרד לביטחון הפנים – (משרד פנים/כלכלה -אגף לפיקוח ורישוי כלי יריה)
+ * - AGRICULTURE_FOREIGN_TRADE      → רישיון חקלאות (משרד החקלאות - המרכז לסחר חוץ)
+ * - PEST_CONTROL_PREPARATION       → רישיון לתכשיר לפי צו תכשירים להדברת מזיקים לאדם (0715) (משרד הבריאות)
+ * - HEALTH_PHARMACY_DIVISION       → רישיון משרד הבריאות – (משרד הבריאות - אגף הרוקחות)
+ */
+export enum ClassificationLicense {
+  INDUSTRY_ADMINISTRATION = 'industry_administration',
+  ENVIRONMENT_ADMINISTRATION = 'environment_administration',
+  TRANSPORT_VEHICLE_DIVISION = 'transport_vehicle_division',
+  TRANSPORT_HEAVY_EQUIPMENT = 'transport_heavy_equipment',
+  MINAMATA_COMMISSIONER = 'minamata_commissioner',
+  VEHICLE_PARTS_TRADE = 'vehicle_parts_trade',
+  PUBLIC_SECURITY_FIREARMS = 'public_security_firearms',
+  AGRICULTURE_FOREIGN_TRADE = 'agriculture_foreign_trade',
+  PEST_CONTROL_PREPARATION = 'pest_control_preparation',
+  HEALTH_PHARMACY_DIVISION = 'health_pharmacy_division',
+}
+
+/**
  * Trade agreement (preferential-origin regime) a product line is declared
  * under — the "הסכם סחר" column of the classification screen.
  *

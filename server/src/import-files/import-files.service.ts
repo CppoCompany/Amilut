@@ -506,6 +506,7 @@ function toClassification(
     tradeAgreement: update.tradeAgreement ?? null,
     classificationCode: update.classificationCode.trim(),
     approvals: Array.from(new Set(update.approvals)),
+    licenses: Array.from(new Set(update.licenses)),
     countryId: update.countryId ?? null,
   };
 }

@@ -1,5 +1,6 @@
 import {
   ClassificationApproval,
+  ClassificationLicense,
   TradeAgreement,
 } from '../classification/classification.enums';
 
@@ -13,6 +14,7 @@ export interface LineItemClassification {
   tradeAgreement: TradeAgreement | null;
   classificationCode: string;
   approvals: ClassificationApproval[];
+  licenses: ClassificationLicense[];
   /** `countries.id`, or `null` when no country was chosen. */
   countryId: number | null;
 }
@@ -22,6 +24,7 @@ export const EMPTY_LINE_ITEM_CLASSIFICATION: Readonly<LineItemClassification> =
     tradeAgreement: null,
     classificationCode: '',
     approvals: [],
+    licenses: [],
     countryId: null,
   });
 
@@ -38,6 +41,9 @@ export function normaliseLineItemClassification(
   const approvals = Array.isArray(value.approvals)
     ? value.approvals.filter(isClassificationApproval)
     : [];
+  const licenses = Array.isArray(value.licenses)
+    ? value.licenses.filter(isClassificationLicense)
+    : [];
   return {
     tradeAgreement: isTradeAgreement(value.tradeAgreement)
       ? value.tradeAgreement
@@ -47,6 +53,7 @@ export function normaliseLineItemClassification(
         ? value.classificationCode
         : '',
     approvals: Array.from(new Set(approvals)),
+    licenses: Array.from(new Set(licenses)),
     countryId:
       typeof value.countryId === 'number' &&
       Number.isInteger(value.countryId) &&
@@ -62,6 +69,15 @@ export function isClassificationApproval(
   return (
     typeof value === 'string' &&
     (Object.values(ClassificationApproval) as string[]).includes(value)
+  );
+}
+
+export function isClassificationLicense(
+  value: unknown,
+): value is ClassificationLicense {
+  return (
+    typeof value === 'string' &&
+    (Object.values(ClassificationLicense) as string[]).includes(value)
   );
 }
 

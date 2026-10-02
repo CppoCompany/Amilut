@@ -33,8 +33,8 @@
 .products-table {
   th,
   td {
-    padding: 8px 6px;
-    font-size: 0.9rem;
+    padding: 8px 4px;
+    font-size: 0.875rem;
     white-space: nowrap;
   }
 
@@ -43,31 +43,39 @@
   th:nth-child(-n + 4) {
     width: 1%;
   }
+
+  // The SKU may wrap so nine columns still fit at 1366px.
+  td:first-child {
+    white-space: normal;
+    min-width: 6.5rem;
+  }
 }
 
 .trade-agreement-select,
 .classification-code-input,
 .country-select,
-.approvals-select .multi-select__toggle {
-  padding: 0.25rem 0.5rem;
-  font-size: 0.9rem;
+.approvals-select .multi-select__toggle,
+.licenses-select .multi-select__toggle {
+  padding: 0.25rem 0.4rem;
+  font-size: 0.875rem;
 }
 
 // Fixed control widths: a <select>'s intrinsic width is its longest option,
 // which would otherwise force the column (and the table) wider than the screen.
 .trade-agreement-select {
-  width: 8.5rem;
+  width: 7rem;
 }
 
 .classification-code-input {
-  width: 5.5rem;
+  width: 4.75rem;
 }
 
-.approvals-select {
+.approvals-select,
+.licenses-select {
   display: block;
-  width: 10rem;
+  width: 8.25rem;
 }
 
 .country-select {
-  width: 9rem;
+  width: 7.75rem;
 }

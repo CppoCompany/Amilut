@@ -82,7 +82,7 @@ Amilut
 │              uploadedAt; for SUPPLIER_INVOICE also lineItems[] — each with
 │              item, description, quantity, price, total and, once the
 │              classification screen saved it, classification {tradeAgreement,
-│              classificationCode, approvals[], countryId → countries.id}],
+│              classificationCode, approvals[], licenses[], countryId → countries.id}],
 │              created_at)
 └── countries (id, name [Hebrew], key [ISO 3166-1 alpha-2, UNIQUE])
                -- lookup table, seeded by 014 with 242 rows

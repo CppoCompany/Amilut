@@ -3,6 +3,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import type { OpenAPIObject } from '@nestjs/swagger';
 import {
   ClassificationApproval,
+  ClassificationLicense,
   TradeAgreement,
 } from './classification/classification.enums';
 import { ImportDocumentType } from './import-files/import-files.enums';
@@ -33,6 +34,7 @@ export const NAMED_ENUMS: Record<string, Record<string, string>> = {
   ShipmentDocumentType,
   ImportDocumentType,
   ClassificationApproval,
+  ClassificationLicense,
   TradeAgreement,
 };
 

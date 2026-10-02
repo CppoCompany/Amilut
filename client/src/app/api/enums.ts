@@ -8,6 +8,7 @@
  */
 import {
   ClassificationApproval,
+  ClassificationLicense,
   Destination,
   ImportDocumentType,
   Incoterm,
@@ -20,6 +21,7 @@ import {
 
 export {
   ClassificationApproval,
+  ClassificationLicense,
   Destination,
   ImportDocumentType,
   Incoterm,
@@ -129,6 +131,26 @@ export const CLASSIFICATION_APPROVAL_LABELS: Record<ClassificationApproval, stri
   [ClassificationApproval.VEHICLE_ACCREDITED_LAB]: 'אישור מעבדה מוסמכת לרכב',
 };
 
+/** Import licenses a classified product line may need ("רישיונות" on the classification screen, multi-select). */
+export const CLASSIFICATION_LICENSE_LABELS: Record<ClassificationLicense, string> = {
+  [ClassificationLicense.INDUSTRY_ADMINISTRATION]: 'רישיון מינהל התעשיות (משרד הכלכלה)',
+  [ClassificationLicense.ENVIRONMENT_ADMINISTRATION]:
+    'רישיון מינהל סביבה ופיתוח בר קיימא (משרד הכלכלה)',
+  [ClassificationLicense.TRANSPORT_VEHICLE_DIVISION]: 'רישיון תחבורה (משרד התחבורה - אגף הרכב)',
+  [ClassificationLicense.TRANSPORT_HEAVY_EQUIPMENT]: 'רישיון תחבורה – (משרד התחבורה - אגף צמ"א)',
+  [ClassificationLicense.MINAMATA_COMMISSIONER]:
+    'רישיון הממונה לפי תקנות מינמטה (0608) (המשרד להגנת הסביבה)',
+  [ClassificationLicense.VEHICLE_PARTS_TRADE]: 'רישיון לסחר במוצרי תעבורה (0212)',
+  [ClassificationLicense.PUBLIC_SECURITY_FIREARMS]:
+    'רישיון המשרד לביטחון הפנים – (משרד פנים/כלכלה -אגף לפיקוח ורישוי כלי יריה)',
+  [ClassificationLicense.AGRICULTURE_FOREIGN_TRADE]:
+    'רישיון חקלאות (משרד החקלאות - המרכז לסחר חוץ)',
+  [ClassificationLicense.PEST_CONTROL_PREPARATION]:
+    'רישיון לתכשיר לפי צו תכשירים להדברת מזיקים לאדם (0715) (משרד הבריאות)',
+  [ClassificationLicense.HEALTH_PHARMACY_DIVISION]:
+    'רישיון משרד הבריאות – (משרד הבריאות - אגף הרוקחות)',
+};
+
 /** Trade agreement a product line is declared under ("הסכם סחר" on the classification screen). */
 export const TRADE_AGREEMENT_LABELS: Record<TradeAgreement, string> = {
   [TradeAgreement.GENERAL]: 'כללי',
@@ -164,6 +186,8 @@ export const IMPORT_DOCUMENT_TYPES: readonly ImportDocumentType[] =
   Object.values(ImportDocumentType);
 export const CLASSIFICATION_APPROVALS: readonly ClassificationApproval[] =
   Object.values(ClassificationApproval);
+export const CLASSIFICATION_LICENSES: readonly ClassificationLicense[] =
+  Object.values(ClassificationLicense);
 export const TRADE_AGREEMENTS: readonly TradeAgreement[] = Object.values(TradeAgreement);
 
 /**

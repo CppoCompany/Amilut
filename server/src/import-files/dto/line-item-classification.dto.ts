@@ -13,6 +13,7 @@ import {
 } from 'class-validator';
 import {
   ClassificationApproval,
+  ClassificationLicense,
   TradeAgreement,
 } from '../../classification/classification.enums';
 
@@ -43,6 +44,17 @@ export class LineItemClassificationDto {
   @ArrayUnique()
   @IsEnum(ClassificationApproval, { each: true })
   approvals!: ClassificationApproval[];
+
+  @ApiProperty({
+    enum: ClassificationLicense,
+    enumName: 'ClassificationLicense',
+    isArray: true,
+    example: [ClassificationLicense.HEALTH_PHARMACY_DIVISION],
+  })
+  @IsArray()
+  @ArrayUnique()
+  @IsEnum(ClassificationLicense, { each: true })
+  licenses!: ClassificationLicense[];
 
   @ApiProperty({
     type: 'integer',

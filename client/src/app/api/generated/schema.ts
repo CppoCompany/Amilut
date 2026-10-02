@@ -374,6 +374,8 @@ export interface components {
         TradeAgreement: TradeAgreement;
         /** @enum {string} */
         ClassificationApproval: ClassificationApproval;
+        /** @enum {string} */
+        ClassificationLicense: ClassificationLicense;
         LineItemClassificationDto: {
             /** @example eu */
             tradeAgreement: components["schemas"]["TradeAgreement"] | null;
@@ -385,6 +387,12 @@ export interface components {
              *     ]
              */
             approvals: components["schemas"]["ClassificationApproval"][];
+            /**
+             * @example [
+             *       "health_pharmacy_division"
+             *     ]
+             */
+            licenses: components["schemas"]["ClassificationLicense"][];
             /**
              * @description `countries.id` of the origin country.
              * @example 106
@@ -473,6 +481,12 @@ export interface components {
              *     ]
              */
             approvals: components["schemas"]["ClassificationApproval"][];
+            /**
+             * @example [
+             *       "health_pharmacy_division"
+             *     ]
+             */
+            licenses: components["schemas"]["ClassificationLicense"][];
             /**
              * @description `countries.id` of the origin country.
              * @example 106
@@ -1781,6 +1795,18 @@ export enum ClassificationApproval {
     RADIATION_COMMISSIONER = "radiation_commissioner",
     SUSTAINABLE_ENERGY = "sustainable_energy",
     VEHICLE_ACCREDITED_LAB = "vehicle_accredited_lab"
+}
+export enum ClassificationLicense {
+    INDUSTRY_ADMINISTRATION = "industry_administration",
+    ENVIRONMENT_ADMINISTRATION = "environment_administration",
+    TRANSPORT_VEHICLE_DIVISION = "transport_vehicle_division",
+    TRANSPORT_HEAVY_EQUIPMENT = "transport_heavy_equipment",
+    MINAMATA_COMMISSIONER = "minamata_commissioner",
+    VEHICLE_PARTS_TRADE = "vehicle_parts_trade",
+    PUBLIC_SECURITY_FIREARMS = "public_security_firearms",
+    AGRICULTURE_FOREIGN_TRADE = "agriculture_foreign_trade",
+    PEST_CONTROL_PREPARATION = "pest_control_preparation",
+    HEALTH_PHARMACY_DIVISION = "health_pharmacy_division"
 }
 export enum OrderStatus {
     PREPARING = "preparing",

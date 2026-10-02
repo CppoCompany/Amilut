@@ -92,6 +92,7 @@ describe('ImportFilesApi', () => {
       tradeAgreement: null,
       classificationCode: '',
       approvals: [],
+      licenses: [],
       countryId: null,
     },
   };
@@ -117,6 +118,7 @@ describe('ImportFilesApi', () => {
         tradeAgreement: TradeAgreement.EU,
         classificationCode: '8539.50.00',
         approvals: [ClassificationApproval.COSMETICS],
+        licenses: [],
         countryId: 106,
       },
     ];

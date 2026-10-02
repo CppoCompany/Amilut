@@ -37,6 +37,7 @@
               <th>הסכם סחר</th>
               <th>קוד סיווג</th>
               <th>אישורים</th>
+              <th>רישיונות</th>
               <th>מדינות</th>
             </tr>
           </thead>
@@ -86,6 +87,16 @@
                   />
                 </td>
                 <td>
+                  <app-multi-select
+                    class="licenses-select"
+                    [options]="licenseOptions"
+                    [selected]="product.licenses"
+                    [ariaLabel]="'רישיונות לשורה ' + (i + 1)"
+                    placeholder="ללא"
+                    (selectedChange)="onLicensesChange(i, $event)"
+                  />
+                </td>
+                <td>
                   <select
                     class="form-control country-select"
                     [attr.aria-label]="'מדינה לשורה ' + (i + 1)"
@@ -103,7 +114,7 @@
             } @empty {
               @if (!loading()) {
                 <tr class="products-empty">
-                  <td colspan="8">
+                  <td colspan="9">
                     לא נמצאו פריטים מחשבון ספק — העלה חשבון ספק במסך תיוק ניירת יבוא
                   </td>
                 </tr>
