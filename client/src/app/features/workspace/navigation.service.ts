@@ -42,6 +42,23 @@ export class NavigationService {
     () => this.screenMap.get(this.activePage()) ?? 'placeholder',
   );
 
+  /** The currently-highlighted sidebar row (for the breadcrumb trail). */
+  readonly activeChild = computed<TreeChild | null>(() => {
+    const id = this.activeChildId();
+    return flattenLeaves(this.tree()).find((child) => child.id === id) ?? null;
+  });
+
+  /** The expandable group containing the active row, or `null` for a top-level row. */
+  readonly activeGroupLabel = computed<string | null>(() => {
+    const id = this.activeChildId();
+    for (const entry of this.tree()) {
+      if (isTreeChildGroup(entry) && entry.children.some((child) => child.id === id)) {
+        return entry.label;
+      }
+    }
+    return null;
+  });
+
   /**
    * Order id another screen (e.g. a double-click in "ההזמנות שלי") wants the
    * order screen to load for editing, set via {@link openOrderForEdit}.

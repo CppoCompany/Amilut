@@ -1,0 +1,44 @@
+<nav class="breadcrumb-bar" aria-label="breadcrumb">
+  <ol class="breadcrumb-trail">
+    <li class="breadcrumb-item">
+      <i class="fa-solid fa-house" aria-hidden="true"></i>
+      <span>ראשי</span>
+    </li>
+
+    @if (nav.activeGroupLabel(); as groupLabel) {
+      <li class="breadcrumb-sep" aria-hidden="true"><i class="fa-solid fa-chevron-left"></i></li>
+      <li class="breadcrumb-item">{{ groupLabel }}</li>
+    }
+
+    @if (nav.activeChild(); as child) {
+      <li class="breadcrumb-sep" aria-hidden="true"><i class="fa-solid fa-chevron-left"></i></li>
+      <li class="breadcrumb-item breadcrumb-item--current" aria-current="page">
+        <i [class]="child.icon" aria-hidden="true"></i>
+        <span>{{ child.label }}</span>
+      </li>
+    }
+  </ol>
+
+  @if (selectedLabel(); as label) {
+    <div class="breadcrumb-selection">
+      <button type="button" class="breadcrumb-selection__label" [title]="label" (click)="openSelected()">
+        <i
+          class="fa-solid"
+          [class.fa-file-invoice]="selectedKind() === 'order'"
+          [class.fa-truck-fast]="selectedKind() === 'shippingCase'"
+          aria-hidden="true"
+        ></i>
+        <span>{{ label }}</span>
+      </button>
+      <button
+        type="button"
+        class="breadcrumb-selection__clear"
+        aria-label="נקה בחירה"
+        title="נקה בחירה"
+        (click)="clearSelection()"
+      >
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      </button>
+    </div>
+  }
+</nav>

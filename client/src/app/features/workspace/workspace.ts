@@ -1,6 +1,7 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 
 import { AuthService } from '../../core/auth/auth.service';
+import { Breadcrumb } from './breadcrumb/breadcrumb';
 import { isTreeChildGroup } from './navigation.model';
 import { NavigationService } from './navigation.service';
 import { ClassificationScreen } from './screens/classification/classification';
@@ -20,6 +21,7 @@ import { ShipmentCaseWizardScreen } from './screens/shipment-case-wizard/shipmen
 @Component({
   selector: 'app-workspace',
   imports: [
+    Breadcrumb,
     OrderScreen,
     FilingScreen,
     ShipmentCaseWizardScreen,
@@ -37,4 +39,11 @@ export class Workspace {
   protected readonly auth = inject(AuthService);
   /** Lets the template tell a plain leaf row from an expandable sub-group. */
   protected readonly isGroup = isTreeChildGroup;
+
+  /** Collapsed (icon-only) by default; toggled by the sidebar's own expand/close button. */
+  protected readonly sidebarExpanded = signal(false);
+
+  protected toggleSidebar(): void {
+    this.sidebarExpanded.update((expanded) => !expanded);
+  }
 }
