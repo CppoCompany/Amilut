@@ -26,63 +26,127 @@
 <!-- Main App Container -->
 <div class="main-container">
   <!-- Right Sidebar -->
-  <aside class="sidebar">
+  <aside class="sidebar" [class.sidebar--collapsed]="!sidebarExpanded()">
     <div class="sidebar-header">
-      <i class="fa-solid fa-bars"></i>
-      תפריט ראשי
+      <button
+        type="button"
+        class="sidebar-toggle"
+        [attr.aria-label]="sidebarExpanded() ? 'סגור תפריט' : 'פתח תפריט'"
+        [attr.aria-expanded]="sidebarExpanded()"
+        (click)="toggleSidebar()"
+      >
+        <i class="fa-solid" [class.fa-bars]="!sidebarExpanded()" [class.fa-xmark]="sidebarExpanded()"></i>
+      </button>
+      @if (sidebarExpanded()) {
+        <span class="sidebar-header__title">תפריט ראשי</span>
+      }
     </div>
-    <ul class="sidebar-menu">
-      @for (entry of nav.tree(); track entry.id) {
-        @if (isGroup(entry)) {
-          <li class="tree-node">
-            <button
-              type="button"
-              class="tree-node-toggle"
-              [class.active]="nav.isNodeExpanded(entry.id)"
-              [attr.aria-expanded]="nav.isNodeExpanded(entry.id)"
-              (click)="nav.toggleNode(entry.id)"
-            >
-              <span class="tree-node-label">
+
+    @if (sidebarExpanded()) {
+      <!-- Expanded: unchanged from before the icon-only mode existed. -->
+      <ul class="sidebar-menu">
+        @for (entry of nav.tree(); track entry.id) {
+          @if (isGroup(entry)) {
+            <li class="tree-node">
+              <button
+                type="button"
+                class="tree-node-toggle"
+                [class.active]="nav.isNodeExpanded(entry.id)"
+                [attr.aria-expanded]="nav.isNodeExpanded(entry.id)"
+                (click)="nav.toggleNode(entry.id)"
+              >
+                <span class="tree-node-label">
+                  <i [class]="entry.icon"></i>
+                  <span>{{ entry.label }}</span>
+                </span>
+                <i
+                  class="fa-solid"
+                  [class.fa-chevron-down]="nav.isNodeExpanded(entry.id)"
+                  [class.fa-chevron-left]="!nav.isNodeExpanded(entry.id)"
+                ></i>
+              </button>
+              <ul class="tree-node-children" [class.open]="nav.isNodeExpanded(entry.id)">
+                @for (child of entry.children; track child.id) {
+                  <li>
+                    <a
+                      href="#"
+                      class="tree-child-item"
+                      [class.active]="nav.isChildActive(child.id)"
+                      (click)="$event.preventDefault(); nav.selectChild(child)"
+                    >
+                      <i [class]="child.icon"></i>
+                      <span>{{ child.label }}</span>
+                    </a>
+                  </li>
+                }
+              </ul>
+            </li>
+          } @else {
+            <li>
+              <a
+                href="#"
+                class="tree-child-item"
+                [class.active]="nav.isChildActive(entry.id)"
+                (click)="$event.preventDefault(); nav.selectChild(entry)"
+              >
                 <i [class]="entry.icon"></i>
                 <span>{{ entry.label }}</span>
-              </span>
-              <i
-                class="fa-solid"
-                [class.fa-chevron-down]="nav.isNodeExpanded(entry.id)"
-                [class.fa-chevron-left]="!nav.isNodeExpanded(entry.id)"
-              ></i>
-            </button>
-            <ul class="tree-node-children" [class.open]="nav.isNodeExpanded(entry.id)">
-              @for (child of entry.children; track child.id) {
-                <li>
+              </a>
+            </li>
+          }
+        }
+      </ul>
+    } @else {
+      <!-- Collapsed: one icon per top-level entry. A group keeps its own
+           single icon (it never navigated anywhere even when expanded —
+           only its children do) and reveals its children as a hover flyout,
+           reusing the exact same `selectChild`/`isChildActive` the expanded
+           tree and the flattened leaves both already use. -->
+      <ul class="sidebar-menu sidebar-menu--icons">
+        @for (entry of nav.tree(); track entry.id) {
+          @if (isGroup(entry)) {
+            <li class="icon-nav-group">
+              <a
+                href="#"
+                class="icon-nav-item"
+                [class.active]="nav.isNodeExpanded(entry.id)"
+                [attr.aria-label]="entry.label"
+                (click)="$event.preventDefault()"
+              >
+                <i [class]="entry.icon"></i>
+              </a>
+              <div class="icon-nav-flyout">
+                @for (child of entry.children; track child.id) {
                   <a
                     href="#"
-                    class="tree-child-item"
+                    class="icon-nav-flyout__item"
                     [class.active]="nav.isChildActive(child.id)"
                     (click)="$event.preventDefault(); nav.selectChild(child)"
                   >
-                    <i [class]="child.icon"></i>
-                    <span>{{ child.label }}</span>
+                    <span class="icon-nav-flyout__bullet"></span>
+                    {{ child.label }}
                   </a>
-                </li>
-              }
-            </ul>
-          </li>
-        } @else {
-          <li>
-            <a
-              href="#"
-              class="tree-child-item"
-              [class.active]="nav.isChildActive(entry.id)"
-              (click)="$event.preventDefault(); nav.selectChild(entry)"
-            >
-              <i [class]="entry.icon"></i>
-              <span>{{ entry.label }}</span>
-            </a>
-          </li>
+                }
+              </div>
+            </li>
+          } @else {
+            <li class="icon-nav-group">
+              <a
+                href="#"
+                class="icon-nav-item"
+                [class.active]="nav.isChildActive(entry.id)"
+                [attr.aria-label]="entry.label"
+                [title]="entry.label"
+                (click)="$event.preventDefault(); nav.selectChild(entry)"
+              >
+                <i [class]="entry.icon"></i>
+                <span class="icon-nav-tooltip">{{ entry.label }}</span>
+              </a>
+            </li>
+          }
         }
-      }
-    </ul>
+      </ul>
+    }
   </aside>
 
   <!-- Content Area -->

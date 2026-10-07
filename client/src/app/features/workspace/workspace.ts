@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 
 import { AuthService } from '../../core/auth/auth.service';
 import { Breadcrumb } from './breadcrumb/breadcrumb';
@@ -39,4 +39,11 @@ export class Workspace {
   protected readonly auth = inject(AuthService);
   /** Lets the template tell a plain leaf row from an expandable sub-group. */
   protected readonly isGroup = isTreeChildGroup;
+
+  /** Collapsed (icon-only) by default; toggled by the sidebar's own expand/close button. */
+  protected readonly sidebarExpanded = signal(false);
+
+  protected toggleSidebar(): void {
+    this.sidebarExpanded.update((expanded) => !expanded);
+  }
 }
