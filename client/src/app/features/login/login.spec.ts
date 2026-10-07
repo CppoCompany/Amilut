@@ -52,7 +52,7 @@ describe('Login', () => {
     internals.form.setValue({ email: 'a@b.com', password: '' });
     await internals.onSubmit();
     expect(authMock.login).toHaveBeenCalledWith('a@b.com', undefined);
-    expect(router.navigateByUrl).toHaveBeenCalledWith('/workspace');
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/workspace/dashboard');
     expect(internals.error()).toBeNull();
   });
 

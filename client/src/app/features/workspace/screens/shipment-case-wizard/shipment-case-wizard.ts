@@ -1,4 +1,13 @@
-import { DestroyRef, ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import {
+  DestroyRef,
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { combineLatest, debounceTime, finalize, forkJoin, skip, switchMap } from 'rxjs';
@@ -208,15 +217,22 @@ export class ShipmentCaseWizardScreen {
   protected readonly loadCaseError = signal<string | null>(null);
 
   constructor() {
-    // A double-click on a row in "התיקים שלי" queues an MBL id here (see
-    // NavigationService.openCaseForEdit) before switching to this screen.
-    // Consume it once immediately so a later, ordinary navigation back to this
-    // screen (e.g. via the sidebar) starts with a blank draft as usual.
-    const editCaseId = this.nav.editCaseId();
-    if (editCaseId !== null) {
-      this.nav.editCaseId.set(null);
-      this.loadCaseForEdit(editCaseId);
-    }
+    // A double-click on a row in "התיקים שלי" navigates to
+    // `/workspace/shipment?caseId=N`, which NavigationService.applyUrl turns
+    // into `editCaseId` before this screen shows. Consume it once as soon as
+    // it appears, so a later, ordinary navigation back to this screen (e.g.
+    // via the sidebar) starts with a blank draft as usual. An effect rather
+    // than a one-shot constructor read: Back/Forward can land on an edit URL
+    // while this instance is already mounted (the page doesn't change, so it
+    // isn't recreated), and that must load the case too.
+    effect(() => {
+      const editCaseId = this.nav.editCaseId();
+      if (editCaseId === null) return;
+      untracked(() => {
+        this.nav.editCaseId.set(null);
+        this.loadCaseForEdit(editCaseId);
+      });
+    });
 
     // Filter changes only ever fire after the HBL step's first fetch (triggered
     // by a successful MBL save, see `onSaveMbl`) — `skip(1)` just guards against

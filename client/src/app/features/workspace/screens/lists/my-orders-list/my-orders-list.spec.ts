@@ -1,6 +1,8 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { Router } from '@angular/router';
+import { RouterTestingHarness } from '@angular/router/testing';
 
 import {
   Destination,
@@ -12,6 +14,7 @@ import {
 import type { OrderDto, PagedOrdersDto } from '../../../../../api/models';
 import { SEARCH_DEBOUNCE_MS } from '../../../../customers/customer-autocomplete/customer-autocomplete';
 import { NavigationService } from '../../../navigation.service';
+import { provideWorkspaceTestRouting, settleNavigation } from '../../../navigation.testing';
 import { ListStateService } from '../list-state.service';
 import { MyOrdersListScreen } from './my-orders-list';
 
@@ -50,9 +53,10 @@ describe('MyOrdersListScreen ("ההזמנות שלי" list page)', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [MyOrdersListScreen],
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideWorkspaceTestRouting()],
     }).compileComponents();
     httpMock = TestBed.inject(HttpTestingController);
+    await RouterTestingHarness.create('/workspace/list-my-orders');
     fixture = TestBed.createComponent(MyOrdersListScreen);
     fixture.detectChanges();
   });
@@ -196,13 +200,15 @@ describe('MyOrdersListScreen ("ההזמנות שלי" list page)', () => {
     expect(bodyRows()[0].textContent?.trim()).toBe('אין נתונים להצגה');
   });
 
-  it('double-clicking a row opens that order for editing', () => {
+  it('double-clicking a row opens that order for editing via /workspace/order?orderId=N', async () => {
     expectPagedRequest().flush(PAGE);
     fixture.detectChanges();
 
     bodyRows()[0].dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+    await settleNavigation();
 
     const nav = TestBed.inject(NavigationService);
+    expect(TestBed.inject(Router).url).toBe('/workspace/order?orderId=1001');
     expect(nav.editOrderId()).toBe(1001);
     expect(nav.activeScreen()).toBe('order');
   });

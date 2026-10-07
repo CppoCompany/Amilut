@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { RouterTestingHarness } from '@angular/router/testing';
 
 import {
   Destination,
@@ -12,6 +13,7 @@ import {
 } from '../../../api/enums';
 import type { MblDto, OrderDto } from '../../../api/models';
 import { NavigationService } from '../navigation.service';
+import { provideWorkspaceTestRouting, settleNavigation } from '../navigation.testing';
 import { SelectionStateService } from '../selection-state.service';
 import { Breadcrumb } from './breadcrumb';
 
@@ -83,10 +85,14 @@ describe('Breadcrumb', () => {
   let nav: NavigationService;
   let selection: SelectionStateService;
 
-  beforeEach(() => {
-    TestBed.configureTestingModule({ imports: [Breadcrumb] });
+  beforeEach(async () => {
+    TestBed.configureTestingModule({
+      imports: [Breadcrumb],
+      providers: [provideWorkspaceTestRouting()],
+    });
     nav = TestBed.inject(NavigationService);
     selection = TestBed.inject(SelectionStateService);
+    await RouterTestingHarness.create('/workspace/dashboard');
     fixture = TestBed.createComponent(Breadcrumb);
     fixture.detectChanges();
   });
@@ -106,11 +112,12 @@ describe('Breadcrumb', () => {
     expect(selectionBadge()).toBeNull();
   });
 
-  it('updates the trail reactively when navigation changes', () => {
+  it('updates the trail reactively when navigation changes', async () => {
     const myFiles = nav.tree().flatMap((e) => ('children' in e ? e.children : [e])).find(
       (c) => c.page === 'myFiles',
     )!;
     nav.selectChild(myFiles);
+    await settleNavigation();
     fixture.detectChanges();
 
     expect(trailText()).toContain('תיקי שילוח');

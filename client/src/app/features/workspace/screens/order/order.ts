@@ -7,6 +7,7 @@ import {
   inject,
   linkedSignal,
   signal,
+  untracked,
 } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
@@ -186,16 +187,23 @@ export class OrderScreen {
   );
 
   constructor() {
-    // A double-click on a row in "ההזמנות שלי" queues an order id here (see
-    // NavigationService.openOrderForEdit) before switching to this screen.
-    // Consume it once immediately so a later, ordinary navigation back to this
-    // screen (e.g. via the sidebar) starts a fresh blank order as usual.
-    const editOrderId = this.nav.editOrderId();
-    if (editOrderId !== null) {
-      this.nav.editOrderId.set(null);
-      this.isEditingExisting.set(true);
-      this.loadOrderForEditing(editOrderId);
-    }
+    // A double-click on a row in "ההזמנות שלי" navigates to
+    // `/workspace/order?orderId=N`, which NavigationService.applyUrl turns
+    // into `editOrderId` before this screen shows. Consume it once as soon as
+    // it appears, so a later, ordinary navigation back to this screen (e.g.
+    // via the sidebar) starts a fresh blank order as usual. An effect rather
+    // than a one-shot constructor read: Back/Forward can land on an edit URL
+    // while this instance is already mounted (the page doesn't change, so it
+    // isn't recreated), and that must load the order too.
+    effect(() => {
+      const editOrderId = this.nav.editOrderId();
+      if (editOrderId === null) return;
+      untracked(() => {
+        this.nav.editOrderId.set(null);
+        this.isEditingExisting.set(true);
+        this.loadOrderForEditing(editOrderId);
+      });
+    });
 
     // "יצירת הזמנה חדשה" in the sidebar bumps this even when this screen is
     // already mounted (mid-edit of a different order — the page doesn't

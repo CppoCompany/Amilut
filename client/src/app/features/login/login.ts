@@ -11,7 +11,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 
 import { AuthService } from '../../core/auth/auth.service';
 
-const DEFAULT_RETURN_URL = '/workspace';
+const DEFAULT_RETURN_URL = '/workspace/dashboard';
 
 /**
  * Login page: user name (email) + password. The password is optional for now

@@ -1,10 +1,12 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { RouterTestingHarness } from '@angular/router/testing';
 
 import { MblShippingType, OrderStatus } from '../../../../api/enums';
 import type { DashboardCaseRowDto, DashboardResponseDto } from '../../../../api/models';
 import { NavigationService } from '../../navigation.service';
+import { provideWorkspaceTestRouting, settleNavigation } from '../../navigation.testing';
 import { DASHBOARD_LIST_ROW_IDS, DashboardScreen } from './dashboard';
 
 const DASHBOARD_URL = '/api/dashboard';
@@ -87,11 +89,12 @@ describe('DashboardScreen', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [DashboardScreen],
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideWorkspaceTestRouting()],
     }).compileComponents();
 
     httpMock = TestBed.inject(HttpTestingController);
     nav = TestBed.inject(NavigationService);
+    await RouterTestingHarness.create('/workspace/dashboard');
     fixture = TestBed.createComponent(DashboardScreen);
     fixture.detectChanges();
   });
@@ -196,38 +199,41 @@ describe('DashboardScreen', () => {
     expect(host().querySelector('[role="alert"]')).toBeNull();
   });
 
-  it('"הזמנה חדשה" opens the existing create-order screen as a fresh draft', () => {
+  it('"הזמנה חדשה" opens the existing create-order screen as a fresh draft', async () => {
     httpMock.expectOne(DASHBOARD_URL).flush(EMPTY);
     const before = nav.newOrderRequested();
 
     buttonByText('הזמנה חדשה').click();
+    await settleNavigation();
 
     expect(nav.activeScreen()).toBe('order');
     expect(nav.isChildActive('ws-order')).toBe(true);
     expect(nav.newOrderRequested()).toBe(before + 1);
   });
 
-  it('"תהליך יבוא חדש" opens the existing shipping-case wizard as a fresh draft', () => {
+  it('"תהליך יבוא חדש" opens the existing shipping-case wizard as a fresh draft', async () => {
     httpMock.expectOne(DASHBOARD_URL).flush(EMPTY);
     const before = nav.newCaseRequested();
 
     buttonByText('תהליך יבוא חדש').click();
+    await settleNavigation();
 
     expect(nav.activeScreen()).toBe('shipmentCaseWizard');
     expect(nav.isChildActive('ws-shipment')).toBe(true);
     expect(nav.newCaseRequested()).toBe(before + 1);
   });
 
-  it('"צפה בהכל" opens the matching "רשימות" list page', () => {
+  it('"צפה בהכל" opens the matching "רשימות" list page', async () => {
     httpMock.expectOne(DASHBOARD_URL).flush(EMPTY);
 
     card('myOrders').querySelector<HTMLButtonElement>('.dashboard-card__link')!.click();
+    await settleNavigation();
 
     expect(nav.activeScreen()).toBe('listMyOrders');
     expect(nav.isChildActive(DASHBOARD_LIST_ROW_IDS.myOrders)).toBe(true);
   });
 
-  it('every card links to its own list page', () => {
+  it('every card links to its own list page', async () => {
     httpMock.expectOne(DASHBOARD_URL).flush(EMPTY);
 
     const expected: Record<keyof typeof DASHBOARD_LIST_ROW_IDS, string> = {
@@ -239,6 +245,7 @@ describe('DashboardScreen', () => {
     };
     for (const [cardKey, screen] of Object.entries(expected)) {
       card(cardKey).querySelector<HTMLButtonElement>('.dashboard-card__link')!.click();
+      await settleNavigation();
       expect(nav.activeScreen()).toBe(screen);
     }
   });
