@@ -1,6 +1,7 @@
 import { Component, inject } from '@angular/core';
 
 import { AuthService } from '../../core/auth/auth.service';
+import { Breadcrumb } from './breadcrumb/breadcrumb';
 import { isTreeChildGroup } from './navigation.model';
 import { NavigationService } from './navigation.service';
 import { ClassificationScreen } from './screens/classification/classification';
@@ -20,6 +21,7 @@ import { ShipmentCaseWizardScreen } from './screens/shipment-case-wizard/shipmen
 @Component({
   selector: 'app-workspace',
   imports: [
+    Breadcrumb,
     OrderScreen,
     FilingScreen,
     ShipmentCaseWizardScreen,
