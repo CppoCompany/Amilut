@@ -22,6 +22,7 @@ import {
 } from '../../../customers/customer-autocomplete/customer-autocomplete';
 import { SupplierAutocomplete } from '../../../suppliers/supplier-autocomplete/supplier-autocomplete';
 import { NavigationService } from '../../navigation.service';
+import { SelectionStateService } from '../../selection-state.service';
 import {
   EMPTY_HBL_FORM_VALUE,
   hblToFormValue,
@@ -61,6 +62,7 @@ const MAX_ROWS = 200;
 })
 export class ShipmentCaseWizardScreen {
   private readonly nav = inject(NavigationService);
+  private readonly selection = inject(SelectionStateService);
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly mblApi = inject(MblApi);
   private readonly hblApi = inject(HblApi);
@@ -228,6 +230,18 @@ export class ShipmentCaseWizardScreen {
         return;
       }
       this.reset();
+    });
+
+    // Keeps the app-wide "currently selected" state (see `SelectionStateService`,
+    // drives the breadcrumb) in sync with whichever MBL/HBLs this screen is
+    // working on — freshly created, saved again, loaded for edit, or any time
+    // an HBL is added/edited. Does nothing while `savedMbl` is `null` (still
+    // on step 1/2, or mid-wizard with no MBL saved yet).
+    effect(() => {
+      const mbl = this.savedMbl();
+      if (mbl) {
+        this.selection.selectShippingCase(mbl, this.hbls());
+      }
     });
   }
 

@@ -33,6 +33,7 @@ import { AuthService } from '../../../../core/auth/auth.service';
 import { CustomerAutocomplete } from '../../../customers/customer-autocomplete/customer-autocomplete';
 import { SupplierAutocomplete } from '../../../suppliers/supplier-autocomplete/supplier-autocomplete';
 import { NavigationService } from '../../navigation.service';
+import { SelectionStateService } from '../../selection-state.service';
 import { Autocomplete } from './autocomplete';
 import {
   EMPTY_ORDER_FORM_VALUE,
@@ -85,6 +86,7 @@ export class OrderScreen {
   private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly nav = inject(NavigationService);
+  private readonly selection = inject(SelectionStateService);
 
   // ── Customer / Supplier ─────────────────────────────────────────────────────
   protected readonly selectedCustomer = signal<CustomerDto | null>(null);
@@ -208,6 +210,17 @@ export class OrderScreen {
         return;
       }
       this.resetForm();
+    });
+
+    // Keeps the app-wide "currently selected" state (see `SelectionStateService`,
+    // drives the breadcrumb) in sync with whichever order this screen is
+    // working on — freshly created, saved again, or loaded for edit. Does
+    // nothing while `savedOrder` is `null` (a blank, unsaved draft).
+    effect(() => {
+      const order = this.savedOrder();
+      if (order) {
+        this.selection.selectOrder(order);
+      }
     });
   }
 
