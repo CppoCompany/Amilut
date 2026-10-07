@@ -100,6 +100,22 @@ export interface paths {
         patch: operations["CustomersController_update"];
         trace?: never;
     };
+    "/api/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["DashboardController_getDashboard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/import-files/{accountNumber}": {
         parameters: {
             query?: never;
@@ -381,6 +397,121 @@ export interface components {
             /** @example false */
             isActive?: boolean;
         };
+        /** @enum {string} */
+        OrderStatus: OrderStatus;
+        DashboardOrderRowDto: {
+            /** @example 1000 */
+            id: number;
+            /** @example ACME Ltd. */
+            customerName: string | null;
+            /** @example Dana Levi */
+            handlerName: string | null;
+            status: components["schemas"]["OrderStatus"];
+            /**
+             * Format: date-time
+             * @example 2026-09-01T08:30:00.000Z
+             */
+            createdAt: string;
+        };
+        /** @enum {string} */
+        MblStatus: MblStatus;
+        DashboardCaseInReleaseRowDto: {
+            /** @example 1 */
+            id: number;
+            /** @example MBL-987654321 */
+            mblNumber: string | null;
+            /**
+             * @example [
+             *       "ACME Ltd."
+             *     ]
+             */
+            customerNames: string[];
+            /** @example MAERSK LINE */
+            carrierName: string | null;
+            /** @example in_release */
+            status: components["schemas"]["MblStatus"];
+            /**
+             * Format: date-time
+             * @example 2026-09-01T08:30:00.000Z
+             */
+            createdAt: string;
+        };
+        DashboardClassificationRowDto: {
+            /** @example 42 */
+            fileId: number;
+            /** @example 1000 */
+            mblId: number;
+            /** @example 0 */
+            lineIndex: number;
+            /** @example Y8022-140BK */
+            item: string;
+            /** @example Light Fixtures */
+            description: string;
+            /** @example 9405.10.00 */
+            classificationCode: string;
+            /** @example סין */
+            countryName: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-01T08:30:00.000Z
+             */
+            createdAt: string;
+        };
+        /** @enum {string} */
+        MblShippingType: MblShippingType;
+        DashboardCaseRowDto: {
+            /** @example 1 */
+            id: number;
+            /** @example MBL-987654321 */
+            mblNumber: string | null;
+            shippingType: components["schemas"]["MblShippingType"];
+            /**
+             * @example [
+             *       "ACME Ltd."
+             *     ]
+             */
+            customerNames: string[];
+            /** @example MAERSK LINE */
+            carrierName: string | null;
+            /** @example open */
+            status: components["schemas"]["MblStatus"];
+            /**
+             * Format: date-time
+             * @example 2026-09-01T08:30:00.000Z
+             */
+            createdAt: string;
+        };
+        DashboardImportProcessRowDto: {
+            /** @example 1 */
+            id: number;
+            /** @example MBL-987654321 */
+            mblNumber: string | null;
+            shippingType: components["schemas"]["MblShippingType"];
+            /**
+             * @example [
+             *       "ACME Ltd."
+             *     ]
+             */
+            customerNames: string[];
+            /** @example MAERSK LINE */
+            carrierName: string | null;
+            /** @example 3 */
+            hblCount: number;
+            /** @example open */
+            status: components["schemas"]["MblStatus"];
+            /**
+             * Format: date-time
+             * @example 2026-09-01T08:30:00.000Z
+             */
+            createdAt: string;
+        };
+        DashboardResponseDto: {
+            myOrders: components["schemas"]["DashboardOrderRowDto"][];
+            casesInRelease: components["schemas"]["DashboardCaseInReleaseRowDto"][];
+            myClassifications: components["schemas"]["DashboardClassificationRowDto"][];
+            myCases: components["schemas"]["DashboardCaseRowDto"][];
+            importProcesses: components["schemas"]["DashboardImportProcessRowDto"][];
+        };
         /**
          * @description Kind of paperwork this file represents.
          * @enum {string}
@@ -522,8 +653,6 @@ export interface components {
         SaveLineItemClassificationsDto: {
             items: components["schemas"]["LineItemClassificationUpdateDto"][];
         };
-        /** @enum {string} */
-        MblShippingType: MblShippingType;
         /** @enum {string} */
         SeaMethod: SeaMethod;
         MblSummaryDto: {
@@ -885,8 +1014,6 @@ export interface components {
              */
             orderIds: number[];
         };
-        /** @enum {string} */
-        OrderStatus: OrderStatus;
         /** @enum {string} */
         ShipmentType: ShipmentType;
         /** @enum {string} */
@@ -1260,6 +1387,25 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    DashboardController_getDashboard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardResponseDto"];
+                };
             };
         };
     };
@@ -1990,6 +2136,23 @@ export interface operations {
         };
     };
 }
+export enum OrderStatus {
+    PREPARING = "preparing",
+    READY_FOR_PICKUP = "ready_for_pickup",
+    PICKED_UP = "picked_up",
+    WAITING_AT_PORT = "waiting_at_port",
+    DEPARTED = "departed"
+}
+export enum MblStatus {
+    open = "open",
+    in_release = "in_release",
+    released = "released",
+    closed = "closed"
+}
+export enum MblShippingType {
+    SEA = "sea",
+    AIR = "air"
+}
 export enum ImportDocumentType {
     SUPPLIER_INVOICE = "SUPPLIER_INVOICE",
     BILL_OF_LADING = "BILL_OF_LADING",
@@ -2048,10 +2211,6 @@ export enum ClassificationLicense {
     PEST_CONTROL_PREPARATION = "pest_control_preparation",
     HEALTH_PHARMACY_DIVISION = "health_pharmacy_division"
 }
-export enum MblShippingType {
-    SEA = "sea",
-    AIR = "air"
-}
 export enum SeaMethod {
     FCL_FCL = "fcl_fcl",
     FCL_LCL = "fcl_lcl",
@@ -2061,13 +2220,6 @@ export enum SeaMethod {
 export enum PaymentTerms {
     PREPAID = "prepaid",
     COLLECT = "collect"
-}
-export enum OrderStatus {
-    PREPARING = "preparing",
-    READY_FOR_PICKUP = "ready_for_pickup",
-    PICKED_UP = "picked_up",
-    WAITING_AT_PORT = "waiting_at_port",
-    DEPARTED = "departed"
 }
 export enum ShipmentType {
     SEA = "sea",

@@ -257,6 +257,32 @@
         ]
       }
     },
+    "/api/dashboard": {
+      "get": {
+        "operationId": "DashboardController_getDashboard",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "dashboard"
+        ]
+      }
+    },
     "/api/import-files/{accountNumber}": {
       "post": {
         "operationId": "ImportFilesController_uploadMultipleImportFiles",
@@ -1633,6 +1659,340 @@
           }
         }
       },
+      "OrderStatus": {
+        "type": "string",
+        "enum": [
+          "preparing",
+          "ready_for_pickup",
+          "picked_up",
+          "waiting_at_port",
+          "departed"
+        ],
+        "x-enum-varnames": [
+          "PREPARING",
+          "READY_FOR_PICKUP",
+          "PICKED_UP",
+          "WAITING_AT_PORT",
+          "DEPARTED"
+        ]
+      },
+      "DashboardOrderRowDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1000
+          },
+          "customerName": {
+            "type": "string",
+            "nullable": true,
+            "example": "ACME Ltd."
+          },
+          "handlerName": {
+            "type": "string",
+            "nullable": true,
+            "example": "Dana Levi"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OrderStatus"
+              }
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-01T08:30:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "customerName",
+          "handlerName",
+          "status",
+          "createdAt"
+        ]
+      },
+      "MblStatus": {
+        "type": "string",
+        "enum": [
+          "open",
+          "in_release",
+          "released",
+          "closed"
+        ]
+      },
+      "DashboardCaseInReleaseRowDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "mblNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "MBL-987654321"
+          },
+          "customerNames": {
+            "example": [
+              "ACME Ltd."
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "carrierName": {
+            "type": "string",
+            "nullable": true,
+            "example": "MAERSK LINE"
+          },
+          "status": {
+            "example": "in_release",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MblStatus"
+              }
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-01T08:30:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "mblNumber",
+          "customerNames",
+          "carrierName",
+          "status",
+          "createdAt"
+        ]
+      },
+      "DashboardClassificationRowDto": {
+        "type": "object",
+        "properties": {
+          "fileId": {
+            "type": "integer",
+            "example": 42
+          },
+          "mblId": {
+            "type": "integer",
+            "example": 1000
+          },
+          "lineIndex": {
+            "type": "integer",
+            "example": 0
+          },
+          "item": {
+            "type": "string",
+            "example": "Y8022-140BK"
+          },
+          "description": {
+            "type": "string",
+            "example": "Light Fixtures"
+          },
+          "classificationCode": {
+            "type": "string",
+            "example": "9405.10.00"
+          },
+          "countryName": {
+            "type": "string",
+            "nullable": true,
+            "example": "סין"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-01T08:30:00.000Z"
+          }
+        },
+        "required": [
+          "fileId",
+          "mblId",
+          "lineIndex",
+          "item",
+          "description",
+          "classificationCode",
+          "countryName",
+          "createdAt"
+        ]
+      },
+      "MblShippingType": {
+        "type": "string",
+        "enum": [
+          "sea",
+          "air"
+        ],
+        "x-enum-varnames": [
+          "SEA",
+          "AIR"
+        ]
+      },
+      "DashboardCaseRowDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "mblNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "MBL-987654321"
+          },
+          "shippingType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MblShippingType"
+              }
+            ]
+          },
+          "customerNames": {
+            "example": [
+              "ACME Ltd."
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "carrierName": {
+            "type": "string",
+            "nullable": true,
+            "example": "MAERSK LINE"
+          },
+          "status": {
+            "example": "open",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MblStatus"
+              }
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-01T08:30:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "mblNumber",
+          "shippingType",
+          "customerNames",
+          "carrierName",
+          "status",
+          "createdAt"
+        ]
+      },
+      "DashboardImportProcessRowDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "mblNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "MBL-987654321"
+          },
+          "shippingType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MblShippingType"
+              }
+            ]
+          },
+          "customerNames": {
+            "example": [
+              "ACME Ltd."
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "carrierName": {
+            "type": "string",
+            "nullable": true,
+            "example": "MAERSK LINE"
+          },
+          "hblCount": {
+            "type": "integer",
+            "example": 3
+          },
+          "status": {
+            "example": "open",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MblStatus"
+              }
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-01T08:30:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "mblNumber",
+          "shippingType",
+          "customerNames",
+          "carrierName",
+          "hblCount",
+          "status",
+          "createdAt"
+        ]
+      },
+      "DashboardResponseDto": {
+        "type": "object",
+        "properties": {
+          "myOrders": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DashboardOrderRowDto"
+            }
+          },
+          "casesInRelease": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DashboardCaseInReleaseRowDto"
+            }
+          },
+          "myClassifications": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DashboardClassificationRowDto"
+            }
+          },
+          "myCases": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DashboardCaseRowDto"
+            }
+          },
+          "importProcesses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DashboardImportProcessRowDto"
+            }
+          }
+        },
+        "required": [
+          "myOrders",
+          "casesInRelease",
+          "myClassifications",
+          "myCases",
+          "importProcesses"
+        ]
+      },
       "ImportDocumentType": {
         "type": "string",
         "enum": [
@@ -2008,17 +2368,6 @@
         },
         "required": [
           "items"
-        ]
-      },
-      "MblShippingType": {
-        "type": "string",
-        "enum": [
-          "sea",
-          "air"
-        ],
-        "x-enum-varnames": [
-          "SEA",
-          "AIR"
         ]
       },
       "SeaMethod": {
@@ -2927,23 +3276,6 @@
         },
         "required": [
           "orderIds"
-        ]
-      },
-      "OrderStatus": {
-        "type": "string",
-        "enum": [
-          "preparing",
-          "ready_for_pickup",
-          "picked_up",
-          "waiting_at_port",
-          "departed"
-        ],
-        "x-enum-varnames": [
-          "PREPARING",
-          "READY_FOR_PICKUP",
-          "PICKED_UP",
-          "WAITING_AT_PORT",
-          "DEPARTED"
         ]
       },
       "ShipmentType": {

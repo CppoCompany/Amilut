@@ -95,10 +95,10 @@ describe('Breadcrumb', () => {
     return fixture.nativeElement.querySelector('.breadcrumb-selection');
   }
 
-  it('shows the default landing trail ("ראשי" + the orders group + the active page) with no selection badge', () => {
+  it('shows the default landing trail ("ראשי" + the top-level dashboard page, no group) with no selection badge', () => {
     expect(trailText()).toContain('ראשי');
-    expect(trailText()).toContain('הזמנות');
-    expect(trailText()).toContain('יצירת הזמנה חדשה');
+    expect(trailText()).toContain('לוח בקרה');
+    expect(trailText()).not.toContain('הזמנות');
     expect(selectionBadge()).toBeNull();
   });
 

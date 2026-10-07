@@ -1,0 +1,285 @@
+<div class="page-title">לוח בקרה</div>
+
+<!-- Quick actions -->
+<section class="form-section dashboard-actions">
+  <h2 class="section-title">פעולות</h2>
+  <div class="dashboard-actions__buttons">
+    <button type="button" class="btn btn-primary" (click)="newOrder()">
+      <i class="fa-solid fa-file-invoice" aria-hidden="true"></i>
+      הזמנה חדשה
+    </button>
+    <button type="button" class="btn btn-primary" (click)="newImportProcess()">
+      <i class="fa-solid fa-truck-fast" aria-hidden="true"></i>
+      תהליך יבוא חדש
+    </button>
+  </div>
+</section>
+
+@if (errorMessage(); as message) {
+  <p class="form-message form-message--error" role="alert">
+    {{ message }}
+    <button type="button" class="btn btn-secondary dashboard-retry" (click)="reload()">
+      נסה שוב
+    </button>
+  </p>
+}
+
+<div class="dashboard-grid">
+  <!-- ההזמנות שלי -->
+  <section class="form-section dashboard-card" data-card="myOrders">
+    <div class="section-header">
+      <div class="title-row">
+        <i class="fa-solid fa-list" aria-hidden="true"></i>
+        <h2 class="dashboard-card__title">ההזמנות שלי</h2>
+      </div>
+      <button type="button" class="dashboard-card__link" (click)="openList(listRows.myOrders)">
+        צפה בהכל
+        <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+      </button>
+    </div>
+    <div class="data-table-wrapper">
+      @if (loading() && !data()) {
+        <p class="data-table__empty">טוען...</p>
+      } @else if (!data() || data()!.myOrders.length === 0) {
+        <p class="data-table__empty">אין נתונים להצגה</p>
+      } @else {
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>מספר הזמנה</th>
+              <th>לקוח</th>
+              <th>פקיד מטפל</th>
+              <th>סטטוס</th>
+              <th>תאריך פתיחה</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (order of data()!.myOrders; track order.id) {
+              <tr>
+                <td class="data-table__numeric">{{ order.id }}</td>
+                <td>{{ order.customerName ?? '—' }}</td>
+                <td>{{ order.handlerName ?? '—' }}</td>
+                <td>
+                  <span [class]="'status-pill status-pill--' + order.status">
+                    {{ orderStatusLabels[order.status] }}
+                  </span>
+                </td>
+                <td class="data-table__numeric">{{ formatDate(order.createdAt) }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </div>
+  </section>
+
+  <!-- תיקים בהתרה -->
+  <section class="form-section dashboard-card" data-card="casesInRelease">
+    <div class="section-header">
+      <div class="title-row">
+        <i class="fa-solid fa-file-circle-check" aria-hidden="true"></i>
+        <h2 class="dashboard-card__title">תיקים בהתרה</h2>
+      </div>
+      <button
+        type="button"
+        class="dashboard-card__link"
+        (click)="openList(listRows.casesInRelease)"
+      >
+        צפה בהכל
+        <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+      </button>
+    </div>
+    <div class="data-table-wrapper">
+      @if (loading() && !data()) {
+        <p class="data-table__empty">טוען...</p>
+      } @else if (!data() || data()!.casesInRelease.length === 0) {
+        <p class="data-table__empty">אין נתונים להצגה</p>
+      } @else {
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>מספר תיק</th>
+              <th>מספר MBL</th>
+              <th>לקוחות</th>
+              <th>מוביל</th>
+              <th>סטטוס</th>
+              <th>תאריך פתיחה</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (mblCase of data()!.casesInRelease; track mblCase.id) {
+              <tr>
+                <td class="data-table__numeric">{{ mblCase.id }}</td>
+                <td>{{ mblCase.mblNumber ?? '—' }}</td>
+                <td>{{ joinOrEmDash(mblCase.customerNames) }}</td>
+                <td>{{ mblCase.carrierName ?? '—' }}</td>
+                <td>
+                  <span [class]="'status-pill status-pill--' + mblCase.status">
+                    {{ mblStatusLabel(mblCase.status) }}
+                  </span>
+                </td>
+                <td class="data-table__numeric">{{ formatDate(mblCase.createdAt) }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </div>
+  </section>
+
+  <!-- הסיווגים שלי -->
+  <section class="form-section dashboard-card" data-card="myClassifications">
+    <div class="section-header">
+      <div class="title-row">
+        <i class="fa-solid fa-tags" aria-hidden="true"></i>
+        <h2 class="dashboard-card__title">הסיווגים שלי</h2>
+      </div>
+      <button
+        type="button"
+        class="dashboard-card__link"
+        (click)="openList(listRows.myClassifications)"
+      >
+        צפה בהכל
+        <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+      </button>
+    </div>
+    <div class="data-table-wrapper">
+      @if (loading() && !data()) {
+        <p class="data-table__empty">טוען...</p>
+      } @else if (!data() || data()!.myClassifications.length === 0) {
+        <p class="data-table__empty">אין נתונים להצגה</p>
+      } @else {
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>מספר תיק</th>
+              <th>מק"ט</th>
+              <th>תיאור</th>
+              <th>פרט מכס</th>
+              <th>מדינה</th>
+              <th>תאריך</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (line of data()!.myClassifications; track line.fileId + ':' + line.lineIndex) {
+              <tr>
+                <td class="data-table__numeric">{{ line.mblId }}</td>
+                <td>{{ line.item || '—' }}</td>
+                <td>{{ line.description || '—' }}</td>
+                <td class="data-table__numeric">{{ line.classificationCode || '—' }}</td>
+                <td>{{ line.countryName ?? '—' }}</td>
+                <td class="data-table__numeric">{{ formatDate(line.createdAt) }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </div>
+  </section>
+
+  <!-- התיקים שלי -->
+  <section class="form-section dashboard-card" data-card="myCases">
+    <div class="section-header">
+      <div class="title-row">
+        <i class="fa-solid fa-folder-open" aria-hidden="true"></i>
+        <h2 class="dashboard-card__title">התיקים שלי</h2>
+      </div>
+      <button type="button" class="dashboard-card__link" (click)="openList(listRows.myCases)">
+        צפה בהכל
+        <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+      </button>
+    </div>
+    <div class="data-table-wrapper">
+      @if (loading() && !data()) {
+        <p class="data-table__empty">טוען...</p>
+      } @else if (!data() || data()!.myCases.length === 0) {
+        <p class="data-table__empty">אין נתונים להצגה</p>
+      } @else {
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>מספר תיק</th>
+              <th>מספר MBL</th>
+              <th>סוג משלוח</th>
+              <th>לקוחות</th>
+              <th>סטטוס</th>
+              <th>תאריך פתיחה</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (mblCase of data()!.myCases; track mblCase.id) {
+              <tr>
+                <td class="data-table__numeric">{{ mblCase.id }}</td>
+                <td>{{ mblCase.mblNumber ?? '—' }}</td>
+                <td>{{ shippingTypeLabels[mblCase.shippingType] }}</td>
+                <td>{{ joinOrEmDash(mblCase.customerNames) }}</td>
+                <td>
+                  <span [class]="'status-pill status-pill--' + mblCase.status">
+                    {{ mblStatusLabel(mblCase.status) }}
+                  </span>
+                </td>
+                <td class="data-table__numeric">{{ formatDate(mblCase.createdAt) }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </div>
+  </section>
+
+  <!-- תהליכי יבוא -->
+  <section class="form-section dashboard-card" data-card="importProcesses">
+    <div class="section-header">
+      <div class="title-row">
+        <i class="fa-solid fa-truck-fast" aria-hidden="true"></i>
+        <h2 class="dashboard-card__title">תהליכי יבוא</h2>
+      </div>
+      <button
+        type="button"
+        class="dashboard-card__link"
+        (click)="openList(listRows.importProcesses)"
+      >
+        צפה בהכל
+        <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+      </button>
+    </div>
+    <div class="data-table-wrapper">
+      @if (loading() && !data()) {
+        <p class="data-table__empty">טוען...</p>
+      } @else if (!data() || data()!.importProcesses.length === 0) {
+        <p class="data-table__empty">אין נתונים להצגה</p>
+      } @else {
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>מספר תיק</th>
+              <th>מספר MBL</th>
+              <th>סוג משלוח</th>
+              <th>לקוחות</th>
+              <th>תיקי HBL</th>
+              <th>סטטוס</th>
+              <th>תאריך פתיחה</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (process of data()!.importProcesses; track process.id) {
+              <tr>
+                <td class="data-table__numeric">{{ process.id }}</td>
+                <td>{{ process.mblNumber ?? '—' }}</td>
+                <td>{{ shippingTypeLabels[process.shippingType] }}</td>
+                <td>{{ joinOrEmDash(process.customerNames) }}</td>
+                <td class="data-table__numeric">{{ process.hblCount }}</td>
+                <td>
+                  <span [class]="'status-pill status-pill--' + process.status">
+                    {{ mblStatusLabel(process.status) }}
+                  </span>
+                </td>
+                <td class="data-table__numeric">{{ formatDate(process.createdAt) }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </div>
+  </section>
+</div>

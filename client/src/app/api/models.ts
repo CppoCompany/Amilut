@@ -37,3 +37,10 @@ export type SaveLineItemClassificationsDto =
   components['schemas']['SaveLineItemClassificationsDto'];
 
 export type CountryDto = components['schemas']['CountryDto'];
+
+export type DashboardResponseDto = components['schemas']['DashboardResponseDto'];
+export type DashboardOrderRowDto = components['schemas']['DashboardOrderRowDto'];
+export type DashboardCaseInReleaseRowDto = components['schemas']['DashboardCaseInReleaseRowDto'];
+export type DashboardClassificationRowDto = components['schemas']['DashboardClassificationRowDto'];
+export type DashboardCaseRowDto = components['schemas']['DashboardCaseRowDto'];
+export type DashboardImportProcessRowDto = components['schemas']['DashboardImportProcessRowDto'];

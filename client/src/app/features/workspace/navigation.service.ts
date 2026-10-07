@@ -25,7 +25,7 @@ export class NavigationService {
   private readonly expandedNodes = signal<ReadonlySet<string>>(new Set());
 
   /** The page whose screen is currently shown. */
-  private readonly activePage = signal<PageKey>('order');
+  private readonly activePage = signal<PageKey>('dashboard');
 
   /** The child row currently highlighted (pages can repeat, rows can't). */
   private readonly activeChildId = signal<string>('');
@@ -93,6 +93,7 @@ export class NavigationService {
    */
   setupTreeNavigation(): void {
     const tree: TreeEntry[] = [
+      { id: 'ws-dashboard', page: 'dashboard', label: 'לוח בקרה', icon: 'fa-solid fa-gauge' },
       {
         id: 'ws-orders-group',
         label: 'הזמנות',
@@ -190,6 +191,7 @@ export class NavigationService {
     this.tree.set(tree);
 
     // page → screen. Repeated/unbuilt pages fall back to the placeholder screen.
+    this.screenMap.set('dashboard', 'dashboard');
     this.screenMap.set('order', 'order');
     this.screenMap.set('filing', 'filing');
     this.screenMap.set('shipmentCaseWizard', 'shipmentCaseWizard');
@@ -200,11 +202,10 @@ export class NavigationService {
     this.screenMap.set('search', 'placeholder');
     this.screenMap.set('placeholder', 'placeholder');
 
-    // Default landing: unchanged from before the Orders group existed — still
-    // "יצירת הזמנה חדשה" — with the group that now contains it expanded, so
-    // the highlighted row is visible rather than hidden inside a collapsed group.
-    this.expandedNodes.set(new Set(['ws-orders-group']));
-    const first = flattenLeaves(tree).find((c) => c.id === 'ws-order')!;
+    // Default landing: the dashboard ("לוח בקרה"), a top-level row — so no
+    // group needs to start expanded for the highlighted row to be visible.
+    this.expandedNodes.set(new Set());
+    const first = flattenLeaves(tree).find((c) => c.id === 'ws-dashboard')!;
     this.activePage.set(first.page);
     this.activeChildId.set(first.id);
   }

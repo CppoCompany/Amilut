@@ -5,6 +5,7 @@ import { Breadcrumb } from './breadcrumb/breadcrumb';
 import { isTreeChildGroup } from './navigation.model';
 import { NavigationService } from './navigation.service';
 import { ClassificationScreen } from './screens/classification/classification';
+import { DashboardScreen } from './screens/dashboard/dashboard';
 import { FilingScreen } from './screens/filing/filing';
 import { ImportDeclarationScreen } from './screens/import-declaration/import-declaration';
 import { MyFilesScreen } from './screens/my-files/my-files';
@@ -22,6 +23,7 @@ import { ShipmentCaseWizardScreen } from './screens/shipment-case-wizard/shipmen
   selector: 'app-workspace',
   imports: [
     Breadcrumb,
+    DashboardScreen,
     OrderScreen,
     FilingScreen,
     ShipmentCaseWizardScreen,
