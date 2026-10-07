@@ -65,8 +65,8 @@ export interface ImportAccountFileData {
   extractionError?: string;
 }
 
-export const SELECT_ACCOUNT_EXISTS_SQL =
-  'SELECT id FROM order_account WHERE id = $1';
+/** The case a file is filed under is an MBL ("מספר תיק") — see migration 017. */
+export const SELECT_ACCOUNT_EXISTS_SQL = 'SELECT id FROM mbl WHERE id = $1';
 
 export const INSERT_IMPORT_ACCOUNT_FILE_SQL = `INSERT INTO import_account_files (account_id, data)
    VALUES ($1, $2::jsonb)
@@ -151,7 +151,7 @@ export class ImportFilesService {
    *
    * @throws BadRequestException — bad account number, unknown documentType,
    *   no files, or an unsafe file name (nothing is written in that case).
-   * @throws NotFoundException — `accountNumber` is not an `order_account` id.
+   * @throws NotFoundException — `accountNumber` is not an `mbl` id.
    */
   async uploadMultipleImportFiles(
     accountNumber: number,
@@ -231,7 +231,7 @@ export class ImportFilesService {
    *
    * @returns `[]` when the case has no supplier invoice (or none had a table).
    * @throws BadRequestException — bad account number.
-   * @throws NotFoundException — `accountNumber` is not an `order_account` id.
+   * @throws NotFoundException — `accountNumber` is not an `mbl` id.
    */
   async getSupplierInvoiceLineItems(
     accountNumber: number,
@@ -330,7 +330,7 @@ export class ImportFilesService {
    * included.
    *
    * @throws BadRequestException — bad account number.
-   * @throws NotFoundException — `accountNumber` is not an `order_account` id.
+   * @throws NotFoundException — `accountNumber` is not an `mbl` id.
    */
   async listImportFiles(
     accountNumber: number,

@@ -1,0 +1,20 @@
+<div class="form-group case-picker">
+  <label for="casePicker" class="required">תיק</label>
+  <select id="casePicker" class="form-control" (change)="onCaseChange($event)">
+    <option value="" [selected]="caseId() === null">
+      {{ loading() ? 'טוען תיקים…' : 'בחר תיק' }}
+    </option>
+    @for (mblCase of cases(); track mblCase.id) {
+      <option [value]="mblCase.id" [selected]="caseId() === mblCase.id">
+        {{ caseLabel(mblCase) }}
+      </option>
+    }
+  </select>
+  @if (errorMessage(); as message) {
+    <p class="form-message form-message--error" role="alert">{{ message }}</p>
+  } @else if (!loading() && cases().length === 0) {
+    <p class="hint-text">אין עדיין תיקי שילוח — צור תיק במסך יצירת תיק שילוח</p>
+  } @else if (caseId() === null) {
+    <p class="hint-text">יש לבחור תיק כדי להציג את הנתונים שלו</p>
+  }
+</div>

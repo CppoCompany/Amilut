@@ -1,8 +1,8 @@
 import { DecimalPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
-import { finalize } from 'rxjs';
+import { catchError, EMPTY, finalize, map, of, switchMap } from 'rxjs';
 
 import { CountriesApi } from '../../../../api/countries-api';
 import {
@@ -23,7 +23,8 @@ import type {
   LineItemClassificationUpdateDto,
 } from '../../../../api/models';
 import { MultiSelect, MultiSelectOption } from '../../../../shared/multi-select/multi-select';
-import { CURRENT_CASE_NUMBER } from '../../current-case';
+import { CasePicker } from '../../case-picker/case-picker';
+import { CurrentCaseService } from '../../current-case.service';
 
 interface Product {
   /** Where the line is stored (`import_account_files` row + position); `null` for rows added by hand. */
@@ -46,7 +47,7 @@ interface Product {
 /** "סיווג" — goods classification view with an editable products table saved back to the case's invoice lines. */
 @Component({
   selector: 'app-classification-screen',
-  imports: [ReactiveFormsModule, DecimalPipe, MultiSelect],
+  imports: [ReactiveFormsModule, DecimalPipe, MultiSelect, CasePicker],
   templateUrl: './classification.html',
   styleUrl: './classification.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -56,6 +57,9 @@ export class ClassificationScreen {
   private readonly importFilesApi = inject(ImportFilesApi);
   private readonly countriesApi = inject(CountriesApi);
   private readonly destroyRef = inject(DestroyRef);
+
+  /** The case (`mbl` id) picked in the case picker; `null` until one is picked, and nothing is loaded or saved while it is. */
+  protected readonly caseId = inject(CurrentCaseService).caseId;
 
   protected readonly approvalOptions: readonly MultiSelectOption[] = CLASSIFICATION_APPROVALS.map(
     (value) => ({ value, label: CLASSIFICATION_APPROVAL_LABELS[value] }),
@@ -85,7 +89,7 @@ export class ClassificationScreen {
   protected readonly saveError = signal<string | null>(null);
 
   constructor() {
-    this.loadLineItems();
+    this.loadLineItemsOnCaseChange();
     this.loadCountries();
   }
 
@@ -125,7 +129,8 @@ export class ClassificationScreen {
    * kept on screen but not sent.
    */
   protected onSubmit(): void {
-    if (this.saving()) return;
+    const caseId = this.caseId();
+    if (caseId === null || this.saving()) return;
     const rows = this.products();
     const items = rows.flatMap((row): LineItemClassificationUpdateDto[] =>
       row.fileId === null || row.lineIndex === null
@@ -148,19 +153,24 @@ export class ClassificationScreen {
     this.saveMessage.set(null);
     this.saveError.set(null);
     this.importFilesApi
-      .saveLineItemClassifications(CURRENT_CASE_NUMBER, items)
+      .saveLineItemClassifications(caseId, items)
       .pipe(
         takeUntilDestroyed(this.destroyRef),
         finalize(() => this.saving.set(false)),
       )
       .subscribe({
         next: (saved) => {
+          // Saved, but another case was picked meanwhile — its table is not these rows'.
+          if (this.caseId() !== caseId) return;
           this.products.set([...saved.map(toProduct), ...manualRows]);
           this.saveMessage.set(
             items.length === 1 ? 'הסיווג נשמר (שורה אחת)' : `הסיווג נשמר (${items.length} שורות)`,
           );
         },
-        error: () => this.saveError.set('שמירת הסיווג נכשלה'),
+        error: () => {
+          if (this.caseId() !== caseId) return;
+          this.saveError.set('שמירת הסיווג נכשלה');
+        },
       });
   }
 
@@ -187,29 +197,36 @@ export class ClassificationScreen {
 
   /**
    * Fills the products table from the supplier invoices filed under the
-   * current case, and the "תיאור טובין" field from their product names.
+   * picked case, and the "תיאור טובין" field from their product names — again
+   * whenever another case is picked. With no case picked the table is simply
+   * empty — nothing is requested, so nothing can fail.
    */
-  private loadLineItems(): void {
-    this.loading.set(true);
-    this.errorMessage.set(null);
-    this.importFilesApi
-      .getSupplierInvoiceLineItems(CURRENT_CASE_NUMBER)
+  private loadLineItemsOnCaseChange(): void {
+    toObservable(this.caseId)
       .pipe(
-        takeUntilDestroyed(this.destroyRef),
-        finalize(() => this.loading.set(false)),
-      )
-      .subscribe({
-        next: (items) => {
-          const products = items.map(toProduct);
-          this.products.set(products);
-          if (products.length > 0) {
-            this.form.controls.goodsDescription.setValue(goodsDescriptionOf(products));
-          }
-        },
-        error: () => {
+        switchMap((caseId) => {
           this.products.set([]);
-          this.errorMessage.set('טעינת פריטי חשבון הספק נכשלה');
-        },
+          this.form.controls.goodsDescription.setValue('');
+          this.errorMessage.set(null);
+          this.saveMessage.set(null);
+          this.saveError.set(null);
+          if (caseId === null) return EMPTY;
+
+          this.loading.set(true);
+          return this.importFilesApi.getSupplierInvoiceLineItems(caseId).pipe(
+            map((items) => items.map(toProduct)),
+            catchError(() => {
+              this.errorMessage.set('טעינת פריטי חשבון הספק נכשלה');
+              return of<Product[]>([]);
+            }),
+            finalize(() => this.loading.set(false)),
+          );
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((products) => {
+        this.products.set(products);
+        this.form.controls.goodsDescription.setValue(goodsDescriptionOf(products));
       });
   }
 }

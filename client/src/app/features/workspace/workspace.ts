@@ -1,7 +1,7 @@
 import { Component, inject } from '@angular/core';
 
 import { AuthService } from '../../core/auth/auth.service';
-import { ContextBar } from './context-bar/context-bar';
+import { isTreeChildGroup } from './navigation.model';
 import { NavigationService } from './navigation.service';
 import { ClassificationScreen } from './screens/classification/classification';
 import { FilingScreen } from './screens/filing/filing';
@@ -10,22 +10,19 @@ import { MyFilesScreen } from './screens/my-files/my-files';
 import { MyOrdersScreen } from './screens/my-orders/my-orders';
 import { OrderScreen } from './screens/order/order';
 import { PlaceholderScreen } from './screens/placeholder/placeholder';
-import { ShipmentScreen } from './screens/shipment/shipment';
+import { ShipmentCaseWizardScreen } from './screens/shipment-case-wizard/shipment-case-wizard';
 
 /**
  * Workspace shell: top header, sidebar tree, and the content area whose screen
  * is chosen by {@link NavigationService}. The sidebar is driven by the service's
- * tree model, and `nav.activeScreen()` decides which panel is rendered. The
- * context bar (`ContextBar`) reads its own state from `ActiveContextService`
- * independently of all of this.
+ * tree model, and `nav.activeScreen()` decides which panel is rendered.
  */
 @Component({
   selector: 'app-workspace',
   imports: [
-    ContextBar,
     OrderScreen,
     FilingScreen,
-    ShipmentScreen,
+    ShipmentCaseWizardScreen,
     ClassificationScreen,
     ImportDeclarationScreen,
     MyOrdersScreen,
@@ -38,4 +35,6 @@ import { ShipmentScreen } from './screens/shipment/shipment';
 export class Workspace {
   protected readonly nav = inject(NavigationService);
   protected readonly auth = inject(AuthService);
+  /** Lets the template tell a plain leaf row from an expandable sub-group. */
+  protected readonly isGroup = isTreeChildGroup;
 }

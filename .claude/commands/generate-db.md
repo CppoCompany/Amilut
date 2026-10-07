@@ -26,6 +26,9 @@ invoke the runner directly.
    - `012_orders_case_id.sql` — flips case↔order to `orders.case_id` (1 case → many orders), replacing `order_account.order_id`
    - `013_create_import_account_files.sql` — `import_account_files` table (documents uploaded to a case, JSONB descriptor), many → 1 `order_account`
    - `014_create_countries.sql` — `countries` lookup table (Hebrew `name` + ISO alpha-2 `key`), seeded with 242 countries
+   - `015_create_mbl_hbl.sql` — new MBL/HBL shipping-case workflow (`mbl`, `mbl_container`, `hbl` tables + `orders.hbl_id`), parallel to the existing `order_account`/`orders.case_id` flow
+   - `016_remove_legacy_shipment_cases.sql` — deletes all rows from `order_account`; the old shipping-case workflow (`ShipmentsModule`/`ShipmentScreen`) has been removed in favor of MBL/HBL
+   - `017_import_account_files_to_mbl.sql` — re-points `import_account_files.account_id` from `order_account` to `mbl(id)`; paperwork is filed under the MBL case
    If the folder or files are missing, stop and tell Barak.
 
 2. **Determine the superuser password.** The runner needs the `postgres`

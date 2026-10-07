@@ -21,6 +21,9 @@ wired to `npm run db:generate`.
 | `012_orders_case_id.sql` | Flips case↔order to `orders.case_id` (1 case → many orders), replacing `order_account.order_id` | `Amilut` | `Admin` (via `SET ROLE`) |
 | `013_create_import_account_files.sql` | `import_account_files` table (documents uploaded to a case), many → 1 `order_account`, descriptor in JSONB | `Amilut` | `Admin` (via `SET ROLE`) |
 | `014_create_countries.sql` | `countries` lookup table (Hebrew name + ISO 3166-1 alpha-2 `key`) seeded with all 242 countries | `Amilut` | `Admin` (via `SET ROLE`) |
+| `015_create_mbl_hbl.sql` | New MBL/HBL shipping-case workflow: `mbl`, `mbl_container`, `hbl` tables + `orders.hbl_id` FK — parallel to (not replacing) `order_account`/`orders.case_id` | `Amilut` | `Admin` (via `SET ROLE`) |
+| `016_remove_legacy_shipment_cases.sql` | Deletes all rows from `order_account` — the old shipping-case workflow (and its `ShipmentsModule`/`ShipmentScreen`) has been fully replaced by MBL/HBL; the table/column themselves are left in place, just unused | `Amilut` | `Admin` (via `SET ROLE`) |
+| `017_import_account_files_to_mbl.sql` | Re-points `import_account_files.account_id` from `order_account` to `mbl(id)` — paperwork is now filed under the MBL case ("מספר תיק"), since 016 left no `order_account` rows to file under | `Amilut` | `Admin` (via `SET ROLE`) |
 | `run-migrations.mjs` | Applies `001`, then every other `NNN_*.sql` in name order | — | — |
 
 Every step is **idempotent** — re-running does nothing if the objects already exist.
@@ -59,7 +62,9 @@ Amilut
 │              title, email, last_login, isActive)
 ├── orders    (id[seq from 1000], customer_id → customers.id,
 │              handler_user_id → users.id, supplier_id → suppliers.id,
-│              case_id → order_account.id [nullable, ON DELETE SET NULL], created_at,
+│              case_id → order_account.id [nullable, ON DELETE SET NULL],
+│              hbl_id → hbl.id [nullable, ON DELETE SET NULL — 015, the new
+│              MBL/HBL flow's equivalent of case_id], created_at,
 │              status, shipment_type, payment_terms, incoterm, destination,
 │              factory_ready_date, factory_pickup_date, departure_date, eta_date,
 │              shipping_line, voyage_number, airline, flight_number,
@@ -77,20 +82,51 @@ Amilut
 │              created_at, updated_at)
 │              -- created as `shipments` by 005, renamed by 006;
 │              -- was 1:1 with orders.order_id until 012 flipped it to orders.case_id
-├── import_account_files (id, account_id → order_account.id [ON DELETE CASCADE],
+├── import_account_files (id, account_id → mbl.id [ON DELETE CASCADE — 017;
+│              was order_account.id until then],
 │              data [JSONB: documentType, name, size, mimeType, relativePath,
 │              uploadedAt; for SUPPLIER_INVOICE also lineItems[] — each with
 │              item, description, quantity, price, total and, once the
 │              classification screen saved it, classification {tradeAgreement,
 │              classificationCode, approvals[], licenses[], countryId → countries.id}],
 │              created_at)
-└── countries (id, name [Hebrew], key [ISO 3166-1 alpha-2, UNIQUE])
-               -- lookup table, seeded by 014 with 242 rows
+├── countries (id, name [Hebrew], key [ISO 3166-1 alpha-2, UNIQUE])
+│              -- lookup table, seeded by 014 with 242 rows
+├── mbl       (id, shipping_type[sea|air], sea_method[fcl_fcl|fcl_lcl|lcl_lcl|
+│              groupage_fcl, NULL iff air], customer_id → customers.id
+│              [fcl_lcl only — shared by all its HBLs], mbl_number,
+│              booking_number, vessel_name, voyage_number, port_of_loading,
+│              port_of_discharge, final_destination, shipper_name/address,
+│              consignee_name/address, notify_party_name/address,
+│              container_number, container_seal_number [single-container
+│              methods only — groupage_fcl uses mbl_container instead],
+│              cargo_description, gross_weight_kg, volume_cbm,
+│              freight_terms[prepaid|collect], receipt_delivery_type [free
+│              text, e.g. "CY/CFS"], place_of_issue, date_of_issue,
+│              carrier_name, created_at, updated_at)
+│              -- 015: new parallel workflow, does NOT replace order_account
+├── mbl_container (id, mbl_id → mbl.id [ON DELETE CASCADE], container_number,
+│              container_seal_number, cargo_description, gross_weight_kg,
+│              volume_cbm, created_at)
+│              -- 015: only populated for mbl.sea_method = 'groupage_fcl'
+└── hbl       (id, mbl_id → mbl.id [ON DELETE CASCADE], container_id →
+               mbl_container.id [groupage_fcl only, ON DELETE SET NULL],
+               customer_id → customers.id, sequence_number [the "Internal
+               B/L {N}" ordinal within its MBL, UNIQUE per mbl_id],
+               ibl_number [system-generated, e.g. "IB-001"], hbl_number
+               [free text, external house B/L number], shipper_name/address,
+               consignee_name/address, notify_party_name/address — all
+               HBL-specific, NOT inherited from the MBL — cargo_description,
+               quantity, gross_weight_kg, volume_cbm, remarks, created_at,
+               updated_at)
+               -- 015: the unit orders attach to via the new orders.hbl_id
+               -- (parallel to orders.case_id → order_account.id)
 
 Enum-like columns (`status`, `shipment_type`, `payment_terms`, `incoterm`,
-`destination` in `orders`; `document_type` in `order_account`)
-store English codes guarded by CHECK constraints; the source of truth for
-`orders`' enums is `server/src/orders/orders.enums.ts`.
+`destination` in `orders`; `document_type` in `order_account`; `shipping_type`,
+`sea_method`, `freight_terms` in `mbl`) store English codes guarded by CHECK
+constraints; the source of truth for `orders`' enums is
+`server/src/orders/orders.enums.ts`.
 ```
 
 Connect the app with role `Admin` / password `Admin` on `127.0.0.1:5432`.

@@ -8,8 +8,8 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { finalize } from 'rxjs';
+import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
+import { catchError, EMPTY, finalize, map, of, switchMap } from 'rxjs';
 
 import {
   IMPORT_DOCUMENT_TYPE_LABELS,
@@ -18,7 +18,8 @@ import {
 } from '../../../../api/enums';
 import { ImportFilesApi } from '../../../../api/import-files-api';
 import type { UploadedImportFileDto } from '../../../../api/models';
-import { CURRENT_CASE_NUMBER } from '../../current-case';
+import { CasePicker } from '../../case-picker/case-picker';
+import { CurrentCaseService } from '../../current-case.service';
 
 /** One row of the documents table — a file stored on the server for the current case. */
 interface ShipmentDocument {
@@ -43,6 +44,7 @@ export const BLOB_URL_TTL_MS = 60_000;
 /** "תיוק ניירת יבוא" — import paperwork filing view. */
 @Component({
   selector: 'app-filing-screen',
+  imports: [CasePicker],
   templateUrl: './filing.html',
   styleUrl: './filing.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -54,11 +56,11 @@ export class FilingScreen {
   private readonly fileInput = viewChild.required<ElementRef<HTMLInputElement>>('fileInput');
 
   /**
-   * The case ("מספר תיק") the uploaded files are filed under — this is the
-   * `order_account` id and names the folder on the server. Still the shared
-   * placeholder shown in the header until the screen is wired to a selected case.
+   * The case ("מספר תיק") the uploaded files are filed under — the `mbl` id
+   * picked in the case picker; it names the folder on the server. `null`
+   * until a case is picked, and nothing is loaded or uploaded while it is.
    */
-  protected readonly accountNumber = signal(CURRENT_CASE_NUMBER);
+  protected readonly accountNumber = inject(CurrentCaseService).caseId;
 
   protected readonly documentTypes = IMPORT_DOCUMENT_TYPES;
   protected readonly documentTypeLabels = IMPORT_DOCUMENT_TYPE_LABELS;
@@ -69,14 +71,14 @@ export class FilingScreen {
   protected readonly successMessage = signal<string | null>(null);
   protected readonly errorMessage = signal<string | null>(null);
 
-  /** Files already stored for the case, newest first — loaded on init, extended by uploads. */
+  /** Files already stored for the case, newest first — loaded when a case is picked, extended by uploads. */
   protected readonly documents = signal<ShipmentDocument[]>([]);
   protected readonly loading = signal(false);
   /** Row id of the file currently being fetched for viewing, if any. */
   protected readonly openingId = signal<number | null>(null);
 
   constructor() {
-    this.loadDocuments();
+    this.loadDocumentsOnCaseChange();
   }
 
   protected onDocumentTypeChange(event: Event): void {
@@ -84,9 +86,9 @@ export class FilingScreen {
     this.documentType.set(isImportDocumentType(value) ? value : null);
   }
 
-  /** "העלה קבצים" → opens the native multi-file picker (only once a document type is chosen). */
+  /** "העלה קבצים" → opens the native multi-file picker (only once a case and a document type are chosen). */
   protected openFilePicker(): void {
-    if (this.uploading() || this.documentType() === null) return;
+    if (this.uploading() || this.accountNumber() === null || this.documentType() === null) return;
     this.fileInput().nativeElement.click();
   }
 
@@ -101,21 +103,24 @@ export class FilingScreen {
 
   /** Sends `files` to the server and prepends the stored files to the documents table. */
   protected uploadMultipleImportFiles(files: File[]): void {
+    const accountNumber = this.accountNumber();
     const documentType = this.documentType();
-    if (documentType === null) return;
+    if (accountNumber === null || documentType === null) return;
 
     this.uploading.set(true);
     this.successMessage.set(null);
     this.errorMessage.set(null);
 
     this.importFilesApi
-      .uploadMultipleImportFiles(this.accountNumber(), documentType, files)
+      .uploadMultipleImportFiles(accountNumber, documentType, files)
       .pipe(
         takeUntilDestroyed(this.destroyRef),
         finalize(() => this.uploading.set(false)),
       )
       .subscribe({
         next: (uploaded) => {
+          // The files were stored, but another case was picked meanwhile — its table is not theirs.
+          if (this.accountNumber() !== accountNumber) return;
           const fresh = uploaded.map(toShipmentDocument);
           const freshNames = new Set(fresh.map((doc) => doc.name));
           // Same-name files were overwritten on the server, so replace their rows too.
@@ -127,7 +132,10 @@ export class FilingScreen {
             uploaded.length === 1 ? 'קובץ אחד הועלה בהצלחה' : `${uploaded.length} קבצים הועלו בהצלחה`,
           );
         },
-        error: (error: unknown) => this.errorMessage.set(uploadErrorMessage(error)),
+        error: (error: unknown) => {
+          if (this.accountNumber() !== accountNumber) return;
+          this.errorMessage.set(uploadErrorMessage(error));
+        },
       });
   }
 
@@ -137,14 +145,15 @@ export class FilingScreen {
    * the file once its bytes arrive through the authenticated HTTP client.
    */
   protected openDocument(doc: ShipmentDocument): void {
-    if (this.openingId() !== null) return;
+    const accountNumber = this.accountNumber();
+    if (accountNumber === null || this.openingId() !== null) return;
     this.openingId.set(doc.id);
     this.errorMessage.set(null);
 
     const viewer = window.open('', '_blank');
 
     this.importFilesApi
-      .getImportFileBlob(this.accountNumber(), doc.id)
+      .getImportFileBlob(accountNumber, doc.id)
       .pipe(
         takeUntilDestroyed(this.destroyRef),
         finalize(() => this.openingId.set(null)),
@@ -166,24 +175,33 @@ export class FilingScreen {
       });
   }
 
-  /** Fills the documents table with the files already stored for the case. */
-  private loadDocuments(): void {
-    this.loading.set(true);
-    this.errorMessage.set(null);
-
-    this.importFilesApi
-      .listImportFiles(this.accountNumber())
+  /**
+   * Fills the documents table with the files already stored for the picked
+   * case, again whenever another case is picked. With no case picked the table
+   * is simply empty — nothing is requested, so nothing can fail.
+   */
+  private loadDocumentsOnCaseChange(): void {
+    toObservable(this.accountNumber)
       .pipe(
-        takeUntilDestroyed(this.destroyRef),
-        finalize(() => this.loading.set(false)),
-      )
-      .subscribe({
-        next: (files) => this.documents.set(files.map(toShipmentDocument)),
-        error: () => {
+        switchMap((accountNumber) => {
           this.documents.set([]);
-          this.errorMessage.set(LOAD_FAILED);
-        },
-      });
+          this.successMessage.set(null);
+          this.errorMessage.set(null);
+          if (accountNumber === null) return EMPTY;
+
+          this.loading.set(true);
+          return this.importFilesApi.listImportFiles(accountNumber).pipe(
+            map((files) => files.map(toShipmentDocument)),
+            catchError(() => {
+              this.errorMessage.set(LOAD_FAILED);
+              return of<ShipmentDocument[]>([]);
+            }),
+            finalize(() => this.loading.set(false)),
+          );
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((documents) => this.documents.set(documents));
   }
 }
 

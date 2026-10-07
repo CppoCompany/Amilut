@@ -1,0 +1,770 @@
+<div class="page-title">{{ isEditingExisting() ? 'עדכון תיק שילוח' : 'יצירת תיק שילוח חדש' }}</div>
+
+@if (loadingCase()) {
+  <section class="form-section">
+    <p class="hint-text">טוען תיק...</p>
+  </section>
+} @else if (loadCaseError(); as message) {
+  <section class="form-section">
+    <p class="form-message form-message--error" role="alert">{{ message }}</p>
+  </section>
+} @else {
+<div class="wizard-layout">
+  <div class="wizard-main">
+    @if (shippingType() === null) {
+      <section class="form-section">
+        <h2 class="section-title">שלב 1 — בחירת סוג משלוח</h2>
+        <div class="method-cards">
+          <button type="button" class="method-card" (click)="selectShippingType(MblShippingType.SEA)">
+            <i class="fa-solid fa-ship" aria-hidden="true"></i>
+            <span class="method-card__label">{{ SHIPPING_TYPE_LABELS[MblShippingType.SEA] }}</span>
+          </button>
+          <button type="button" class="method-card" (click)="selectShippingType(MblShippingType.AIR)">
+            <i class="fa-solid fa-plane" aria-hidden="true"></i>
+            <span class="method-card__label">{{ SHIPPING_TYPE_LABELS[MblShippingType.AIR] }}</span>
+          </button>
+        </div>
+      </section>
+    } @else if (shippingType() === MblShippingType.AIR) {
+      <section class="form-section">
+        @if (isEditingExisting()) {
+          <button type="button" class="btn btn-secondary back-btn" (click)="backToMyFiles()">
+            <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+            חזרה לתיקים שלי
+          </button>
+        } @else {
+          <button type="button" class="btn btn-secondary back-btn" (click)="backToShippingType()">
+            <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+            חזרה לבחירת סוג משלוח
+          </button>
+        }
+        <h2 class="section-title">משלוח אווירי</h2>
+        <p class="hint-text">תהליך יצירת תיק למשלוח אווירי ייבנה בשלב מאוחר יותר.</p>
+      </section>
+    } @else if (seaMethod(); as method) {
+      <section class="form-section">
+        @if (isEditingExisting()) {
+          <button type="button" class="btn btn-secondary back-btn" (click)="backToMyFiles()">
+            <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+            חזרה לתיקים שלי
+          </button>
+        } @else {
+          <button type="button" class="btn btn-secondary back-btn" (click)="backToSeaMethod()">
+            <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+            חזרה לבחירת שיטת שילוח
+          </button>
+        }
+        <h2 class="section-title">
+          {{ SEA_METHOD_LABELS[method] }} — {{ !savedMbl() || editingMbl() ? 'טופס MBL' : 'יצירת תיקי HBL' }}
+        </h2>
+
+        @if (!savedMbl() || editingMbl()) {
+          <!-- ── MBL step (creation, or editing an already-saved MBL) ───────── -->
+          <form class="mbl-form" [formGroup]="mblForm" (ngSubmit)="onSaveMbl()" novalidate>
+            @if (needsCustomer()) {
+              <h3 class="subsection-title">לקוח</h3>
+              <div class="grid-row">
+                @if (editingMbl()) {
+                  <div class="form-group">
+                    <label>לקוח (משותף לכל תיקי ה-HBL — לא ניתן לשינוי)</label>
+                    <input type="text" class="form-control" [value]="savedMbl()?.customerName ?? '—'" readonly />
+                  </div>
+                } @else {
+                  <div class="form-group autocomplete-wrapper">
+                    <label for="mblCustomer">לקוח (משותף לכל תיקי ה-HBL במסטר זה)</label>
+                    <app-customer-autocomplete
+                      inputId="mblCustomer"
+                      placeholder="הקלד שם לקוח..."
+                      [(customer)]="mblCustomer"
+                    />
+                  </div>
+                }
+              </div>
+            }
+
+            <h3 class="subsection-title">זיהוי מסמך ראשי</h3>
+            <div class="grid-row">
+              <div class="form-group">
+                <label for="mblNumber">מספר MBL</label>
+                <input id="mblNumber" type="text" class="form-control" formControlName="mblNumber" />
+              </div>
+              <div class="form-group">
+                <label for="bookingNumber">מספר הזמנת מקום (Booking No.)</label>
+                <input id="bookingNumber" type="text" class="form-control" formControlName="bookingNumber" />
+              </div>
+              <div class="form-group">
+                <label for="carrierName">שם הספן (Carrier)</label>
+                <input id="carrierName" type="text" class="form-control" formControlName="carrierName" />
+              </div>
+            </div>
+
+            <h3 class="subsection-title">אונייה ומסלול</h3>
+            <div class="grid-row">
+              <div class="form-group">
+                <label for="vesselName">שם האונייה</label>
+                <input id="vesselName" type="text" class="form-control" formControlName="vesselName" />
+              </div>
+              <div class="form-group">
+                <label for="voyageNumber">מספר Voyage</label>
+                <input id="voyageNumber" type="text" class="form-control" formControlName="voyageNumber" />
+              </div>
+            </div>
+            <div class="grid-row">
+              <div class="form-group">
+                <label for="portOfLoading">Port of Loading (POL)</label>
+                <input id="portOfLoading" type="text" class="form-control" formControlName="portOfLoading" />
+              </div>
+              <div class="form-group">
+                <label for="portOfDischarge">Port of Discharge (POD)</label>
+                <input id="portOfDischarge" type="text" class="form-control" formControlName="portOfDischarge" />
+              </div>
+              <div class="form-group">
+                <label for="finalDestination">יעד סופי</label>
+                <input id="finalDestination" type="text" class="form-control" formControlName="finalDestination" />
+              </div>
+            </div>
+
+            <h3 class="subsection-title">שוגר - Shipper (המקונסל)</h3>
+            <div class="grid-row">
+              <div class="form-group">
+                <label for="shipperName">שם השוגר</label>
+                <input id="shipperName" type="text" class="form-control" formControlName="shipperName" />
+              </div>
+              <div class="form-group">
+                <label for="shipperAddress">כתובת מלאה</label>
+                <input id="shipperAddress" type="text" class="form-control" formControlName="shipperAddress" />
+              </div>
+            </div>
+
+            <h3 class="subsection-title">נמען - Consignee</h3>
+            <div class="grid-row">
+              <div class="form-group">
+                <label for="consigneeName">שם הנמען</label>
+                <input id="consigneeName" type="text" class="form-control" formControlName="consigneeName" />
+              </div>
+              <div class="form-group">
+                <label for="consigneeAddress">כתובת מלאה</label>
+                <input id="consigneeAddress" type="text" class="form-control" formControlName="consigneeAddress" />
+              </div>
+            </div>
+
+            <h3 class="subsection-title">Notify Party</h3>
+            <div class="grid-row">
+              <div class="form-group">
+                <label for="notifyPartyName">שם</label>
+                <input id="notifyPartyName" type="text" class="form-control" formControlName="notifyPartyName" />
+              </div>
+              <div class="form-group">
+                <label for="notifyPartyAddress">כתובת מלאה</label>
+                <input
+                  id="notifyPartyAddress"
+                  type="text"
+                  class="form-control"
+                  formControlName="notifyPartyAddress"
+                />
+              </div>
+            </div>
+
+            <h3 class="subsection-title">מכולות</h3>
+            @if (isGroupage()) {
+              <div class="data-table-wrapper">
+                <table class="data-table" formArrayName="containers">
+                  <thead>
+                    <tr>
+                      <th>מספר מכולה</th>
+                      <th>מספר מוליך (Seal)</th>
+                      <th>תיאור מטען</th>
+                      <th>משקל ברוטו (KG)</th>
+                      <th>נפח (CBM)</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (container of containerControls(); track $index) {
+                      <tr [formGroupName]="$index">
+                        <td><input type="text" class="form-control" formControlName="containerNumber" /></td>
+                        <td><input type="text" class="form-control" formControlName="containerSealNumber" /></td>
+                        <td><input type="text" class="form-control" formControlName="cargoDescription" /></td>
+                        <td>
+                          <input
+                            type="text"
+                            inputmode="decimal"
+                            class="form-control"
+                            formControlName="grossWeightKg"
+                          />
+                        </td>
+                        <td>
+                          <input type="text" inputmode="decimal" class="form-control" formControlName="volumeCbm" />
+                        </td>
+                        <td>
+                          <button
+                            type="button"
+                            class="btn btn-secondary"
+                            [disabled]="containerControls().length <= 1"
+                            (click)="removeContainer($index)"
+                          >
+                            הסר
+                          </button>
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+              <div class="form-actions">
+                <button type="button" class="btn btn-secondary" (click)="addContainer()">+ הוסף מכולה</button>
+              </div>
+            } @else {
+              <div class="grid-row">
+                <div class="form-group">
+                  <label for="containerNumber">מספר מכולה</label>
+                  <input id="containerNumber" type="text" class="form-control" formControlName="containerNumber" />
+                </div>
+                <div class="form-group">
+                  <label for="containerSealNumber">מספר מוליך (Seal)</label>
+                  <input
+                    id="containerSealNumber"
+                    type="text"
+                    class="form-control"
+                    formControlName="containerSealNumber"
+                  />
+                </div>
+              </div>
+              <div class="grid-row">
+                <div class="form-group" style="grid-column: span 2">
+                  <label for="cargoDescription">תיאור המטען</label>
+                  <input id="cargoDescription" type="text" class="form-control" formControlName="cargoDescription" />
+                </div>
+                <div class="form-group">
+                  <label for="grossWeightKg">משקל ברוטו (KG)</label>
+                  <input
+                    id="grossWeightKg"
+                    type="text"
+                    inputmode="decimal"
+                    class="form-control"
+                    formControlName="grossWeightKg"
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="volumeCbm">נפח (CBM)</label>
+                  <input
+                    id="volumeCbm"
+                    type="text"
+                    inputmode="decimal"
+                    class="form-control"
+                    formControlName="volumeCbm"
+                  />
+                </div>
+              </div>
+            }
+
+            <h3 class="subsection-title">תנאי הובלה</h3>
+            <div class="grid-row">
+              <div class="form-group">
+                <label>Freight Terms</label>
+                <div class="choice-group">
+                  @for (option of paymentTermsOptions; track option) {
+                    <button
+                      type="button"
+                      class="choice-btn"
+                      [class.active]="freightTerms() === option"
+                      (click)="freightTerms.set(option)"
+                    >
+                      {{ paymentTermsLabels[option] }}
+                    </button>
+                  }
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="receiptDeliveryType">Receipt/Delivery (CY/CFS)</label>
+                <input
+                  id="receiptDeliveryType"
+                  type="text"
+                  class="form-control"
+                  formControlName="receiptDeliveryType"
+                />
+              </div>
+            </div>
+
+            <h3 class="subsection-title">הנפקה</h3>
+            <div class="grid-row">
+              <div class="form-group">
+                <label for="placeOfIssue">מקום ההנפקה</label>
+                <input id="placeOfIssue" type="text" class="form-control" formControlName="placeOfIssue" />
+              </div>
+              <div class="form-group">
+                <label for="dateOfIssue">תאריך ההנפקה</label>
+                <input id="dateOfIssue" type="date" class="form-control" formControlName="dateOfIssue" />
+              </div>
+            </div>
+
+            @if (saveError(); as message) {
+              <p class="form-message form-message--error" role="alert">{{ message }}</p>
+            }
+
+            <div class="form-actions">
+              @if (editingMbl()) {
+                <button type="button" class="btn btn-secondary" (click)="cancelEditMbl()">ביטול</button>
+              }
+              <button type="submit" class="btn btn-primary" [disabled]="saving()">
+                @if (saving()) {
+                  <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
+                  שומר...
+                } @else {
+                  {{ editingMbl() ? 'עדכן MBL' : 'שמור MBL' }}
+                }
+              </button>
+            </div>
+          </form>
+        } @else if (savedMbl(); as mbl) {
+          <!-- ── HBL step ──────────────────────────────────────────────────── -->
+          <p class="form-message form-message--success" role="status">
+            ה-MBL נשמר בהצלחה — מספר {{ mbl.mblNumber || ('#' + mbl.id) }}.
+          </p>
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" (click)="startEditMbl()">ערוך פרטי MBL</button>
+          </div>
+
+          @if (hbls().length) {
+            <h3 class="subsection-title">תיקי HBL שנוצרו</h3>
+            <div class="data-table-wrapper">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>מספר IBL</th>
+                    <th>מספר HBL</th>
+                    <th>לקוח</th>
+                    @if (isGroupage()) {
+                      <th>מכולה</th>
+                    }
+                    <th>הזמנות משויכות</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (hbl of hbls(); track hbl.id) {
+                    <tr [class.data-table__row--selected]="editingHblId() === hbl.id">
+                      <td class="data-table__numeric">{{ hbl.sequenceNumber }}</td>
+                      <td>{{ hbl.iblNumber ?? '—' }}</td>
+                      <td>{{ hbl.hblNumber ?? '—' }}</td>
+                      <td>{{ hbl.customerName ?? '—' }}</td>
+                      @if (isGroupage()) {
+                        <td>{{ containerLabel(hbl.containerId) }}</td>
+                      }
+                      <td class="data-table__numeric">{{ hbl.orders.length }}</td>
+                      <td>
+                        <button type="button" class="btn btn-secondary" (click)="startEditHbl(hbl)">ערוך</button>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+
+          @if (showHblForm()) {
+            <form class="hbl-form" [formGroup]="hblForm" (ngSubmit)="onSaveHbl()" novalidate>
+              <h3 class="subsection-title">
+                {{ editingHblId() !== null ? 'עריכת תיק HBL' : hbls().length ? 'הוספת תיק HBL נוסף' : 'יצירת תיק HBL' }}
+              </h3>
+
+              @if (editingHblId() !== null) {
+                <div class="grid-row">
+                  <div class="form-group">
+                    <label>לקוח (לא ניתן לשינוי)</label>
+                    <input type="text" class="form-control" [value]="editingHbl()?.customerName ?? '—'" readonly />
+                  </div>
+                  @if (isGroupage()) {
+                    <div class="form-group">
+                      <label>מכולה (לא ניתן לשינוי)</label>
+                      <input
+                        type="text"
+                        class="form-control"
+                        [value]="containerLabel(editingHbl()?.containerId ?? null)"
+                        readonly
+                      />
+                    </div>
+                  }
+                </div>
+              } @else {
+                @if (isGroupage()) {
+                  <div class="grid-row">
+                    <div class="form-group" style="grid-column: span 2">
+                      <label>מכולה</label>
+                      <div class="choice-group">
+                        @for (container of mbl.containers; track container.id) {
+                          <button
+                            type="button"
+                            class="choice-btn"
+                            [class.active]="hblContainerId() === container.id"
+                            (click)="hblContainerId.set(container.id)"
+                          >
+                            {{ container.containerNumber || ('מכולה #' + container.id) }}
+                          </button>
+                        }
+                      </div>
+                    </div>
+                  </div>
+                }
+
+                @if (needsHblCustomerPicker()) {
+                  <div class="grid-row">
+                    <div class="form-group autocomplete-wrapper">
+                      <label for="hblCustomer">לקוח</label>
+                      <app-customer-autocomplete
+                        inputId="hblCustomer"
+                        placeholder="הקלד שם לקוח..."
+                        [(customer)]="hblCustomer"
+                      />
+                    </div>
+                  </div>
+                } @else {
+                  <div class="grid-row">
+                    <div class="form-group">
+                      <label>לקוח (משותף מה-MBL)</label>
+                      <input type="text" class="form-control" [value]="mbl.customerName ?? '—'" readonly />
+                    </div>
+                  </div>
+                }
+              }
+
+              <div class="grid-row">
+                <div class="form-group">
+                  <label for="hblNumber">מספר HBL</label>
+                  <input id="hblNumber" type="text" class="form-control" formControlName="hblNumber" />
+                </div>
+              </div>
+
+              <h3 class="subsection-title">שוגר - Shipper</h3>
+              <div class="grid-row">
+                <div class="form-group">
+                  <label for="hblShipperName">שם השוגר</label>
+                  <input id="hblShipperName" type="text" class="form-control" formControlName="shipperName" />
+                </div>
+                <div class="form-group">
+                  <label for="hblShipperAddress">כתובת מלאה</label>
+                  <input id="hblShipperAddress" type="text" class="form-control" formControlName="shipperAddress" />
+                </div>
+              </div>
+
+              <h3 class="subsection-title">נמען - Consignee</h3>
+              <div class="grid-row">
+                <div class="form-group">
+                  <label for="hblConsigneeName">שם הנמען</label>
+                  <input id="hblConsigneeName" type="text" class="form-control" formControlName="consigneeName" />
+                </div>
+                <div class="form-group">
+                  <label for="hblConsigneeAddress">כתובת מלאה</label>
+                  <input
+                    id="hblConsigneeAddress"
+                    type="text"
+                    class="form-control"
+                    formControlName="consigneeAddress"
+                  />
+                </div>
+              </div>
+
+              <h3 class="subsection-title">Notify Party</h3>
+              <div class="grid-row">
+                <div class="form-group">
+                  <label for="hblNotifyPartyName">שם</label>
+                  <input
+                    id="hblNotifyPartyName"
+                    type="text"
+                    class="form-control"
+                    formControlName="notifyPartyName"
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="hblNotifyPartyAddress">כתובת מלאה</label>
+                  <input
+                    id="hblNotifyPartyAddress"
+                    type="text"
+                    class="form-control"
+                    formControlName="notifyPartyAddress"
+                  />
+                </div>
+              </div>
+
+              <h3 class="subsection-title">מטען</h3>
+              <div class="grid-row">
+                <div class="form-group" style="grid-column: span 2">
+                  <label for="hblCargoDescription">תיאור המטען</label>
+                  <input
+                    id="hblCargoDescription"
+                    type="text"
+                    class="form-control"
+                    formControlName="cargoDescription"
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="hblQuantity">כמות</label>
+                  <input id="hblQuantity" type="text" class="form-control" formControlName="quantity" />
+                </div>
+              </div>
+              <div class="grid-row">
+                <div class="form-group">
+                  <label for="hblGrossWeightKg">משקל ברוטו (KG)</label>
+                  <input
+                    id="hblGrossWeightKg"
+                    type="text"
+                    inputmode="decimal"
+                    class="form-control"
+                    formControlName="grossWeightKg"
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="hblVolumeCbm">נפח (CBM)</label>
+                  <input
+                    id="hblVolumeCbm"
+                    type="text"
+                    inputmode="decimal"
+                    class="form-control"
+                    formControlName="volumeCbm"
+                  />
+                </div>
+              </div>
+
+              <h3 class="subsection-title">הערות</h3>
+              <div class="grid-row">
+                <div class="form-group" style="grid-column: span 2">
+                  <label for="hblRemarks">הערות</label>
+                  <input id="hblRemarks" type="text" class="form-control" formControlName="remarks" />
+                </div>
+              </div>
+
+              <h3 class="subsection-title">שיוך הזמנות (אופציונלי)</h3>
+              <div class="filter-bar">
+                <div class="form-group autocomplete-wrapper">
+                  <label for="hblOrderFilterCustomer">סינון לפי לקוח</label>
+                  <app-customer-autocomplete
+                    inputId="hblOrderFilterCustomer"
+                    placeholder="הקלד שם לקוח לסינון..."
+                    [(customer)]="hblOrderFilterCustomer"
+                  />
+                </div>
+                <div class="form-group autocomplete-wrapper">
+                  <label for="hblOrderFilterSupplier">סינון לפי ספק</label>
+                  <app-supplier-autocomplete
+                    inputId="hblOrderFilterSupplier"
+                    placeholder="הקלד שם ספק לסינון..."
+                    [(supplier)]="hblOrderFilterSupplier"
+                  />
+                </div>
+              </div>
+
+              @if (hblOrdersError(); as message) {
+                <p class="form-message form-message--error" role="alert">{{ message }}</p>
+              }
+
+              <div class="data-table-wrapper">
+                @if (hblOrdersLoading() && hblOrderCandidatesDisplay().length === 0) {
+                  <p class="data-table__empty">טוען...</p>
+                } @else if (hblOrderCandidatesDisplay().length === 0) {
+                  <p class="data-table__empty">לא נמצאו הזמנות ללא שיוך</p>
+                } @else {
+                  <div class="orders-scroll-list">
+                    <table class="data-table">
+                      <thead>
+                        <tr>
+                          <th>
+                            <input
+                              type="checkbox"
+                              aria-label="בחר הכל"
+                              [checked]="allHblOrdersSelected()"
+                              (change)="toggleSelectAllHblOrders()"
+                            />
+                          </th>
+                          <th>מספר הזמנה</th>
+                          <th>לקוח</th>
+                          <th>ספק</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (order of hblOrderCandidatesDisplay(); track order.id) {
+                          <tr [class.data-table__row--selected]="isHblOrderSelected(order.id)">
+                            <td>
+                              <input
+                                type="checkbox"
+                                [checked]="isHblOrderSelected(order.id)"
+                                (change)="toggleHblOrderSelection(order.id)"
+                              />
+                            </td>
+                            <td class="data-table__numeric">{{ order.id }}</td>
+                            <td>{{ order.customerName ?? '—' }}</td>
+                            <td>{{ order.supplierName ?? '—' }}</td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                }
+              </div>
+              <p class="hint-text selection-count">{{ hblSelectedOrderIds().size }} הזמנות נבחרו</p>
+
+              @if (hblSaveError(); as message) {
+                <p class="form-message form-message--error" role="alert">{{ message }}</p>
+              }
+
+              <div class="form-actions">
+                <button type="button" class="btn btn-secondary" (click)="closeHblForm()">ביטול</button>
+                <button type="submit" class="btn btn-primary" [disabled]="savingHbl()">
+                  @if (savingHbl()) {
+                    <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
+                    שומר...
+                  } @else {
+                    {{ editingHblId() !== null ? 'עדכן HBL' : 'שמור HBL' }}
+                  }
+                </button>
+              </div>
+            </form>
+          } @else if (canAddAnotherHbl()) {
+            <div class="form-actions">
+              <button type="button" class="btn btn-primary" (click)="openNewHblForm()">
+                <i class="fa-solid fa-plus" aria-hidden="true"></i>
+                {{ hbls().length ? 'הוספת תיק HBL נוסף' : 'יצירת תיק HBL' }}
+              </button>
+            </div>
+          } @else {
+            <p class="hint-text">תיק ה-HBL היחיד עבור FCL/FCL כבר נוצר.</p>
+          }
+        }
+      </section>
+    } @else {
+      <section class="form-section">
+        <button type="button" class="btn btn-secondary back-btn" (click)="backToShippingType()">
+          <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+          חזרה לבחירת סוג משלוח
+        </button>
+        <h2 class="section-title">שלב 2 — בחירת שיטת שילוח ימי</h2>
+        <div class="method-cards">
+          @for (seaMethodOption of seaMethods; track seaMethodOption) {
+            <button type="button" class="method-card" (click)="selectSeaMethod(seaMethodOption)">
+              <span class="method-card__label">{{ SEA_METHOD_LABELS[seaMethodOption] }}</span>
+              <span class="method-card__description">{{ SEA_METHOD_DESCRIPTIONS[seaMethodOption] }}</span>
+            </button>
+          }
+        </div>
+      </section>
+    }
+  </div>
+
+  <aside class="wizard-sidebar">
+    <div class="wizard-sidebar__header">
+      <i class="fa-solid fa-list-check" aria-hidden="true"></i>
+      התקדמות התיק
+    </div>
+
+    <ol class="wizard-steps">
+      <li class="wizard-step" [class.wizard-step--done]="shippingType() !== null">
+        <span class="wizard-step__icon">
+          <i class="fa-solid" [class.fa-check]="shippingType() !== null" [class.fa-circle]="shippingType() === null"></i>
+        </span>
+        <span>סוג משלוח</span>
+      </li>
+      @if (shippingType() === MblShippingType.SEA) {
+        <li class="wizard-step" [class.wizard-step--done]="seaMethod() !== null">
+          <span class="wizard-step__icon">
+            <i class="fa-solid" [class.fa-check]="seaMethod() !== null" [class.fa-circle]="seaMethod() === null"></i>
+          </span>
+          <span>שיטת שילוח ימי</span>
+        </li>
+        <li class="wizard-step" [class.wizard-step--done]="savedMbl() !== null">
+          <span class="wizard-step__icon">
+            <i class="fa-solid" [class.fa-check]="savedMbl() !== null" [class.fa-circle]="savedMbl() === null"></i>
+          </span>
+          <span>MBL</span>
+        </li>
+        <li class="wizard-step" [class.wizard-step--done]="hbls().length > 0">
+          <span class="wizard-step__icon">
+            <i class="fa-solid" [class.fa-check]="hbls().length > 0" [class.fa-circle]="hbls().length === 0"></i>
+          </span>
+          <span>תיקי HBL</span>
+        </li>
+      } @else if (shippingType() === MblShippingType.AIR) {
+        <li class="wizard-step">
+          <span class="wizard-step__icon"><i class="fa-solid fa-circle-minus"></i></span>
+          <span>אווירי (בקרוב)</span>
+        </li>
+      }
+    </ol>
+
+    @if (savedMbl(); as mbl) {
+      <div class="wizard-tree">
+        <div class="wizard-tree__title">מבנה התיק</div>
+        <ul class="wizard-tree-list">
+          <li>
+            <button
+              type="button"
+              class="wizard-tree-node wizard-tree-node--mbl"
+              [class.active]="editingMbl()"
+              (click)="startEditMbl()"
+            >
+              <i class="fa-solid fa-file-lines" aria-hidden="true"></i>
+              <span class="wizard-tree-node__label">MBL {{ mbl.mblNumber || ('#' + mbl.id) }}</span>
+            </button>
+
+            @if (isGroupage()) {
+              <ul class="wizard-tree-list wizard-tree-list--nested">
+                @for (container of mbl.containers; track container.id) {
+                  <li>
+                    <button
+                      type="button"
+                      class="wizard-tree-node wizard-tree-node--container"
+                      [class.active]="editingHblId() === null && hblContainerId() === container.id"
+                      (click)="selectContainerNode(container.id)"
+                    >
+                      <i class="fa-solid fa-box" aria-hidden="true"></i>
+                      <span class="wizard-tree-node__label">
+                        {{ container.containerNumber || ('מכולה #' + container.id) }}
+                      </span>
+                    </button>
+                    <ul class="wizard-tree-list wizard-tree-list--nested">
+                      @for (hbl of hblsForContainer(container.id); track hbl.id) {
+                        <li>
+                          <button
+                            type="button"
+                            class="wizard-tree-node wizard-tree-node--hbl"
+                            [class.active]="editingHblId() === hbl.id"
+                            (click)="startEditHbl(hbl)"
+                          >
+                            <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+                            <span class="wizard-tree-node__label">{{ hbl.customerName || ('HBL #' + hbl.id) }}</span>
+                          </button>
+                        </li>
+                      }
+                      @if (hblsForContainer(container.id).length === 0) {
+                        <li class="wizard-tree-empty">אין תיקי HBL עדיין</li>
+                      }
+                    </ul>
+                  </li>
+                }
+              </ul>
+            } @else {
+              <ul class="wizard-tree-list wizard-tree-list--nested">
+                @for (hbl of hbls(); track hbl.id) {
+                  <li>
+                    <button
+                      type="button"
+                      class="wizard-tree-node wizard-tree-node--hbl"
+                      [class.active]="editingHblId() === hbl.id"
+                      (click)="startEditHbl(hbl)"
+                    >
+                      <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+                      <span class="wizard-tree-node__label">{{ hbl.customerName || ('HBL #' + hbl.id) }}</span>
+                    </button>
+                  </li>
+                }
+                @if (hbls().length === 0) {
+                  <li class="wizard-tree-empty">אין תיקי HBL עדיין</li>
+                }
+              </ul>
+            }
+          </li>
+        </ul>
+      </div>
+    }
+  </aside>
+</div>
+}

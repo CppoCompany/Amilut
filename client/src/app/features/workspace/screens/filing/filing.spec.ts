@@ -4,10 +4,10 @@ import { WritableSignal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 
-import { ImportDocumentType } from '../../../../api/enums';
+import { ImportDocumentType, MblShippingType, SeaMethod } from '../../../../api/enums';
 import { IMPORT_DOCUMENT_TYPE_FIELD, IMPORT_FILES_FIELD } from '../../../../api/import-files-api';
-import type { UploadedImportFileDto } from '../../../../api/models';
-import { CURRENT_CASE_NUMBER } from '../../current-case';
+import type { MblSummaryDto, UploadedImportFileDto } from '../../../../api/models';
+import { CurrentCaseService } from '../../current-case.service';
 import { FilingScreen } from './filing';
 
 type FilingInternals = {
@@ -18,7 +18,24 @@ type FilingInternals = {
   uploadMultipleImportFiles: (files: File[]) => void;
 };
 
-const LIST_URL = `/api/import-files/${CURRENT_CASE_NUMBER}`;
+const CASE_ID = 1000;
+const OTHER_CASE_ID = 1001;
+const LIST_URL = `/api/import-files/${CASE_ID}`;
+const CASES_URL = '/api/mbl';
+
+function mblCase(id: number): MblSummaryDto {
+  return {
+    id,
+    shippingType: MblShippingType.SEA,
+    seaMethod: SeaMethod.FCL_FCL,
+    mblNumber: `MBL-${id}`,
+    carrierName: null,
+    hblCount: 1,
+    orderIds: [],
+    customerNames: ['ACME Ltd.'],
+    createdAt: '2026-09-01T08:30:00.000Z',
+  };
+}
 
 const INVOICE: UploadedImportFileDto = {
   id: 42,
@@ -40,60 +57,118 @@ const PACKING_LIST: UploadedImportFileDto = {
   uploadedAt: '2026-09-21T10:00:00.000Z',
 };
 
-describe('FilingScreen', () => {
-  let fixture: ComponentFixture<FilingScreen>;
-  let internals: FilingInternals;
-  let httpMock: HttpTestingController;
+let fixture: ComponentFixture<FilingScreen>;
+let internals: FilingInternals;
+let httpMock: HttpTestingController;
+let currentCase: CurrentCaseService;
 
-  beforeEach(async () => {
-    await TestBed.configureTestingModule({
-      imports: [FilingScreen],
-      providers: [provideHttpClient(), provideHttpClientTesting()],
-    }).compileComponents();
+/** Creates the screen with `caseId` already picked (or none) and answers the case picker's lookup. */
+async function setup(caseId: number | null): Promise<void> {
+  await TestBed.configureTestingModule({
+    imports: [FilingScreen],
+    providers: [provideHttpClient(), provideHttpClientTesting()],
+  }).compileComponents();
 
-    httpMock = TestBed.inject(HttpTestingController);
-    fixture = TestBed.createComponent(FilingScreen);
-    internals = fixture.componentInstance as unknown as FilingInternals;
+  httpMock = TestBed.inject(HttpTestingController);
+  currentCase = TestBed.inject(CurrentCaseService);
+  currentCase.caseId.set(caseId);
+  fixture = TestBed.createComponent(FilingScreen);
+  internals = fixture.componentInstance as unknown as FilingInternals;
+  fixture.detectChanges();
+  httpMock
+    .expectOne((req) => req.url === CASES_URL)
+    .flush([mblCase(CASE_ID), mblCase(OTHER_CASE_ID)]);
+  fixture.detectChanges();
+}
+
+/** Answers the list request the screen fires once a case is picked. */
+function flushList(files: UploadedImportFileDto[]): void {
+  const req = httpMock.expectOne(LIST_URL);
+  expect(req.request.method).toBe('GET');
+  req.flush(files);
+  fixture.detectChanges();
+}
+
+function uploadButton(): HTMLButtonElement {
+  return fixture.nativeElement.querySelector('.upload-area .upload-btn');
+}
+
+function rows(): string[][] {
+  const trs = Array.from(
+    fixture.nativeElement.querySelectorAll(
+      '.documents-table tbody tr:not(.documents-empty)',
+    ) as NodeListOf<HTMLElement>,
+  );
+  return trs.map((tr) =>
+    Array.from(tr.querySelectorAll('td'))
+      .slice(0, 4)
+      .map((td) => td.textContent?.trim() ?? ''),
+  );
+}
+
+function emptyRow(): HTMLElement | null {
+  return fixture.nativeElement.querySelector('.documents-table tbody tr.documents-empty');
+}
+
+describe('FilingScreen before a case is picked', () => {
+  beforeEach(() => setup(null));
+
+  afterEach(() => httpMock.verify());
+
+  it('requests nothing and shows a hint — not an error — on entry', () => {
+    httpMock.expectNone(LIST_URL);
+    expect(fixture.nativeElement.querySelector('.form-message--error')).toBeNull();
+    expect(internals.errorMessage()).toBeNull();
+    expect(rows()).toEqual([]);
+    expect(emptyRow()?.textContent?.trim()).toBe('בחר תיק כדי להציג את הקבצים שלו');
+    expect(uploadButton().disabled).toBe(true);
+
+    // Even with a document type chosen, there is no case to upload to.
+    internals.documentType.set(ImportDocumentType.PACKING_LIST);
     fixture.detectChanges();
+    expect(uploadButton().disabled).toBe(true);
+    internals.uploadMultipleImportFiles([new File(['x'], 'a.pdf')]);
+    httpMock.expectNone(() => true);
   });
+
+  it('loads the files of the case picked in the case picker', () => {
+    const picker = fixture.nativeElement.querySelector('select#casePicker') as HTMLSelectElement;
+    expect(Array.from(picker.options).map((o) => o.textContent?.trim())).toEqual([
+      'בחר תיק',
+      'תיק 1000 · MBL-1000 · ACME Ltd.',
+      'תיק 1001 · MBL-1001 · ACME Ltd.',
+    ]);
+
+    picker.value = String(CASE_ID);
+    picker.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+
+    expect(currentCase.caseId()).toBe(CASE_ID);
+    flushList([INVOICE]);
+    expect(rows()).toEqual([['invoice.pdf', 'חשבון ספק', '22/09/2026', '850 KB']]);
+  });
+});
+
+describe('FilingScreen', () => {
+  beforeEach(() => setup(CASE_ID));
 
   afterEach(() => {
     httpMock.verify();
     vi.restoreAllMocks();
   });
 
-  /** Answers the list request the screen fires on init. */
-  function flushList(files: UploadedImportFileDto[]): void {
-    const req = httpMock.expectOne(LIST_URL);
-    expect(req.request.method).toBe('GET');
-    req.flush(files);
-    fixture.detectChanges();
-  }
-
   function select(): HTMLSelectElement {
     return fixture.nativeElement.querySelector('select#documentType');
   }
 
-  function uploadButton(): HTMLButtonElement {
-    return fixture.nativeElement.querySelector('.upload-area .upload-btn');
-  }
+  it('no longer shows the old Case/Internal ID/Supplier/Document Number cards', () => {
+    flushList([]);
 
-  function rows(): string[][] {
-    const trs = Array.from(
-      fixture.nativeElement.querySelectorAll(
-        '.documents-table tbody tr:not(.documents-empty)',
-      ) as NodeListOf<HTMLElement>,
-    );
-    return trs.map((tr) =>
-      Array.from(tr.querySelectorAll('td'))
-        .slice(0, 4)
-        .map((td) => td.textContent?.trim() ?? ''),
-    );
-  }
-
-  function emptyRow(): HTMLElement | null {
-    return fixture.nativeElement.querySelector('.documents-table tbody tr.documents-empty');
-  }
+    expect(fixture.nativeElement.querySelector('.details-grid')).toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('מספר זיהוי פנימי');
+    expect(fixture.nativeElement.textContent).not.toContain('Shanghai Tech Components');
+    expect(fixture.nativeElement.textContent).not.toContain('NEXF123456789');
+  });
 
   it('renders the document-type picker above the upload area with a placeholder selected', () => {
     flushList([]);
@@ -126,6 +201,22 @@ describe('FilingScreen', () => {
     expect(fixture.nativeElement.querySelector('.hint-text')).toBeNull();
   });
 
+  it('swaps the table and clears the messages when another case is picked', () => {
+    httpMock
+      .expectOne(LIST_URL)
+      .flush({ message: 'boom' }, { status: 500, statusText: 'Server Error' });
+    fixture.detectChanges();
+    expect(internals.errorMessage()).toBe('טעינת רשימת הקבצים נכשלה');
+
+    currentCase.caseId.set(OTHER_CASE_ID);
+    fixture.detectChanges();
+
+    expect(internals.errorMessage()).toBeNull();
+    httpMock.expectOne(`/api/import-files/${OTHER_CASE_ID}`).flush([PACKING_LIST]);
+    fixture.detectChanges();
+    expect(rows()).toEqual([['מפרט אריזות.pdf', 'מפרט אריזות', '21/09/2026', '1.2 MB']]);
+  });
+
   it('starts with a loading row and shows the empty state when the case has no files', () => {
     expect(rows()).toEqual([]);
     expect(emptyRow()?.textContent?.trim()).toBe('טוען קבצים…');
@@ -134,6 +225,7 @@ describe('FilingScreen', () => {
 
     expect(rows()).toEqual([]);
     expect(emptyRow()?.textContent?.trim()).toBe('לא הועלו קבצים לתיק זה עדיין');
+    expect(fixture.nativeElement.querySelector('.form-message--error')).toBeNull();
   });
 
   it('lists the stored files of the case with type label, dd/MM/yyyy date and human size', () => {
@@ -184,7 +276,7 @@ describe('FilingScreen', () => {
   });
 
   describe('opening a file', () => {
-    const FILE_URL = `/api/import-files/${CURRENT_CASE_NUMBER}/files/${INVOICE.id}`;
+    const FILE_URL = `/api/import-files/${CASE_ID}/files/${INVOICE.id}`;
     let viewer: { closed: boolean; location: { href: string }; close: ReturnType<typeof vi.fn> };
     let createObjectURL: ReturnType<typeof vi.fn>;
 

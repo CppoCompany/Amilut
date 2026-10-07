@@ -1,5 +1,5 @@
 /**
- * Kind of paperwork a file uploaded to an import case (`order_account`)
+ * Kind of paperwork a file uploaded to an import case (`mbl`)
  * represents. Stored inside `import_account_files.data.documentType`.
  *
  * Hebrew UI labels (owned by the client):

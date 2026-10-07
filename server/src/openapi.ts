@@ -7,6 +7,7 @@ import {
   TradeAgreement,
 } from './classification/classification.enums';
 import { ImportDocumentType } from './import-files/import-files.enums';
+import { MblShippingType, SeaMethod } from './mbl/mbl.enums';
 import {
   Destination,
   Incoterm,
@@ -14,7 +15,6 @@ import {
   PaymentTerms,
   ShipmentType,
 } from './orders/orders.enums';
-import { ShipmentDocumentType } from './shipments/shipments.enums';
 
 /** Swagger UI path (relative to the app; global prefix is NOT applied to it). */
 export const OPENAPI_DOCS_PATH = 'api/docs';
@@ -31,11 +31,12 @@ export const NAMED_ENUMS: Record<string, Record<string, string>> = {
   PaymentTerms,
   Destination,
   Incoterm,
-  ShipmentDocumentType,
   ImportDocumentType,
   ClassificationApproval,
   ClassificationLicense,
   TradeAgreement,
+  MblShippingType,
+  SeaMethod,
 };
 
 type SchemaWithExtensions = {

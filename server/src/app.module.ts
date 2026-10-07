@@ -9,8 +9,8 @@ import { CountriesModule } from './countries/countries.module';
 import { CustomersModule } from './customers/customers.module';
 import { DatabaseModule } from './database/database.module';
 import { ImportFilesModule } from './import-files/import-files.module';
+import { MblModule } from './mbl/mbl.module';
 import { OrdersModule } from './orders/orders.module';
-import { ShipmentsModule } from './shipments/shipments.module';
 import { SuppliersModule } from './suppliers/suppliers.module';
 
 @Module({
@@ -21,8 +21,8 @@ import { SuppliersModule } from './suppliers/suppliers.module';
     CountriesModule,
     CustomersModule,
     ImportFilesModule,
+    MblModule,
     OrdersModule,
-    ShipmentsModule,
     SuppliersModule,
   ],
   controllers: [AppController],

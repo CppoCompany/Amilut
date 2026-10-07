@@ -2,33 +2,14 @@
   <section class="form-section">
     <h2 class="section-title">תיוק ניירת יבוא</h2>
 
-    <div class="details-grid">
-      <div class="detail-item">
-        <span class="detail-label">מספר תיק</span>
-        <span class="detail-value">{{ accountNumber() }}</span>
-      </div>
-      <div class="detail-item">
-        <span class="detail-label">מספר זיהוי פנימי</span>
-        <span class="detail-value">11456</span>
-      </div>
-      <div class="detail-item">
-        <span class="detail-label">שם ספק</span>
-        <span class="detail-value">Shanghai Tech Components</span>
-      </div>
-      <div class="detail-item">
-        <span class="detail-label">מספר מסמך</span>
-        <span class="detail-value">NEXF123456789</span>
-      </div>
-    </div>
-
-    <div style="height: 12px"></div>
-
     <div class="section-header">
       <div class="title-row">
         <i class="fa-solid fa-file-lines"></i>
         <div style="font-weight: 700; font-size: 1.05rem; color: var(--text-dark)">מסמכי משלוח</div>
       </div>
     </div>
+
+    <app-case-picker />
 
     <div class="form-group document-type-group">
       <label for="documentType" class="required">סוג מסמך</label>
@@ -43,7 +24,7 @@
           <option [value]="option">{{ documentTypeLabels[option] }}</option>
         }
       </select>
-      @if (documentType() === null) {
+      @if (accountNumber() !== null && documentType() === null) {
         <p class="hint-text">יש לבחור סוג מסמך לפני העלאת קבצים</p>
       }
     </div>
@@ -68,7 +49,7 @@
       <button
         type="button"
         class="upload-btn"
-        [disabled]="uploading() || documentType() === null"
+        [disabled]="uploading() || accountNumber() === null || documentType() === null"
         (click)="openFilePicker()"
       >
         {{ uploading() ? 'מעלה קבצים…' : 'העלה קבצים' }}
@@ -114,7 +95,11 @@
         } @empty {
           <tr class="documents-empty">
             <td colspan="5">
-              {{ loading() ? 'טוען קבצים…' : 'לא הועלו קבצים לתיק זה עדיין' }}
+              @if (accountNumber() === null) {
+                בחר תיק כדי להציג את הקבצים שלו
+              } @else {
+                {{ loading() ? 'טוען קבצים…' : 'לא הועלו קבצים לתיק זה עדיין' }}
+              }
             </td>
           </tr>
         }

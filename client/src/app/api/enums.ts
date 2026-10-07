@@ -12,9 +12,10 @@ import {
   Destination,
   ImportDocumentType,
   Incoterm,
+  MblShippingType,
   OrderStatus,
   PaymentTerms,
-  ShipmentDocumentType,
+  SeaMethod,
   ShipmentType,
   TradeAgreement,
 } from './generated/schema';
@@ -25,9 +26,10 @@ export {
   Destination,
   ImportDocumentType,
   Incoterm,
+  MblShippingType,
   OrderStatus,
   PaymentTerms,
-  ShipmentDocumentType,
+  SeaMethod,
   ShipmentType,
   TradeAgreement,
 };
@@ -49,6 +51,22 @@ export const SHIPMENT_TYPE_LABELS: Record<ShipmentType, string> = {
 export const PAYMENT_TERMS_LABELS: Record<PaymentTerms, string> = {
   [PaymentTerms.PREPAID]: 'Prepaid',
   [PaymentTerms.COLLECT]: 'Collect',
+};
+
+/** Step 1 of "יצירת תיק שילוח" (the MBL/HBL workflow). Narrower than
+ *  `ShipmentType` (no LAND) — kept as its own enum/label map since the two
+ *  are structurally unrelated, even though the Hebrew text matches. */
+export const MBL_SHIPPING_TYPE_LABELS: Record<MblShippingType, string> = {
+  [MblShippingType.SEA]: 'ימי',
+  [MblShippingType.AIR]: 'אווירי',
+};
+
+/** Step 2 (sea only) of "יצירת תיק שילוח" — determines the HBL workflow. */
+export const SEA_METHOD_LABELS: Record<SeaMethod, string> = {
+  [SeaMethod.FCL_FCL]: 'FCL / FCL',
+  [SeaMethod.FCL_LCL]: 'FCL / LCL',
+  [SeaMethod.LCL_LCL]: 'LCL / LCL',
+  [SeaMethod.GROUPAGE_FCL]: 'Groupage FCL',
 };
 
 /** Incoterms are shown as their codes. */
@@ -92,12 +110,6 @@ export const DESTINATION_LABELS: Record<Destination, string> = {
   [Destination.SOUTH_PORT]: 'נמל הדרום',
   [Destination.HAIFA]: 'נמל חיפה',
   [Destination.BEN_GURION]: 'נתב"ג',
-};
-
-export const SHIPMENT_DOCUMENT_TYPE_LABELS: Record<ShipmentDocumentType, string> = {
-  [ShipmentDocumentType.ORIGINAL]: 'Original',
-  [ShipmentDocumentType.SEA_WAYBILL]: 'Sea Waybill',
-  [ShipmentDocumentType.TELEX_RELEASE]: 'Telex Release',
 };
 
 /** Kinds of import paperwork a file can be filed as ("תיוק ניירת יבוא"). */
@@ -180,8 +192,6 @@ export const SHIPMENT_TYPES: readonly ShipmentType[] = Object.values(ShipmentTyp
 export const PAYMENT_TERMS: readonly PaymentTerms[] = Object.values(PaymentTerms);
 export const DESTINATIONS: readonly Destination[] = Object.values(Destination);
 export const INCOTERMS: readonly Incoterm[] = Object.values(Incoterm);
-export const SHIPMENT_DOCUMENT_TYPES: readonly ShipmentDocumentType[] =
-  Object.values(ShipmentDocumentType);
 export const IMPORT_DOCUMENT_TYPES: readonly ImportDocumentType[] =
   Object.values(ImportDocumentType);
 export const CLASSIFICATION_APPROVALS: readonly ClassificationApproval[] =

@@ -14,6 +14,8 @@ export interface ListOrdersParams {
   supplierId?: number;
   /** `false` matches orders with no shipping case yet; `true` matches the opposite. */
   hasCase?: boolean;
+  /** `false` matches orders with no HBL yet; `true` matches the opposite. Independent of `hasCase`. */
+  hasHbl?: boolean;
   status?: OrderStatus;
   /** Matches orders created on this calendar date (`YYYY-MM-DD`). */
   createdDate?: string;

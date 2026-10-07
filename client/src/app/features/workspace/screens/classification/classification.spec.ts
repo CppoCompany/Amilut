@@ -8,12 +8,14 @@ import {
   TradeAgreement,
 } from '../../../../api/enums';
 import type { CountryDto, InvoiceLineItemDto } from '../../../../api/models';
-import { CURRENT_CASE_NUMBER } from '../../current-case';
+import { CurrentCaseService } from '../../current-case.service';
 import { ClassificationScreen, goodsDescriptionOf } from './classification';
 
-const LINE_ITEMS_URL = `/api/import-files/${CURRENT_CASE_NUMBER}/line-items`;
+const CASE_ID = 1000;
+const LINE_ITEMS_URL = `/api/import-files/${CASE_ID}/line-items`;
 const SAVE_URL = `${LINE_ITEMS_URL}/classification`;
 const COUNTRIES_URL = '/api/countries';
+const CASES_URL = '/api/mbl';
 
 const COUNTRIES: CountryDto[] = [
   { id: 106, name: 'ישראל', key: 'IL' },
@@ -56,20 +58,69 @@ describe('goodsDescriptionOf', () => {
   });
 });
 
-describe('ClassificationScreen', () => {
-  let fixture: ComponentFixture<ClassificationScreen>;
-  let httpMock: HttpTestingController;
+let fixture: ComponentFixture<ClassificationScreen>;
+let httpMock: HttpTestingController;
+let currentCase: CurrentCaseService;
 
-  beforeEach(async () => {
-    await TestBed.configureTestingModule({
-      imports: [ClassificationScreen],
-      providers: [provideHttpClient(), provideHttpClientTesting()],
-    }).compileComponents();
+/**
+ * Creates the screen with `caseId` already picked (or none) and answers the
+ * case picker's lookup with an empty list — the picker itself is covered by
+ * its own spec.
+ */
+async function setup(caseId: number | null): Promise<void> {
+  await TestBed.configureTestingModule({
+    imports: [ClassificationScreen],
+    providers: [provideHttpClient(), provideHttpClientTesting()],
+  }).compileComponents();
 
-    httpMock = TestBed.inject(HttpTestingController);
-    fixture = TestBed.createComponent(ClassificationScreen);
+  httpMock = TestBed.inject(HttpTestingController);
+  currentCase = TestBed.inject(CurrentCaseService);
+  fixture = TestBed.createComponent(ClassificationScreen);
+  fixture.detectChanges();
+  httpMock.expectOne((req) => req.url === CASES_URL).flush([]);
+  // Picked after the (empty) lookup so the picker does not reset it as a deleted case.
+  currentCase.caseId.set(caseId);
+  fixture.detectChanges();
+}
+
+describe('ClassificationScreen before a case is picked', () => {
+  beforeEach(() => setup(null));
+
+  afterEach(() => httpMock.verify());
+
+  it('requests no line items and shows a hint — not an error — on entry', () => {
+    httpMock.expectOne(COUNTRIES_URL).flush(COUNTRIES);
     fixture.detectChanges();
+
+    httpMock.expectNone(LINE_ITEMS_URL);
+    expect(fixture.nativeElement.querySelector('.form-message--error')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.products-loading')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.products-empty td')?.textContent?.trim()).toBe(
+      'בחר תיק כדי להציג את פריטי חשבון הספק שלו',
+    );
+    const submit = fixture.nativeElement.querySelector(
+      'button[type="submit"]',
+    ) as HTMLButtonElement;
+    expect(submit.disabled).toBe(true);
   });
+
+  it('loads the line items once a case is picked', () => {
+    httpMock.expectOne(COUNTRIES_URL).flush(COUNTRIES);
+
+    currentCase.caseId.set(CASE_ID);
+    fixture.detectChanges();
+
+    httpMock.expectOne(LINE_ITEMS_URL).flush([lineItem()]);
+    fixture.detectChanges();
+    expect(
+      (fixture.nativeElement.querySelector('#goodsDescription') as HTMLInputElement).value,
+    ).toBe('Light Fixtures');
+    expect(fixture.nativeElement.querySelectorAll('.documents-table tbody tr').length).toBe(1);
+  });
+});
+
+describe('ClassificationScreen', () => {
+  beforeEach(() => setup(CASE_ID));
 
   afterEach(() => httpMock.verify());
 

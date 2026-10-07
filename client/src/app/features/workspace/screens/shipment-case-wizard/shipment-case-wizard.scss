@@ -1,0 +1,248 @@
+// Component-scoped additions to the shared form styles (see src/styles.scss).
+// Two-column layout: `.wizard-main` holds the step-by-step form (unchanged
+// card/border/shadow language as the rest of the app), `.wizard-sidebar` is a
+// sticky panel filling the content area's previously-unused right-hand gap
+// (in RTL, the last flex child sits at the visual left edge, furthest from
+// the app's own nav sidebar) with live shipment progress + the MBL → HBL tree.
+
+.wizard-layout {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+
+.wizard-main {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  flex: 1 1 640px;
+  max-width: 1000px;
+  min-width: 0;
+}
+
+.method-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.method-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-width: 200px;
+  flex: 1 1 200px;
+  padding: 28px 20px;
+  background: white;
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  font-family: inherit;
+  cursor: pointer;
+  transition: var(--transition);
+  text-align: center;
+
+  i {
+    font-size: 1.8rem;
+    color: var(--secondary-blue);
+  }
+
+  &:hover {
+    border-color: var(--secondary-blue);
+    box-shadow: 0 2px 8px rgba(27, 99, 199, 0.12);
+    transform: translateY(-1px);
+  }
+}
+
+.method-card__label {
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--text-dark);
+}
+
+.method-card__description {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+
+  // RTL: "back" points right, so the arrow icon should too — fa-arrow-right
+  // already points the correct visual direction for this layout.
+}
+
+// ── Progress sidebar ───────────────────────────────────────────────────────────
+
+.wizard-sidebar {
+  flex: 0 0 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 20px;
+  position: sticky;
+  top: 24px;
+  max-height: calc(100vh - 160px);
+  overflow-y: auto;
+}
+
+.wizard-sidebar__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--primary-blue);
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border-color);
+
+  i {
+    color: var(--secondary-blue);
+  }
+}
+
+.wizard-steps {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.wizard-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.88rem;
+  color: var(--text-muted);
+}
+
+.wizard-step__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-color);
+  color: var(--text-muted);
+  font-size: 0.65rem;
+  transition: var(--transition);
+}
+
+.wizard-step--done {
+  color: var(--text-dark);
+  font-weight: 600;
+}
+
+.wizard-step--done .wizard-step__icon {
+  background: var(--success);
+  border-color: var(--success);
+  color: white;
+}
+
+.wizard-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color);
+  min-height: 0;
+}
+
+.wizard-tree__title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.wizard-tree-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.wizard-tree-list--nested {
+  margin-top: 4px;
+  padding-right: 16px;
+  border-right: 2px solid var(--border-color);
+}
+
+.wizard-tree-node {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-right: 3px solid transparent;
+  border-radius: var(--radius-md);
+  padding: 7px 10px;
+  font-family: inherit;
+  font-size: 0.85rem;
+  color: var(--text-dark);
+  text-align: right;
+  cursor: pointer;
+  transition: var(--transition);
+
+  i {
+    width: 14px;
+    text-align: center;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+
+  &:hover {
+    background: var(--bg-color);
+  }
+
+  &.active {
+    background: var(--light-blue-bg);
+    color: var(--secondary-blue);
+    border-right-color: var(--secondary-blue);
+    font-weight: 600;
+
+    i {
+      color: var(--secondary-blue);
+    }
+  }
+}
+
+.wizard-tree-node--hbl i {
+  color: var(--success);
+}
+
+.wizard-tree-node__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wizard-tree-empty {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  padding: 4px 10px;
+}
+
+@media (max-width: 960px) {
+  .wizard-sidebar {
+    position: static;
+    flex: 1 1 100%;
+    max-height: none;
+    width: 100%;
+  }
+}

@@ -1,5 +1,6 @@
 <section class="form-section" id="classificationTabPanel">
   <h2 class="section-title">Classification</h2>
+  <app-case-picker />
   <form class="order-form" [formGroup]="form" (ngSubmit)="onSubmit()">
     <div class="grid-row">
       <div class="form-group goods-form-group">
@@ -115,7 +116,11 @@
               @if (!loading()) {
                 <tr class="products-empty">
                   <td colspan="9">
-                    לא נמצאו פריטים מחשבון ספק — העלה חשבון ספק במסך תיוק ניירת יבוא
+                    @if (caseId() === null) {
+                      בחר תיק כדי להציג את פריטי חשבון הספק שלו
+                    } @else {
+                      לא נמצאו פריטים מחשבון ספק — העלה חשבון ספק במסך תיוק ניירת יבוא
+                    }
                   </td>
                 </tr>
               }
@@ -124,7 +129,14 @@
         </table>
       </div>
       <div style="margin-top: 10px">
-        <button type="button" class="btn btn-secondary" (click)="addRow()">הוסף שורה</button>
+        <button
+          type="button"
+          class="btn btn-secondary"
+          [disabled]="caseId() === null"
+          (click)="addRow()"
+        >
+          הוסף שורה
+        </button>
       </div>
     </div>
 
@@ -141,7 +153,7 @@
     }
 
     <div class="form-actions">
-      <button type="submit" class="btn btn-primary" [disabled]="saving()">
+      <button type="submit" class="btn btn-primary" [disabled]="saving() || caseId() === null">
         {{ saving() ? 'שומר…' : 'שמור סיווג' }}
       </button>
     </div>

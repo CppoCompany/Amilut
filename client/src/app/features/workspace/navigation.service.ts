@@ -1,9 +1,12 @@
-import { computed, inject, Injectable, Injector, runInInjectionContext, signal } from '@angular/core';
+import { computed, Injectable, signal } from '@angular/core';
 
-import { canDeactivateCurrentItemGuard } from '../../core/guards/can-deactivate.guard';
-import { createNewGuard } from '../../core/guards/create-new.guard';
-import { DRAFT_ITEM_ID } from './active-context.model';
-import { PageKey, ScreenId, TreeChild, TreeNode } from './navigation.model';
+import { isTreeChildGroup, PageKey, ScreenId, TreeChild, TreeEntry } from './navigation.model';
+
+/** All leaf rows in the tree, whether a plain top-level row or nested inside
+ *  an expandable group — the flat list `selectChild`'s callers search by page. */
+function flattenLeaves(tree: readonly TreeEntry[]): TreeChild[] {
+  return tree.flatMap((entry) => (isTreeChildGroup(entry) ? entry.children : [entry]));
+}
 
 /**
  * Owns the sidebar tree and decides which content screen is visible.
@@ -15,10 +18,8 @@ import { PageKey, ScreenId, TreeChild, TreeNode } from './navigation.model';
  */
 @Injectable({ providedIn: 'root' })
 export class NavigationService {
-  private readonly injector = inject(Injector);
-
   /** The sidebar tree. Built by {@link setupTreeNavigation}. */
-  readonly tree = signal<TreeNode[]>([]);
+  readonly tree = signal<TreeEntry[]>([]);
 
   /** Ids of the nodes currently expanded. */
   private readonly expandedNodes = signal<ReadonlySet<string>>(new Set());
@@ -49,11 +50,21 @@ export class NavigationService {
   readonly editOrderId = signal<number | null>(null);
 
   /**
-   * Case id another screen (e.g. a double-click in "התיקים שלי") wants the
-   * shipment/case screen to load for editing, set via {@link openCaseForEdit}.
-   * Consumed once — the shipment screen clears it immediately after reading it.
+   * MBL id another screen (e.g. a double-click in "התיקים שלי") wants the
+   * shipping-case wizard to load for editing, set via {@link openCaseForEdit}.
+   * Consumed once — the wizard screen clears it immediately after reading it.
    */
   readonly editCaseId = signal<number | null>(null);
+
+  /**
+   * Bumped each time "יצירת הזמנה חדשה"/"יצירת תיק שילוח" is explicitly
+   * selected from the sidebar (see {@link selectChild}) — the order/shipment
+   * screens watch this to reset to a blank draft even when already mounted
+   * (navigating there doesn't change `activePage`, so the component instance
+   * — and whatever existing order/case it was editing — otherwise persists).
+   */
+  readonly newOrderRequested = signal(0);
+  readonly newCaseRequested = signal(0);
 
   constructor() {
     this.setupTreeNavigation();
@@ -64,41 +75,55 @@ export class NavigationService {
    * default landing page. Mirrors the mock's `setupTreeNavigation()`.
    */
   setupTreeNavigation(): void {
-    const tree: TreeNode[] = [
+    const tree: TreeEntry[] = [
       {
-        id: 'workstations',
-        label: 'תחנות עבודה',
-        icon: 'fa-solid fa-desktop',
+        id: 'ws-orders-group',
+        label: 'הזמנות',
+        icon: 'fa-solid fa-file-invoice',
         children: [
+          { id: 'ws-my-orders', page: 'myOrders', label: 'ההזמנות שלי', icon: 'fa-solid fa-list' },
           { id: 'ws-order', page: 'order', label: 'יצירת הזמנה חדשה', icon: 'fa-solid fa-file-invoice' },
-          { id: 'ws-filing', page: 'filing', label: 'תיוק ניירת יבוא', icon: 'fa-solid fa-file-import' },
-          { id: 'ws-shipment', page: 'shipment', label: 'יצירת תיק שילוח', icon: 'fa-solid fa-truck-fast' },
-          { id: 'ws-classification', page: 'classification', label: 'סיווג', icon: 'fa-solid fa-tags' },
+        ],
+      },
+      { id: 'ws-filing', page: 'filing', label: 'תיוק ניירת יבוא', icon: 'fa-solid fa-file-import' },
+      {
+        id: 'ws-shipment-group',
+        label: 'תיקי שילוח',
+        icon: 'fa-solid fa-truck-fast',
+        children: [
+          { id: 'ws-my-files', page: 'myFiles', label: 'התיקים שלי', icon: 'fa-solid fa-folder-open' },
           {
-            id: 'ws-post-classification',
-            page: 'placeholder',
-            label: 'השלמה לאחר סיווג',
-            icon: 'fa-solid fa-check-double',
-          },
-          {
-            id: 'ws-doc-review',
-            page: 'placeholder',
-            label: 'ביקורת מסמכים',
-            icon: 'fa-solid fa-magnifying-glass',
-          },
-          {
-            id: 'ws-transmit',
-            page: 'placeholder',
-            label: 'שידור הצהרה למכס',
-            icon: 'fa-solid fa-file-signature',
-          },
-          {
-            id: 'ws-land-transport',
-            page: 'placeholder',
-            label: 'תיאום הובלה יבשתית',
-            icon: 'fa-solid fa-file-signature',
+            id: 'ws-shipment',
+            page: 'shipmentCaseWizard',
+            label: 'יצירת תיק שילוח',
+            icon: 'fa-solid fa-truck-fast',
           },
         ],
+      },
+      { id: 'ws-classification', page: 'classification', label: 'סיווג', icon: 'fa-solid fa-tags' },
+      {
+        id: 'ws-post-classification',
+        page: 'placeholder',
+        label: 'השלמה לאחר סיווג',
+        icon: 'fa-solid fa-check-double',
+      },
+      {
+        id: 'ws-doc-review',
+        page: 'placeholder',
+        label: 'ביקורת מסמכים',
+        icon: 'fa-solid fa-magnifying-glass',
+      },
+      {
+        id: 'ws-transmit',
+        page: 'placeholder',
+        label: 'שידור הצהרה למכס',
+        icon: 'fa-solid fa-file-signature',
+      },
+      {
+        id: 'ws-land-transport',
+        page: 'placeholder',
+        label: 'תיאום הובלה יבשתית',
+        icon: 'fa-solid fa-file-signature',
       },
       {
         id: 'importDeclaration',
@@ -143,15 +168,6 @@ export class NavigationService {
           },
         ],
       },
-      {
-        id: 'shipmentSelect',
-        label: 'בחר משלוח',
-        icon: 'fa-solid fa-folder-tree',
-        children: [
-          { id: 'ws-my-orders', page: 'myOrders', label: 'ההזמנות שלי', icon: 'fa-solid fa-list' },
-          { id: 'ws-my-files', page: 'myFiles', label: 'התיקים שלי', icon: 'fa-solid fa-folder-open' },
-        ],
-      },
     ];
 
     this.tree.set(tree);
@@ -159,7 +175,7 @@ export class NavigationService {
     // page → screen. Repeated/unbuilt pages fall back to the placeholder screen.
     this.screenMap.set('order', 'order');
     this.screenMap.set('filing', 'filing');
-    this.screenMap.set('shipment', 'shipment');
+    this.screenMap.set('shipmentCaseWizard', 'shipmentCaseWizard');
     this.screenMap.set('classification', 'classification');
     this.screenMap.set('importDeclaration', 'importDeclaration');
     this.screenMap.set('myOrders', 'myOrders');
@@ -167,9 +183,11 @@ export class NavigationService {
     this.screenMap.set('search', 'placeholder');
     this.screenMap.set('placeholder', 'placeholder');
 
-    // Default landing: first node open, first row selected (matches the mock).
-    this.expandedNodes.set(new Set([tree[0].id]));
-    const first = tree[0].children[0];
+    // Default landing: unchanged from before the Orders group existed — still
+    // "יצירת הזמנה חדשה" — with the group that now contains it expanded, so
+    // the highlighted row is visible rather than hidden inside a collapsed group.
+    this.expandedNodes.set(new Set(['ws-orders-group']));
+    const first = flattenLeaves(tree).find((c) => c.id === 'ws-order')!;
     this.activePage.set(first.page);
     this.activeChildId.set(first.id);
   }
@@ -190,34 +208,38 @@ export class NavigationService {
     return this.expandedNodes().has(nodeId);
   }
 
-  /** Select a child row: highlight it and show its screen. */
+  /**
+   * Select a child row: highlight it, show its screen, and reveal it if its
+   * sub-group happens to be collapsed — the active row should never be
+   * hidden. "יצירת הזמנה חדשה"/"יצירת תיק שילוח" are the only rows on the
+   * `order`/`shipmentCaseWizard` pages, so clicking either one always means
+   * "start a fresh draft" — bump the matching counter so the screen (which
+   * may already be mounted mid-draft, since the page doesn't change) resets
+   * instead of silently keeping the old one on screen.
+   */
   selectChild(child: TreeChild): void {
     if (!this.screenMap.has(child.page)) return;
-    this.activeChildId.set(child.id);
-    this.activePage.set(child.page);
+    if (child.page === 'order') this.newOrderRequested.update((n) => n + 1);
+    if (child.page === 'shipmentCaseWizard') this.newCaseRequested.update((n) => n + 1);
+    this.setActiveRow(child.page, child.id);
   }
 
-  /**
-   * Guarded entry point for sidebar clicks. `selectChild` itself stays a
-   * plain, ungated primitive — it's also called internally by
-   * `openOrderForEdit`/`openCaseForEdit`/`goToMyOrders`/`goToMyFiles`, which
-   * are reached *after* a guard has already run (from `itemOpenGuard` or from
-   * this method itself), so gating `selectChild` directly would double-prompt.
-   */
-  async trySelectChild(child: TreeChild): Promise<void> {
-    let allowed: boolean;
-    if (child.page === 'order') {
-      allowed = await runInInjectionContext(this.injector, () =>
-        createNewGuard('order', { id: DRAFT_ITEM_ID, label: 'הזמנה חדשה' }),
-      );
-    } else if (child.page === 'shipment') {
-      allowed = await runInInjectionContext(this.injector, () =>
-        createNewGuard('file', { id: DRAFT_ITEM_ID, label: 'תיק חדש' }),
-      );
-    } else {
-      allowed = await runInInjectionContext(this.injector, () => canDeactivateCurrentItemGuard());
+  private setActiveRow(page: PageKey, childId: string): void {
+    this.activeChildId.set(childId);
+    this.activePage.set(page);
+    this.expandGroupContaining(childId);
+  }
+
+  /** Expands whichever group (if any) directly contains this leaf id. */
+  private expandGroupContaining(childId: string): void {
+    for (const entry of this.tree()) {
+      if (isTreeChildGroup(entry) && entry.children.some((c) => c.id === childId)) {
+        if (!this.expandedNodes().has(entry.id)) {
+          this.expandedNodes.update((set) => new Set(set).add(entry.id));
+        }
+        return;
+      }
     }
-    if (allowed) this.selectChild(child);
   }
 
   /** Whether a child row is the highlighted one. */
@@ -225,45 +247,41 @@ export class NavigationService {
     return this.activeChildId() === childId;
   }
 
-  /** Navigate to the order screen with `orderId` queued up for it to load and edit. */
+  /** Navigate to the order screen with `orderId` queued up for it to load and
+   *  edit — highlights "ההזמנות שלי" (not "יצירת הזמנה חדשה"), since editing
+   *  an existing order was reached from there, not from the create-new row. */
   openOrderForEdit(orderId: number): void {
     this.editOrderId.set(orderId);
-    const child = this.tree()
-      .flatMap((node) => node.children)
-      .find((c) => c.page === 'order');
-    if (child) {
-      this.selectChild(child);
+    const myOrders = flattenLeaves(this.tree()).find((c) => c.page === 'myOrders');
+    if (myOrders) {
+      this.setActiveRow('order', myOrders.id);
     } else {
       this.activePage.set('order');
     }
   }
 
-  /** Navigate to the shipment/case screen with `caseId` queued up for editing. */
+  /** Navigate to the shipping-case wizard with `caseId` (an MBL id) queued up
+   *  for it to load and edit. Highlights "התיקים שלי" (not "יצירת תיק
+   *  שילוח"), same reasoning as {@link openOrderForEdit}. */
   openCaseForEdit(caseId: number): void {
     this.editCaseId.set(caseId);
-    const child = this.tree()
-      .flatMap((node) => node.children)
-      .find((c) => c.page === 'shipment');
-    if (child) {
-      this.selectChild(child);
+    const myFiles = flattenLeaves(this.tree()).find((c) => c.page === 'myFiles');
+    if (myFiles) {
+      this.setActiveRow('shipmentCaseWizard', myFiles.id);
     } else {
-      this.activePage.set('shipment');
+      this.activePage.set('shipmentCaseWizard');
     }
   }
 
   /** Fallback landing spot after closing the last open Order in the context bar. */
   goToMyOrders(): void {
-    const child = this.tree()
-      .flatMap((node) => node.children)
-      .find((c) => c.page === 'myOrders');
+    const child = flattenLeaves(this.tree()).find((c) => c.page === 'myOrders');
     if (child) this.selectChild(child);
   }
 
   /** Fallback landing spot after closing the last open File in the context bar. */
   goToMyFiles(): void {
-    const child = this.tree()
-      .flatMap((node) => node.children)
-      .find((c) => c.page === 'myFiles');
+    const child = flattenLeaves(this.tree()).find((c) => c.page === 'myFiles');
     if (child) this.selectChild(child);
   }
 }

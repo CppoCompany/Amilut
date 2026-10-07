@@ -74,7 +74,7 @@ export class ImportFilesController {
       'No files, missing or invalid documentType, or an unsafe file name.',
   })
   @ApiNotFoundResponse({
-    description: 'No import case (order_account) with this account number.',
+    description: 'No import case (mbl) with this account number.',
   })
   @UseInterceptors(
     FilesInterceptor(IMPORT_FILES_FIELD, MAX_IMPORT_FILES_PER_UPLOAD, {
@@ -106,7 +106,7 @@ export class ImportFilesController {
     description: 'accountNumber is not a positive integer.',
   })
   @ApiNotFoundResponse({
-    description: 'No import case (order_account) with this account number.',
+    description: 'No import case (mbl) with this account number.',
   })
   listImportFiles(
     @Param('accountNumber', ParseIntPipe) accountNumber: number,
@@ -155,7 +155,7 @@ export class ImportFilesController {
     description: 'accountNumber is not a positive integer.',
   })
   @ApiNotFoundResponse({
-    description: 'No import case (order_account) with this account number.',
+    description: 'No import case (mbl) with this account number.',
   })
   getSupplierInvoiceLineItems(
     @Param('accountNumber', ParseIntPipe) accountNumber: number,

@@ -1,21 +1,12 @@
 import { ScrollingModule } from '@angular/cdk/scrolling';
-import {
-  ChangeDetectionStrategy,
-  Component,
-  DestroyRef,
-  Injector,
-  inject,
-  runInInjectionContext,
-  signal,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { combineLatest, debounceTime, finalize, skip } from 'rxjs';
 
-import { SHIPMENT_DOCUMENT_TYPE_LABELS } from '../../../../api/enums';
-import type { CustomerDto, ShipmentSummaryDto } from '../../../../api/models';
-import { ListShipmentsParams, ShipmentsApi } from '../../../../api/shipments-api';
-import { itemOpenGuard } from '../../../../core/guards/item-open.guard';
+import { MBL_SHIPPING_TYPE_LABELS, SEA_METHOD_LABELS } from '../../../../api/enums';
+import { ListMblParams, MblApi } from '../../../../api/mbl-api';
+import type { CustomerDto, MblSummaryDto } from '../../../../api/models';
 import { ConfirmDialog } from '../../../../shared/confirm-dialog/confirm-dialog';
 import {
   CustomerAutocomplete,
@@ -26,7 +17,7 @@ import { NavigationService } from '../../navigation.service';
 /** Single batch fetched per filter change; rendering beyond this is virtualized, not paginated. */
 const MAX_ROWS = 200;
 
-/** "התיקים שלי" — filterable grid over all shipment files, virtual-scrolled. */
+/** "התיקים שלי" — filterable grid over every MBL/HBL shipping case, virtual-scrolled. */
 @Component({
   selector: 'app-my-files-screen',
   imports: [FormsModule, ScrollingModule, CustomerAutocomplete, ConfirmDialog],
@@ -35,33 +26,30 @@ const MAX_ROWS = 200;
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MyFilesScreen {
-  private readonly shipmentsApi = inject(ShipmentsApi);
+  private readonly mblApi = inject(MblApi);
   private readonly destroyRef = inject(DestroyRef);
   private readonly nav = inject(NavigationService);
-  private readonly injector = inject(Injector);
-
-  protected readonly documentTypeLabels = SHIPMENT_DOCUMENT_TYPE_LABELS;
 
   // ── Filters (live — debounced, no apply button) ────────────────────────────
   protected readonly filterCustomer = signal<CustomerDto | null>(null);
-  protected readonly filterForwarderName = signal('');
+  protected readonly filterCarrierName = signal('');
   protected readonly filterCaseNumber = signal('');
 
   // ── Grid state ──────────────────────────────────────────────────────────────
-  protected readonly shipments = signal<ShipmentSummaryDto[]>([]);
+  protected readonly cases = signal<MblSummaryDto[]>([]);
   protected readonly loading = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
   /** Case ids currently being deleted — disables their row's delete button mid-request. */
   protected readonly deletingIds = signal<ReadonlySet<number>>(new Set());
   /** The case awaiting delete confirmation in the modal, or `null`. */
-  protected readonly pendingDelete = signal<ShipmentSummaryDto | null>(null);
+  protected readonly pendingDelete = signal<MblSummaryDto | null>(null);
 
   constructor() {
     this.fetch();
 
     combineLatest([
       toObservable(this.filterCustomer),
-      toObservable(this.filterForwarderName),
+      toObservable(this.filterCarrierName),
       toObservable(this.filterCaseNumber),
     ])
       .pipe(
@@ -74,16 +62,19 @@ export class MyFilesScreen {
 
   protected clearFilters(): void {
     this.filterCustomer.set(null);
-    this.filterForwarderName.set('');
+    this.filterCarrierName.set('');
     this.filterCaseNumber.set('');
   }
 
-  /** Double-click a row to edit that case in "יצירת תיק חדש". */
-  protected async onEditCase(shipment: ShipmentSummaryDto): Promise<void> {
-    const allowed = await runInInjectionContext(this.injector, () =>
-      itemOpenGuard({ type: 'file', id: String(shipment.id), label: `תיק #${shipment.id}` }),
-    );
-    if (allowed) this.nav.openCaseForEdit(shipment.id);
+  /** Double-click a row to open it in the MBL/HBL shipping-case wizard for editing. */
+  protected onEditCase(mblCase: MblSummaryDto): void {
+    this.nav.openCaseForEdit(mblCase.id);
+  }
+
+  /** "ימי - FCL/FCL", "אווירי", etc. */
+  protected methodLabel(mblCase: MblSummaryDto): string {
+    const shippingLabel = MBL_SHIPPING_TYPE_LABELS[mblCase.shippingType];
+    return mblCase.seaMethod ? `${shippingLabel} - ${SEA_METHOD_LABELS[mblCase.seaMethod]}` : shippingLabel;
   }
 
   protected joinOrEmDash(values: readonly (string | number)[]): string {
@@ -95,39 +86,39 @@ export class MyFilesScreen {
   }
 
   /** Opens the confirm-delete modal for this row. */
-  protected onDeleteCase(shipment: ShipmentSummaryDto, event: Event): void {
+  protected onDeleteCase(mblCase: MblSummaryDto, event: Event): void {
     event.stopPropagation();
-    if (this.isDeleting(shipment.id)) return;
-    this.pendingDelete.set(shipment);
+    if (this.isDeleting(mblCase.id)) return;
+    this.pendingDelete.set(mblCase);
   }
 
   protected cancelDelete(): void {
     this.pendingDelete.set(null);
   }
 
-  /** Confirmed via the modal — deletes the case and removes its row from the
-   *  grid. Its orders are freed back to unassigned automatically (server-side FK). */
+  /** Confirmed via the modal — deletes the MBL (cascading to its HBLs/containers)
+   *  and removes its row from the grid. Its orders are freed back to unassigned
+   *  automatically (server-side FK, `ON DELETE SET NULL`). */
   protected confirmDelete(): void {
-    const shipment = this.pendingDelete();
-    if (!shipment) return;
+    const mblCase = this.pendingDelete();
+    if (!mblCase) return;
     this.pendingDelete.set(null);
 
-    this.deletingIds.update((current) => new Set(current).add(shipment.id));
-    this.shipmentsApi
-      .remove(shipment.id)
+    this.deletingIds.update((current) => new Set(current).add(mblCase.id));
+    this.mblApi
+      .remove(mblCase.id)
       .pipe(
         finalize(() => {
           this.deletingIds.update((current) => {
             const next = new Set(current);
-            next.delete(shipment.id);
+            next.delete(mblCase.id);
             return next;
           });
         }),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
-        next: () =>
-          this.shipments.update((rows) => rows.filter((row) => row.id !== shipment.id)),
+        next: () => this.cases.update((rows) => rows.filter((row) => row.id !== mblCase.id)),
         error: () => this.errorMessage.set('מחיקת התיק נכשלה'),
       });
   }
@@ -138,20 +129,20 @@ export class MyFilesScreen {
     return date.toLocaleDateString('he-IL', { year: 'numeric', month: '2-digit', day: '2-digit' });
   }
 
-  protected trackById(_index: number, shipment: ShipmentSummaryDto): number {
-    return shipment.id;
+  protected trackById(_index: number, mblCase: MblSummaryDto): number {
+    return mblCase.id;
   }
 
   private fetch(): void {
-    const params: ListShipmentsParams = { limit: MAX_ROWS };
+    const params: ListMblParams = { limit: MAX_ROWS };
 
     const customerId = this.filterCustomer()?.id;
     if (customerId !== undefined) {
       params.customerId = customerId;
     }
-    const forwarderName = this.filterForwarderName().trim();
-    if (forwarderName) {
-      params.forwarderName = forwarderName;
+    const carrierName = this.filterCarrierName().trim();
+    if (carrierName) {
+      params.carrierName = carrierName;
     }
     const caseNumberText = this.filterCaseNumber().trim();
     if (caseNumberText) {
@@ -163,13 +154,13 @@ export class MyFilesScreen {
 
     this.loading.set(true);
     this.errorMessage.set(null);
-    this.shipmentsApi
+    this.mblApi
       .list(params)
       .pipe(finalize(() => this.loading.set(false)), takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (rows) => this.shipments.set(rows),
+        next: (rows) => this.cases.set(rows),
         error: () => {
-          this.shipments.set([]);
+          this.cases.set([]);
           this.errorMessage.set('טעינת התיקים נכשלה');
         },
       });

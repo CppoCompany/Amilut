@@ -1,0 +1,17 @@
+// Narrow like the screens' other selects; sits above the screen's own controls.
+.case-picker {
+  max-width: 360px;
+  margin-bottom: 12px;
+}
+
+.form-message {
+  margin: 0;
+  padding: 0.6rem 0.9rem;
+  border-radius: 6px;
+  font-size: 0.95rem;
+
+  &--error {
+    background: color-mix(in srgb, var(--danger, #ef4444) 12%, white);
+    color: var(--danger, #ef4444);
+  }
+}
