@@ -23,6 +23,8 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { ListOrdersQuery } from './dto/list-orders.query';
 import { OrderDto } from './dto/order.dto';
+import { PagedOrdersDto } from './dto/paged-orders.dto';
+import { PagedOrdersQuery } from './dto/paged-orders.query';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { OrdersService } from './orders.service';
 
@@ -37,6 +39,17 @@ export class OrdersController {
   @ApiOkResponse({ type: OrderDto, isArray: true })
   findAll(@Query() query: ListOrdersQuery): Promise<OrderDto[]> {
     return this.orders.findAll(query);
+  }
+
+  /** "ההזמנות שלי" list page: the signed-in user's orders, paged/sorted/filtered.
+   *  Declared before `:id` so the static segment wins route matching. */
+  @Get('paged')
+  @ApiOkResponse({ type: PagedOrdersDto })
+  findMyOrdersPaged(
+    @Query() query: PagedOrdersQuery,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<PagedOrdersDto> {
+    return this.orders.findMyOrdersPaged(query, user.sub);
   }
 
   @Get(':id')

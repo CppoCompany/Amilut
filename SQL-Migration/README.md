@@ -23,6 +23,7 @@ wired to `npm run db:generate`.
 | `014_create_countries.sql` | `countries` lookup table (Hebrew name + ISO 3166-1 alpha-2 `key`) seeded with all 242 countries | `Amilut` | `Admin` (via `SET ROLE`) |
 | `015_create_mbl_hbl.sql` | New MBL/HBL shipping-case workflow: `mbl`, `mbl_container`, `hbl` tables + `orders.hbl_id` FK — parallel to (not replacing) `order_account`/`orders.case_id` | `Amilut` | `Admin` (via `SET ROLE`) |
 | `016_remove_legacy_shipment_cases.sql` | Deletes all rows from `order_account` — the old shipping-case workflow (and its `ShipmentsModule`/`ShipmentScreen`) has been fully replaced by MBL/HBL; the table/column themselves are left in place, just unused | `Amilut` | `Admin` (via `SET ROLE`) |
+| `018_mbl_handler_and_status.sql` | Adds `mbl.handler_user_id` (→ `users.id`, the user who opened the case — drives "התיקים שלי") and `mbl.status` (`open`/`in_release`/`released`/`closed`, default `open` — drives "תיקים בהתרה"), with indexes | `Amilut` | `Admin` (via `SET ROLE`) |
 | `run-migrations.mjs` | Applies `001`, then every other `NNN_*.sql` in name order | — | — |
 
 Every step is **idempotent** — re-running does nothing if the objects already exist.
@@ -101,7 +102,9 @@ Amilut
 │              cargo_description, gross_weight_kg, volume_cbm,
 │              freight_terms[prepaid|collect], receipt_delivery_type [free
 │              text, e.g. "CY/CFS"], place_of_issue, date_of_issue,
-│              carrier_name, created_at, updated_at)
+│              carrier_name, handler_user_id → users.id [018, the user who
+│              opened the case], status[open|in_release|released|closed,
+│              default open — 018], created_at, updated_at)
 │              -- 015: new parallel workflow, does NOT replace order_account
 ├── mbl_container (id, mbl_id → mbl.id [ON DELETE CASCADE], container_number,
 │              container_seal_number, cargo_description, gross_weight_kg,
@@ -122,9 +125,9 @@ Amilut
 
 Enum-like columns (`status`, `shipment_type`, `payment_terms`, `incoterm`,
 `destination` in `orders`; `document_type` in `order_account`; `shipping_type`,
-`sea_method`, `freight_terms` in `mbl`) store English codes guarded by CHECK
-constraints; the source of truth for `orders`' enums is
-`server/src/orders/orders.enums.ts`.
+`sea_method`, `freight_terms`, `status` in `mbl`) store English codes guarded by
+CHECK constraints; the source of truth for `orders`' enums is
+`server/src/orders/orders.enums.ts` and for `mbl`'s is `server/src/mbl/mbl.enums.ts`.
 ```
 
 Connect the app with role `Admin` / password `Admin` on `127.0.0.1:5432`.

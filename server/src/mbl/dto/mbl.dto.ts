@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { PaymentTerms } from '../../orders/orders.enums';
-import { MblShippingType, SeaMethod } from '../mbl.enums';
+import { MblShippingType, MblStatus, SeaMethod } from '../mbl.enums';
 import { MblContainerDto } from './mbl-container.dto';
 
 export class MblDto {
@@ -41,19 +41,31 @@ export class MblDto {
   @ApiProperty({ type: 'string', nullable: true, example: 'Haifa, Israel' })
   finalDestination!: string | null;
 
-  @ApiProperty({ type: 'string', nullable: true, example: 'GLOBAL CONSOLIDATION LTD.' })
+  @ApiProperty({
+    type: 'string',
+    nullable: true,
+    example: 'GLOBAL CONSOLIDATION LTD.',
+  })
   shipperName!: string | null;
 
   @ApiProperty({ type: 'string', nullable: true })
   shipperAddress!: string | null;
 
-  @ApiProperty({ type: 'string', nullable: true, example: 'TO ORDER OF MAERSK LINE (As per House B/L)' })
+  @ApiProperty({
+    type: 'string',
+    nullable: true,
+    example: 'TO ORDER OF MAERSK LINE (As per House B/L)',
+  })
   consigneeName!: string | null;
 
   @ApiProperty({ type: 'string', nullable: true })
   consigneeAddress!: string | null;
 
-  @ApiProperty({ type: 'string', nullable: true, example: 'EREZ LOGISTICS LTD.' })
+  @ApiProperty({
+    type: 'string',
+    nullable: true,
+    example: 'EREZ LOGISTICS LTD.',
+  })
   notifyPartyName!: string | null;
 
   @ApiProperty({ type: 'string', nullable: true })
@@ -65,7 +77,11 @@ export class MblDto {
   @ApiProperty({ type: 'string', nullable: true, example: 'TCLU1234567' })
   containerSealNumber!: string | null;
 
-  @ApiProperty({ type: 'string', nullable: true, example: 'CONSOLIDATED CARGO' })
+  @ApiProperty({
+    type: 'string',
+    nullable: true,
+    example: 'CONSOLIDATED CARGO',
+  })
   cargoDescription!: string | null;
 
   @ApiProperty({ type: 'number', nullable: true, example: 5400 })
@@ -83,11 +99,26 @@ export class MblDto {
   @ApiProperty({ type: 'string', nullable: true, example: 'SHANGHAI' })
   placeOfIssue!: string | null;
 
-  @ApiProperty({ type: 'string', format: 'date', nullable: true, example: '2026-09-20' })
+  @ApiProperty({
+    type: 'string',
+    format: 'date',
+    nullable: true,
+    example: '2026-09-20',
+  })
   dateOfIssue!: string | null;
 
   @ApiProperty({ type: 'string', nullable: true, example: 'MAERSK LINE' })
   carrierName!: string | null;
+
+  @ApiProperty({ enum: MblStatus, enumName: 'MblStatus' })
+  status!: MblStatus;
+
+  /** The user who opened the case (`mbl.handler_user_id`); `null` for cases created before 018. */
+  @ApiProperty({ type: 'integer', nullable: true, example: 7 })
+  handlerUserId!: number | null;
+
+  @ApiProperty({ type: 'string', nullable: true, example: 'Dana Levi' })
+  handlerName!: string | null;
 
   /** Only non-empty for `seaMethod = 'groupage_fcl'`. */
   @ApiProperty({ type: () => MblContainerDto, isArray: true })

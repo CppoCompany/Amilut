@@ -100,6 +100,22 @@ export interface paths {
         patch: operations["CustomersController_update"];
         trace?: never;
     };
+    "/api/import-files/classifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ImportFilesController_listClassifications"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/import-files/{accountNumber}": {
         parameters: {
             query?: never;
@@ -180,6 +196,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/mbl/paged": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MblController_findAllPaged"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/mbl/{id}": {
         parameters: {
             query?: never;
@@ -254,6 +286,22 @@ export interface paths {
         get: operations["OrdersController_findAll"];
         put?: never;
         post: operations["OrdersController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/orders/paged": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["OrdersController_findMyOrdersPaged"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -381,11 +429,6 @@ export interface components {
             /** @example false */
             isActive?: boolean;
         };
-        /**
-         * @description Kind of paperwork this file represents.
-         * @enum {string}
-         */
-        ImportDocumentType: ImportDocumentType;
         /** @enum {string} */
         TradeAgreement: TradeAgreement;
         /** @enum {string} */
@@ -407,6 +450,48 @@ export interface components {
              */
             countryId: number | null;
         };
+        ClassificationRowDto: {
+            /** @example 42 */
+            fileId: number;
+            /** @example 1000 */
+            accountId: number;
+            /** @example invoice-2026-09.pdf */
+            fileName: string;
+            /** @example 0 */
+            lineIndex: number;
+            /** @example Y8022-140BK */
+            item: string;
+            /** @example Light Fixtures */
+            description: string;
+            /** @example 15 */
+            quantity: number | null;
+            /** @example 15.32 */
+            price: number | null;
+            /** @example 229.8 */
+            total: number | null;
+            classification: components["schemas"]["LineItemClassificationDto"];
+            /** @example סין */
+            countryName: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-01T08:30:00.000Z
+             */
+            createdAt: string;
+        };
+        PagedClassificationsDto: {
+            /** @example 137 */
+            total: number;
+            /** @example 1 */
+            page: number;
+            /** @example 25 */
+            pageSize: number;
+            items: components["schemas"]["ClassificationRowDto"][];
+        };
+        /**
+         * @description Kind of paperwork this file represents.
+         * @enum {string}
+         */
+        ImportDocumentType: ImportDocumentType;
         InvoiceLineItemDto: {
             /**
              * @description The `import_account_files` row (supplier invoice) this line came from.
@@ -512,17 +597,26 @@ export interface components {
         MblShippingType: MblShippingType;
         /** @enum {string} */
         SeaMethod: SeaMethod;
+        /** @enum {string} */
+        MblStatus: MblStatus;
         MblSummaryDto: {
             /** @example 1 */
             id: number;
             shippingType: components["schemas"]["MblShippingType"];
             seaMethod: components["schemas"]["SeaMethod"] | null;
+            status: components["schemas"]["MblStatus"];
             /** @example MBL-987654321 */
             mblNumber: string | null;
             /** @example MAERSK LINE */
             carrierName: string | null;
+            /** @example 7 */
+            handlerUserId: number | null;
+            /** @example Dana Levi */
+            handlerName: string | null;
             /** @example 3 */
             hblCount: number;
+            /** @example 2 */
+            orderCount: number;
             /**
              * @example [
              *       1000,
@@ -541,6 +635,15 @@ export interface components {
              * @example 2026-09-01T08:30:00.000Z
              */
             createdAt: string;
+        };
+        PagedMblSummaryDto: {
+            /** @example 137 */
+            total: number;
+            /** @example 1 */
+            page: number;
+            /** @example 25 */
+            pageSize: number;
+            items: components["schemas"]["MblSummaryDto"][];
         };
         /** @enum {string} */
         PaymentTerms: PaymentTerms;
@@ -608,6 +711,8 @@ export interface components {
             dateOfIssue?: string;
             /** @example MAERSK LINE */
             carrierName?: string;
+            /** @default open */
+            status: components["schemas"]["MblStatus"];
             containers?: components["schemas"]["CreateMblContainerDto"][];
         };
         MblContainerDto: {
@@ -678,6 +783,11 @@ export interface components {
             dateOfIssue: string | null;
             /** @example MAERSK LINE */
             carrierName: string | null;
+            status: components["schemas"]["MblStatus"];
+            /** @example 7 */
+            handlerUserId: number | null;
+            /** @example Dana Levi */
+            handlerName: string | null;
             containers: components["schemas"]["MblContainerDto"][];
             /**
              * Format: date-time
@@ -740,6 +850,8 @@ export interface components {
             dateOfIssue?: string;
             /** @example MAERSK LINE */
             carrierName?: string;
+            /** @default open */
+            status: components["schemas"]["MblStatus"];
             containers?: components["schemas"]["CreateMblContainerDto"][];
         };
         HblOrderSummaryDto: {
@@ -939,6 +1051,15 @@ export interface components {
             flightNumber: string | null;
             /** @example true */
             isActive: boolean;
+        };
+        PagedOrdersDto: {
+            /** @example 137 */
+            total: number;
+            /** @example 1 */
+            page: number;
+            /** @example 25 */
+            pageSize: number;
+            items: components["schemas"]["OrderDto"][];
         };
         CreateOrderDto: {
             /** @example 1 */
@@ -1249,6 +1370,34 @@ export interface operations {
             };
         };
     };
+    ImportFilesController_listClassifications: {
+        parameters: {
+            query?: {
+                q?: string;
+                from?: string;
+                to?: string;
+                dir?: PathsApiImportFilesClassificationsGetParametersQueryDir;
+                page?: number;
+                pageSize?: number;
+                accountId?: number;
+                sort?: PathsApiImportFilesClassificationsGetParametersQuerySort;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PagedClassificationsDto"];
+                };
+            };
+        };
+    };
     ImportFilesController_listImportFiles: {
         parameters: {
             query?: never;
@@ -1481,6 +1630,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MblDto"];
+                };
+            };
+        };
+    };
+    MblController_findAllPaged: {
+        parameters: {
+            query?: {
+                q?: string;
+                from?: string;
+                to?: string;
+                dir?: PathsApiMblPagedGetParametersQueryDir;
+                page?: number;
+                pageSize?: number;
+                mine?: boolean;
+                status?: components["schemas"]["MblStatus"];
+                customerId?: number;
+                carrierName?: string;
+                sort?: PathsApiMblPagedGetParametersQuerySort;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PagedMblSummaryDto"];
                 };
             };
         };
@@ -1786,6 +1966,35 @@ export interface operations {
             };
         };
     };
+    OrdersController_findMyOrdersPaged: {
+        parameters: {
+            query?: {
+                q?: string;
+                from?: string;
+                to?: string;
+                dir?: PathsApiOrdersPagedGetParametersQueryDir;
+                page?: number;
+                pageSize?: number;
+                status?: components["schemas"]["OrderStatus"];
+                customerId?: number;
+                sort?: PathsApiOrdersPagedGetParametersQuerySort;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PagedOrdersDto"];
+                };
+            };
+        };
+    };
     OrdersController_findOne: {
         parameters: {
             query?: never;
@@ -1976,12 +2185,36 @@ export interface operations {
         };
     };
 }
-export enum ImportDocumentType {
-    SUPPLIER_INVOICE = "SUPPLIER_INVOICE",
-    BILL_OF_LADING = "BILL_OF_LADING",
-    MASTER_BILL_OF_LADING = "MASTER_BILL_OF_LADING",
-    PACKING_LIST = "PACKING_LIST",
-    CERTIFICATE_OF_ORIGIN = "CERTIFICATE_OF_ORIGIN"
+export enum PathsApiImportFilesClassificationsGetParametersQueryDir {
+    asc = "asc",
+    desc = "desc"
+}
+export enum PathsApiImportFilesClassificationsGetParametersQuerySort {
+    createdAt = "createdAt",
+    accountId = "accountId",
+    item = "item",
+    classificationCode = "classificationCode"
+}
+export enum PathsApiMblPagedGetParametersQueryDir {
+    asc = "asc",
+    desc = "desc"
+}
+export enum PathsApiMblPagedGetParametersQuerySort {
+    id = "id",
+    mblNumber = "mblNumber",
+    carrierName = "carrierName",
+    status = "status",
+    createdAt = "createdAt"
+}
+export enum PathsApiOrdersPagedGetParametersQueryDir {
+    asc = "asc",
+    desc = "desc"
+}
+export enum PathsApiOrdersPagedGetParametersQuerySort {
+    id = "id",
+    customerName = "customerName",
+    status = "status",
+    createdAt = "createdAt"
 }
 export enum TradeAgreement {
     GENERAL = "general",
@@ -2022,6 +2255,13 @@ export enum ClassificationApproval {
     SUSTAINABLE_ENERGY = "sustainable_energy",
     VEHICLE_ACCREDITED_LAB = "vehicle_accredited_lab"
 }
+export enum ImportDocumentType {
+    SUPPLIER_INVOICE = "SUPPLIER_INVOICE",
+    BILL_OF_LADING = "BILL_OF_LADING",
+    MASTER_BILL_OF_LADING = "MASTER_BILL_OF_LADING",
+    PACKING_LIST = "PACKING_LIST",
+    CERTIFICATE_OF_ORIGIN = "CERTIFICATE_OF_ORIGIN"
+}
 export enum MblShippingType {
     SEA = "sea",
     AIR = "air"
@@ -2031,6 +2271,12 @@ export enum SeaMethod {
     FCL_LCL = "fcl_lcl",
     LCL_LCL = "lcl_lcl",
     GROUPAGE_FCL = "groupage_fcl"
+}
+export enum MblStatus {
+    OPEN = "open",
+    IN_RELEASE = "in_release",
+    RELEASED = "released",
+    CLOSED = "closed"
 }
 export enum PaymentTerms {
     PREPAID = "prepaid",

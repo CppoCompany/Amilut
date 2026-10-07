@@ -1,0 +1,33 @@
+<div class="form-section grid-screen list-page">
+  <h2 class="section-title">{{ config().title }}</h2>
+
+  <app-list-filter-bar
+    [(q)]="q"
+    [(status)]="status"
+    [(customer)]="customer"
+    [(caseNumber)]="caseNumber"
+    [(from)]="from"
+    [(to)]="to"
+    [statusOptions]="statusOptions()"
+    [showCustomer]="config().showCustomer ?? false"
+    [showCaseNumber]="config().showCaseNumber ?? false"
+    [searchPlaceholder]="config().searchPlaceholder ?? 'חיפוש...'"
+    (clear)="clearFilters()"
+  />
+
+  <app-data-grid
+    [columns]="config().columns"
+    [rows]="rows()"
+    [loading]="loading()"
+    [error]="error()"
+    [sort]="sort()"
+    [dir]="dir()"
+    [page]="page()"
+    [pageSize]="pageSize"
+    [total]="total()"
+    [rowKey]="config().rowKey"
+    (sortChange)="onSortChange($event)"
+    (pageChange)="onPageChange($event)"
+    (rowDblClick)="onOpen($event)"
+  />
+</div>

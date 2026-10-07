@@ -20,7 +20,7 @@ import type {
   LineItemClassificationUpdateDto,
 } from '../../../../api/models';
 import { MultiSelect, MultiSelectOption } from '../../../../shared/multi-select/multi-select';
-import { CURRENT_CASE_NUMBER } from '../../current-case';
+import { CurrentCaseService } from '../../current-case.service';
 
 interface Product {
   /** Where the line is stored (`import_account_files` row + position); `null` for rows added by hand. */
@@ -52,6 +52,8 @@ export class ClassificationScreen {
   private readonly importFilesApi = inject(ImportFilesApi);
   private readonly countriesApi = inject(CountriesApi);
   private readonly destroyRef = inject(DestroyRef);
+  /** The import case whose invoice lines are shown — re-pointed by "הסיווגים שלי". */
+  private readonly currentCase = inject(CurrentCaseService);
 
   protected readonly approvalOptions: readonly MultiSelectOption[] = CLASSIFICATION_APPROVALS.map(
     (value) => ({ value, label: CLASSIFICATION_APPROVAL_LABELS[value] }),
@@ -135,7 +137,7 @@ export class ClassificationScreen {
     this.saveMessage.set(null);
     this.saveError.set(null);
     this.importFilesApi
-      .saveLineItemClassifications(CURRENT_CASE_NUMBER, items)
+      .saveLineItemClassifications(this.currentCase.caseId(), items)
       .pipe(
         takeUntilDestroyed(this.destroyRef),
         finalize(() => this.saving.set(false)),
@@ -180,7 +182,7 @@ export class ClassificationScreen {
     this.loading.set(true);
     this.errorMessage.set(null);
     this.importFilesApi
-      .getSupplierInvoiceLineItems(CURRENT_CASE_NUMBER)
+      .getSupplierInvoiceLineItems(this.currentCase.caseId())
       .pipe(
         takeUntilDestroyed(this.destroyRef),
         finalize(() => this.loading.set(false)),

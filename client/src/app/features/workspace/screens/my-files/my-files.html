@@ -65,6 +65,7 @@
               <th>לקוחות</th>
               <th>תיקי HBL</th>
               <th>מוביל</th>
+              <th>סטטוס</th>
               <th>תאריך פתיחה</th>
               <th></th>
             </tr>
@@ -83,6 +84,11 @@
               <td>{{ joinOrEmDash(mblCase.customerNames) }}</td>
               <td class="data-table__numeric">{{ mblCase.hblCount }}</td>
               <td>{{ mblCase.carrierName ?? '—' }}</td>
+              <td>
+                <span [class]="'status-pill status-pill--' + mblCase.status">
+                  {{ statusLabels[mblCase.status] }}
+                </span>
+              </td>
               <td class="data-table__numeric">{{ formatDate(mblCase.createdAt) }}</td>
               <td>
                 <button

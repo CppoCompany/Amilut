@@ -1,0 +1,10 @@
+// `.form-section`, `.grid-screen`, `.section-title` and `.filter-bar` come from src/styles.scss.
+.list-page {
+  gap: 0;
+}
+
+// Let the grid (and its pager) take the room left under the title/filter bar.
+.list-page app-data-grid {
+  flex: 1;
+  min-height: 0;
+}

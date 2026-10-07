@@ -1,6 +1,14 @@
 import { computed, Injectable, signal } from '@angular/core';
 
-import { isTreeChildGroup, PageKey, ScreenId, TreeChild, TreeEntry } from './navigation.model';
+import {
+  isTreeChildGroup,
+  LIST_PAGE_KEYS,
+  ListPageKey,
+  PageKey,
+  ScreenId,
+  TreeChild,
+  TreeEntry,
+} from './navigation.model';
 
 /** All leaf rows in the tree, whether a plain top-level row or nested inside
  *  an expandable group — the flat list `selectChild`'s callers search by page. */
@@ -117,6 +125,43 @@ export class NavigationService {
           },
         ],
       },
+      {
+        id: 'ws-lists-group',
+        label: 'רשימות',
+        icon: 'fa-solid fa-table-list',
+        children: [
+          {
+            id: 'ws-list-my-orders',
+            page: 'listMyOrders',
+            label: 'ההזמנות שלי',
+            icon: 'fa-solid fa-file-invoice',
+          },
+          {
+            id: 'ws-list-cases-in-release',
+            page: 'listCasesInRelease',
+            label: 'תיקים בהתרה',
+            icon: 'fa-solid fa-clipboard-check',
+          },
+          {
+            id: 'ws-list-my-classifications',
+            page: 'listMyClassifications',
+            label: 'הסיווגים שלי',
+            icon: 'fa-solid fa-tags',
+          },
+          {
+            id: 'ws-list-my-cases',
+            page: 'listMyCases',
+            label: 'התיקים שלי',
+            icon: 'fa-solid fa-folder-open',
+          },
+          {
+            id: 'ws-list-import-processes',
+            page: 'listImportProcesses',
+            label: 'תהליכי יבוא',
+            icon: 'fa-solid fa-ship',
+          },
+        ],
+      },
       { id: 'ws-classification', page: 'classification', label: 'סיווג', icon: 'fa-solid fa-tags' },
       {
         id: 'ws-post-classification',
@@ -199,6 +244,10 @@ export class NavigationService {
     this.screenMap.set('myFiles', 'myFiles');
     this.screenMap.set('search', 'placeholder');
     this.screenMap.set('placeholder', 'placeholder');
+    // "רשימות": every list page renders its own screen of the same name.
+    for (const listPage of LIST_PAGE_KEYS) {
+      this.screenMap.set(listPage, listPage);
+    }
 
     // Default landing: unchanged from before the Orders group existed — still
     // "יצירת הזמנה חדשה" — with the group that now contains it expanded, so
@@ -299,6 +348,18 @@ export class NavigationService {
   /** Fallback landing spot after closing the last open File in the context bar. */
   goToMyFiles(): void {
     const child = flattenLeaves(this.tree()).find((c) => c.page === 'myFiles');
+    if (child) this.selectChild(child);
+  }
+
+  /** Opens one of the "רשימות" list pages (e.g. a dashboard's "צפה בהכל" link). */
+  goToList(page: ListPageKey): void {
+    const child = flattenLeaves(this.tree()).find((c) => c.page === page);
+    if (child) this.selectChild(child);
+  }
+
+  /** Selects a sidebar row by its id (e.g. `ws-classification`), exactly like clicking it. */
+  selectChildById(childId: string): void {
+    const child = flattenLeaves(this.tree()).find((c) => c.id === childId);
     if (child) this.selectChild(child);
   }
 }

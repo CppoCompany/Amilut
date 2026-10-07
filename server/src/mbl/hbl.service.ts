@@ -231,7 +231,10 @@ export class HblService {
         throw new NotFoundException(`HBL ${id} not found`);
       }
 
-      await assertOrdersExist((sql, params) => client.query(sql, params).then((r) => r.rows), orderIds);
+      await assertOrdersExist(
+        (sql, params) => client.query<{ id: number }>(sql, params).then((r) => r.rows),
+        orderIds,
+      );
 
       await client.query('UPDATE orders SET hbl_id = NULL WHERE hbl_id = $1 AND NOT (id = ANY($2))', [
         id,

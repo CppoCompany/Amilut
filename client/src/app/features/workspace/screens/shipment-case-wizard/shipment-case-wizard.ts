@@ -5,7 +5,10 @@ import { combineLatest, debounceTime, finalize, forkJoin, skip, switchMap } from
 
 import {
   MBL_SHIPPING_TYPE_LABELS,
+  MBL_STATUS_LABELS,
+  MBL_STATUSES,
   MblShippingType,
+  MblStatus,
   PAYMENT_TERMS,
   PAYMENT_TERMS_LABELS,
   PaymentTerms,
@@ -82,6 +85,8 @@ export class ShipmentCaseWizardScreen {
   ];
   protected readonly paymentTermsOptions = PAYMENT_TERMS;
   protected readonly paymentTermsLabels = PAYMENT_TERMS_LABELS;
+  protected readonly mblStatusOptions = MBL_STATUSES;
+  protected readonly mblStatusLabels = MBL_STATUS_LABELS;
 
   protected readonly shippingType = signal<MblShippingType | null>(null);
   protected readonly seaMethod = signal<SeaMethod | null>(null);
@@ -92,6 +97,8 @@ export class ShipmentCaseWizardScreen {
   protected readonly isGroupage = computed(() => this.seaMethod() === SeaMethod.GROUPAGE_FCL);
   protected readonly mblCustomer = signal<CustomerDto | null>(null);
   protected readonly freightTerms = signal<PaymentTerms | null>(null);
+  /** Lifecycle status of the case (`mbl.status`) — drives "תיקים בהתרה" when set to `in_release`. */
+  protected readonly mblStatus = signal<MblStatus>(MblStatus.OPEN);
 
   protected readonly mblForm = this.fb.group({
     mblNumber: [EMPTY_MBL_FORM_VALUE.mblNumber],
@@ -305,8 +312,16 @@ export class ShipmentCaseWizardScreen {
       containers.push(this.buildContainerGroup());
     }
     this.freightTerms.set(mbl.freightTerms ?? null);
+    this.mblStatus.set(mbl.status);
     this.saveError.set(null);
     this.editingMbl.set(true);
+  }
+
+  protected onMblStatusChange(event: Event): void {
+    const value = (event.target as HTMLSelectElement).value;
+    if ((MBL_STATUSES as readonly string[]).includes(value)) {
+      this.mblStatus.set(value as MblStatus);
+    }
   }
 
   protected cancelEditMbl(): void {
@@ -335,7 +350,15 @@ export class ShipmentCaseWizardScreen {
 
     const { containers, ...formFields } = this.mblForm.getRawValue();
     const customerId = editing ? (existingMbl?.customerId ?? null) : (this.mblCustomer()?.id ?? null);
-    const dto = toCreateMblDto(shippingType, seaMethod, customerId, this.freightTerms(), formFields, containers);
+    const dto = toCreateMblDto(
+      shippingType,
+      seaMethod,
+      customerId,
+      this.freightTerms(),
+      this.mblStatus(),
+      formFields,
+      containers,
+    );
 
     const request$ =
       editing && existingMbl ? this.mblApi.update(existingMbl.id, dto) : this.mblApi.create(dto);
@@ -539,6 +562,7 @@ export class ShipmentCaseWizardScreen {
     containers.push(this.buildContainerGroup());
     this.mblCustomer.set(null);
     this.freightTerms.set(null);
+    this.mblStatus.set(MblStatus.OPEN);
     this.savedMbl.set(null);
     this.editingMbl.set(false);
     this.saveError.set(null);

@@ -96,6 +96,14 @@
                 <label for="carrierName">שם הספן (Carrier)</label>
                 <input id="carrierName" type="text" class="form-control" formControlName="carrierName" />
               </div>
+              <div class="form-group">
+                <label for="mblStatus">סטטוס התיק</label>
+                <select id="mblStatus" class="form-control" [value]="mblStatus()" (change)="onMblStatusChange($event)">
+                  @for (option of mblStatusOptions; track option) {
+                    <option [value]="option" [selected]="mblStatus() === option">{{ mblStatusLabels[option] }}</option>
+                  }
+                </select>
+              </div>
             </div>
 
             <h3 class="subsection-title">אונייה ומסלול</h3>

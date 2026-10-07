@@ -6,9 +6,21 @@ import type { ImportDocumentType } from './enums';
 import type {
   InvoiceLineItemDto,
   LineItemClassificationUpdateDto,
+  PagedClassificationsDto,
   SaveLineItemClassificationsDto,
   UploadedImportFileDto,
 } from './models';
+import { PagedQueryParams, toHttpParams } from './paging';
+
+/** Sort keys accepted by `GET /api/import-files/classifications` (whitelisted server-side). */
+export type ClassificationSortKey = 'createdAt' | 'accountId' | 'item' | 'classificationCode';
+
+/** Query parameters accepted by `GET /api/import-files/classifications` — "הסיווגים שלי". */
+export interface PagedClassificationsParams extends PagedQueryParams {
+  /** Only lines filed under this import case ("מספר תיק"). */
+  accountId?: number;
+  sort?: ClassificationSortKey;
+}
 
 /** Multipart field name the server reads every file from (`ImportFilesController`). */
 export const IMPORT_FILES_FIELD = 'files';
@@ -24,6 +36,16 @@ export const IMPORT_DOCUMENT_TYPE_FIELD = 'documentType';
 export class ImportFilesApi {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = '/api/import-files';
+
+  /**
+   * `GET /api/import-files/classifications` — one page of classified
+   * supplier-invoice lines across every import case, filtered/sorted server-side.
+   */
+  listClassifications(params: PagedClassificationsParams = {}): Observable<PagedClassificationsDto> {
+    return this.http.get<PagedClassificationsDto>(`${this.baseUrl}/classifications`, {
+      params: toHttpParams(params),
+    });
+  }
 
   /**
    * `GET /api/import-files/:accountNumber` — the files filed under the case,

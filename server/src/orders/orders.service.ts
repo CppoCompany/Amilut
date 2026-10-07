@@ -3,10 +3,20 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Paged } from '../common/paging/paged.dto';
+import {
+  orderByClause,
+  pageWindow,
+  pushDateRange,
+  pushTextSearch,
+  toPaged,
+  WithTotal,
+} from '../common/paging/paging.util';
 import { DatabaseService } from '../database/database.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { ListOrdersQuery } from './dto/list-orders.query';
 import { OrderDto } from './dto/order.dto';
+import { ORDER_SORT_COLUMNS, PagedOrdersQuery } from './dto/paged-orders.query';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import {
   Destination,
@@ -65,8 +75,8 @@ const WRITABLE_COLUMNS: Record<keyof CreateOrderDto, string> = {
 
 const WRITABLE_KEYS = Object.keys(WRITABLE_COLUMNS) as (keyof CreateOrderDto)[];
 
-const ORDER_SELECT = `
-  SELECT o.id,
+/** Column list shared by every order SELECT (DATE columns pre-formatted in SQL). */
+const ORDER_COLUMNS = `o.id,
          o.customer_id,
          c.name AS customer_name,
          o.handler_user_id,
@@ -88,11 +98,24 @@ const ORDER_SELECT = `
          o.voyage_number,
          o.airline,
          o.flight_number,
-         o."isActive" AS is_active
+         o."isActive" AS is_active`;
+
+const ORDER_FROM = `
     FROM orders o
     LEFT JOIN customers c ON c.id = o.customer_id
     LEFT JOIN users     u ON u.id = o.handler_user_id
     LEFT JOIN suppliers sup ON sup.id = o.supplier_id`;
+
+const ORDER_SELECT = `
+  SELECT ${ORDER_COLUMNS}${ORDER_FROM}`;
+
+/** Same rows plus the window `total`, for paged lists. */
+const ORDER_SELECT_PAGED = `
+  SELECT count(*) OVER() AS total,
+         ${ORDER_COLUMNS}${ORDER_FROM}`;
+
+/** ILIKE targets of the free-text search on GET /orders/paged. */
+const ORDER_SEARCH_EXPRESSIONS = ['o.id::text', 'c.name', 'sup.name'] as const;
 
 const PG_FOREIGN_KEY_VIOLATION = '23503';
 
@@ -181,6 +204,44 @@ export class OrdersService {
 
     const rows = await this.db.query<OrderRow>(sql, params);
     return rows.map(toOrderDto);
+  }
+
+  /**
+   * "ההזמנות שלי" — one page of the active orders handled by `handlerUserId`
+   * (the signed-in user), with free-text search, status/customer filters, a
+   * `created_at` date range and whitelisted sorting.
+   */
+  async findMyOrdersPaged(
+    query: PagedOrdersQuery,
+    handlerUserId: number,
+  ): Promise<Paged<OrderDto>> {
+    const params: unknown[] = [handlerUserId];
+    const where: string[] = ['o."isActive"', 'o.handler_user_id = $1'];
+
+    pushTextSearch(where, params, ORDER_SEARCH_EXPRESSIONS, query.q);
+    if (query.status !== undefined) {
+      params.push(query.status);
+      where.push(`o.status = $${params.length}`);
+    }
+    if (query.customerId !== undefined) {
+      params.push(query.customerId);
+      where.push(`o.customer_id = $${params.length}`);
+    }
+    pushDateRange(where, params, 'o.created_at', query.from, query.to);
+
+    const window = pageWindow(query);
+    params.push(window.limit);
+    const limitIdx = params.length;
+    params.push(window.offset);
+    const offsetIdx = params.length;
+
+    const sql = `${ORDER_SELECT_PAGED}
+      WHERE ${where.join(' AND ')}
+      ${orderByClause(ORDER_SORT_COLUMNS, query.sort, 'createdAt', query.dir, 'desc', 'o.id DESC')}
+      LIMIT $${limitIdx} OFFSET $${offsetIdx}`;
+
+    const rows = await this.db.query<OrderRow & WithTotal>(sql, params);
+    return toPaged(rows, window, toOrderDto);
   }
 
   async findById(id: number): Promise<OrderDto> {

@@ -7,6 +7,11 @@ import { NavigationService } from './navigation.service';
 import { ClassificationScreen } from './screens/classification/classification';
 import { FilingScreen } from './screens/filing/filing';
 import { ImportDeclarationScreen } from './screens/import-declaration/import-declaration';
+import { CasesInReleaseListScreen } from './screens/lists/cases-in-release-list/cases-in-release-list';
+import { ImportProcessesListScreen } from './screens/lists/import-processes-list/import-processes-list';
+import { MyCasesListScreen } from './screens/lists/my-cases-list/my-cases-list';
+import { MyClassificationsListScreen } from './screens/lists/my-classifications-list/my-classifications-list';
+import { MyOrdersListScreen } from './screens/lists/my-orders-list/my-orders-list';
 import { MyFilesScreen } from './screens/my-files/my-files';
 import { MyOrdersScreen } from './screens/my-orders/my-orders';
 import { OrderScreen } from './screens/order/order';
@@ -29,6 +34,11 @@ import { ShipmentCaseWizardScreen } from './screens/shipment-case-wizard/shipmen
     ImportDeclarationScreen,
     MyOrdersScreen,
     MyFilesScreen,
+    MyOrdersListScreen,
+    CasesInReleaseListScreen,
+    MyClassificationsListScreen,
+    MyCasesListScreen,
+    ImportProcessesListScreen,
     PlaceholderScreen,
   ],
   templateUrl: './workspace.html',

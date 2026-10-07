@@ -18,7 +18,7 @@ import {
 } from '../../../../api/enums';
 import { ImportFilesApi } from '../../../../api/import-files-api';
 import type { UploadedImportFileDto } from '../../../../api/models';
-import { CURRENT_CASE_NUMBER } from '../../current-case';
+import { CurrentCaseService } from '../../current-case.service';
 
 /** One row of the documents table — a file stored on the server for the current case. */
 interface ShipmentDocument {
@@ -58,7 +58,7 @@ export class FilingScreen {
    * `order_account` id and names the folder on the server. Still the shared
    * placeholder shown in the header until the screen is wired to a selected case.
    */
-  protected readonly accountNumber = signal(CURRENT_CASE_NUMBER);
+  protected readonly accountNumber = inject(CurrentCaseService).caseId;
 
   protected readonly documentTypes = IMPORT_DOCUMENT_TYPES;
   protected readonly documentTypeLabels = IMPORT_DOCUMENT_TYPE_LABELS;

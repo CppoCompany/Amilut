@@ -37,3 +37,9 @@ export type SaveLineItemClassificationsDto =
   components['schemas']['SaveLineItemClassificationsDto'];
 
 export type CountryDto = components['schemas']['CountryDto'];
+
+// Paged "view all" lists (רשימות)
+export type PagedOrdersDto = components['schemas']['PagedOrdersDto'];
+export type PagedMblSummaryDto = components['schemas']['PagedMblSummaryDto'];
+export type ClassificationRowDto = components['schemas']['ClassificationRowDto'];
+export type PagedClassificationsDto = components['schemas']['PagedClassificationsDto'];

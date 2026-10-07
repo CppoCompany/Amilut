@@ -128,6 +128,45 @@ describe('NavigationService', () => {
     expect(nav.isChildActive('ws-shipment')).toBe(true);
   });
 
+  it('adds the "רשימות" group after "תיקי שילוח" with the five list pages, each mapped to its own screen', () => {
+    const ids = nav.tree().map((entry) => entry.id);
+    expect(ids.indexOf('ws-lists-group')).toBe(ids.indexOf('ws-shipment-group') + 1);
+
+    const lists = nav.tree().find((entry) => entry.id === 'ws-lists-group');
+    if (!lists || !isTreeChildGroup(lists)) throw new Error('lists group not found');
+    expect(lists.label).toBe('רשימות');
+    expect(lists.children.map((c) => [c.id, c.page, c.label])).toEqual([
+      ['ws-list-my-orders', 'listMyOrders', 'ההזמנות שלי'],
+      ['ws-list-cases-in-release', 'listCasesInRelease', 'תיקים בהתרה'],
+      ['ws-list-my-classifications', 'listMyClassifications', 'הסיווגים שלי'],
+      ['ws-list-my-cases', 'listMyCases', 'התיקים שלי'],
+      ['ws-list-import-processes', 'listImportProcesses', 'תהליכי יבוא'],
+    ]);
+
+    for (const child of lists.children) {
+      nav.selectChild(child);
+      expect(nav.activeScreen()).toBe(child.page);
+      expect(nav.isChildActive(child.id)).toBe(true);
+    }
+    expect(nav.isNodeExpanded('ws-lists-group')).toBe(true);
+  });
+
+  it('goToList opens a list page by key and selectChildById selects a row by id', () => {
+    nav.goToList('listCasesInRelease');
+    expect(nav.activeScreen()).toBe('listCasesInRelease');
+    expect(nav.isChildActive('ws-list-cases-in-release')).toBe(true);
+    expect(nav.activeGroupLabel()).toBe('רשימות');
+
+    nav.selectChildById('ws-classification');
+    expect(nav.activeScreen()).toBe('classification');
+    expect(nav.isChildActive('ws-classification')).toBe(true);
+  });
+
+  it('the default landing screen is unchanged by the lists group', () => {
+    expect(nav.activeScreen()).toBe('order');
+    expect(nav.isChildActive('ws-order')).toBe(true);
+  });
+
   it('goToMyOrders/goToMyFiles still resolve to the relocated My Orders/My Cases rows', () => {
     nav.goToMyOrders();
     expect(nav.activeScreen()).toBe('myOrders');

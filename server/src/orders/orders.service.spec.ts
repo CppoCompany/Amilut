@@ -167,6 +167,82 @@ describe('OrdersService', () => {
     });
   });
 
+  describe('findMyOrdersPaged', () => {
+    it('scopes to the signed-in handler, applies every filter and a whitelisted sort, and returns the window total', async () => {
+      db.query.mockResolvedValueOnce([{ ...baseRow, total: '42' }]);
+
+      const result = await service.findMyOrdersPaged(
+        {
+          q: 'acme',
+          status: OrderStatus.PREPARING,
+          customerId: 3,
+          from: '2026-01-01',
+          to: '2026-12-31',
+          sort: 'customerName',
+          dir: 'asc',
+          page: 2,
+          pageSize: 10,
+        },
+        7,
+      );
+
+      const [sql, params] = db.query.mock.calls[0] as [string, unknown[]];
+      expect(sql).toMatch(/count\(\*\) OVER\(\) AS total/);
+      expect(sql).toMatch(/WHERE o\."isActive" AND o\.handler_user_id = \$1/);
+      expect(sql).toMatch(
+        /\(o\.id::text ILIKE \$2 OR c\.name ILIKE \$2 OR sup\.name ILIKE \$2\)/,
+      );
+      expect(sql).toMatch(/o\.status = \$3/);
+      expect(sql).toMatch(/o\.customer_id = \$4/);
+      expect(sql).toMatch(/o\.created_at::date >= \$5::date/);
+      expect(sql).toMatch(/o\.created_at::date <= \$6::date/);
+      expect(sql).toMatch(/ORDER BY c\.name ASC NULLS LAST, o\.id DESC/);
+      expect(sql).toMatch(/LIMIT \$7 OFFSET \$8/);
+      expect(params).toEqual([
+        7,
+        '%acme%',
+        OrderStatus.PREPARING,
+        3,
+        '2026-01-01',
+        '2026-12-31',
+        10,
+        10,
+      ]);
+      expect(result.total).toBe(42);
+      expect(result.page).toBe(2);
+      expect(result.pageSize).toBe(10);
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0].handlerUserId).toBe(7);
+    });
+
+    it('defaults to newest first, page 1 of 25, and total 0 when nothing matches', async () => {
+      db.query.mockResolvedValueOnce([]);
+
+      const result = await service.findMyOrdersPaged({}, 7);
+
+      const [sql, params] = db.query.mock.calls[0] as [string, unknown[]];
+      expect(sql).toMatch(/ORDER BY o\.created_at DESC NULLS LAST, o\.id DESC/);
+      expect(sql).toMatch(/LIMIT \$2 OFFSET \$3/);
+      expect(params).toEqual([7, 25, 0]);
+      expect(result).toEqual({ items: [], total: 0, page: 1, pageSize: 25 });
+    });
+
+    it('never interpolates a sort key outside the whitelist', async () => {
+      db.query.mockResolvedValueOnce([]);
+
+      await service.findMyOrdersPaged(
+        { sort: 'o.id; DROP TABLE orders' } as unknown as Parameters<
+          OrdersService['findMyOrdersPaged']
+        >[0],
+        7,
+      );
+
+      const [sql] = db.query.mock.calls[0] as [string, unknown[]];
+      expect(sql).not.toMatch(/DROP TABLE/);
+      expect(sql).toMatch(/ORDER BY o\.created_at DESC NULLS LAST/);
+    });
+  });
+
   describe('update', () => {
     it('only SETs provided fields and ignores unknown/immutable ones', async () => {
       db.queryOne

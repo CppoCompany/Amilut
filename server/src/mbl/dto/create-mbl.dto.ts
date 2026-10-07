@@ -14,7 +14,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { PaymentTerms } from '../../orders/orders.enums';
-import { MblShippingType, SeaMethod } from '../mbl.enums';
+import { MblShippingType, MblStatus, SeaMethod } from '../mbl.enums';
 import { CreateMblContainerDto } from './mbl-container.dto';
 
 /**
@@ -97,7 +97,9 @@ export class CreateMblDto {
   @MaxLength(500)
   shipperAddress?: string;
 
-  @ApiPropertyOptional({ example: 'TO ORDER OF MAERSK LINE (As per House B/L)' })
+  @ApiPropertyOptional({
+    example: 'TO ORDER OF MAERSK LINE (As per House B/L)',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(200)
@@ -181,6 +183,16 @@ export class CreateMblDto {
   @IsString()
   @MaxLength(200)
   carrierName?: string;
+
+  /** Lifecycle status of the case. Defaults to `open` when omitted on creation. */
+  @ApiPropertyOptional({
+    enum: MblStatus,
+    enumName: 'MblStatus',
+    default: MblStatus.OPEN,
+  })
+  @IsOptional()
+  @IsEnum(MblStatus)
+  status?: MblStatus;
 
   // ── Containers table — groupage_fcl only ────────────────────────────────────
   @ApiPropertyOptional({ type: CreateMblContainerDto, isArray: true })

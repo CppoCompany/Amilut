@@ -7,9 +7,23 @@ import {
 import { mkdir, stat, writeFile } from 'node:fs/promises';
 import * as path from 'node:path';
 import type { PoolClient } from 'pg';
+import { Paged } from '../common/paging/paged.dto';
+import {
+  orderByClause,
+  pageWindow,
+  pushDateRange,
+  pushTextSearch,
+  toPaged,
+  WithTotal,
+} from '../common/paging/paging.util';
 import { DatabaseService } from '../database/database.service';
+import { ClassificationRowDto } from './dto/classification-row.dto';
 import { InvoiceLineItemDto } from './dto/invoice-line-item.dto';
 import { LineItemClassificationUpdateDto } from './dto/line-item-classification.dto';
+import {
+  CLASSIFICATION_SORT_COLUMNS,
+  PagedClassificationsQuery,
+} from './dto/paged-classifications.query';
 import { UploadedImportFileDto } from './dto/uploaded-import-file.dto';
 import { ImportDocumentType } from './import-files.enums';
 import {
@@ -114,6 +128,63 @@ export const UPDATE_FILE_DATA_SQL = `UPDATE import_account_files
 /** Which of the given country ids exist. */
 export const SELECT_EXISTING_COUNTRY_IDS_SQL =
   'SELECT id FROM countries WHERE id = ANY($1::int[])';
+
+/**
+ * Every classified supplier-invoice line across all import cases, one row per
+ * line ("הסיווגים שלי"). Only the newest row per (account, file name) counts —
+ * a re-upload supersedes the older file exactly as on the classification
+ * screen. A line is "classified" once the screen saved a `classification`
+ * object onto it. `count(*) OVER()` carries the unpaged total for the pager.
+ */
+export const SELECT_CLASSIFIED_LINES_SQL = `SELECT count(*) OVER() AS total,
+          f.id AS file_id,
+          f.account_id,
+          f.data->>'name' AS file_name,
+          (li.idx - 1)::int AS line_index,
+          li.item->>'item' AS item,
+          li.item->>'description' AS description,
+          li.item->'quantity' AS quantity,
+          li.item->'price' AS price,
+          li.item->'total' AS total_amount,
+          li.item->'classification' AS classification,
+          co.name AS country_name,
+          f.created_at
+     FROM import_account_files f
+    CROSS JOIN LATERAL jsonb_array_elements(COALESCE(f.data->'lineItems', '[]'::jsonb))
+          WITH ORDINALITY AS li(item, idx)
+     LEFT JOIN countries co
+       ON jsonb_typeof(li.item->'classification'->'countryId') = 'number'
+      AND co.id = (li.item->'classification'->>'countryId')::int`;
+
+/** Predicates every classified-line row must satisfy (see SELECT_CLASSIFIED_LINES_SQL). */
+export const CLASSIFIED_LINES_BASE_WHERE = [
+  `jsonb_typeof(li.item->'classification') = 'object'`,
+  `f.id = (SELECT max(f2.id) FROM import_account_files f2 WHERE f2.account_id = f.account_id AND f2.data->>'name' = f.data->>'name')`,
+] as const;
+
+/** ILIKE targets of the free-text search on GET /import-files/classifications. */
+export const CLASSIFIED_LINES_SEARCH_EXPRESSIONS = [
+  `li.item->>'item'`,
+  `li.item->>'description'`,
+  `li.item->'classification'->>'classificationCode'`,
+  `f.data->>'name'`,
+] as const;
+
+/** Row shape of SELECT_CLASSIFIED_LINES_SQL. */
+interface ClassifiedLineRow extends WithTotal {
+  file_id: number;
+  account_id: number;
+  file_name: string | null;
+  line_index: number;
+  item: string | null;
+  description: string | null;
+  quantity: unknown;
+  price: unknown;
+  total_amount: unknown;
+  classification: unknown;
+  country_name: string | null;
+  created_at: Date | string;
+}
 
 /** A stored file resolved to its location on disk, ready to be streamed to the client. */
 export interface StoredImportFile {
@@ -299,9 +370,7 @@ export class ImportFilesService {
             : [];
           for (const update of updates) {
             const current = lineItems[update.lineIndex] as
-              | InvoiceLineItem
-              | null
-              | undefined;
+              InvoiceLineItem | null | undefined;
             if (update.lineIndex >= lineItems.length || current == null) {
               throw new BadRequestException(
                 `File ${fileId} has no line item at index ${update.lineIndex}`,
@@ -322,6 +391,43 @@ export class ImportFilesService {
     }
 
     return this.getSupplierInvoiceLineItems(accountNumber);
+  }
+
+  /**
+   * One page of classified supplier-invoice lines across every import case —
+   * the data source of "הסיווגים שלי". Unscoped: files hang off
+   * `order_account`, which carries no owner, so there is no per-user filter.
+   * Free-text search covers item code, description, classification code and
+   * file name; `accountId` narrows to one case; `from`/`to` bound the upload
+   * date; `sort` is whitelisted.
+   */
+  async listClassificationsPaged(
+    query: PagedClassificationsQuery,
+  ): Promise<Paged<ClassificationRowDto>> {
+    const where: string[] = [...CLASSIFIED_LINES_BASE_WHERE];
+    const params: unknown[] = [];
+
+    pushTextSearch(where, params, CLASSIFIED_LINES_SEARCH_EXPRESSIONS, query.q);
+    if (query.accountId !== undefined) {
+      params.push(query.accountId);
+      where.push(`f.account_id = $${params.length}`);
+    }
+    pushDateRange(where, params, 'f.created_at', query.from, query.to);
+
+    const window = pageWindow(query);
+    params.push(window.limit);
+    const limitIdx = params.length;
+    params.push(window.offset);
+    const offsetIdx = params.length;
+
+    const rows = await this.db.query<ClassifiedLineRow>(
+      `${SELECT_CLASSIFIED_LINES_SQL}
+    WHERE ${where.join(' AND ')}
+    ${orderByClause(CLASSIFICATION_SORT_COLUMNS, query.sort, 'createdAt', query.dir, 'desc', 'f.id DESC, li.idx ASC')}
+    LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+      params,
+    );
+    return toPaged(rows, window, toClassificationRow);
   }
 
   /**
@@ -495,6 +601,27 @@ function normaliseLineItem(
     price: numberOrNull(item.price),
     total: numberOrNull(item.total),
     classification: normaliseLineItemClassification(item.classification),
+  };
+}
+
+/** Maps one SELECT_CLASSIFIED_LINES_SQL row to its DTO (JSON-typed cells are normalised like line items). */
+function toClassificationRow(row: ClassifiedLineRow): ClassificationRowDto {
+  return {
+    fileId: row.file_id,
+    accountId: row.account_id,
+    fileName: row.file_name ?? '',
+    lineIndex: row.line_index,
+    item: row.item ?? '',
+    description: row.description ?? '',
+    quantity: numberOrNull(row.quantity),
+    price: numberOrNull(row.price),
+    total: numberOrNull(row.total_amount),
+    classification: normaliseLineItemClassification(row.classification),
+    countryName: row.country_name ?? null,
+    createdAt: (row.created_at instanceof Date
+      ? row.created_at
+      : new Date(row.created_at)
+    ).toISOString(),
   };
 }
 
