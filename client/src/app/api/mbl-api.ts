@@ -2,7 +2,15 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
-import type { CreateMblDto, MblDto, MblSummaryDto, UpdateMblDto } from './models';
+import type { MblStatus } from './enums';
+import type {
+  CreateMblDto,
+  MblDto,
+  MblSummaryDto,
+  PagedMblSummaryDto,
+  UpdateMblDto,
+} from './models';
+import { PagedQueryParams, toHttpParams } from './paging';
 
 /** Query parameters accepted by `GET /api/mbl` — the "התיקים שלי" grid. */
 export interface ListMblParams {
@@ -11,6 +19,23 @@ export interface ListMblParams {
   caseNumber?: number;
   limit?: number;
   offset?: number;
+}
+
+/** Sort keys accepted by `GET /api/mbl/paged` (whitelisted server-side). */
+export type MblSortKey = 'id' | 'mblNumber' | 'carrierName' | 'status' | 'createdAt';
+
+/**
+ * Query parameters accepted by `GET /api/mbl/paged`. One endpoint serves three
+ * list pages: `mine=true` → "התיקים שלי", `status=in_release` → "תיקים בהתרה",
+ * neither → "תהליכי יבוא".
+ */
+export interface PagedMblParams extends PagedQueryParams {
+  /** Only cases opened by the signed-in user. */
+  mine?: boolean;
+  status?: MblStatus;
+  customerId?: number;
+  carrierName?: string;
+  sort?: MblSortKey;
 }
 
 /**
@@ -31,6 +56,13 @@ export class MblApi {
       }
     }
     return this.http.get<MblSummaryDto[]>(this.baseUrl, { params: httpParams });
+  }
+
+  /** `GET /api/mbl/paged` — one page of shipping cases, filtered/sorted server-side. */
+  listPaged(params: PagedMblParams = {}): Observable<PagedMblSummaryDto> {
+    return this.http.get<PagedMblSummaryDto>(`${this.baseUrl}/paged`, {
+      params: toHttpParams(params),
+    });
   }
 
   getById(id: number): Observable<MblDto> {

@@ -558,6 +558,27 @@ body {
   color: #065f46;
 }
 
+/* MBL shipping-case status (`mbl.status`): open → in_release → released → closed. */
+.status-pill--open {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.status-pill--in_release {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-pill--released {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.status-pill--closed {
+  background: color-mix(in srgb, var(--text-muted) 18%, white);
+  color: var(--text-muted);
+}
+
 .data-table__row--selected {
   background: var(--light-blue-bg);
 }

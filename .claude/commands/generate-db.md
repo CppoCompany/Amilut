@@ -29,6 +29,7 @@ invoke the runner directly.
    - `015_create_mbl_hbl.sql` — new MBL/HBL shipping-case workflow (`mbl`, `mbl_container`, `hbl` tables + `orders.hbl_id`), parallel to the existing `order_account`/`orders.case_id` flow
    - `016_remove_legacy_shipment_cases.sql` — deletes all rows from `order_account`; the old shipping-case workflow (`ShipmentsModule`/`ShipmentScreen`) has been removed in favor of MBL/HBL
    - `017_import_account_files_to_mbl.sql` — re-points `import_account_files.account_id` from `order_account` to `mbl(id)`; paperwork is filed under the MBL case
+   - `018_mbl_handler_and_status.sql` — adds `mbl.handler_user_id` (→ `users.id`, who opened the case) and `mbl.status` (`open`/`in_release`/`released`/`closed`, default `open`), with indexes
    If the folder or files are missing, stop and tell Barak.
 
 2. **Decide whether the superuser password is needed.** It is needed **only

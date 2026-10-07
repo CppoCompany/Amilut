@@ -6,6 +6,26 @@
  * (see its `screenMap`), mirroring the original mock's `showPanel(page)` switch.
  */
 
+/**
+ * The "רשימות" (lists) pages — full "view all" grids, one per dataset. Each is
+ * both a page in the sidebar group and the screen it renders (1:1), and the
+ * dashboard links to them by this key via `NavigationService.goToList`.
+ */
+export type ListPageKey =
+  | 'listMyOrders'
+  | 'listCasesInRelease'
+  | 'listMyClassifications'
+  | 'listMyCases'
+  | 'listImportProcesses';
+
+export const LIST_PAGE_KEYS: readonly ListPageKey[] = [
+  'listMyOrders',
+  'listCasesInRelease',
+  'listMyClassifications',
+  'listMyCases',
+  'listImportProcesses',
+];
+
 /** Identifier for a clickable page in the sidebar tree. */
 export type PageKey =
   | 'dashboard'
@@ -17,7 +37,8 @@ export type PageKey =
   | 'myOrders'
   | 'myFiles'
   | 'search'
-  | 'placeholder';
+  | 'placeholder'
+  | ListPageKey;
 
 /** Identifier for a content panel the workspace can render. */
 export type ScreenId =
@@ -29,7 +50,8 @@ export type ScreenId =
   | 'importDeclaration'
   | 'myOrders'
   | 'myFiles'
-  | 'placeholder';
+  | 'placeholder'
+  | ListPageKey;
 
 /** A leaf item — one clickable row in the sidebar, whether at the top level
  *  or nested inside a {@link TreeChildGroup}. */

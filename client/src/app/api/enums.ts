@@ -13,6 +13,7 @@ import {
   ImportDocumentType,
   Incoterm,
   MblShippingType,
+  MblStatus,
   OrderStatus,
   PaymentTerms,
   SeaMethod,
@@ -27,6 +28,7 @@ export {
   ImportDocumentType,
   Incoterm,
   MblShippingType,
+  MblStatus,
   OrderStatus,
   PaymentTerms,
   SeaMethod,
@@ -67,6 +69,14 @@ export const SEA_METHOD_LABELS: Record<SeaMethod, string> = {
   [SeaMethod.FCL_LCL]: 'FCL / LCL',
   [SeaMethod.LCL_LCL]: 'LCL / LCL',
   [SeaMethod.GROUPAGE_FCL]: 'Groupage FCL',
+};
+
+/** Lifecycle status of an MBL shipping case (`mbl.status`) — set on the wizard's MBL step. */
+export const MBL_STATUS_LABELS: Record<MblStatus, string> = {
+  [MblStatus.OPEN]: 'פתוח',
+  [MblStatus.IN_RELEASE]: 'בהתרה',
+  [MblStatus.RELEASED]: 'שוחרר',
+  [MblStatus.CLOSED]: 'סגור',
 };
 
 /** Incoterms are shown as their codes. */
@@ -199,6 +209,7 @@ export const CLASSIFICATION_APPROVALS: readonly ClassificationApproval[] =
 export const CLASSIFICATION_LICENSES: readonly ClassificationLicense[] =
   Object.values(ClassificationLicense);
 export const TRADE_AGREEMENTS: readonly TradeAgreement[] = Object.values(TradeAgreement);
+export const MBL_STATUSES: readonly MblStatus[] = Object.values(MblStatus);
 
 /**
  * Destinations offered under each shipment type — sea shipments go to a port,

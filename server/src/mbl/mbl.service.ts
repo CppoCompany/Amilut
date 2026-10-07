@@ -1,16 +1,35 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { Paged } from '../common/paging/paged.dto';
+import {
+  orderByClause,
+  pageWindow,
+  pushDateRange,
+  toPaged,
+  WithTotal,
+} from '../common/paging/paging.util';
 import { DatabaseService } from '../database/database.service';
 import { PaymentTerms } from '../orders/orders.enums';
 import { CreateMblDto } from './dto/create-mbl.dto';
 import { ListMblQuery } from './dto/list-mbl.query';
-import { CreateMblContainerDto, MblContainerDto } from './dto/mbl-container.dto';
+import {
+  CreateMblContainerDto,
+  MblContainerDto,
+} from './dto/mbl-container.dto';
 import { MblDto } from './dto/mbl.dto';
 import { MblSummaryDto } from './dto/mbl-summary.dto';
+import { MBL_SORT_COLUMNS, PagedMblQuery } from './dto/paged-mbl.query';
 import { UpdateMblDto } from './dto/update-mbl.dto';
-import { MblShippingType, SeaMethod } from './mbl.enums';
+import { MblShippingType, MblStatus, SeaMethod } from './mbl.enums';
 import { assertCustomerExists } from './mbl-validation.util';
 
-type WritableMblField = Exclude<keyof CreateMblDto, 'shippingType' | 'seaMethod' | 'containers'>;
+type WritableMblField = Exclude<
+  keyof CreateMblDto,
+  'shippingType' | 'seaMethod' | 'containers'
+>;
 
 interface MblRow {
   id: number;
@@ -41,6 +60,9 @@ interface MblRow {
   place_of_issue: string | null;
   date_of_issue: string | null;
   carrier_name: string | null;
+  status: MblStatus;
+  handler_user_id: number | null;
+  handler_name: string | null;
   created_at: Date | string;
   updated_at: Date | string;
 }
@@ -58,9 +80,13 @@ interface MblSummaryRow {
   id: number;
   shipping_type: MblShippingType;
   sea_method: SeaMethod | null;
+  status: MblStatus;
   mbl_number: string | null;
   carrier_name: string | null;
+  handler_user_id: number | null;
+  handler_name: string | null;
   hbl_count: string;
+  order_count: string;
   order_ids: number[] | null;
   customer_names: string[] | null;
   created_at: Date | string;
@@ -94,6 +120,7 @@ const WRITABLE_COLUMNS: Record<WritableMblField, string> = {
   placeOfIssue: 'place_of_issue',
   dateOfIssue: 'date_of_issue',
   carrierName: 'carrier_name',
+  status: 'status',
 };
 
 const WRITABLE_KEYS = Object.keys(WRITABLE_COLUMNS) as WritableMblField[];
@@ -127,10 +154,14 @@ const MBL_SELECT = `
          m.place_of_issue,
          to_char(m.date_of_issue, 'YYYY-MM-DD') AS date_of_issue,
          m.carrier_name,
+         m.status,
+         m.handler_user_id,
+         u.name AS handler_name,
          m.created_at,
          m.updated_at
     FROM mbl m
-    LEFT JOIN customers c ON c.id = m.customer_id`;
+    LEFT JOIN customers c ON c.id = m.customer_id
+    LEFT JOIN users     u ON u.id = m.handler_user_id`;
 
 const CONTAINER_SELECT = `
   SELECT id, container_number, container_seal_number, cargo_description, gross_weight_kg, volume_cbm
@@ -140,20 +171,36 @@ const CONTAINER_SELECT = `
 
 /** Aggregated across every HBL under the MBL (not `mbl.customer_id`, which is
  *  only ever set for `fcl_lcl`) — this is the "התיקים שלי" grid's data source. */
-const MBL_SUMMARY_SELECT = `
-  SELECT m.id,
+const MBL_SUMMARY_COLUMNS = `m.id,
          m.shipping_type,
          m.sea_method,
+         m.status,
          m.mbl_number,
          m.carrier_name,
+         m.handler_user_id,
+         u.name AS handler_name,
          m.created_at,
          count(DISTINCT h.id) AS hbl_count,
+         count(DISTINCT o.id) AS order_count,
          array_agg(DISTINCT o.id) FILTER (WHERE o.id IS NOT NULL) AS order_ids,
-         array_agg(DISTINCT c.name) FILTER (WHERE c.name IS NOT NULL) AS customer_names
+         array_agg(DISTINCT c.name) FILTER (WHERE c.name IS NOT NULL) AS customer_names`;
+
+const MBL_SUMMARY_FROM = `
     FROM mbl m
+    LEFT JOIN users     u ON u.id = m.handler_user_id
     LEFT JOIN hbl       h ON h.mbl_id = m.id
     LEFT JOIN orders    o ON o.hbl_id = h.id
     LEFT JOIN customers c ON c.id = h.customer_id`;
+
+const MBL_SUMMARY_GROUP_BY = `GROUP BY m.id, m.shipping_type, m.sea_method, m.status, m.mbl_number, m.carrier_name, m.handler_user_id, u.name, m.created_at`;
+
+const MBL_SUMMARY_SELECT = `
+  SELECT ${MBL_SUMMARY_COLUMNS}${MBL_SUMMARY_FROM}`;
+
+/** Same aggregated rows plus the window `total` (evaluated after GROUP BY), for paged lists. */
+const MBL_SUMMARY_SELECT_PAGED = `
+  SELECT count(*) OVER() AS total,
+         ${MBL_SUMMARY_COLUMNS}${MBL_SUMMARY_FROM}`;
 
 @Injectable()
 export class MblService {
@@ -168,7 +215,9 @@ export class MblService {
 
     if (query.customerId !== undefined) {
       params.push(query.customerId);
-      where.push(`EXISTS (SELECT 1 FROM hbl h2 WHERE h2.mbl_id = m.id AND h2.customer_id = $${params.length})`);
+      where.push(
+        `EXISTS (SELECT 1 FROM hbl h2 WHERE h2.mbl_id = m.id AND h2.customer_id = $${params.length})`,
+      );
     }
     if (query.carrierName !== undefined) {
       params.push(`%${query.carrierName}%`);
@@ -188,7 +237,7 @@ export class MblService {
     const rows = await this.db.query<MblSummaryRow>(
       `${MBL_SUMMARY_SELECT}
        ${whereClause}
-       GROUP BY m.id, m.shipping_type, m.sea_method, m.mbl_number, m.carrier_name, m.created_at
+       ${MBL_SUMMARY_GROUP_BY}
        ORDER BY m.id DESC
        LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
       params,
@@ -196,11 +245,74 @@ export class MblService {
     return rows.map(toMblSummaryDto);
   }
 
+  /**
+   * One page of MBL cases for the "view all" lists. Scoping is driven by the
+   * query: `mine` restricts to cases opened by `currentUserId` ("התיקים
+   * שלי"), `status` to one lifecycle status ("תיקים בהתרה" uses
+   * `in_release`), neither for "תהליכי יבוא". Free-text search covers the
+   * case number, MBL number, carrier and the customers of the MBL/its HBLs.
+   */
+  async findAllPaged(
+    query: PagedMblQuery,
+    currentUserId: number,
+  ): Promise<Paged<MblSummaryDto>> {
+    const where: string[] = [];
+    const params: unknown[] = [];
+
+    if (query.mine) {
+      params.push(currentUserId);
+      where.push(`m.handler_user_id = $${params.length}`);
+    }
+    if (query.status !== undefined) {
+      params.push(query.status);
+      where.push(`m.status = $${params.length}`);
+    }
+    if (query.customerId !== undefined) {
+      params.push(query.customerId);
+      where.push(
+        `(m.customer_id = $${params.length} OR EXISTS (SELECT 1 FROM hbl h2 WHERE h2.mbl_id = m.id AND h2.customer_id = $${params.length}))`,
+      );
+    }
+    if (query.carrierName !== undefined) {
+      params.push(`%${query.carrierName}%`);
+      where.push(`m.carrier_name ILIKE $${params.length}`);
+    }
+    const text = query.q?.trim();
+    if (text) {
+      params.push(`%${text}%`);
+      const idx = params.length;
+      where.push(
+        `(m.id::text ILIKE $${idx} OR m.mbl_number ILIKE $${idx} OR m.carrier_name ILIKE $${idx}` +
+          ` OR EXISTS (SELECT 1 FROM customers mc WHERE mc.id = m.customer_id AND mc.name ILIKE $${idx})` +
+          ` OR EXISTS (SELECT 1 FROM hbl h3 JOIN customers hc ON hc.id = h3.customer_id WHERE h3.mbl_id = m.id AND hc.name ILIKE $${idx}))`,
+      );
+    }
+    pushDateRange(where, params, 'm.created_at', query.from, query.to);
+
+    const window = pageWindow(query);
+    params.push(window.limit);
+    const limitIdx = params.length;
+    params.push(window.offset);
+    const offsetIdx = params.length;
+
+    const whereClause = where.length ? `WHERE ${where.join(' AND ')}` : '';
+    const rows = await this.db.query<MblSummaryRow & WithTotal>(
+      `${MBL_SUMMARY_SELECT_PAGED}
+       ${whereClause}
+       ${MBL_SUMMARY_GROUP_BY}
+       ${orderByClause(MBL_SORT_COLUMNS, query.sort, 'createdAt', query.dir, 'desc', 'm.id DESC')}
+       LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+      params,
+    );
+    return toPaged(rows, window, toMblSummaryDto);
+  }
+
   /** Opens a new MBL. `seaMethod` is required iff `shippingType = 'sea'`;
    *  `containers` is required iff `seaMethod = 'groupage_fcl'` (the only
    *  method with a multi-container table — the other three sea methods keep
-   *  their single container directly on `mbl`, see `WRITABLE_COLUMNS`). */
-  async create(dto: CreateMblDto): Promise<MblDto> {
+   *  their single container directly on `mbl`, see `WRITABLE_COLUMNS`).
+   *  The handler is always the signed-in user; `status` defaults to `open`. */
+  async create(dto: CreateMblDto, handlerUserId: number): Promise<MblDto> {
     validateShippingTypeAndMethod(dto.shippingType, dto.seaMethod);
     validateContainers(dto.seaMethod, dto.containers);
     if (dto.customerId !== undefined) {
@@ -211,11 +323,13 @@ export class MblService {
       const keys = WRITABLE_KEYS.filter((key) => dto[key] !== undefined);
       const columns = [
         'shipping_type',
+        'handler_user_id',
         ...(dto.seaMethod !== undefined ? ['sea_method'] : []),
         ...keys.map((key) => WRITABLE_COLUMNS[key]),
       ];
       const values: unknown[] = [
         dto.shippingType,
+        handlerUserId,
         ...(dto.seaMethod !== undefined ? [dto.seaMethod] : []),
         ...keys.map((key) => dto[key]),
       ];
@@ -240,7 +354,10 @@ export class MblService {
   }
 
   async findById(id: number): Promise<MblDto> {
-    const row = await this.db.queryOne<MblRow>(`${MBL_SELECT} WHERE m.id = $1`, [id]);
+    const row = await this.db.queryOne<MblRow>(
+      `${MBL_SELECT} WHERE m.id = $1`,
+      [id],
+    );
     if (!row) {
       throw new NotFoundException(`MBL ${id} not found`);
     }
@@ -259,10 +376,10 @@ export class MblService {
     }
 
     await this.db.transaction(async (client) => {
-      const existing = await client.query<{ id: number; sea_method: SeaMethod | null }>(
-        'SELECT id, sea_method FROM mbl WHERE id = $1',
-        [id],
-      );
+      const existing = await client.query<{
+        id: number;
+        sea_method: SeaMethod | null;
+      }>('SELECT id, sea_method FROM mbl WHERE id = $1', [id]);
       if (existing.rows.length === 0) {
         throw new NotFoundException(`MBL ${id} not found`);
       }
@@ -277,7 +394,10 @@ export class MblService {
         });
         sets.push('updated_at = now()');
         params.push(id);
-        await client.query(`UPDATE mbl SET ${sets.join(', ')} WHERE id = $${params.length}`, params);
+        await client.query(
+          `UPDATE mbl SET ${sets.join(', ')} WHERE id = $${params.length}`,
+          params,
+        );
       }
 
       if (dto.containers !== undefined) {
@@ -296,9 +416,10 @@ export class MblService {
    *  which in turn frees any of their orders back to unassigned automatically
    *  (`orders.hbl_id ON DELETE SET NULL`). */
   async remove(id: number): Promise<void> {
-    const row = await this.db.queryOne<{ id: number }>('DELETE FROM mbl WHERE id = $1 RETURNING id', [
-      id,
-    ]);
+    const row = await this.db.queryOne<{ id: number }>(
+      'DELETE FROM mbl WHERE id = $1 RETURNING id',
+      [id],
+    );
     if (!row) {
       throw new NotFoundException(`MBL ${id} not found`);
     }
@@ -310,10 +431,14 @@ function validateShippingTypeAndMethod(
   seaMethod: SeaMethod | undefined,
 ): void {
   if (shippingType === MblShippingType.SEA && seaMethod === undefined) {
-    throw new BadRequestException('seaMethod is required when shippingType is "sea"');
+    throw new BadRequestException(
+      'seaMethod is required when shippingType is "sea"',
+    );
   }
   if (shippingType === MblShippingType.AIR && seaMethod !== undefined) {
-    throw new BadRequestException('seaMethod must not be set when shippingType is "air"');
+    throw new BadRequestException(
+      'seaMethod must not be set when shippingType is "air"',
+    );
   }
 }
 
@@ -323,10 +448,14 @@ function validateContainers(
 ): void {
   if (seaMethod === SeaMethod.GROUPAGE_FCL) {
     if (!containers || containers.length === 0) {
-      throw new BadRequestException('At least one container is required when seaMethod is groupage_fcl');
+      throw new BadRequestException(
+        'At least one container is required when seaMethod is groupage_fcl',
+      );
     }
   } else if (containers && containers.length > 0) {
-    throw new BadRequestException('containers is only applicable when seaMethod is groupage_fcl');
+    throw new BadRequestException(
+      'containers is only applicable when seaMethod is groupage_fcl',
+    );
   }
 }
 
@@ -399,6 +528,9 @@ function toMblDto(row: MblRow, containers: MblContainerRow[]): MblDto {
     placeOfIssue: row.place_of_issue,
     dateOfIssue: row.date_of_issue,
     carrierName: row.carrier_name,
+    status: row.status,
+    handlerUserId: row.handler_user_id ?? null,
+    handlerName: row.handler_name ?? null,
     containers: containers.map(toMblContainerDto),
     createdAt: toIsoString(row.created_at),
     updatedAt: toIsoString(row.updated_at),
@@ -410,9 +542,13 @@ function toMblSummaryDto(row: MblSummaryRow): MblSummaryDto {
     id: row.id,
     shippingType: row.shipping_type,
     seaMethod: row.sea_method,
+    status: row.status,
     mblNumber: row.mbl_number,
     carrierName: row.carrier_name,
+    handlerUserId: row.handler_user_id ?? null,
+    handlerName: row.handler_name ?? null,
     hblCount: Number(row.hbl_count),
+    orderCount: Number(row.order_count),
     orderIds: row.order_ids ?? [],
     customerNames: row.customer_names ?? [],
     createdAt: toIsoString(row.created_at),

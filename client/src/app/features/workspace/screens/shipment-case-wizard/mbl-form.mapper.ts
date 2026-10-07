@@ -1,6 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 
-import { MblShippingType, PaymentTerms, SeaMethod } from '../../../../api/enums';
+import { MblShippingType, MblStatus, PaymentTerms, SeaMethod } from '../../../../api/enums';
 import type { CreateMblContainerDto, CreateMblDto, MblContainerDto, MblDto } from '../../../../api/models';
 
 /** Free-text / date / numeric fields of the MBL form (always strings; `''` = not filled).
@@ -112,6 +112,7 @@ export function toCreateMblDto(
   seaMethod: SeaMethod | null,
   customerId: number | null,
   freightTerms: PaymentTerms | null,
+  status: MblStatus,
   form: MblFormValue,
   containers: MblContainerFormValue[],
 ): CreateMblDto {
@@ -119,6 +120,7 @@ export function toCreateMblDto(
     shippingType,
     seaMethod: seaMethod ?? undefined,
     customerId: customerId ?? undefined,
+    status,
     mblNumber: blankToUndefined(form.mblNumber),
     bookingNumber: blankToUndefined(form.bookingNumber),
     vesselName: blankToUndefined(form.vesselName),

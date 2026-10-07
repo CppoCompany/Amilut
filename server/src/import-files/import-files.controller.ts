@@ -6,6 +6,7 @@ import {
   ParseIntPipe,
   Post,
   Put,
+  Query,
   StreamableFile,
   UploadedFiles,
   UseInterceptors,
@@ -28,8 +29,10 @@ import {
   IMPORT_DOCUMENT_TYPE_FIELD,
   UploadImportFilesDto,
 } from './dto/upload-import-files.dto';
+import { PagedClassificationsDto } from './dto/classification-row.dto';
 import { InvoiceLineItemDto } from './dto/invoice-line-item.dto';
 import { SaveLineItemClassificationsDto } from './dto/line-item-classification.dto';
+import { PagedClassificationsQuery } from './dto/paged-classifications.query';
 import { UploadedImportFileDto } from './dto/uploaded-import-file.dto';
 import { ImportFilesService } from './import-files.service';
 
@@ -45,6 +48,19 @@ export const MAX_IMPORT_FILE_SIZE_BYTES = 25 * 1024 * 1024;
 @Controller('import-files')
 export class ImportFilesController {
   constructor(private readonly importFiles: ImportFilesService) {}
+
+  /**
+   * "הסיווגים שלי": every classified supplier-invoice line across all import
+   * cases, paged/sorted/filtered. Declared before the `:accountNumber` routes
+   * so the static segment wins route matching.
+   */
+  @Get('classifications')
+  @ApiOkResponse({ type: PagedClassificationsDto })
+  listClassifications(
+    @Query() query: PagedClassificationsQuery,
+  ): Promise<PagedClassificationsDto> {
+    return this.importFiles.listClassificationsPaged(query);
+  }
 
   /**
    * Stores the uploaded files under `storage/<accountNumber>/` (keeping their

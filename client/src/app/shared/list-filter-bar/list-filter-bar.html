@@ -1,0 +1,69 @@
+<div class="filter-bar" role="search">
+  <div class="form-group">
+    <label [for]="uid + '-q'">חיפוש</label>
+    <input
+      [id]="uid + '-q'"
+      type="search"
+      class="form-control"
+      [placeholder]="searchPlaceholder()"
+      [disabled]="disabled()"
+      [(ngModel)]="q"
+    />
+  </div>
+
+  @if (statusOptions(); as options) {
+    <div class="form-group">
+      <label [for]="uid + '-status'">סטטוס</label>
+      <select [id]="uid + '-status'" class="form-control" [disabled]="disabled()" [(ngModel)]="status">
+        <option value="">הכל</option>
+        @for (option of options; track option.value) {
+          <option [value]="option.value">{{ option.label }}</option>
+        }
+      </select>
+    </div>
+  }
+
+  @if (showCustomer()) {
+    <div class="form-group autocomplete-wrapper">
+      <label [for]="uid + '-customer'">לקוח</label>
+      <app-customer-autocomplete
+        [inputId]="uid + '-customer'"
+        placeholder="הקלד שם לקוח לסינון..."
+        [disabled]="disabled()"
+        [(customer)]="customer"
+      />
+    </div>
+  }
+
+  @if (showCaseNumber()) {
+    <div class="form-group">
+      <label [for]="uid + '-case'">מספר תיק</label>
+      <input
+        [id]="uid + '-case'"
+        type="text"
+        inputmode="numeric"
+        class="form-control"
+        placeholder="לדוגמה 1000"
+        [disabled]="disabled()"
+        [(ngModel)]="caseNumber"
+      />
+    </div>
+  }
+
+  <div class="form-group">
+    <label [for]="uid + '-from'">מתאריך</label>
+    <input [id]="uid + '-from'" type="date" class="form-control" [disabled]="disabled()" [(ngModel)]="from" />
+  </div>
+
+  <div class="form-group">
+    <label [for]="uid + '-to'">עד תאריך</label>
+    <input [id]="uid + '-to'" type="date" class="form-control" [disabled]="disabled()" [(ngModel)]="to" />
+  </div>
+
+  <div class="form-group filter-bar__actions">
+    <label>&nbsp;</label>
+    <div class="filter-bar__buttons">
+      <button type="button" class="btn btn-secondary" [disabled]="disabled()" (click)="clear.emit()">נקה</button>
+    </div>
+  </div>
+</div>

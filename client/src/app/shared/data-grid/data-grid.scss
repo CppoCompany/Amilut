@@ -1,0 +1,103 @@
+// Shared `.data-table*` / `.status-pill*` / `.btn*` looks live in src/styles.scss;
+// these rules only add the sortable headers, the loading dim and the pager.
+
+:host {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.data-grid__table-wrapper {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  transition: opacity 0.15s ease;
+}
+
+.data-grid--loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.data-grid__error {
+  margin: 0 0 12px;
+  padding: 0.6rem 0.9rem;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  background: color-mix(in srgb, var(--danger, #ef4444) 12%, white);
+  color: var(--danger, #ef4444);
+}
+
+.data-grid__th--sortable {
+  cursor: pointer;
+  user-select: none;
+
+  &:hover {
+    color: var(--secondary-blue);
+  }
+}
+
+.data-grid__th--active {
+  color: var(--secondary-blue);
+}
+
+.data-grid__th-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.data-grid__sort-icon {
+  font-size: 0.75rem;
+  opacity: 0.55;
+
+  .data-grid__th--active & {
+    opacity: 1;
+  }
+}
+
+.data-grid__pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.data-grid__pager-buttons {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.data-grid__pager-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font-size: 0.9rem;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.data-grid__page-label {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.data-grid__range {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 640px) {
+  .data-grid__pager {
+    justify-content: center;
+  }
+}

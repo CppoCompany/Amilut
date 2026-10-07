@@ -3,7 +3,18 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import type { OrderStatus } from './enums';
-import type { CreateOrderDto, OrderDto, UpdateOrderDto } from './models';
+import type { CreateOrderDto, OrderDto, PagedOrdersDto, UpdateOrderDto } from './models';
+import { PagedQueryParams, toHttpParams } from './paging';
+
+/** Sort keys accepted by `GET /api/orders/paged` (whitelisted server-side). */
+export type OrderSortKey = 'id' | 'customerName' | 'status' | 'createdAt';
+
+/** Query parameters accepted by `GET /api/orders/paged` — "ההזמנות שלי" (the signed-in handler's orders). */
+export interface PagedOrdersParams extends PagedQueryParams {
+  status?: OrderStatus;
+  customerId?: number;
+  sort?: OrderSortKey;
+}
 
 /** Query parameters accepted by `GET /api/orders`. */
 export interface ListOrdersParams {
@@ -41,6 +52,11 @@ export class OrdersApi {
       }
     }
     return this.http.get<OrderDto[]>(this.baseUrl, { params: httpParams });
+  }
+
+  /** `GET /api/orders/paged` — one page of the signed-in user's orders, filtered/sorted server-side. */
+  listMinePaged(params: PagedOrdersParams = {}): Observable<PagedOrdersDto> {
+    return this.http.get<PagedOrdersDto>(`${this.baseUrl}/paged`, { params: toHttpParams(params) });
   }
 
   getById(id: number): Observable<OrderDto> {

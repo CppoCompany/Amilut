@@ -31,3 +31,20 @@ export enum SeaMethod {
   LCL_LCL = 'lcl_lcl',
   GROUPAGE_FCL = 'groupage_fcl',
 }
+
+/**
+ * Lifecycle status of an MBL shipping case (`mbl.status`, migration 018).
+ * Values match the `mbl_status_check` CHECK constraint.
+ *
+ * Hebrew UI labels:
+ * - OPEN       → פתוח
+ * - IN_RELEASE → בהתרה
+ * - RELEASED   → שוחרר
+ * - CLOSED     → סגור
+ */
+export enum MblStatus {
+  OPEN = 'open',
+  IN_RELEASE = 'in_release',
+  RELEASED = 'released',
+  CLOSED = 'closed',
+}

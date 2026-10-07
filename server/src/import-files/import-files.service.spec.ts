@@ -1012,6 +1012,116 @@ describe('ImportFilesService', () => {
     });
   });
 
+  describe('listClassificationsPaged', () => {
+    const classifiedRow = {
+      total: '3',
+      file_id: 42,
+      account_id: 1000,
+      file_name: 'invoice.pdf',
+      line_index: 1,
+      item: 'Y8022-140BK',
+      description: 'Light Fixtures',
+      quantity: 15,
+      price: 15.32,
+      total_amount: 229.8,
+      classification: {
+        tradeAgreement: TradeAgreement.EU,
+        classificationCode: '8539.50.00',
+        approvals: [ClassificationApproval.STANDARD_OR_DECLARATION, 'bogus'],
+        countryId: 106,
+      },
+      country_name: 'סין',
+      created_at: new Date('2026-09-01T08:00:00.000Z'),
+    };
+
+    it('selects one row per classified line (newest file per name), applies the filters and a whitelisted sort', async () => {
+      db.query.mockResolvedValueOnce([classifiedRow]);
+
+      const result = await service.listClassificationsPaged({
+        q: '8539',
+        accountId: 1000,
+        from: '2026-01-01',
+        to: '2026-12-31',
+        sort: 'classificationCode',
+        dir: 'asc',
+        page: 1,
+        pageSize: 10,
+      });
+
+      const [sql, params] = db.query.mock.calls[0] as [string, unknown[]];
+      expect(sql).toMatch(/count\(\*\) OVER\(\) AS total/);
+      expect(sql).toMatch(
+        /jsonb_array_elements\(COALESCE\(f\.data->'lineItems', '\[\]'::jsonb\)\)/,
+      );
+      expect(sql).toMatch(/WITH ORDINALITY AS li\(item, idx\)/);
+      expect(sql).toMatch(
+        /jsonb_typeof\(li\.item->'classification'\) = 'object'/,
+      );
+      expect(sql).toMatch(
+        /f\.id = \(SELECT max\(f2\.id\) FROM import_account_files f2/,
+      );
+      expect(sql).toMatch(
+        /li\.item->>'item' ILIKE \$1 OR li\.item->>'description' ILIKE \$1 OR li\.item->'classification'->>'classificationCode' ILIKE \$1 OR f\.data->>'name' ILIKE \$1/,
+      );
+      expect(sql).toMatch(/f\.account_id = \$2/);
+      expect(sql).toMatch(/f\.created_at::date >= \$3::date/);
+      expect(sql).toMatch(/f\.created_at::date <= \$4::date/);
+      expect(sql).toMatch(
+        /ORDER BY li\.item->'classification'->>'classificationCode' ASC NULLS LAST, f\.id DESC, li\.idx ASC/,
+      );
+      expect(sql).toMatch(/LIMIT \$5 OFFSET \$6/);
+      expect(params).toEqual([
+        '%8539%',
+        1000,
+        '2026-01-01',
+        '2026-12-31',
+        10,
+        0,
+      ]);
+
+      expect(result.total).toBe(3);
+      expect(result.items).toEqual([
+        {
+          fileId: 42,
+          accountId: 1000,
+          fileName: 'invoice.pdf',
+          lineIndex: 1,
+          item: 'Y8022-140BK',
+          description: 'Light Fixtures',
+          quantity: 15,
+          price: 15.32,
+          total: 229.8,
+          classification: {
+            tradeAgreement: TradeAgreement.EU,
+            classificationCode: '8539.50.00',
+            approvals: [ClassificationApproval.STANDARD_OR_DECLARATION],
+            countryId: 106,
+          },
+          countryName: 'סין',
+          createdAt: '2026-09-01T08:00:00.000Z',
+        },
+      ]);
+    });
+
+    it('defaults to newest upload first, page 1 of 25, and never interpolates an unknown sort key', async () => {
+      db.query.mockResolvedValueOnce([]);
+
+      const result = await service.listClassificationsPaged({
+        sort: 'f.id; DROP TABLE import_account_files',
+      } as unknown as Parameters<
+        ImportFilesService['listClassificationsPaged']
+      >[0]);
+
+      const [sql, params] = db.query.mock.calls[0] as [string, unknown[]];
+      expect(sql).not.toMatch(/DROP TABLE/);
+      expect(sql).toMatch(
+        /ORDER BY f\.created_at DESC NULLS LAST, f\.id DESC, li\.idx ASC/,
+      );
+      expect(params).toEqual([25, 0]);
+      expect(result).toEqual({ items: [], total: 0, page: 1, pageSize: 25 });
+    });
+  });
+
   describe('resolveInsideStorage', () => {
     it('returns the absolute path of a relative path inside the root', () => {
       expect(resolveInsideStorage(storageDir, '1000/a.pdf')).toBe(

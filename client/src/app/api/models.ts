@@ -44,3 +44,9 @@ export type DashboardCaseInReleaseRowDto = components['schemas']['DashboardCaseI
 export type DashboardClassificationRowDto = components['schemas']['DashboardClassificationRowDto'];
 export type DashboardCaseRowDto = components['schemas']['DashboardCaseRowDto'];
 export type DashboardImportProcessRowDto = components['schemas']['DashboardImportProcessRowDto'];
+
+// Paged "view all" lists (רשימות)
+export type PagedOrdersDto = components['schemas']['PagedOrdersDto'];
+export type PagedMblSummaryDto = components['schemas']['PagedMblSummaryDto'];
+export type ClassificationRowDto = components['schemas']['ClassificationRowDto'];
+export type PagedClassificationsDto = components['schemas']['PagedClassificationsDto'];

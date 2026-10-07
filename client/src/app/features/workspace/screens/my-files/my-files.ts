@@ -4,7 +4,7 @@ import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { combineLatest, debounceTime, finalize, skip } from 'rxjs';
 
-import { MBL_SHIPPING_TYPE_LABELS, SEA_METHOD_LABELS } from '../../../../api/enums';
+import { MBL_SHIPPING_TYPE_LABELS, MBL_STATUS_LABELS, SEA_METHOD_LABELS } from '../../../../api/enums';
 import { ListMblParams, MblApi } from '../../../../api/mbl-api';
 import type { CustomerDto, MblSummaryDto } from '../../../../api/models';
 import { ConfirmDialog } from '../../../../shared/confirm-dialog/confirm-dialog';
@@ -34,6 +34,7 @@ export class MyFilesScreen {
   protected readonly filterCustomer = signal<CustomerDto | null>(null);
   protected readonly filterCarrierName = signal('');
   protected readonly filterCaseNumber = signal('');
+  protected readonly statusLabels = MBL_STATUS_LABELS;
 
   // ── Grid state ──────────────────────────────────────────────────────────────
   protected readonly cases = signal<MblSummaryDto[]>([]);

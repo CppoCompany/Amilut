@@ -283,6 +283,121 @@
         ]
       }
     },
+    "/api/import-files/classifications": {
+      "get": {
+        "operationId": "ImportFilesController_listClassifications",
+        "parameters": [
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 200,
+              "example": "ACME",
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "example": "2026-01-01",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "example": "2026-12-31",
+              "type": "string"
+            }
+          },
+          {
+            "name": "dir",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "desc",
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "accountId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": 1000,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "sort",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "createdAt",
+              "type": "string",
+              "enum": [
+                "createdAt",
+                "accountId",
+                "item",
+                "classificationCode"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedClassificationsDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "import-files"
+        ]
+      }
+    },
     "/api/import-files/{accountNumber}": {
       "post": {
         "operationId": "ImportFilesController_uploadMultipleImportFiles",
@@ -640,6 +755,148 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MblDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "mbl"
+        ]
+      }
+    },
+    "/api/mbl/paged": {
+      "get": {
+        "operationId": "MblController_findAllPaged",
+        "parameters": [
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 200,
+              "example": "ACME",
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "example": "2026-01-01",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "example": "2026-12-31",
+              "type": "string"
+            }
+          },
+          {
+            "name": "dir",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "desc",
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "mine",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": false,
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/MblStatus"
+            }
+          },
+          {
+            "name": "customerId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "carrierName",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "Maersk",
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "createdAt",
+              "type": "string",
+              "enum": [
+                "id",
+                "mblNumber",
+                "carrierName",
+                "status",
+                "createdAt"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedMblSummaryDto"
                 }
               }
             }
@@ -1154,6 +1411,129 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OrderDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "orders"
+        ]
+      }
+    },
+    "/api/orders/paged": {
+      "get": {
+        "operationId": "OrdersController_findMyOrdersPaged",
+        "parameters": [
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 200,
+              "example": "ACME",
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "example": "2026-01-01",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "example": "2026-12-31",
+              "type": "string"
+            }
+          },
+          {
+            "name": "dir",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "desc",
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/OrderStatus"
+            }
+          },
+          {
+            "name": "customerId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "sort",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "createdAt",
+              "type": "string",
+              "enum": [
+                "id",
+                "customerName",
+                "status",
+                "createdAt"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedOrdersDto"
                 }
               }
             }
@@ -1721,6 +2101,12 @@
           "in_release",
           "released",
           "closed"
+        ],
+        "x-enum-varnames": [
+          "OPEN",
+          "IN_RELEASE",
+          "RELEASED",
+          "CLOSED"
         ]
       },
       "DashboardCaseInReleaseRowDto": {
@@ -1993,24 +2379,6 @@
           "importProcesses"
         ]
       },
-      "ImportDocumentType": {
-        "type": "string",
-        "enum": [
-          "SUPPLIER_INVOICE",
-          "BILL_OF_LADING",
-          "MASTER_BILL_OF_LADING",
-          "PACKING_LIST",
-          "CERTIFICATE_OF_ORIGIN"
-        ],
-        "description": "Kind of paperwork this file represents.",
-        "x-enum-varnames": [
-          "SUPPLIER_INVOICE",
-          "BILL_OF_LADING",
-          "MASTER_BILL_OF_LADING",
-          "PACKING_LIST",
-          "CERTIFICATE_OF_ORIGIN"
-        ]
-      },
       "TradeAgreement": {
         "type": "string",
         "enum": [
@@ -2170,6 +2538,124 @@
           "approvals",
           "licenses",
           "countryId"
+        ]
+      },
+      "ClassificationRowDto": {
+        "type": "object",
+        "properties": {
+          "fileId": {
+            "type": "integer",
+            "example": 42
+          },
+          "accountId": {
+            "type": "integer",
+            "example": 1000
+          },
+          "fileName": {
+            "type": "string",
+            "example": "invoice-2026-09.pdf"
+          },
+          "lineIndex": {
+            "type": "integer",
+            "example": 0
+          },
+          "item": {
+            "type": "string",
+            "example": "Y8022-140BK"
+          },
+          "description": {
+            "type": "string",
+            "example": "Light Fixtures"
+          },
+          "quantity": {
+            "type": "number",
+            "nullable": true,
+            "example": 15
+          },
+          "price": {
+            "type": "number",
+            "nullable": true,
+            "example": 15.32
+          },
+          "total": {
+            "type": "number",
+            "nullable": true,
+            "example": 229.8
+          },
+          "classification": {
+            "$ref": "#/components/schemas/LineItemClassificationDto"
+          },
+          "countryName": {
+            "type": "string",
+            "nullable": true,
+            "example": "סין"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-01T08:30:00.000Z"
+          }
+        },
+        "required": [
+          "fileId",
+          "accountId",
+          "fileName",
+          "lineIndex",
+          "item",
+          "description",
+          "quantity",
+          "price",
+          "total",
+          "classification",
+          "countryName",
+          "createdAt"
+        ]
+      },
+      "PagedClassificationsDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "example": 137
+          },
+          "page": {
+            "type": "integer",
+            "example": 1
+          },
+          "pageSize": {
+            "type": "integer",
+            "example": 25
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClassificationRowDto"
+            }
+          }
+        },
+        "required": [
+          "total",
+          "page",
+          "pageSize",
+          "items"
+        ]
+      },
+      "ImportDocumentType": {
+        "type": "string",
+        "enum": [
+          "SUPPLIER_INVOICE",
+          "BILL_OF_LADING",
+          "MASTER_BILL_OF_LADING",
+          "PACKING_LIST",
+          "CERTIFICATE_OF_ORIGIN"
+        ],
+        "description": "Kind of paperwork this file represents.",
+        "x-enum-varnames": [
+          "SUPPLIER_INVOICE",
+          "BILL_OF_LADING",
+          "MASTER_BILL_OF_LADING",
+          "PACKING_LIST",
+          "CERTIFICATE_OF_ORIGIN"
         ]
       },
       "InvoiceLineItemDto": {
@@ -2407,6 +2893,13 @@
               }
             ]
           },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MblStatus"
+              }
+            ]
+          },
           "mblNumber": {
             "type": "string",
             "nullable": true,
@@ -2417,9 +2910,23 @@
             "nullable": true,
             "example": "MAERSK LINE"
           },
+          "handlerUserId": {
+            "type": "integer",
+            "nullable": true,
+            "example": 7
+          },
+          "handlerName": {
+            "type": "string",
+            "nullable": true,
+            "example": "Dana Levi"
+          },
           "hblCount": {
             "type": "integer",
             "example": 3
+          },
+          "orderCount": {
+            "type": "integer",
+            "example": 2
           },
           "orderIds": {
             "example": [
@@ -2450,12 +2957,45 @@
           "id",
           "shippingType",
           "seaMethod",
+          "status",
           "mblNumber",
           "carrierName",
+          "handlerUserId",
+          "handlerName",
           "hblCount",
+          "orderCount",
           "orderIds",
           "customerNames",
           "createdAt"
+        ]
+      },
+      "PagedMblSummaryDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "example": 137
+          },
+          "page": {
+            "type": "integer",
+            "example": 1
+          },
+          "pageSize": {
+            "type": "integer",
+            "example": 25
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MblSummaryDto"
+            }
+          }
+        },
+        "required": [
+          "total",
+          "page",
+          "pageSize",
+          "items"
         ]
       },
       "PaymentTerms": {
@@ -2609,6 +3149,14 @@
           "carrierName": {
             "type": "string",
             "example": "MAERSK LINE"
+          },
+          "status": {
+            "default": "open",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MblStatus"
+              }
+            ]
           },
           "containers": {
             "type": "array",
@@ -2811,6 +3359,23 @@
             "nullable": true,
             "example": "MAERSK LINE"
           },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MblStatus"
+              }
+            ]
+          },
+          "handlerUserId": {
+            "type": "integer",
+            "nullable": true,
+            "example": 7
+          },
+          "handlerName": {
+            "type": "string",
+            "nullable": true,
+            "example": "Dana Levi"
+          },
           "containers": {
             "type": "array",
             "items": {
@@ -2857,6 +3422,9 @@
           "placeOfIssue",
           "dateOfIssue",
           "carrierName",
+          "status",
+          "handlerUserId",
+          "handlerName",
           "containers",
           "createdAt",
           "updatedAt"
@@ -2963,6 +3531,14 @@
           "carrierName": {
             "type": "string",
             "example": "MAERSK LINE"
+          },
+          "status": {
+            "default": "open",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MblStatus"
+              }
+            ]
           },
           "containers": {
             "type": "array",
@@ -3493,6 +4069,35 @@
           "airline",
           "flightNumber",
           "isActive"
+        ]
+      },
+      "PagedOrdersDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "example": 137
+          },
+          "page": {
+            "type": "integer",
+            "example": 1
+          },
+          "pageSize": {
+            "type": "integer",
+            "example": 25
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrderDto"
+            }
+          }
+        },
+        "required": [
+          "total",
+          "page",
+          "pageSize",
+          "items"
         ]
       },
       "CreateOrderDto": {
