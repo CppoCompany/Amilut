@@ -153,6 +153,9 @@
   <main class="content-area">
     <div class="page-tab-panel active" role="tabpanel">
       @switch (nav.activeScreen()) {
+        @case ('dashboard') {
+          <app-dashboard-screen />
+        }
         @case ('order') {
           <app-order-screen />
         }

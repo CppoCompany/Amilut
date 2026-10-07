@@ -1,0 +1,115 @@
+// Component-scoped additions to the shared card/grid styles (see src/styles.scss).
+
+:host {
+  gap: 20px;
+}
+
+// ── Quick actions ────────────────────────────────────────────────────────────
+.dashboard-actions {
+  flex-shrink: 0;
+}
+
+.dashboard-actions__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+  }
+}
+
+// ── Cards grid: two columns on desktop, one on narrow screens ────────────────
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  flex-shrink: 0;
+  margin-bottom: 24px;
+
+  @media (max-width: 1100px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.dashboard-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 18px 20px;
+
+  .section-header {
+    margin-bottom: 14px;
+  }
+
+  // The data table is compact inside a card: tighter cells, lighter shadow.
+  .data-table-wrapper {
+    box-shadow: none;
+    border: 1px solid var(--border-color);
+  }
+
+  .data-table th,
+  .data-table td {
+    padding: 9px 12px;
+    font-size: 0.88rem;
+  }
+}
+
+.dashboard-card__title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+// "צפה בהכל" — a small text link on the card's far (left, in RTL) side.
+.dashboard-card__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--secondary-blue);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+
+  &:hover,
+  &:focus-visible {
+    background-color: var(--light-blue-bg);
+    outline: none;
+  }
+
+  i {
+    font-size: 0.75rem;
+  }
+}
+
+// ── Error banner ─────────────────────────────────────────────────────────────
+.form-message {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  padding: 0.6rem 0.9rem;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+
+  &--error {
+    background: color-mix(in srgb, var(--danger, #ef4444) 12%, white);
+    color: var(--danger, #ef4444);
+  }
+}
+
+.dashboard-retry {
+  padding: 6px 14px;
+  font-size: 0.85rem;
+}

@@ -57,17 +57,28 @@ describe('NavigationService', () => {
     );
   });
 
-  it('defaults to "יצירת הזמנה חדשה", with its group expanded', () => {
-    expect(nav.activeScreen()).toBe('order');
-    expect(nav.isChildActive('ws-order')).toBe(true);
-    expect(nav.isNodeExpanded('ws-orders-group')).toBe(true);
+  it('puts "לוח בקרה" first in the tree, as a top-level row', () => {
+    const first = nav.tree()[0];
+    expect(isTreeChildGroup(first)).toBe(false);
+    expect(first.id).toBe('ws-dashboard');
+    expect(first.label).toBe('לוח בקרה');
+  });
+
+  it('defaults to "לוח בקרה" with no group expanded', () => {
+    expect(nav.activeScreen()).toBe('dashboard');
+    expect(nav.isChildActive('ws-dashboard')).toBe(true);
+    expect(nav.isNodeExpanded('ws-orders-group')).toBe(false);
+    expect(nav.isNodeExpanded('ws-shipment-group')).toBe(false);
   });
 
   it('toggles a group independently of other groups', () => {
+    nav.toggleNode('ws-orders-group');
+    expect(nav.isNodeExpanded('ws-orders-group')).toBe(true);
+
     expect(nav.isNodeExpanded('ws-shipment-group')).toBe(false);
     nav.toggleNode('ws-shipment-group');
     expect(nav.isNodeExpanded('ws-shipment-group')).toBe(true);
-    expect(nav.isNodeExpanded('ws-orders-group')).toBe(true); // untouched, still its default-expanded state
+    expect(nav.isNodeExpanded('ws-orders-group')).toBe(true); // untouched
 
     nav.toggleNode('ws-shipment-group');
     expect(nav.isNodeExpanded('ws-shipment-group')).toBe(false);

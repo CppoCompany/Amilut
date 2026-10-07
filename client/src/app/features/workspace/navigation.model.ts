@@ -8,6 +8,7 @@
 
 /** Identifier for a clickable page in the sidebar tree. */
 export type PageKey =
+  | 'dashboard'
   | 'order'
   | 'filing'
   | 'shipmentCaseWizard'
@@ -20,6 +21,7 @@ export type PageKey =
 
 /** Identifier for a content panel the workspace can render. */
 export type ScreenId =
+  | 'dashboard'
   | 'order'
   | 'filing'
   | 'shipmentCaseWizard'
