@@ -1,21 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { MblShippingType } from '../../mbl/mbl.enums';
+import { MblShippingType, MblStatus } from '../../mbl/mbl.enums';
 import { OrderStatus } from '../../orders/orders.enums';
-
-/**
- * Lifecycle status of an MBL shipping case (`mbl.status`, migration 018).
- * TODO(merge): replace with the `MblStatus` enum from `mbl/mbl.enums.ts`
- * once it lands (and register it in `NAMED_ENUMS`); until then the values
- * are listed inline for Swagger under the same `enumName: 'MblStatus'`.
- *
- * Hebrew UI labels: open → פתוח, in_release → בהתרה, released → שוחרר, closed → סגור.
- */
-export const MBL_STATUS_VALUES = [
-  'open',
-  'in_release',
-  'released',
-  'closed',
-] as const;
 
 /** One row of the "ההזמנות שלי" dashboard card — orders handled by the signed-in user. */
 export class DashboardOrderRowDto {
@@ -50,12 +35,8 @@ export class DashboardCaseInReleaseRowDto {
   @ApiProperty({ type: 'string', nullable: true, example: 'MAERSK LINE' })
   carrierName!: string | null;
 
-  @ApiProperty({
-    enum: MBL_STATUS_VALUES,
-    enumName: 'MblStatus',
-    example: 'in_release',
-  })
-  status!: string;
+  @ApiProperty({ enum: MblStatus, enumName: 'MblStatus' })
+  status!: MblStatus;
 
   @ApiProperty({ format: 'date-time', example: '2026-09-01T08:30:00.000Z' })
   createdAt!: string;
@@ -108,12 +89,8 @@ export class DashboardCaseRowDto {
   @ApiProperty({ type: 'string', nullable: true, example: 'MAERSK LINE' })
   carrierName!: string | null;
 
-  @ApiProperty({
-    enum: MBL_STATUS_VALUES,
-    enumName: 'MblStatus',
-    example: 'open',
-  })
-  status!: string;
+  @ApiProperty({ enum: MblStatus, enumName: 'MblStatus' })
+  status!: MblStatus;
 
   @ApiProperty({ format: 'date-time', example: '2026-09-01T08:30:00.000Z' })
   createdAt!: string;
@@ -139,12 +116,8 @@ export class DashboardImportProcessRowDto {
   @ApiProperty({ type: 'integer', example: 3 })
   hblCount!: number;
 
-  @ApiProperty({
-    enum: MBL_STATUS_VALUES,
-    enumName: 'MblStatus',
-    example: 'open',
-  })
-  status!: string;
+  @ApiProperty({ enum: MblStatus, enumName: 'MblStatus' })
+  status!: MblStatus;
 
   @ApiProperty({ format: 'date-time', example: '2026-09-01T08:30:00.000Z' })
   createdAt!: string;

@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { MblShippingType, SeaMethod } from '../../../api/enums';
+import { MblShippingType, MblStatus, SeaMethod } from '../../../api/enums';
 import type { MblSummaryDto } from '../../../api/models';
 import { CurrentCaseService } from '../current-case.service';
 import { CasePicker } from './case-picker';
@@ -14,9 +14,13 @@ function mblCase(overrides: Partial<MblSummaryDto> = {}): MblSummaryDto {
     id: 7,
     shippingType: MblShippingType.SEA,
     seaMethod: SeaMethod.FCL_FCL,
+    status: MblStatus.OPEN,
     mblNumber: 'MBL-7',
     carrierName: null,
+    handlerUserId: null,
+    handlerName: null,
     hblCount: 1,
+    orderCount: 0,
     orderIds: [],
     customerNames: ['ACME Ltd.'],
     createdAt: '2026-09-01T08:30:00.000Z',

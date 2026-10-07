@@ -1095,6 +1095,7 @@ describe('ImportFilesService', () => {
             tradeAgreement: TradeAgreement.EU,
             classificationCode: '8539.50.00',
             approvals: [ClassificationApproval.STANDARD_OR_DECLARATION],
+            licenses: [],
             countryId: 106,
           },
           countryName: 'סין',

@@ -4,7 +4,7 @@ import { WritableSignal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 
-import { ImportDocumentType, MblShippingType, SeaMethod } from '../../../../api/enums';
+import { ImportDocumentType, MblShippingType, MblStatus, SeaMethod } from '../../../../api/enums';
 import { IMPORT_DOCUMENT_TYPE_FIELD, IMPORT_FILES_FIELD } from '../../../../api/import-files-api';
 import type { MblSummaryDto, UploadedImportFileDto } from '../../../../api/models';
 import { CurrentCaseService } from '../../current-case.service';
@@ -28,9 +28,13 @@ function mblCase(id: number): MblSummaryDto {
     id,
     shippingType: MblShippingType.SEA,
     seaMethod: SeaMethod.FCL_FCL,
+    status: MblStatus.OPEN,
     mblNumber: `MBL-${id}`,
     carrierName: null,
+    handlerUserId: null,
+    handlerName: null,
     hblCount: 1,
+    orderCount: 0,
     orderIds: [],
     customerNames: ['ACME Ltd.'],
     createdAt: '2026-09-01T08:30:00.000Z',

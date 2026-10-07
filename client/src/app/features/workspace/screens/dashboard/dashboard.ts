@@ -3,22 +3,10 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize } from 'rxjs';
 
 import { DashboardApi } from '../../../../api/dashboard-api';
-import { MBL_SHIPPING_TYPE_LABELS, ORDER_STATUS_LABELS } from '../../../../api/enums';
+import { MBL_SHIPPING_TYPE_LABELS, MBL_STATUS_LABELS, MblStatus, ORDER_STATUS_LABELS } from '../../../../api/enums';
 import type { DashboardResponseDto } from '../../../../api/models';
 import { isTreeChildGroup, TreeChild } from '../../navigation.model';
 import { NavigationService } from '../../navigation.service';
-
-/**
- * Hebrew labels for `mbl.status`.
- * TODO(merge): replace with `MBL_STATUS_LABELS`/`mblStatusLabels` from
- * `api/enums.ts` once the `MblStatus` enum lands on the lists branch.
- */
-export const MBL_STATUS_LABELS: Record<string, string> = {
-  open: 'פתוח',
-  in_release: 'בהתרה',
-  released: 'שוחרר',
-  closed: 'סגור',
-};
 
 /** Sidebar row ids of the "view all" list pages each card links to (owned by the lists feature). */
 export const DASHBOARD_LIST_ROW_IDS = {
@@ -85,7 +73,7 @@ export class DashboardScreen {
     this.selectRow(rowId);
   }
 
-  protected mblStatusLabel(status: string): string {
+  protected mblStatusLabel(status: MblStatus): string {
     return MBL_STATUS_LABELS[status] ?? status;
   }
 

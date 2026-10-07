@@ -476,7 +476,6 @@ export interface components {
             customerNames: string[];
             /** @example MAERSK LINE */
             carrierName: string | null;
-            /** @example in_release */
             status: components["schemas"]["MblStatus"];
             /**
              * Format: date-time
@@ -521,7 +520,6 @@ export interface components {
             customerNames: string[];
             /** @example MAERSK LINE */
             carrierName: string | null;
-            /** @example open */
             status: components["schemas"]["MblStatus"];
             /**
              * Format: date-time
@@ -545,7 +543,6 @@ export interface components {
             carrierName: string | null;
             /** @example 3 */
             hblCount: number;
-            /** @example open */
             status: components["schemas"]["MblStatus"];
             /**
              * Format: date-time

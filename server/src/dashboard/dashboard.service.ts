@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
-import { MblShippingType } from '../mbl/mbl.enums';
+import { MblShippingType, MblStatus } from '../mbl/mbl.enums';
 import { OrderStatus } from '../orders/orders.enums';
 import {
   DashboardCaseInReleaseRowDto,
@@ -15,7 +15,7 @@ import {
 export const DASHBOARD_ROW_LIMIT = 5;
 
 /** `mbl.status` value that denotes "in customs release" ("בהתרה"). */
-export const MBL_STATUS_IN_RELEASE = 'in_release';
+export const MBL_STATUS_IN_RELEASE = MblStatus.IN_RELEASE;
 
 interface OrderRow {
   id: number;
@@ -31,7 +31,7 @@ interface MblCaseRow {
   mbl_number: string | null;
   shipping_type: MblShippingType;
   carrier_name: string | null;
-  status: string;
+  status: MblStatus;
   hbl_count: string | number;
   customer_names: string[] | null;
   created_at: Date | string;

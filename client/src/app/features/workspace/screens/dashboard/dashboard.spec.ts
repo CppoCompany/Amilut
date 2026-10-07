@@ -218,31 +218,28 @@ describe('DashboardScreen', () => {
     expect(nav.newCaseRequested()).toBe(before + 1);
   });
 
-  it('"צפה בהכל" selects the matching list row when the sidebar has it', () => {
+  it('"צפה בהכל" opens the matching "רשימות" list page', () => {
     httpMock.expectOne(DASHBOARD_URL).flush(EMPTY);
-    // Simulate the lists feature's sidebar row (its page just has to be a known screen).
-    nav.tree.update((tree) => [
-      ...tree,
-      {
-        id: DASHBOARD_LIST_ROW_IDS.myOrders,
-        page: 'myOrders',
-        label: 'כל ההזמנות',
-        icon: 'fa-solid fa-list',
-      },
-    ]);
 
     card('myOrders').querySelector<HTMLButtonElement>('.dashboard-card__link')!.click();
 
-    expect(nav.activeScreen()).toBe('myOrders');
+    expect(nav.activeScreen()).toBe('listMyOrders');
     expect(nav.isChildActive(DASHBOARD_LIST_ROW_IDS.myOrders)).toBe(true);
   });
 
-  it('"צפה בהכל" is a no-op when the list row is not in the sidebar yet', () => {
+  it('every card links to its own list page', () => {
     httpMock.expectOne(DASHBOARD_URL).flush(EMPTY);
 
-    card('myCases').querySelector<HTMLButtonElement>('.dashboard-card__link')!.click();
-
-    expect(nav.activeScreen()).toBe('dashboard');
-    expect(nav.isChildActive('ws-dashboard')).toBe(true);
+    const expected: Record<keyof typeof DASHBOARD_LIST_ROW_IDS, string> = {
+      myOrders: 'listMyOrders',
+      casesInRelease: 'listCasesInRelease',
+      myClassifications: 'listMyClassifications',
+      myCases: 'listMyCases',
+      importProcesses: 'listImportProcesses',
+    };
+    for (const [cardKey, screen] of Object.entries(expected)) {
+      card(cardKey).querySelector<HTMLButtonElement>('.dashboard-card__link')!.click();
+      expect(nav.activeScreen()).toBe(screen);
+    }
   });
 });

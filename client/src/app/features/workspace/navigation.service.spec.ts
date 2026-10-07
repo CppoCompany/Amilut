@@ -173,9 +173,9 @@ describe('NavigationService', () => {
     expect(nav.isChildActive('ws-classification')).toBe(true);
   });
 
-  it('the default landing screen is unchanged by the lists group', () => {
-    expect(nav.activeScreen()).toBe('order');
-    expect(nav.isChildActive('ws-order')).toBe(true);
+  it('the default landing screen (dashboard) is unchanged by the lists group', () => {
+    expect(nav.activeScreen()).toBe('dashboard');
+    expect(nav.isChildActive('ws-dashboard')).toBe(true);
   });
 
   it('goToMyOrders/goToMyFiles still resolve to the relocated My Orders/My Cases rows', () => {

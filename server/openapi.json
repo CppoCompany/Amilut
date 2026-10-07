@@ -2136,7 +2136,6 @@
             "example": "MAERSK LINE"
           },
           "status": {
-            "example": "in_release",
             "allOf": [
               {
                 "$ref": "#/components/schemas/MblStatus"
@@ -2252,7 +2251,6 @@
             "example": "MAERSK LINE"
           },
           "status": {
-            "example": "open",
             "allOf": [
               {
                 "$ref": "#/components/schemas/MblStatus"
@@ -2313,7 +2311,6 @@
             "example": 3
           },
           "status": {
-            "example": "open",
             "allOf": [
               {
                 "$ref": "#/components/schemas/MblStatus"
