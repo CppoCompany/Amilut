@@ -25,6 +25,7 @@ wired to `npm run db:generate`.
 | `016_remove_legacy_shipment_cases.sql` | Deletes all rows from `order_account` — the old shipping-case workflow (and its `ShipmentsModule`/`ShipmentScreen`) has been fully replaced by MBL/HBL; the table/column themselves are left in place, just unused | `Amilut` | `Admin` (via `SET ROLE`) |
 | `017_import_account_files_to_mbl.sql` | Re-points `import_account_files.account_id` from `order_account` to `mbl(id)` — paperwork is now filed under the MBL case ("מספר תיק"), since 016 left no `order_account` rows to file under | `Amilut` | `Admin` (via `SET ROLE`) |
 | `run-migrations.mjs` | Applies `001`, then every other `NNN_*.sql` in name order | — | — |
+| `reset-superuser-password.ps1` | Recovery tool: resets a lost `postgres` superuser password on this machine (elevated PowerShell; `-SaveToEnv` writes it into the root `.env`) | — | Windows admin |
 
 Every step is **idempotent** — re-running does nothing if the objects already exist.
 
@@ -33,10 +34,15 @@ Every step is **idempotent** — re-running does nothing if the objects already 
 From the repo root:
 
 ```bash
-# PowerShell
-$env:PGPASSWORD='...'; npm run db:generate
-# bash
-PGPASSWORD='...' npm run db:generate
+# Database already exists (the normal case) — no superuser password needed.
+# The runner connects as the app role `Admin`, skips 001 and applies 002+.
+npm run db:generate
+
+# First run on a fresh PostgreSQL (001 must create the role + database):
+# either put PGPASSWORD in the gitignored root .env (template: .env.example here)
+# — npm run db:generate loads it via node --env-file-if-exists=.env — or:
+$env:PGPASSWORD='...'; npm run db:generate   # PowerShell
+PGPASSWORD='...' npm run db:generate         # bash
 ```
 
 ## Connection settings (env vars, with defaults)
@@ -45,8 +51,9 @@ PGPASSWORD='...' npm run db:generate
 |-----|---------|-------|
 | `PGHOST` | `127.0.0.1` | |
 | `PGPORT` | `5432` | This machine runs PostgreSQL 18 on the standard **5432** port |
-| `PGSUPERUSER` | `postgres` | |
-| `PGPASSWORD` | — | **Required.** Superuser password |
+| `PGSUPERUSER` | `postgres` | Used only when `PGPASSWORD` is set |
+| `PGPASSWORD` | — | Superuser password. **Required only for the first run** (step 001). When unset, the runner falls back to the app role |
+| `PGAPPPASSWORD` | `Admin` | Password of the app role, used by the fallback. Must match `001` |
 
 The application role/database/password are declared in the SQL files
 (`Admin` / `Amilut` / `Admin`). Change them there, not via env vars.

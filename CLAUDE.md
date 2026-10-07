@@ -61,7 +61,12 @@ Versioned SQL lives in `SQL-Migration/`. The runner applies `001` (role
 order. Every file is idempotent, so re-running is always safe.
 
 ```powershell
-# PowerShell — needs the postgres superuser password
+# Normal case — role + database already exist: no superuser password needed
+npm run db:generate
+
+# Fresh PostgreSQL only — needs the postgres superuser password. Put it in the
+# gitignored root .env (template: SQL-Migration/.env.example; loaded via
+# node --env-file-if-exists=.env), or pass it inline:
 $env:PGPASSWORD='<superuser-password>'; npm run db:generate
 ```
 

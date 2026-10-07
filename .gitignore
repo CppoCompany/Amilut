@@ -30,3 +30,6 @@ package-lock.json
 
 # Uploaded import paperwork (server/src/import-files): storage/<accountNumber>/<file>
 storage/
+
+# Claude Code agent worktrees
+.claude/worktrees/

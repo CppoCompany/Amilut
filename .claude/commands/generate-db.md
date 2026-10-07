@@ -31,20 +31,38 @@ invoke the runner directly.
    - `017_import_account_files_to_mbl.sql` — re-points `import_account_files.account_id` from `order_account` to `mbl(id)`; paperwork is filed under the MBL case
    If the folder or files are missing, stop and tell Barak.
 
-2. **Determine the superuser password.** The runner needs the `postgres`
-   superuser password via the `PGPASSWORD` env var. If it is not already set in
-   the environment, ask Barak for it (do NOT hardcode it in any file). Other
-   connection settings default correctly for this machine:
-   `PGHOST=127.0.0.1`, `PGPORT=5432`, `PGSUPERUSER=postgres`.
-
-3. **Run the migration runner directly** (not through npm). From the repo root,
-   in PowerShell:
+2. **Decide whether the superuser password is needed.** It is needed **only
+   when the `Admin` role or the `Amilut` database does not exist yet** (step
+   001). Check first:
 
    ```powershell
-   $env:PGPASSWORD='<superuser-password>'; node SQL-Migration/run-migrations.mjs
+   $env:PGPASSWORD='Admin'; & "C:\Program Files\PostgreSQL\18\bin\psql.exe" -U Admin -d Amilut -h 127.0.0.1 -p 5432 -w -c "select 1"
    ```
 
-   The runner applies `001`, then every other `NNN_*.sql` file in name order (`002`, `003`, …). Every step is idempotent, so it is safe
+   - If that succeeds → go to step 3 **without** a superuser password. The
+     runner connects as `Admin`, skips 001 and applies 002+ (all objects are
+     owned by `Admin`, so no superuser is involved).
+   - If it fails (fresh PostgreSQL) → the runner needs the `postgres`
+     superuser password via `PGPASSWORD`. It is read from the gitignored root
+     `.env` (template: `SQL-Migration/.env.example`). If the root `.env` has no
+     `PGPASSWORD` line and it is not set in the environment, ask Barak for it
+     (do NOT hardcode it in any tracked file). Other connection settings
+     default correctly for this machine:
+     `PGHOST=127.0.0.1`, `PGPORT=5432`, `PGSUPERUSER=postgres`.
+
+3. **Run the migration runner directly** (not through npm). From the repo root,
+   in PowerShell. The `--env-file-if-exists=.env` flag loads the root `.env`:
+
+   ```powershell
+   # Normal case — role + database already exist (or PGPASSWORD is in .env):
+   node --env-file-if-exists=.env SQL-Migration/run-migrations.mjs
+
+   # Fresh PostgreSQL with no PGPASSWORD in .env:
+   $env:PGPASSWORD='<superuser-password>'; node --env-file-if-exists=.env SQL-Migration/run-migrations.mjs
+   ```
+
+   The runner applies `001` (superuser path only), then every other `NNN_*.sql`
+   file in name order (`002`, `003`, …). Every step is idempotent, so it is safe
    to re-run — existing objects are skipped.
 
 4. **Verify and report.** Confirm success from the runner output. Then verify by

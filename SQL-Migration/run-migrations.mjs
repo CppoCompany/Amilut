@@ -13,17 +13,22 @@
  * Every step is idempotent, so re-running is safe.
  *
  * Connection settings come from environment variables (with sensible defaults
- * for this machine). A superuser connection is required because the first step
- * creates a role and a database.
+ * for this machine). A superuser connection is needed only for the first step
+ * (001 creates the role and the database). Once those exist, every later step
+ * runs as the app role `Admin`, so the superuser password becomes optional:
+ * when PGPASSWORD is not set the runner connects as `Admin`/`Admin` to the app
+ * database, skips 001, and applies 002+ directly.
  *
  *   PGHOST        default 127.0.0.1
  *   PGPORT        default 5432            (this box runs PG 18 on the standard 5432 port)
  *   PGSUPERUSER   default postgres
- *   PGPASSWORD    REQUIRED — superuser password (no default)
+ *   PGPASSWORD    superuser password — required only until 001 has been applied
+ *   PGAPPPASSWORD default Admin           (password of the app role, as declared in 001)
  *
  * Usage (from repo root):
- *   PGPASSWORD=... npm run db:generate          (bash)
- *   $env:PGPASSWORD='...'; npm run db:generate  (PowerShell)
+ *   npm run db:generate                         (DB already exists — no superuser needed)
+ *   PGPASSWORD=... npm run db:generate          (first run, bash)
+ *   $env:PGPASSWORD='...'; npm run db:generate  (first run, PowerShell)
  * -----------------------------------------------------------------------------
  */
 
@@ -43,6 +48,7 @@ const cfg = {
 };
 
 const APP_ROLE = 'Admin'; // objects created by step 002 are owned by this role
+const APP_PASSWORD = process.env.PGAPPPASSWORD || 'Admin'; // as declared in 001
 
 function fail(msg) {
   console.error(`\n  ✗ ${msg}\n`);
@@ -85,18 +91,11 @@ function parseStep001(sql) {
   return { rolePart, createDbStmt, dbName: m[1] };
 }
 
-async function main() {
-  if (!cfg.password) {
-    fail(
-      'PGSUPERUSER password not set. Provide the superuser password via the ' +
-        'PGPASSWORD environment variable, e.g.\n' +
-        '      PGPASSWORD=yourpass npm run db:generate',
-    );
-  }
-
-  const step001 = parseStep001(await readSql('001_create_role_and_database.sql'));
-  const laterFiles = await listLaterMigrations();
-
+/**
+ * Superuser path: apply 001 on the maintenance DB, then open a superuser
+ * connection to the app DB with SET ROLE so later objects are owned by Admin.
+ */
+async function connectAsSuperuser(step001) {
   console.log(
     `\n  Amilut DB migration → ${cfg.user}@${cfg.host}:${cfg.port}\n`,
   );
@@ -122,11 +121,58 @@ async function main() {
     await admin.end();
   }
 
-  // ---- Steps 002+: schema files (on the app DB; SET ROLE so Admin owns them)
   const app = new Client({ ...cfg, database: step001.dbName });
   await app.connect();
+  await app.query(`SET ROLE "${APP_ROLE}"`);
+  return app;
+}
+
+/**
+ * App-role path (no PGPASSWORD): the role and database must already exist.
+ * Steps 002+ only ever create/alter objects owned by Admin, so Admin itself
+ * can apply them — no superuser needed.
+ */
+async function connectAsAppRole(step001) {
+  const app = new Client({
+    host: cfg.host,
+    port: cfg.port,
+    user: APP_ROLE,
+    password: APP_PASSWORD,
+    database: step001.dbName,
+  });
   try {
-    await app.query(`SET ROLE "${APP_ROLE}"`);
+    await app.connect();
+  } catch (err) {
+    fail(
+      `PGPASSWORD is not set, and connecting as "${APP_ROLE}" to ` +
+        `"${step001.dbName}" on ${cfg.host}:${cfg.port} failed:\n` +
+        `      ${err.message}\n\n` +
+        '    The superuser password is only needed while the role/database do ' +
+        'not exist yet (step 001). For a first run provide it via PGPASSWORD, e.g.\n' +
+        '      PGPASSWORD=yourpass npm run db:generate',
+    );
+  }
+  console.log(
+    `\n  Amilut DB migration → ${APP_ROLE}@${cfg.host}:${cfg.port} ` +
+      `(no superuser password given)\n`,
+  );
+  console.log(
+    `  • role "${APP_ROLE}" and database "${step001.dbName}" already exist — step 001 skipped`,
+  );
+  return app;
+}
+
+async function main() {
+  const step001 = parseStep001(await readSql('001_create_role_and_database.sql'));
+  const laterFiles = await listLaterMigrations();
+
+  // ---- Step 001 + connection for the rest ------------------------------------
+  const app = cfg.password
+    ? await connectAsSuperuser(step001)
+    : await connectAsAppRole(step001);
+
+  // ---- Steps 002+: schema files (on the app DB, as/owned by Admin) ----------
+  try {
     for (const file of laterFiles) {
       await app.query(await readSql(file));
       console.log(`  ✓ ${file} applied (objects owned by "${APP_ROLE}")`);
