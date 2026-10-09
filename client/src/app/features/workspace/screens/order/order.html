@@ -149,7 +149,11 @@
           type="date"
           class="form-control"
           formControlName="factoryPickupDate"
+          [min]="pickupMinDate()"
         />
+        @if (pickupDateError(); as message) {
+          <p class="field-error" role="alert">{{ message }}</p>
+        }
       </div>
       <div class="form-group">
         <label for="departureDate">תאריך הפלגה / טיסה (יציאה)</label>
@@ -158,7 +162,11 @@
           type="date"
           class="form-control"
           formControlName="departureDate"
+          [min]="departureMinDate()"
         />
+        @if (departureDateError(); as message) {
+          <p class="field-error" role="alert">{{ message }}</p>
+        }
       </div>
       <div class="form-group">
         <label for="etaDate">תאריך הגעה משוער (ETA)</label>

@@ -37,9 +37,11 @@ import { NavigationService } from '../../navigation.service';
 import { SelectionStateService } from '../../selection-state.service';
 import { Autocomplete } from './autocomplete';
 import {
+  chronologicalScheduleValidator,
   EMPTY_ORDER_FORM_VALUE,
   formatOrderDate,
   loadErrorMessage,
+  minDateAfter,
   orderToFormValue,
   saveErrorMessage,
   toCreateOrderDto,
@@ -165,16 +167,19 @@ export class OrderScreen {
   protected readonly airVisible = computed(() => this.shipmentType() === ShipmentType.AIR);
 
   // ── Dates & free-text fields ───────────────────────────────────────────────
-  protected readonly form = this.fb.group({
-    factoryReadyDate: [EMPTY_ORDER_FORM_VALUE.factoryReadyDate],
-    factoryPickupDate: [EMPTY_ORDER_FORM_VALUE.factoryPickupDate],
-    departureDate: [EMPTY_ORDER_FORM_VALUE.departureDate],
-    etaDate: [EMPTY_ORDER_FORM_VALUE.etaDate],
-    shippingLine: [EMPTY_ORDER_FORM_VALUE.shippingLine],
-    voyageNumber: [EMPTY_ORDER_FORM_VALUE.voyageNumber],
-    airline: [EMPTY_ORDER_FORM_VALUE.airline],
-    flightNumber: [EMPTY_ORDER_FORM_VALUE.flightNumber],
-  });
+  protected readonly form = this.fb.group(
+    {
+      factoryReadyDate: [EMPTY_ORDER_FORM_VALUE.factoryReadyDate],
+      factoryPickupDate: [EMPTY_ORDER_FORM_VALUE.factoryPickupDate],
+      departureDate: [EMPTY_ORDER_FORM_VALUE.departureDate],
+      etaDate: [EMPTY_ORDER_FORM_VALUE.etaDate],
+      shippingLine: [EMPTY_ORDER_FORM_VALUE.shippingLine],
+      voyageNumber: [EMPTY_ORDER_FORM_VALUE.voyageNumber],
+      airline: [EMPTY_ORDER_FORM_VALUE.airline],
+      flightNumber: [EMPTY_ORDER_FORM_VALUE.flightNumber],
+    },
+    { validators: chronologicalScheduleValidator },
+  );
 
   // Client-side suggestion lists for the free-text carrier fields.
   protected readonly shippingLine = new Autocomplete(
@@ -185,6 +190,45 @@ export class OrderScreen {
     AIRLINES,
     toSignal(this.form.controls.airline.valueChanges, { initialValue: '' }),
   );
+
+  // ── Schedule: Ready Date < Pickup Date < Shipment Date ─────────────────────
+  // Read reactively so `[min]`/the error messages below update live as the
+  // user fills in each stage, not just on submit.
+  private readonly factoryReadyDateValue = toSignal(
+    this.form.controls.factoryReadyDate.valueChanges,
+    { initialValue: this.form.controls.factoryReadyDate.value },
+  );
+  private readonly factoryPickupDateValue = toSignal(
+    this.form.controls.factoryPickupDate.valueChanges,
+    { initialValue: this.form.controls.factoryPickupDate.value },
+  );
+  private readonly departureDateValue = toSignal(this.form.controls.departureDate.valueChanges, {
+    initialValue: this.form.controls.departureDate.value,
+  });
+
+  /** `[min]` for the Pickup Date picker: the day after Ready Date, so same-day/earlier is greyed out. */
+  protected readonly pickupMinDate = computed(() => minDateAfter(this.factoryReadyDateValue()));
+  /** `[min]` for the Shipment Date picker: the day after Pickup Date. */
+  protected readonly departureMinDate = computed(() =>
+    minDateAfter(this.factoryPickupDateValue()),
+  );
+
+  protected readonly pickupDateError = computed(() => {
+    if (!this.submitAttempted()) return null;
+    const ready = this.factoryReadyDateValue();
+    const pickup = this.factoryPickupDateValue();
+    return ready && pickup && pickup <= ready
+      ? 'תאריך איסוף מהמפעל חייב להיות מאוחר מתאריך מוכנות במפעל'
+      : null;
+  });
+  protected readonly departureDateError = computed(() => {
+    if (!this.submitAttempted()) return null;
+    const pickup = this.factoryPickupDateValue();
+    const departure = this.departureDateValue();
+    return pickup && departure && departure <= pickup
+      ? 'תאריך הפלגה / טיסה חייב להיות מאוחר מתאריך איסוף מהמפעל'
+      : null;
+  });
 
   constructor() {
     // A double-click on a row in "ההזמנות שלי" navigates to
@@ -358,6 +402,13 @@ export class OrderScreen {
 
     const customer = this.selectedCustomer();
     if (!customer) {
+      return null;
+    }
+
+    // Catches a manually-typed date that bypasses the pickers' `[min]`
+    // constraint (see `chronologicalScheduleValidator`); the relevant
+    // `*DateError` computed signal shows the user which field to fix.
+    if (this.form.invalid) {
       return null;
     }
 

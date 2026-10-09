@@ -1,4 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
+import type { AbstractControl, ValidationErrors } from '@angular/forms';
 
 import {
   Destination,
@@ -84,6 +85,44 @@ export function toCreateOrderDto(
   return Object.fromEntries(
     Object.entries(dto).filter(([, value]) => value !== undefined),
   ) as CreateOrderDto;
+}
+
+/** The day after a `YYYY-MM-DD` date, in the same format — `''` passes through
+ *  unchanged. Used as a date input's `[min]`, so its picker greys out the
+ *  source date and everything before it (the next stage must be strictly
+ *  later, never the same day). Computed from local date parts (not
+ *  `Date#toISOString`, which is UTC and would shift across the day boundary
+ *  for most of Israel's timezone offset). */
+export function minDateAfter(value: string): string {
+  if (!value) return '';
+  const [year, month, day] = value.split('-').map(Number);
+  if (!year || !month || !day) return '';
+  const next = new Date(year, month - 1, day + 1);
+  const yyyy = String(next.getFullYear()).padStart(4, '0');
+  const mm = String(next.getMonth() + 1).padStart(2, '0');
+  const dd = String(next.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+/** Enforces Ready Date < Pickup Date < Shipment (departure) Date on the order
+ *  form's `FormGroup`. Plain string comparison is safe and timezone-proof
+ *  here since `YYYY-MM-DD` sorts lexicographically exactly like it sorts
+ *  chronologically. The `[min]` bindings on the pickup/departure date inputs
+ *  (see `minDateAfter`) stop most violations at the picker UI; this is the
+ *  save-time backstop for a manually-typed date that bypasses the picker. */
+export function chronologicalScheduleValidator(group: AbstractControl): ValidationErrors | null {
+  const ready = group.get('factoryReadyDate')?.value as string;
+  const pickup = group.get('factoryPickupDate')?.value as string;
+  const departure = group.get('departureDate')?.value as string;
+
+  const errors: ValidationErrors = {};
+  if (ready && pickup && pickup <= ready) {
+    errors['pickupNotAfterReady'] = true;
+  }
+  if (pickup && departure && departure <= pickup) {
+    errors['departureNotAfterPickup'] = true;
+  }
+  return Object.keys(errors).length > 0 ? errors : null;
 }
 
 /** Maps an `OrderDto` from the server back into the form's flat string shape. */
