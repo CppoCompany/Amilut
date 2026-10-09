@@ -98,4 +98,10 @@ export class OrderDto {
 
   @ApiProperty({ example: true })
   isActive!: boolean;
+
+  /** The MBL shipping case this order's HBL belongs to, if any (`orders.hbl_id → hbl.mbl_id`).
+   *  `null` until the order is placed under an HBL — "תיוק ניירת יבוא" uses this to preselect
+   *  the right case when opened from an order. */
+  @ApiProperty({ type: 'integer', nullable: true, example: 7 })
+  mblId!: number | null;
 }

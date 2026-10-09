@@ -64,6 +64,12 @@ export interface TreeChild {
   label: string;
   /** Font Awesome icon class, e.g. `fa-file-invoice`. */
   icon: string;
+  /** Omits the row from the rendered sidebar (both the expanded tree and the
+   *  collapsed icon rail) while keeping it fully "real" for everything else —
+   *  URL slug resolution, `leafByPage`, the breadcrumb trail. Used for screens
+   *  reached only through another screen's own button, never directly from
+   *  the sidebar (e.g. "תיוק ניירת יבוא" — see `NavigationService.openFilingForCase`). */
+  hidden?: boolean;
 }
 
 /**

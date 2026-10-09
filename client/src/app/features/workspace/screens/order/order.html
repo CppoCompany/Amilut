@@ -1,5 +1,13 @@
-<form class="order-form" [formGroup]="form" (ngSubmit)="onSave()" novalidate>
-  <div class="page-title">{{ pageTitle() }}</div>
+<form class="order-form" [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
+  <div class="order-header-row">
+    <div class="page-title">{{ pageTitle() }}</div>
+    @if (isEditingExisting()) {
+      <button type="button" class="filing-link" (click)="goToFiling()">
+        <i class="fa-solid fa-file-import" aria-hidden="true"></i>
+        מעבר לתיוק ניירת יבוא
+      </button>
+    }
+  </div>
 
   <!-- Section: Customer Information -->
   <section class="form-section">
@@ -240,24 +248,38 @@
   }
 
   <!-- Form Actions -->
-  <div class="form-actions">
-    <button
-      type="button"
-      class="btn btn-secondary"
-      (click)="onCancel()"
-      [disabled]="saving() || loadingOrder()"
-    >
-      ביטול
-    </button>
-    <button type="submit" class="btn btn-primary" [disabled]="saving() || loadingOrder()">
-      @if (saving()) {
-        <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
-        שומר...
-      } @else if (savedOrder()) {
-        עדכן הזמנה
-      } @else {
-        שמור הזמנה
-      }
-    </button>
-  </div>
+  @if (isEditingExisting()) {
+    <div class="form-actions">
+      <button
+        type="button"
+        class="btn btn-secondary"
+        (click)="onCancel()"
+        [disabled]="saving() || loadingOrder()"
+      >
+        ביטול
+      </button>
+      <button type="submit" class="btn btn-primary" [disabled]="saving() || loadingOrder()">
+        @if (saving()) {
+          <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
+          שומר...
+        } @else {
+          עדכן הזמנה
+        }
+      </button>
+    </div>
+  } @else {
+    <!-- Creating a new order offers exactly one action: save, then go
+         straight to filing (see OrderScreen.onSubmit/onSaveAndGoToFiling). -->
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary" [disabled]="saving() || loadingOrder()">
+        @if (saving()) {
+          <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
+          שומר...
+        } @else {
+          <i class="fa-solid fa-file-import" aria-hidden="true"></i>
+          שמירה ומעבר לתיוק ניירת יבוא
+        }
+      </button>
+    </div>
+  }
 </form>

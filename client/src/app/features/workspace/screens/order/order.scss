@@ -1,5 +1,47 @@
 // Component-scoped additions to the shared form styles (see src/styles.scss).
 
+// `.page-title`'s own margin moves onto this row so the title and the
+// "מעבר לתיוק ניירת יבוא" link sit on one line, evenly spaced apart.
+.order-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+
+  .page-title {
+    margin-bottom: 0;
+  }
+}
+
+// A quiet, link-styled action (not a `.btn`) — "go to filing" for an
+// already-saved order is a lightweight shortcut, not a primary action.
+.filing-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 4px 2px;
+  border: none;
+  background: none;
+  color: var(--secondary-blue);
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+
+  i {
+    font-size: 0.85rem;
+  }
+
+  &:hover,
+  &:focus-visible {
+    text-decoration: underline;
+    outline: none;
+  }
+}
+
 .field-error {
   margin: 0.35rem 0 0;
   font-size: 0.85rem;

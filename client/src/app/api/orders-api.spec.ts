@@ -30,6 +30,7 @@ const ORDER: OrderDto = {
   airline: null,
   flightNumber: null,
   isActive: true,
+  mblId: null,
 };
 
 describe('OrdersApi', () => {

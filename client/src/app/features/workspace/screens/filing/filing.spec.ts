@@ -8,6 +8,7 @@ import { ImportDocumentType, MblShippingType, MblStatus, SeaMethod } from '../..
 import { IMPORT_DOCUMENT_TYPE_FIELD, IMPORT_FILES_FIELD } from '../../../../api/import-files-api';
 import type { MblSummaryDto, UploadedImportFileDto } from '../../../../api/models';
 import { CurrentCaseService } from '../../current-case.service';
+import { NavigationService } from '../../navigation.service';
 import { FilingScreen } from './filing';
 
 type FilingInternals = {
@@ -113,6 +114,50 @@ function rows(): string[][] {
 function emptyRow(): HTMLElement | null {
   return fixture.nativeElement.querySelector('.documents-table tbody tr.documents-empty');
 }
+
+describe('FilingScreen reached from an order (NavigationService.filingCaseId hand-off)', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('preselects the case queued by openFilingForCase, then clears the one-shot hand-off', () => {
+    TestBed.configureTestingModule({
+      imports: [FilingScreen],
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+
+    const nav = TestBed.inject(NavigationService);
+    nav.filingCaseId.set(CASE_ID);
+    const currentCase = TestBed.inject(CurrentCaseService);
+    const httpMock = TestBed.inject(HttpTestingController);
+
+    const fixture = TestBed.createComponent(FilingScreen);
+    fixture.detectChanges();
+
+    expect(currentCase.caseId()).toBe(CASE_ID);
+    expect(nav.filingCaseId()).toBeNull();
+
+    httpMock.expectOne((req) => req.url === CASES_URL).flush([mblCase(CASE_ID)]);
+    fixture.detectChanges();
+    httpMock.expectOne(LIST_URL).flush([]);
+    httpMock.verify();
+  });
+
+  it('opens with no case preselected when the order had none (no hand-off queued)', () => {
+    TestBed.configureTestingModule({
+      imports: [FilingScreen],
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+
+    const currentCase = TestBed.inject(CurrentCaseService);
+    const httpMock = TestBed.inject(HttpTestingController);
+
+    const fixture = TestBed.createComponent(FilingScreen);
+    fixture.detectChanges();
+
+    expect(currentCase.caseId()).toBeNull();
+    httpMock.expectOne((req) => req.url === CASES_URL).flush([]);
+    httpMock.verify();
+  });
+});
 
 describe('FilingScreen before a case is picked', () => {
   beforeEach(() => setup(null));

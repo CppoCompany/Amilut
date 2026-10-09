@@ -931,6 +931,11 @@ body {
   color: #b91c1c;
 }
 
+.icon-btn--primary:hover:not(:disabled) {
+  background: var(--light-blue-bg);
+  color: var(--secondary-blue);
+}
+
 /* Classification: small centered goods-description input */
 #classificationTabPanel .goods-input-wrapper {
   display: block;

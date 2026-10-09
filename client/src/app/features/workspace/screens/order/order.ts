@@ -11,7 +11,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
-import { finalize } from 'rxjs';
+import { finalize, Observable, tap } from 'rxjs';
 
 import {
   DESTINATION_LABELS,
@@ -294,10 +294,63 @@ export class OrderScreen {
       });
   }
 
+  /**
+   * The form's single submit handler (button clicks and Enter-to-submit
+   * alike): creating a brand-new order only ever offers the combined
+   * "שמירה ומעבר לתיוק ניירת יבוא" action ({@link onSaveAndGoToFiling});
+   * editing an already-saved one offers a plain "עדכן הזמנה" ({@link onSave})
+   * — "go to filing" for an existing order lives separately, at the top of
+   * the page (see {@link goToFiling}), since the order is already saved and
+   * doesn't need saving again just to get there.
+   */
+  protected onSubmit(): void {
+    if (this.isEditingExisting()) {
+      this.onSave();
+    } else {
+      this.onSaveAndGoToFiling();
+    }
+  }
+
   /** Creates the order on the first save; PATCHes the same order on later saves. */
   protected onSave(): void {
+    this.saveOrder()?.subscribe({
+      next: (order) => this.successMessage.set(`ההזמנה נשמרה — מספר הזמנה ${order.id}`),
+      error: (error: unknown) => this.errorMessage.set(saveErrorMessage(error)),
+    });
+  }
+
+  /** "שמירה ומעבר לתיוק ניירת יבוא" — saves the order first (same as
+   *  {@link onSave}, just a quiet success instead of a banner message) and
+   *  only navigates to the filing screen once that save actually succeeds; a
+   *  failed save leaves the user on this screen with the error shown, same as
+   *  a plain save failing. */
+  protected onSaveAndGoToFiling(): void {
+    this.saveOrder()?.subscribe({
+      next: (order) => this.nav.openFilingForCase(order.mblId),
+      error: (error: unknown) => this.errorMessage.set(saveErrorMessage(error)),
+    });
+  }
+
+  /** Top-of-page "מעבר לתיוק ניירת יבוא" link — only shown once editing an
+   *  already-saved order (see order.html), so it jumps straight to filing
+   *  using that order's own case, with no save step (nothing to save: the
+   *  order already exists). Same destination, reached without saving, as the
+   *  "ייבוא מסמכים" row action in "ההזמנות שלי". */
+  protected goToFiling(): void {
+    const order = this.savedOrder();
+    if (!order) return;
+    this.nav.openFilingForCase(order.mblId);
+  }
+
+  /**
+   * Builds and sends the create/update request — shared by {@link onSave} and
+   * {@link onSaveAndGoToFiling}, which only differ in what happens *after* a
+   * successful save. Returns `null` (does nothing) while a save is already in
+   * flight or no customer is picked yet, exactly like `onSave` always bailed.
+   */
+  private saveOrder(): Observable<OrderDto> | null {
     if (this.saving()) {
-      return;
+      return null;
     }
     this.submitAttempted.set(true);
     this.successMessage.set(null);
@@ -305,7 +358,7 @@ export class OrderScreen {
 
     const customer = this.selectedCustomer();
     if (!customer) {
-      return;
+      return null;
     }
 
     const dto = toCreateOrderDto(
@@ -327,18 +380,11 @@ export class OrderScreen {
       : this.ordersApi.create(dto);
 
     this.saving.set(true);
-    request$
-      .pipe(
-        finalize(() => this.saving.set(false)),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe({
-        next: (order) => {
-          this.savedOrder.set(order);
-          this.successMessage.set(`ההזמנה נשמרה — מספר הזמנה ${order.id}`);
-        },
-        error: (error: unknown) => this.errorMessage.set(saveErrorMessage(error)),
-      });
+    return request$.pipe(
+      tap((order) => this.savedOrder.set(order)),
+      finalize(() => this.saving.set(false)),
+      takeUntilDestroyed(this.destroyRef),
+    );
   }
 
   /** Clears everything so a fresh order can be entered. */
