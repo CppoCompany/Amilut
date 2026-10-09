@@ -118,6 +118,18 @@ export class NavigationService {
   readonly editCaseId = signal<number | null>(null);
 
   /**
+   * MBL case id another screen (the Order screen's "תיוק ניירת יבוא" button,
+   * or "ייבוא מסמכים" in "ההזמנות שלי") wants the filing screen to preselect
+   * in its case picker. Travels in the URL as `/workspace/filing?caseId=N`
+   * (see {@link openFilingForCase}) and is set here by {@link applyUrl} —
+   * `null` whenever the current URL carries no id, including when the order
+   * it came from has no case yet (the filing screen then simply opens with no
+   * case preselected, same as today). Consumed once — the filing screen
+   * clears it as soon as it starts loading.
+   */
+  readonly filingCaseId = signal<number | null>(null);
+
+  /**
    * Bumped each time "יצירת הזמנה חדשה"/"יצירת תיק שילוח" is explicitly
    * selected from the sidebar (see {@link selectChild}) — the order/shipment
    * screens watch this to reset to a blank draft even when already mounted
@@ -149,7 +161,16 @@ export class NavigationService {
           { id: 'ws-order', page: 'order', label: 'יצירת הזמנה חדשה', icon: 'fa-solid fa-file-invoice' },
         ],
       },
-      { id: 'ws-filing', page: 'filing', label: 'תיוק ניירת יבוא', icon: 'fa-solid fa-file-import' },
+      {
+        id: 'ws-filing',
+        page: 'filing',
+        label: 'תיוק ניירת יבוא',
+        icon: 'fa-solid fa-file-import',
+        // Reached only via the Order screen's "תיוק ניירת יבוא" button and
+        // "ייבוא מסמכים" in "ההזמנות שלי" (see `openFilingForCase`), never
+        // directly from the sidebar — see the `hidden` doc comment.
+        hidden: true,
+      },
       {
         id: 'ws-shipment-group',
         label: 'תיקי שילוח',
@@ -320,6 +341,9 @@ export class NavigationService {
    * highlighted row is the list the edit came from ("ההזמנות שלי" /
    * "התיקים שלי"), not the "create new" row — the same choice
    * {@link openOrderForEdit} / {@link openCaseForEdit} always made.
+   * `?caseId=N` on the `filing` slug (see {@link filingCaseId} /
+   * {@link openFilingForCase}) works the same way, just with no row left to
+   * highlight — that row is {@link TreeChild.hidden hidden}.
    *
    * An unknown slug is replaced (no history entry) by the dashboard.
    */
@@ -332,10 +356,12 @@ export class NavigationService {
 
     const orderId = child.page === 'order' ? readIdParam(query, ORDER_ID_QUERY_PARAM) : null;
     const caseId = child.page === 'shipmentCaseWizard' ? readIdParam(query, CASE_ID_QUERY_PARAM) : null;
+    const filingCaseId = child.page === 'filing' ? readIdParam(query, CASE_ID_QUERY_PARAM) : null;
     // Set the hand-off ids *before* the page, so a screen mounted by the page
     // change already finds its id when its constructor runs.
     this.editOrderId.set(orderId);
     this.editCaseId.set(caseId);
+    this.filingCaseId.set(filingCaseId);
 
     let rowId = child.id;
     if (orderId !== null) rowId = this.leafByPage('myOrders')?.id ?? rowId;
@@ -434,6 +460,19 @@ export class NavigationService {
     if (!row) return;
     void this.router.navigate(this.urlCommandsFor(row), {
       queryParams: { [CASE_ID_QUERY_PARAM]: caseId },
+    });
+  }
+
+  /** Navigate to the (sidebar-hidden) import-document-filing screen, with
+   *  `caseId` (an MBL id) queued up for it to preselect in its case picker:
+   *  `/workspace/filing?caseId=N`. `caseId` is `null` when the order filing
+   *  was opened from has no shipping case yet — the screen then opens with no
+   *  case preselected, same as navigating here found no case at all today. */
+  openFilingForCase(caseId: number | null): void {
+    const row = this.leafByPage('filing');
+    if (!row) return;
+    void this.router.navigate(this.urlCommandsFor(row), {
+      queryParams: caseId !== null ? { [CASE_ID_QUERY_PARAM]: caseId } : {},
     });
   }
 

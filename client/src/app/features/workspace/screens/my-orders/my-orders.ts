@@ -70,6 +70,13 @@ export class MyOrdersScreen {
     this.nav.openOrderForEdit(order.id);
   }
 
+  /** "ייבוא מסמכים" row action — straight to filing for this order's shipping
+   *  case, no detour through the order form (it's already saved). */
+  protected onImportDocuments(order: OrderDto, event: Event): void {
+    event.stopPropagation();
+    this.nav.openFilingForCase(order.mblId);
+  }
+
   protected isDeleting(orderId: number): boolean {
     return this.deletingIds().has(orderId);
   }

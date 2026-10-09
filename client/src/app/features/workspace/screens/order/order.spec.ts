@@ -31,7 +31,10 @@ type OrderInternals = {
     patchValue: (v: Partial<Record<string, string>>) => void;
     getRawValue: () => Record<string, string>;
   };
+  onSubmit: () => void;
   onSave: () => void;
+  onSaveAndGoToFiling: () => void;
+  goToFiling: () => void;
   onCancel: () => void;
 };
 
@@ -71,6 +74,7 @@ const SAVED_ORDER: OrderDto = {
   airline: null,
   flightNumber: null,
   isActive: true,
+  mblId: null,
 };
 
 describe('OrderScreen', () => {
@@ -121,6 +125,14 @@ describe('OrderScreen', () => {
 
   function pageTitleText(): string {
     return fixture.nativeElement.querySelector('.page-title')?.textContent?.trim() ?? '';
+  }
+
+  function formActionButtons(): HTMLButtonElement[] {
+    return Array.from(fixture.nativeElement.querySelectorAll('.form-actions button'));
+  }
+
+  function filingLink(): HTMLButtonElement | null {
+    return fixture.nativeElement.querySelector('.filing-link');
   }
 
   it('should create and show the handler name from the auth user', () => {
@@ -208,6 +220,59 @@ describe('OrderScreen', () => {
     expect(internals.errorMessage()).toBe('שמירת ההזמנה נכשלה: incoterm mismatch');
     expect(internals.savedOrder()).toBeNull();
     expect(internals.saving()).toBe(false);
+  });
+
+  describe('onSaveAndGoToFiling ("תיוק ניירת יבוא")', () => {
+    it('saves the order first, then navigates to filing for its case once the save succeeds', () => {
+      createFixture();
+      const openFilingForCase = vi.spyOn(nav, 'openFilingForCase').mockImplementation(() => {});
+      internals.selectedCustomer.set(CUSTOMER);
+      internals.onSaveAndGoToFiling();
+
+      const req = httpMock.expectOne({ method: 'POST', url: '/api/orders' });
+      expect(openFilingForCase).not.toHaveBeenCalled(); // never before the save resolves
+      req.flush({ ...SAVED_ORDER, mblId: 7 });
+
+      expect(openFilingForCase).toHaveBeenCalledTimes(1);
+      expect(openFilingForCase).toHaveBeenCalledWith(7);
+      expect(internals.savedOrder()?.id).toBe(1001); // order data preserved, same as a plain save
+    });
+
+    it('navigates with no case preselected when the order has none yet', () => {
+      createFixture();
+      const openFilingForCase = vi.spyOn(nav, 'openFilingForCase').mockImplementation(() => {});
+      internals.selectedCustomer.set(CUSTOMER);
+      internals.onSaveAndGoToFiling();
+
+      httpMock.expectOne({ method: 'POST', url: '/api/orders' }).flush(SAVED_ORDER); // mblId: null
+      expect(openFilingForCase).toHaveBeenCalledWith(null);
+    });
+
+    it('sends nothing and does not navigate when no customer is selected', () => {
+      createFixture();
+      const openFilingForCase = vi.spyOn(nav, 'openFilingForCase').mockImplementation(() => {});
+      internals.onSaveAndGoToFiling();
+      fixture.detectChanges();
+
+      httpMock.expectNone('/api/orders');
+      expect(openFilingForCase).not.toHaveBeenCalled();
+      expect(internals.customerError()).toBe('יש לבחור לקוח');
+    });
+
+    it('prevents navigation and shows the error when the save fails', () => {
+      createFixture();
+      const openFilingForCase = vi.spyOn(nav, 'openFilingForCase').mockImplementation(() => {});
+      internals.selectedCustomer.set(CUSTOMER);
+      internals.onSaveAndGoToFiling();
+
+      httpMock
+        .expectOne('/api/orders')
+        .flush({ message: 'incoterm mismatch' }, { status: 400, statusText: 'Bad Request' });
+      fixture.detectChanges();
+
+      expect(openFilingForCase).not.toHaveBeenCalled();
+      expect(internals.errorMessage()).toBe('שמירת ההזמנה נכשלה: incoterm mismatch');
+    });
   });
 
   it('resets incoterm to the first allowed code when payment terms change', () => {
@@ -314,6 +379,72 @@ describe('OrderScreen', () => {
       expect(internals.selectedCustomer()).toBeNull();
       expect(internals.savedOrder()).toBeNull();
       expect(internals.pageTitle()).toBe('יצירת הזמנה חדשה');
+    });
+  });
+
+  describe('form actions: create (one button) vs. edit (link + update)', () => {
+    it('creating a new order shows exactly one button — the combined save-and-file action', () => {
+      createFixture();
+
+      const buttons = formActionButtons();
+      expect(buttons.length).toBe(1);
+      expect(buttons[0].type).toBe('submit');
+      expect(buttons[0].textContent?.trim()).toBe('שמירה ומעבר לתיוק ניירת יבוא');
+      expect(filingLink()).toBeNull(); // nothing saved yet to jump to
+    });
+
+    it('submitting the form (Enter or the single button) while creating saves and navigates to filing', () => {
+      createFixture();
+      const openFilingForCase = vi.spyOn(nav, 'openFilingForCase').mockImplementation(() => {});
+      internals.selectedCustomer.set(CUSTOMER);
+
+      internals.onSubmit();
+
+      httpMock.expectOne({ method: 'POST', url: '/api/orders' }).flush({ ...SAVED_ORDER, mblId: 9 });
+      expect(openFilingForCase).toHaveBeenCalledWith(9);
+    });
+
+    it('editing an existing order shows "ביטול" + "עדכן הזמנה", and a separate top-of-page filing link', () => {
+      nav.editOrderId.set(1001);
+      createFixture();
+      httpMock.expectOne('/api/orders/1001').flush({ ...SAVED_ORDER, mblId: 7 });
+      fixture.detectChanges();
+
+      const buttons = formActionButtons();
+      expect(buttons.map((b) => b.textContent?.trim())).toEqual(['ביטול', 'עדכן הזמנה']);
+      expect(buttons[1].type).toBe('submit');
+
+      const link = filingLink();
+      expect(link).toBeTruthy();
+      expect(link!.textContent?.trim()).toBe('מעבר לתיוק ניירת יבוא');
+    });
+
+    it('submitting the form while editing just updates — no filing navigation', () => {
+      nav.editOrderId.set(1001);
+      createFixture();
+      httpMock.expectOne('/api/orders/1001').flush(SAVED_ORDER);
+      fixture.detectChanges();
+      const openFilingForCase = vi.spyOn(nav, 'openFilingForCase').mockImplementation(() => {});
+
+      internals.onSubmit();
+
+      httpMock.expectOne({ method: 'PATCH', url: '/api/orders/1001' }).flush(SAVED_ORDER);
+      expect(openFilingForCase).not.toHaveBeenCalled();
+      expect(internals.successMessage()).toBe('ההזמנה נשמרה — מספר הזמנה 1001');
+    });
+
+    it('the top-of-page filing link navigates straight to the order\'s case, with no save request at all', () => {
+      nav.editOrderId.set(1001);
+      createFixture();
+      httpMock.expectOne('/api/orders/1001').flush({ ...SAVED_ORDER, mblId: 7 });
+      fixture.detectChanges();
+      const openFilingForCase = vi.spyOn(nav, 'openFilingForCase').mockImplementation(() => {});
+
+      internals.goToFiling();
+
+      expect(openFilingForCase).toHaveBeenCalledWith(7);
+      httpMock.expectNone({ method: 'PATCH', url: '/api/orders/1001' });
+      httpMock.expectNone({ method: 'POST', url: '/api/orders' });
     });
   });
 });

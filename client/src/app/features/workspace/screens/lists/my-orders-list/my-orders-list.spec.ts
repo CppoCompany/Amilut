@@ -42,6 +42,7 @@ const ORDER: OrderDto = {
   airline: null,
   flightNumber: null,
   isActive: true,
+  mblId: null,
 };
 
 const PAGE: PagedOrdersDto = { items: [ORDER], total: 1, page: 1, pageSize: 25 };

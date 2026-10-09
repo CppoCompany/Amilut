@@ -52,6 +52,7 @@ interface OrderRow {
   airline: string | null;
   flight_number: string | null;
   is_active: boolean;
+  mbl_id: number | null;
 }
 
 /** DTO property → orders column, for every client-writable field. */
@@ -98,13 +99,15 @@ const ORDER_COLUMNS = `o.id,
          o.voyage_number,
          o.airline,
          o.flight_number,
-         o."isActive" AS is_active`;
+         o."isActive" AS is_active,
+         h.mbl_id`;
 
 const ORDER_FROM = `
     FROM orders o
     LEFT JOIN customers c ON c.id = o.customer_id
     LEFT JOIN users     u ON u.id = o.handler_user_id
-    LEFT JOIN suppliers sup ON sup.id = o.supplier_id`;
+    LEFT JOIN suppliers sup ON sup.id = o.supplier_id
+    LEFT JOIN hbl       h ON h.id = o.hbl_id`;
 
 const ORDER_SELECT = `
   SELECT ${ORDER_COLUMNS}${ORDER_FROM}`;
@@ -392,5 +395,6 @@ function toOrderDto(row: OrderRow): OrderDto {
     airline: row.airline ?? null,
     flightNumber: row.flight_number ?? null,
     isActive: row.is_active,
+    mblId: row.mbl_id ?? null,
   };
 }

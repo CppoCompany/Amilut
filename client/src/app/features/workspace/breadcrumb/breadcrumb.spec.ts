@@ -41,6 +41,7 @@ const ORDER: OrderDto = {
   airline: null,
   flightNumber: null,
   isActive: true,
+  mblId: null,
 };
 
 const MBL: MblDto = {

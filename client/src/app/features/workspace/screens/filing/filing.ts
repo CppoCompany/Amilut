@@ -4,8 +4,10 @@ import {
   Component,
   DestroyRef,
   ElementRef,
+  effect,
   inject,
   signal,
+  untracked,
   viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
@@ -20,6 +22,7 @@ import { ImportFilesApi } from '../../../../api/import-files-api';
 import type { UploadedImportFileDto } from '../../../../api/models';
 import { CasePicker } from '../../case-picker/case-picker';
 import { CurrentCaseService } from '../../current-case.service';
+import { NavigationService } from '../../navigation.service';
 
 /** One row of the documents table — a file stored on the server for the current case. */
 interface ShipmentDocument {
@@ -52,6 +55,8 @@ export const BLOB_URL_TTL_MS = 60_000;
 export class FilingScreen {
   private readonly importFilesApi = inject(ImportFilesApi);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly nav = inject(NavigationService);
+  private readonly currentCase = inject(CurrentCaseService);
 
   private readonly fileInput = viewChild.required<ElementRef<HTMLInputElement>>('fileInput');
 
@@ -60,7 +65,7 @@ export class FilingScreen {
    * picked in the case picker; it names the folder on the server. `null`
    * until a case is picked, and nothing is loaded or uploaded while it is.
    */
-  protected readonly accountNumber = inject(CurrentCaseService).caseId;
+  protected readonly accountNumber = this.currentCase.caseId;
 
   protected readonly documentTypes = IMPORT_DOCUMENT_TYPES;
   protected readonly documentTypeLabels = IMPORT_DOCUMENT_TYPE_LABELS;
@@ -79,6 +84,22 @@ export class FilingScreen {
 
   constructor() {
     this.loadDocumentsOnCaseChange();
+
+    // The Order screen's "תיוק ניירת יבוא" button and "ייבוא מסמכים" in
+    // "ההזמנות שלי" navigate to `/workspace/filing?caseId=N`, which
+    // NavigationService.applyUrl turns into `filingCaseId` before this screen
+    // shows. Consume it once as soon as it appears and preselect it in the
+    // (shared) case picker. An effect rather than a one-shot constructor
+    // read, same reasoning as the order screen's `editOrderId`: Back/Forward
+    // can land on a filing URL while this instance is already mounted.
+    effect(() => {
+      const filingCaseId = this.nav.filingCaseId();
+      if (filingCaseId === null) return;
+      untracked(() => {
+        this.nav.filingCaseId.set(null);
+        this.currentCase.caseId.set(filingCaseId);
+      });
+    });
   }
 
   protected onDocumentTypeChange(event: Event): void {

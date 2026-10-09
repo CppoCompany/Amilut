@@ -11,7 +11,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
-import { finalize } from 'rxjs';
+import { finalize, Observable, tap } from 'rxjs';
 
 import {
   DESTINATION_LABELS,
@@ -37,9 +37,11 @@ import { NavigationService } from '../../navigation.service';
 import { SelectionStateService } from '../../selection-state.service';
 import { Autocomplete } from './autocomplete';
 import {
+  chronologicalScheduleValidator,
   EMPTY_ORDER_FORM_VALUE,
   formatOrderDate,
   loadErrorMessage,
+  minDateAfter,
   orderToFormValue,
   saveErrorMessage,
   toCreateOrderDto,
@@ -165,16 +167,19 @@ export class OrderScreen {
   protected readonly airVisible = computed(() => this.shipmentType() === ShipmentType.AIR);
 
   // ── Dates & free-text fields ───────────────────────────────────────────────
-  protected readonly form = this.fb.group({
-    factoryReadyDate: [EMPTY_ORDER_FORM_VALUE.factoryReadyDate],
-    factoryPickupDate: [EMPTY_ORDER_FORM_VALUE.factoryPickupDate],
-    departureDate: [EMPTY_ORDER_FORM_VALUE.departureDate],
-    etaDate: [EMPTY_ORDER_FORM_VALUE.etaDate],
-    shippingLine: [EMPTY_ORDER_FORM_VALUE.shippingLine],
-    voyageNumber: [EMPTY_ORDER_FORM_VALUE.voyageNumber],
-    airline: [EMPTY_ORDER_FORM_VALUE.airline],
-    flightNumber: [EMPTY_ORDER_FORM_VALUE.flightNumber],
-  });
+  protected readonly form = this.fb.group(
+    {
+      factoryReadyDate: [EMPTY_ORDER_FORM_VALUE.factoryReadyDate],
+      factoryPickupDate: [EMPTY_ORDER_FORM_VALUE.factoryPickupDate],
+      departureDate: [EMPTY_ORDER_FORM_VALUE.departureDate],
+      etaDate: [EMPTY_ORDER_FORM_VALUE.etaDate],
+      shippingLine: [EMPTY_ORDER_FORM_VALUE.shippingLine],
+      voyageNumber: [EMPTY_ORDER_FORM_VALUE.voyageNumber],
+      airline: [EMPTY_ORDER_FORM_VALUE.airline],
+      flightNumber: [EMPTY_ORDER_FORM_VALUE.flightNumber],
+    },
+    { validators: chronologicalScheduleValidator },
+  );
 
   // Client-side suggestion lists for the free-text carrier fields.
   protected readonly shippingLine = new Autocomplete(
@@ -185,6 +190,45 @@ export class OrderScreen {
     AIRLINES,
     toSignal(this.form.controls.airline.valueChanges, { initialValue: '' }),
   );
+
+  // ── Schedule: Ready Date < Pickup Date < Shipment Date ─────────────────────
+  // Read reactively so `[min]`/the error messages below update live as the
+  // user fills in each stage, not just on submit.
+  private readonly factoryReadyDateValue = toSignal(
+    this.form.controls.factoryReadyDate.valueChanges,
+    { initialValue: this.form.controls.factoryReadyDate.value },
+  );
+  private readonly factoryPickupDateValue = toSignal(
+    this.form.controls.factoryPickupDate.valueChanges,
+    { initialValue: this.form.controls.factoryPickupDate.value },
+  );
+  private readonly departureDateValue = toSignal(this.form.controls.departureDate.valueChanges, {
+    initialValue: this.form.controls.departureDate.value,
+  });
+
+  /** `[min]` for the Pickup Date picker: the day after Ready Date, so same-day/earlier is greyed out. */
+  protected readonly pickupMinDate = computed(() => minDateAfter(this.factoryReadyDateValue()));
+  /** `[min]` for the Shipment Date picker: the day after Pickup Date. */
+  protected readonly departureMinDate = computed(() =>
+    minDateAfter(this.factoryPickupDateValue()),
+  );
+
+  protected readonly pickupDateError = computed(() => {
+    if (!this.submitAttempted()) return null;
+    const ready = this.factoryReadyDateValue();
+    const pickup = this.factoryPickupDateValue();
+    return ready && pickup && pickup <= ready
+      ? 'תאריך איסוף מהמפעל חייב להיות מאוחר מתאריך מוכנות במפעל'
+      : null;
+  });
+  protected readonly departureDateError = computed(() => {
+    if (!this.submitAttempted()) return null;
+    const pickup = this.factoryPickupDateValue();
+    const departure = this.departureDateValue();
+    return pickup && departure && departure <= pickup
+      ? 'תאריך הפלגה / טיסה חייב להיות מאוחר מתאריך איסוף מהמפעל'
+      : null;
+  });
 
   constructor() {
     // A double-click on a row in "ההזמנות שלי" navigates to
@@ -294,10 +338,63 @@ export class OrderScreen {
       });
   }
 
+  /**
+   * The form's single submit handler (button clicks and Enter-to-submit
+   * alike): creating a brand-new order only ever offers the combined
+   * "שמירה ומעבר לתיוק ניירת יבוא" action ({@link onSaveAndGoToFiling});
+   * editing an already-saved one offers a plain "עדכן הזמנה" ({@link onSave})
+   * — "go to filing" for an existing order lives separately, at the top of
+   * the page (see {@link goToFiling}), since the order is already saved and
+   * doesn't need saving again just to get there.
+   */
+  protected onSubmit(): void {
+    if (this.isEditingExisting()) {
+      this.onSave();
+    } else {
+      this.onSaveAndGoToFiling();
+    }
+  }
+
   /** Creates the order on the first save; PATCHes the same order on later saves. */
   protected onSave(): void {
+    this.saveOrder()?.subscribe({
+      next: (order) => this.successMessage.set(`ההזמנה נשמרה — מספר הזמנה ${order.id}`),
+      error: (error: unknown) => this.errorMessage.set(saveErrorMessage(error)),
+    });
+  }
+
+  /** "שמירה ומעבר לתיוק ניירת יבוא" — saves the order first (same as
+   *  {@link onSave}, just a quiet success instead of a banner message) and
+   *  only navigates to the filing screen once that save actually succeeds; a
+   *  failed save leaves the user on this screen with the error shown, same as
+   *  a plain save failing. */
+  protected onSaveAndGoToFiling(): void {
+    this.saveOrder()?.subscribe({
+      next: (order) => this.nav.openFilingForCase(order.mblId),
+      error: (error: unknown) => this.errorMessage.set(saveErrorMessage(error)),
+    });
+  }
+
+  /** Top-of-page "מעבר לתיוק ניירת יבוא" link — only shown once editing an
+   *  already-saved order (see order.html), so it jumps straight to filing
+   *  using that order's own case, with no save step (nothing to save: the
+   *  order already exists). Same destination, reached without saving, as the
+   *  "ייבוא מסמכים" row action in "ההזמנות שלי". */
+  protected goToFiling(): void {
+    const order = this.savedOrder();
+    if (!order) return;
+    this.nav.openFilingForCase(order.mblId);
+  }
+
+  /**
+   * Builds and sends the create/update request — shared by {@link onSave} and
+   * {@link onSaveAndGoToFiling}, which only differ in what happens *after* a
+   * successful save. Returns `null` (does nothing) while a save is already in
+   * flight or no customer is picked yet, exactly like `onSave` always bailed.
+   */
+  private saveOrder(): Observable<OrderDto> | null {
     if (this.saving()) {
-      return;
+      return null;
     }
     this.submitAttempted.set(true);
     this.successMessage.set(null);
@@ -305,7 +402,14 @@ export class OrderScreen {
 
     const customer = this.selectedCustomer();
     if (!customer) {
-      return;
+      return null;
+    }
+
+    // Catches a manually-typed date that bypasses the pickers' `[min]`
+    // constraint (see `chronologicalScheduleValidator`); the relevant
+    // `*DateError` computed signal shows the user which field to fix.
+    if (this.form.invalid) {
+      return null;
     }
 
     const dto = toCreateOrderDto(
@@ -327,18 +431,11 @@ export class OrderScreen {
       : this.ordersApi.create(dto);
 
     this.saving.set(true);
-    request$
-      .pipe(
-        finalize(() => this.saving.set(false)),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe({
-        next: (order) => {
-          this.savedOrder.set(order);
-          this.successMessage.set(`ההזמנה נשמרה — מספר הזמנה ${order.id}`);
-        },
-        error: (error: unknown) => this.errorMessage.set(saveErrorMessage(error)),
-      });
+    return request$.pipe(
+      tap((order) => this.savedOrder.set(order)),
+      finalize(() => this.saving.set(false)),
+      takeUntilDestroyed(this.destroyRef),
+    );
   }
 
   /** Clears everything so a fresh order can be entered. */

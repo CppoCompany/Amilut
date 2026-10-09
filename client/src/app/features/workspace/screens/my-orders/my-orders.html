@@ -84,6 +84,15 @@
               <td>
                 <button
                   type="button"
+                  class="icon-btn icon-btn--primary"
+                  title="ייבוא מסמכים"
+                  [attr.aria-label]="'ייבוא מסמכים להזמנה ' + order.id"
+                  (click)="onImportDocuments(order, $event)"
+                >
+                  <i class="fa-solid fa-file-import" aria-hidden="true"></i>
+                </button>
+                <button
+                  type="button"
                   class="icon-btn icon-btn--danger"
                   [attr.aria-label]="'מחק הזמנה ' + order.id"
                   [disabled]="isDeleting(order.id)"

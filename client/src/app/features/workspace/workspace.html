@@ -81,7 +81,7 @@
                 }
               </ul>
             </li>
-          } @else {
+          } @else if (!entry.hidden) {
             <li>
               <a
                 href="#"
@@ -129,7 +129,7 @@
                 }
               </div>
             </li>
-          } @else {
+          } @else if (!entry.hidden) {
             <li class="icon-nav-group">
               <a
                 href="#"

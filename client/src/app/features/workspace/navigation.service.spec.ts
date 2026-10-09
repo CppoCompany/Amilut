@@ -129,6 +129,27 @@ describe('NavigationService', () => {
     expect(nav.isChildActive('ws-shipment')).toBe(false);
   });
 
+  it('openFilingForCase queues an MBL id (or none) for the sidebar-hidden filing screen', async () => {
+    nav.openFilingForCase(42);
+    await settleNavigation();
+
+    expect(location.path()).toBe('/workspace/filing?caseId=42');
+    expect(nav.filingCaseId()).toBe(42);
+    expect(nav.activeScreen()).toBe('filing');
+
+    nav.openFilingForCase(null);
+    await settleNavigation();
+
+    expect(location.path()).toBe('/workspace/filing');
+    expect(nav.filingCaseId()).toBeNull();
+  });
+
+  it('"תיוק ניירת יבוא" is hidden from the sidebar but stays a real, reachable row', () => {
+    const filing = flattenLeaves().find((c) => c.id === 'ws-filing');
+    expect(filing?.hidden).toBe(true);
+    expect(nav.childBySlug('filing')).toBe(filing);
+  });
+
   it('selectChild on "יצירת הזמנה חדשה" bumps newOrderRequested (so the mounted screen resets even if it doesn\'t remount) and drops the edit id from the URL', async () => {
     nav.openOrderForEdit(1001); // now editing an existing order, "ההזמנות שלי" highlighted
     await settleNavigation();

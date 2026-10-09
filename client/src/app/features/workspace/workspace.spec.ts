@@ -90,9 +90,21 @@ describe('Workspace shell', () => {
     });
 
     it('a standalone leaf icon has a tooltip matching its menu label', () => {
-      const icon = leafIconByLabel('תיוק ניירת יבוא');
+      const icon = leafIconByLabel('סיווג');
       expect(icon).toBeTruthy();
-      expect(icon!.querySelector('.icon-nav-tooltip')?.textContent?.trim()).toBe('תיוק ניירת יבוא');
+      expect(icon!.querySelector('.icon-nav-tooltip')?.textContent?.trim()).toBe('סיווג');
+    });
+
+    it('"תיוק ניירת יבוא" is reachable (see NavigationService.openFilingForCase) but hidden from both sidebar modes', () => {
+      expect(leafIconByLabel('תיוק ניירת יבוא')).toBeNull();
+
+      toggleButton().click();
+      fixture.detectChanges();
+      const expandedItems: HTMLAnchorElement[] = Array.from(
+        fixture.nativeElement.querySelectorAll('.tree-child-item'),
+      );
+      const expandedLabels = expandedItems.map((a) => a.textContent?.trim());
+      expect(expandedLabels).not.toContain('תיוק ניירת יבוא');
     });
 
     it('a group keeps a single icon, revealing its children as a hover flyout', () => {
@@ -135,12 +147,12 @@ describe('Workspace shell', () => {
     });
 
     it('clicking a standalone leaf icon navigates exactly like its expanded counterpart', async () => {
-      leafIconByLabel('תיוק ניירת יבוא')!.click();
+      leafIconByLabel('סיווג')!.click();
       await settle();
 
-      expect(location.path()).toBe('/workspace/filing');
-      expect(nav.activeScreen()).toBe('filing');
-      expect(nav.isChildActive('ws-filing')).toBe(true);
+      expect(location.path()).toBe('/workspace/classification');
+      expect(nav.activeScreen()).toBe('classification');
+      expect(nav.isChildActive('ws-classification')).toBe(true);
     });
 
     it('the active page highlights both the flyout item and its parent group icon', async () => {
@@ -152,10 +164,10 @@ describe('Workspace shell', () => {
     });
 
     it('a standalone leaf icon highlights when its page becomes active', async () => {
-      leafIconByLabel('תיוק ניירת יבוא')!.click();
+      leafIconByLabel('סיווג')!.click();
       await settle();
 
-      expect(leafIconByLabel('תיוק ניירת יבוא')!.classList.contains('active')).toBe(true);
+      expect(leafIconByLabel('סיווג')!.classList.contains('active')).toBe(true);
     });
   });
 
@@ -171,9 +183,9 @@ describe('Workspace shell', () => {
 
     it('Back/Forward swap the rendered screen without remounting the shell', async () => {
       const shellBefore = fixture.nativeElement.querySelector('app-workspace');
-      leafIconByLabel('תיוק ניירת יבוא')!.click();
+      leafIconByLabel('סיווג')!.click();
       await settle();
-      expect(renderedScreen()).toBe('app-filing-screen');
+      expect(renderedScreen()).toBe('app-classification-screen');
 
       location.back();
       await settle();
@@ -183,7 +195,7 @@ describe('Workspace shell', () => {
 
       location.forward();
       await settle();
-      expect(renderedScreen()).toBe('app-filing-screen');
+      expect(renderedScreen()).toBe('app-classification-screen');
       expect(fixture.nativeElement.querySelector('app-workspace')).toBe(shellBefore);
     });
 

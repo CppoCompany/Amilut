@@ -37,6 +37,7 @@ const ORDER_A: OrderDto = {
   airline: null,
   flightNumber: null,
   isActive: true,
+  mblId: null,
 };
 
 const ORDER_B: OrderDto = { ...ORDER_A, id: 1002, customerName: 'Other Ltd.' };

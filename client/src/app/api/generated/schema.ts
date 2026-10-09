@@ -1187,6 +1187,8 @@ export interface components {
             flightNumber: string | null;
             /** @example true */
             isActive: boolean;
+            /** @example 7 */
+            mblId: number | null;
         };
         PagedOrdersDto: {
             /** @example 137 */
