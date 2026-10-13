@@ -3,13 +3,11 @@ import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
-  ElementRef,
   computed,
   effect,
   inject,
   signal,
   untracked,
-  viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { catchError, finalize, forkJoin, map, of, switchMap } from 'rxjs';
@@ -18,13 +16,16 @@ import { CcfApi } from '../../../../api/ccf-api';
 import {
   CCF_IMPORT_DOCUMENT_TYPES,
   CCF_STATUS_LABELS,
-  IMPORT_DOCUMENT_TYPE_LABELS,
   ImportDocumentType,
 } from '../../../../api/enums';
 import type { FilingContext } from '../../../../api/filing-context.model';
 import { ImportFilesApi } from '../../../../api/import-files-api';
 import { MblApi } from '../../../../api/mbl-api';
 import type { CcfDto, MblSummaryDto } from '../../../../api/models';
+import {
+  DocumentStagingList,
+  type StagedFiles,
+} from '../../document-staging-list/document-staging-list';
 import { ImportFilesPanel } from '../../import-files-panel/import-files-panel';
 import { NavigationService } from '../../navigation.service';
 
@@ -34,14 +35,6 @@ const MAX_SHIPMENT_FILES = 200;
 const SAVE_FAILED = 'שמירת תיק הסליקה נכשלה';
 const LOAD_FAILED = 'טעינת תיק הסליקה נכשלה';
 const UPLOAD_FAILED = 'התיק נשמר, אך העלאת חלק מהמסמכים נכשלה';
-
-/** Font Awesome icon per document row in the "ניירת" section. */
-const DOCUMENT_ICONS: Partial<Record<ImportDocumentType, string>> = {
-  [ImportDocumentType.BILL_OF_LADING]: 'fa-ship',
-  [ImportDocumentType.SUPPLIER_INVOICE]: 'fa-file-invoice-dollar',
-  [ImportDocumentType.PACKING_LIST]: 'fa-boxes-stacked',
-  [ImportDocumentType.OTHER]: 'fa-folder-open',
-};
 
 /** Marked with a required indicator — visual only, save is not blocked. */
 const REQUIRED_DOCUMENT_TYPES: ReadonlySet<ImportDocumentType> = new Set([
@@ -69,7 +62,7 @@ function errorSuffix(error: unknown): string {
  *  existing shipping case, wired to `POST/GET /api/ccf`. */
 @Component({
   selector: 'app-ccf-screen',
-  imports: [ImportFilesPanel],
+  imports: [DocumentStagingList, ImportFilesPanel],
   templateUrl: './ccf.html',
   styleUrl: './ccf.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -83,19 +76,14 @@ export class CcfScreen {
 
   protected readonly statusLabels = CCF_STATUS_LABELS;
   protected readonly ccfDocumentTypes = CCF_IMPORT_DOCUMENT_TYPES;
-  protected readonly documentTypeLabels = IMPORT_DOCUMENT_TYPE_LABELS;
-  protected readonly documentIcons = DOCUMENT_ICONS;
   protected readonly requiredDocumentTypes = REQUIRED_DOCUMENT_TYPES;
 
   // ── Pre-save document staging ───────────────────────────────────────────────
   // Files picked for the four CCF document categories before the record
   // exists yet — there is no ccfId to file them under until `onSave` creates
-  // one, so they are held here and uploaded right after creation succeeds.
-  private readonly stagingInput = viewChild.required<ElementRef<HTMLInputElement>>('stagingInput');
-  private readonly pendingStagingType = signal<ImportDocumentType | null>(null);
-  protected readonly stagedFiles = signal<Partial<Record<ImportDocumentType, File[]>>>({});
-  /** The document row a drag is currently hovering, for the drop highlight. */
-  protected readonly dragOverType = signal<ImportDocumentType | null>(null);
+  // one, so `DocumentStagingList` holds them here and they are uploaded right
+  // after creation succeeds.
+  protected readonly stagedFiles = signal<StagedFiles>({});
 
   // ── Shipment-file dropdown ──────────────────────────────────────────────────
   protected readonly shipmentFiles = signal<MblSummaryDto[]>([]);
@@ -152,62 +140,6 @@ export class CcfScreen {
         this.loadExisting(ccfId);
       });
     });
-  }
-
-  protected stagedFilesFor(type: ImportDocumentType): readonly File[] {
-    return this.stagedFiles()[type] ?? [];
-  }
-
-  /** "הוסף קבצים" on one of the four document categories — opens the native picker for that category. */
-  protected openStagingPicker(type: ImportDocumentType): void {
-    if (this.isReadOnly()) return;
-    this.pendingStagingType.set(type);
-    this.stagingInput().nativeElement.click();
-  }
-
-  protected onStagingFilesSelected(event: Event): void {
-    const type = this.pendingStagingType();
-    const input = event.target as HTMLInputElement;
-    const files = Array.from(input.files ?? []);
-    // Reset so picking the same files again still fires `change`.
-    input.value = '';
-    this.pendingStagingType.set(null);
-    if (type === null) return;
-    this.addStagedFiles(type, files);
-  }
-
-  protected onDocDragOver(event: DragEvent, type: ImportDocumentType): void {
-    if (this.isReadOnly()) return;
-    event.preventDefault(); // required for `drop` to fire
-    if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
-    this.dragOverType.set(type);
-  }
-
-  protected onDocDragLeave(type: ImportDocumentType): void {
-    if (this.dragOverType() === type) this.dragOverType.set(null);
-  }
-
-  /** Dropping files on a document row stages them exactly like the picker does. */
-  protected onDocDrop(event: DragEvent, type: ImportDocumentType): void {
-    event.preventDefault();
-    this.dragOverType.set(null);
-    if (this.isReadOnly()) return;
-    this.addStagedFiles(type, Array.from(event.dataTransfer?.files ?? []));
-  }
-
-  private addStagedFiles(type: ImportDocumentType, files: File[]): void {
-    if (files.length === 0) return;
-    this.stagedFiles.update((staged) => ({
-      ...staged,
-      [type]: [...(staged[type] ?? []), ...files],
-    }));
-  }
-
-  protected removeStagedFile(type: ImportDocumentType, index: number): void {
-    this.stagedFiles.update((staged) => ({
-      ...staged,
-      [type]: (staged[type] ?? []).filter((_, i) => i !== index),
-    }));
   }
 
   protected onShipmentFileChange(event: Event): void {

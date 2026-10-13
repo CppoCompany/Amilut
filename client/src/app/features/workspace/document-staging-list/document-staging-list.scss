@@ -1,0 +1,180 @@
+// Document rows shared by the CCF screen and the order form's "מסמכים" tab.
+// Builds on the global .btn / .icon-btn; everything else reads these tokens.
+
+:host {
+  display: block;
+
+  // Spacing
+  --doc-space-xs: 4px;
+  --doc-space-sm: 8px;
+  --doc-space-md: 12px;
+  --doc-space-lg: 16px;
+
+  // Radii
+  --doc-radius-sm: 6px;
+  --doc-radius-md: var(--radius-md);
+  --doc-radius-pill: 999px;
+
+  // Colors
+  --doc-text: var(--text-dark);
+  --doc-text-muted: var(--text-muted);
+  --doc-accent: var(--secondary-blue);
+  --doc-border: var(--border-color);
+  --doc-surface: var(--card-bg);
+  --doc-surface-alt: var(--readonly-bg);
+  --doc-info-bg: var(--light-blue-bg);
+  --doc-info-fg: var(--primary-blue);
+  --doc-ok-bg: #e7f8f1;
+  --doc-ok-fg: #047857;
+  --doc-missing-bg: #fff4e5;
+  --doc-missing-fg: #b45309;
+  --doc-error: #dc2626;
+  --doc-error-bg: #fef2f2;
+  --doc-dropzone-bg: #f0f6ff;
+}
+
+// ── Info banner ──────────────────────────────────────────────────────────────
+.doc-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--doc-space-sm);
+  margin: 0 0 var(--doc-space-lg);
+  padding: var(--doc-space-md) var(--doc-space-lg);
+  background: var(--doc-info-bg);
+  color: var(--doc-info-fg);
+  border-radius: var(--doc-radius-md);
+  font-size: 0.92rem;
+}
+
+// ── Badges ───────────────────────────────────────────────────────────────────
+.doc-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: var(--doc-radius-pill);
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.doc-badge--ok {
+  background: var(--doc-ok-bg);
+  color: var(--doc-ok-fg);
+}
+
+.doc-badge--missing {
+  background: var(--doc-missing-bg);
+  color: var(--doc-missing-fg);
+}
+
+// ── Rows ─────────────────────────────────────────────────────────────────────
+.doc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--doc-space-sm);
+}
+
+.doc {
+  padding: var(--doc-space-md) var(--doc-space-lg);
+  border: 1px dashed transparent;
+  border-radius: var(--doc-radius-md);
+  background: var(--doc-surface-alt);
+  transition: var(--transition);
+}
+
+.doc--dragover {
+  border-color: var(--doc-accent);
+  background: var(--doc-dropzone-bg);
+}
+
+.doc--error {
+  border-style: solid;
+  border-color: var(--doc-error);
+  background: var(--doc-error-bg);
+}
+
+.doc__row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--doc-space-md);
+}
+
+.doc__icon {
+  width: 20px;
+  text-align: center;
+  color: var(--doc-accent);
+  font-size: 1.1rem;
+}
+
+.doc__name {
+  font-weight: 600;
+  color: var(--doc-text);
+}
+
+.doc__required {
+  color: var(--doc-error);
+  margin-inline-start: 2px;
+}
+
+.doc__upload {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--doc-space-sm);
+  padding: 6px 14px;
+  font-size: 0.9rem;
+}
+
+.doc__drop-hint {
+  margin-inline-start: auto;
+  color: var(--doc-text-muted);
+  font-size: 0.82rem;
+}
+
+// ── File lists ───────────────────────────────────────────────────────────────
+.doc__files {
+  list-style: none;
+  margin: var(--doc-space-sm) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--doc-space-xs);
+}
+
+.doc__file {
+  display: flex;
+  align-items: center;
+  gap: var(--doc-space-sm);
+  padding: 6px var(--doc-space-md);
+  background: var(--doc-surface);
+  border: 1px solid var(--doc-border);
+  border-radius: var(--doc-radius-sm);
+  font-size: 0.9rem;
+  color: var(--doc-text);
+}
+
+.doc__file--uploaded > .fa-circle-check {
+  color: var(--doc-ok-fg);
+}
+
+.doc__file-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// ── Mobile ───────────────────────────────────────────────────────────────────
+@media (max-width: 600px) {
+  .doc__drop-hint {
+    display: none; // no drag-and-drop on touch devices
+  }
+
+  .doc__upload {
+    margin-inline-start: auto;
+  }
+}

@@ -4389,6 +4389,21 @@
           "BEN_GURION"
         ]
       },
+      "OrderStep": {
+        "type": "string",
+        "enum": [
+          "customer",
+          "shipment",
+          "schedule",
+          "documents"
+        ],
+        "x-enum-varnames": [
+          "CUSTOMER",
+          "SHIPMENT",
+          "SCHEDULE",
+          "DOCUMENTS"
+        ]
+      },
       "OrderDto": {
         "type": "object",
         "properties": {
@@ -4514,6 +4529,13 @@
             "nullable": true,
             "example": "LY001"
           },
+          "lastStep": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OrderStep"
+              }
+            ]
+          },
           "isActive": {
             "type": "boolean",
             "example": true
@@ -4547,6 +4569,7 @@
           "voyageNumber",
           "airline",
           "flightNumber",
+          "lastStep",
           "isActive",
           "mblId"
         ]
@@ -4661,6 +4684,13 @@
           "flightNumber": {
             "type": "string",
             "example": "LY001"
+          },
+          "lastStep": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OrderStep"
+              }
+            ]
           }
         },
         "required": [
@@ -4753,6 +4783,13 @@
           "flightNumber": {
             "type": "string",
             "example": "LY001"
+          },
+          "lastStep": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OrderStep"
+              }
+            ]
           }
         }
       },

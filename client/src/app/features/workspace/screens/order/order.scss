@@ -1,17 +1,201 @@
 // Component-scoped additions to the shared form styles (see src/styles.scss).
+// Layout, colors, spacing and radii for this screen read from the tokens below
+// (same scale as the CCF screen, so the two look alike).
 
-// `.page-title`'s own margin moves onto this row so the title and the
+:host {
+  // Layout
+  --order-max-width: 960px;
+  --order-card-gap: 24px;
+
+  // Spacing
+  --order-space-xs: 4px;
+  --order-space-sm: 8px;
+  --order-space-md: 12px;
+  --order-space-lg: 16px;
+
+  // Radii
+  --order-radius-md: var(--radius-md);
+  --order-radius-lg: var(--radius-lg);
+  --order-radius-pill: 999px;
+
+  // Colors
+  --order-text: var(--text-dark);
+  --order-text-muted: var(--text-muted);
+  --order-accent: var(--secondary-blue);
+  --order-heading: var(--primary-blue);
+  --order-border: var(--border-color);
+  --order-surface: var(--card-bg);
+  --order-track-bg: var(--bg-color);
+  --order-active-bg: var(--light-blue-bg);
+  --order-done: #047857;
+  --order-done-bg: #e7f8f1;
+  --order-error: #dc2626;
+}
+
+// ── Page frame ───────────────────────────────────────────────────────────────
+.order-page {
+  width: 100%;
+  max-width: var(--order-max-width);
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--order-card-gap);
+}
+
+// `.page-title`'s own margin is dropped so the title and the
 // "מעבר לתיוק ניירת יבוא" link sit on one line, evenly spaced apart.
-.order-header-row {
+.order-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: var(--order-space-lg);
+}
 
-  .page-title {
-    margin-bottom: 0;
+.order-header__title {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--order-space-sm);
+}
+
+.order-header__sep {
+  color: var(--order-text-muted);
+  font-weight: 400;
+}
+
+.order-header__number {
+  color: var(--order-accent);
+  font-variant-numeric: tabular-nums;
+}
+
+// ── Tabs ─────────────────────────────────────────────────────────────────────
+.order-steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--order-space-xs);
+  padding: var(--order-space-xs);
+  background: var(--order-track-bg);
+  border: 1px solid var(--order-border);
+  border-radius: var(--order-radius-lg);
+}
+
+.order-step {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--order-space-sm);
+  min-width: 0;
+  padding: 10px var(--order-space-md);
+  border: none;
+  border-radius: var(--order-radius-md);
+  background: transparent;
+  color: var(--order-text-muted);
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.92rem;
+  cursor: pointer;
+  transition: var(--transition);
+
+  &:hover:not(:disabled) {
+    color: var(--order-text);
   }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+}
+
+.order-step--active {
+  background: var(--order-surface);
+  color: var(--order-accent);
+  box-shadow: var(--shadow-sm);
+}
+
+.order-step__index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--order-radius-pill);
+  background: var(--order-surface);
+  border: 1px solid var(--order-border);
+  font-size: 0.8rem;
+
+  .order-step--active & {
+    background: var(--order-accent);
+    border-color: var(--order-accent);
+    color: #fff;
+  }
+
+  .order-step--done & {
+    background: var(--order-done-bg);
+    border-color: var(--order-done);
+    color: var(--order-done);
+  }
+}
+
+.order-step__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.order-step__error-dot {
+  position: absolute;
+  top: 6px;
+  inset-inline-end: 6px;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--order-radius-pill);
+  background: var(--order-error);
+}
+
+// ── Cards ────────────────────────────────────────────────────────────────────
+// The schedule tab holds two cards; keep the page gap between them.
+.order-card + .order-card {
+  margin-top: var(--order-card-gap);
+}
+
+.order-card__title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--order-heading);
+}
+
+// ── Sticky action bar ────────────────────────────────────────────────────────
+// Sticks to the bottom of the scrolling `.page-tab-panel`.
+.order-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--order-space-md);
+  padding: var(--order-space-md) var(--order-space-lg);
+  background: var(--order-surface);
+  border: 1px solid var(--order-border);
+  border-radius: var(--order-radius-lg);
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.06);
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--order-space-sm);
+  }
+}
+
+.order-actions__group {
+  display: flex;
+  gap: var(--order-space-md);
 }
 
 // A quiet, link-styled action (not a `.btn`) — "go to filing" for an
@@ -49,7 +233,7 @@
 }
 
 .form-message {
-  margin: 0.5rem 0 0;
+  margin: 0;
   padding: 0.6rem 0.9rem;
   border-radius: 6px;
   font-size: 0.95rem;
@@ -62,5 +246,41 @@
   &--error {
     background: color-mix(in srgb, var(--danger, #ef4444) 12%, white);
     color: var(--danger, #ef4444);
+  }
+}
+
+// ── Mobile ───────────────────────────────────────────────────────────────────
+@media (max-width: 720px) {
+  // Tabs collapse to numbered icons; the active tab keeps its label.
+  .order-step__label,
+  .order-step__icon {
+    display: none;
+  }
+
+  .order-step--active .order-step__label {
+    display: inline;
+  }
+}
+
+@media (max-width: 600px) {
+  :host {
+    --order-card-gap: 16px;
+  }
+
+  .order-header__title {
+    font-size: 1.4rem;
+  }
+
+  .order-card {
+    padding: var(--order-space-lg);
+  }
+
+  .order-actions,
+  .order-actions__group {
+    width: 100%;
+  }
+
+  .order-actions__group .btn {
+    flex: 1;
   }
 }

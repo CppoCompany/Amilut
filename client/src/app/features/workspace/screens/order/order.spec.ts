@@ -7,11 +7,13 @@ import {
   Destination,
   Incoterm,
   INCOTERMS_BY_PAYMENT_TERMS,
+  ImportDocumentType,
   OrderStatus,
+  OrderStep,
   PaymentTerms,
   ShipmentType,
 } from '../../../../api/enums';
-import type { CustomerDto, OrderDto } from '../../../../api/models';
+import type { CustomerDto, OrderDto, UploadedImportFileDto } from '../../../../api/models';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { NavigationService } from '../../navigation.service';
 import { OrderScreen } from './order';
@@ -31,9 +33,16 @@ type OrderInternals = {
     patchValue: (v: Partial<Record<string, string>>) => void;
     getRawValue: () => Record<string, string>;
   };
+  currentStep: () => OrderStep;
+  furthestStep: () => OrderStep;
+  stagedFiles: WritableSignal<Partial<Record<ImportDocumentType, File[]>>>;
+  uploadedFiles: () => UploadedImportFileDto[];
   onSubmit: () => void;
+  onNext: () => void;
+  onPrevious: () => void;
+  goToStep: (step: OrderStep) => void;
   onSave: () => void;
-  onSaveAndGoToFiling: () => void;
+  onFinish: () => void;
   goToFiling: () => void;
   onCancel: () => void;
 };
@@ -73,8 +82,30 @@ const SAVED_ORDER: OrderDto = {
   voyageNumber: null,
   airline: null,
   flightNumber: null,
+  lastStep: OrderStep.CUSTOMER,
   isActive: true,
   mblId: null,
+};
+
+function uploadedFile(id: number, documentType: ImportDocumentType): UploadedImportFileDto {
+  return {
+    id,
+    documentType,
+    name: `${documentType}.pdf`,
+    size: 1024,
+    mimeType: 'application/pdf',
+  } as UploadedImportFileDto;
+}
+
+function pdf(name: string): File {
+  return new File(['%PDF'], name, { type: 'application/pdf' });
+}
+
+/** One file staged for each of the three mandatory order documents. */
+const REQUIRED_STAGED = {
+  [ImportDocumentType.BILL_OF_LADING]: [pdf('bl.pdf')],
+  [ImportDocumentType.SUPPLIER_INVOICE]: [pdf('invoice.pdf')],
+  [ImportDocumentType.PACKING_LIST]: [pdf('packing.pdf')],
 };
 
 describe('OrderScreen', () => {
@@ -115,6 +146,23 @@ describe('OrderScreen', () => {
     fixture.detectChanges();
   }
 
+  /** Answers the two requests an edit load makes: the order, then its filed documents. */
+  function flushEditLoad(order: OrderDto = SAVED_ORDER, files: UploadedImportFileDto[] = []): void {
+    httpMock.expectOne(`/api/orders/${order.id}`).flush(order);
+    httpMock
+      .expectOne((req) => req.method === 'GET' && req.url === '/api/import-files')
+      .flush(files);
+    fixture.detectChanges();
+  }
+
+  function uploadRequests() {
+    return httpMock.match((req) => req.method === 'POST' && req.url === '/api/import-files');
+  }
+
+  function headerNumber(): string {
+    return fixture.nativeElement.querySelector('.order-header__number')?.textContent?.trim() ?? '';
+  }
+
   function readonlyValue(label: string): string {
     const groups = Array.from(
       fixture.nativeElement.querySelectorAll('.form-group'),
@@ -127,8 +175,10 @@ describe('OrderScreen', () => {
     return fixture.nativeElement.querySelector('.page-title')?.textContent?.trim() ?? '';
   }
 
-  function formActionButtons(): HTMLButtonElement[] {
-    return Array.from(fixture.nativeElement.querySelectorAll('.form-actions button'));
+  function actionBarLabels(): string[] {
+    return Array.from(
+      fixture.nativeElement.querySelectorAll('.order-actions button') as NodeListOf<HTMLElement>,
+    ).map((b) => b.textContent?.trim() ?? '');
   }
 
   function filingLink(): HTMLButtonElement | null {
@@ -139,8 +189,8 @@ describe('OrderScreen', () => {
     createFixture();
     expect(fixture.componentInstance).toBeTruthy();
     expect(readonlyValue('פקיד מטפל')).toBe('דנה לוי');
-    // No real id/createdAt exist until the first save — see order.ts's orderNumber/creationDate.
-    expect(readonlyValue('מספר הזמנה פנימי')).toBe('יוקצה אוטומטית לאחר השמירה');
+    // No real id exists until the first save — the title carries no number yet.
+    expect(headerNumber()).toBe('');
     expect(readonlyValue('תאריך פתיחת הזמנה')).not.toBe('—'); // shows today's date pre-save
   });
 
@@ -173,6 +223,7 @@ describe('OrderScreen', () => {
     expect(body['destination']).toBe(Destination.ASHDOD);
     expect(body['factoryReadyDate']).toBe('2026-09-01');
     expect(body['shippingLine']).toBe('ZIM');
+    expect(body['lastStep']).toBe(OrderStep.CUSTOMER);
     expect(body).not.toHaveProperty('id');
     expect(body).not.toHaveProperty('createdAt');
     expect(body).not.toHaveProperty('handlerUserId');
@@ -187,7 +238,7 @@ describe('OrderScreen', () => {
     expect(internals.saving()).toBe(false);
     expect(internals.savedOrder()?.id).toBe(1001);
     expect(internals.successMessage()).toBe('ההזמנה נשמרה — מספר הזמנה 1001');
-    expect(readonlyValue('מספר הזמנה פנימי')).toBe('1001');
+    expect(headerNumber()).toBe('1001');
     expect(readonlyValue('תאריך פתיחת הזמנה')).not.toBe('—');
   });
 
@@ -222,54 +273,174 @@ describe('OrderScreen', () => {
     expect(internals.saving()).toBe(false);
   });
 
-  describe('onSaveAndGoToFiling ("תיוק ניירת יבוא")', () => {
-    it('saves the order first, then navigates to filing scoped to the order itself once the save succeeds', () => {
+  describe('tabs', () => {
+    it('"הבא" is blocked on the customer tab until a customer is picked', () => {
       createFixture();
-      const openFilingFor = vi.spyOn(nav, 'openFilingFor').mockImplementation(() => {});
+      internals.onNext();
+      fixture.detectChanges();
+
+      expect(internals.currentStep()).toBe(OrderStep.CUSTOMER);
+      expect(internals.customerError()).toBe('יש לבחור לקוח');
+      expect(fixture.nativeElement.querySelector('.order-step--error')).toBeTruthy();
+    });
+
+    it('moves forward with "הבא", back with "הקודם", and remembers the furthest tab reached', () => {
+      createFixture();
       internals.selectedCustomer.set(CUSTOMER);
-      internals.onSaveAndGoToFiling();
+
+      internals.onNext();
+      internals.onNext();
+      expect(internals.currentStep()).toBe(OrderStep.SCHEDULE);
+      expect(internals.furthestStep()).toBe(OrderStep.SCHEDULE);
+
+      internals.onPrevious();
+      internals.onPrevious();
+      expect(internals.currentStep()).toBe(OrderStep.CUSTOMER);
+      expect(internals.furthestStep()).toBe(OrderStep.SCHEDULE);
+
+      internals.goToStep(OrderStep.SCHEDULE); // visited — reachable by tab
+      expect(internals.currentStep()).toBe(OrderStep.SCHEDULE);
+    });
+
+    it('a tab more than one past the furthest reached cannot be opened', () => {
+      createFixture();
+      internals.selectedCustomer.set(CUSTOMER);
+      internals.goToStep(OrderStep.SCHEDULE);
+      expect(internals.currentStep()).toBe(OrderStep.CUSTOMER);
+
+      internals.goToStep(OrderStep.SHIPMENT); // the very next one is fine
+      expect(internals.currentStep()).toBe(OrderStep.SHIPMENT);
+    });
+
+    it('Enter (form submit) advances a tab instead of saving', () => {
+      createFixture();
+      internals.selectedCustomer.set(CUSTOMER);
+      internals.onSubmit();
+
+      expect(internals.currentStep()).toBe(OrderStep.SHIPMENT);
+      httpMock.expectNone('/api/orders');
+    });
+
+    it('saving progress mid-way sends the furthest tab reached as lastStep', () => {
+      createFixture();
+      internals.selectedCustomer.set(CUSTOMER);
+      internals.onNext();
+      internals.onSave();
 
       const req = httpMock.expectOne({ method: 'POST', url: '/api/orders' });
-      expect(openFilingFor).not.toHaveBeenCalled(); // never before the save resolves
-      req.flush({ ...SAVED_ORDER, mblId: 7 });
-
-      expect(openFilingFor).toHaveBeenCalledTimes(1);
-      expect(openFilingFor).toHaveBeenCalledWith({ kind: 'order', id: 1001 });
-      expect(internals.savedOrder()?.id).toBe(1001); // order data preserved, same as a plain save
+      expect((req.request.body as Record<string, unknown>)['lastStep']).toBe(OrderStep.SHIPMENT);
+      req.flush({ ...SAVED_ORDER, lastStep: OrderStep.SHIPMENT });
+      expect(internals.successMessage()).toBe('ההזמנה נשמרה — מספר הזמנה 1001');
     });
 
-    it('navigates by the order\'s own id even when it has no linked shipping case', () => {
+    it('saving without a customer jumps back to the customer tab', () => {
+      createFixture();
+      internals.goToStep(OrderStep.SHIPMENT); // allowed: the next tab
+      internals.onSave();
+
+      httpMock.expectNone('/api/orders');
+      expect(internals.currentStep()).toBe(OrderStep.CUSTOMER);
+    });
+
+    it('reopening a saved order resumes on its last tab and lists its filed documents', () => {
+      nav.editOrderId.set(1001);
+      createFixture();
+      flushEditLoad({ ...SAVED_ORDER, lastStep: OrderStep.SCHEDULE }, [
+        uploadedFile(5, ImportDocumentType.BILL_OF_LADING),
+      ]);
+
+      expect(internals.currentStep()).toBe(OrderStep.SCHEDULE);
+      expect(internals.furthestStep()).toBe(OrderStep.SCHEDULE);
+      expect(internals.uploadedFiles().map((f) => f.id)).toEqual([5]);
+    });
+  });
+
+  describe('onFinish ("סיום ומעבר לתיוק")', () => {
+    it('is blocked until every mandatory document has a file, and shows which are missing', () => {
       createFixture();
       const openFilingFor = vi.spyOn(nav, 'openFilingFor').mockImplementation(() => {});
       internals.selectedCustomer.set(CUSTOMER);
-      internals.onSaveAndGoToFiling();
+      internals.stagedFiles.set({ [ImportDocumentType.BILL_OF_LADING]: [pdf('bl.pdf')] });
 
-      httpMock.expectOne({ method: 'POST', url: '/api/orders' }).flush(SAVED_ORDER); // mblId: null
-      expect(openFilingFor).toHaveBeenCalledWith({ kind: 'order', id: 1001 });
-    });
-
-    it('sends nothing and does not navigate when no customer is selected', () => {
-      createFixture();
-      const openFilingFor = vi.spyOn(nav, 'openFilingFor').mockImplementation(() => {});
-      internals.onSaveAndGoToFiling();
+      internals.onFinish();
       fixture.detectChanges();
 
       httpMock.expectNone('/api/orders');
       expect(openFilingFor).not.toHaveBeenCalled();
-      expect(internals.customerError()).toBe('יש לבחור לקוח');
+      expect(internals.currentStep()).toBe(OrderStep.DOCUMENTS);
+      expect(internals.errorMessage()).toBe('יש להעלות את המסמכים הנדרשים: חשבון ספק, מפרט אריזות');
+      expect(fixture.nativeElement.querySelectorAll('.doc--error').length).toBe(2);
     });
 
-    it('prevents navigation and shows the error when the save fails', () => {
+    it('saves, uploads each staged document type, then navigates to filing for the order', () => {
       createFixture();
       const openFilingFor = vi.spyOn(nav, 'openFilingFor').mockImplementation(() => {});
       internals.selectedCustomer.set(CUSTOMER);
-      internals.onSaveAndGoToFiling();
+      internals.stagedFiles.set(REQUIRED_STAGED);
 
+      internals.onFinish();
+      httpMock.expectOne({ method: 'POST', url: '/api/orders' }).flush(SAVED_ORDER);
+      expect(openFilingFor).not.toHaveBeenCalled(); // never before the uploads resolve
+
+      const uploads = uploadRequests();
+      expect(uploads.length).toBe(3);
+      expect(uploads.every((r) => r.request.params.get('orderId') === '1001')).toBe(true);
+      uploads.forEach((r, i) =>
+        r.flush([uploadedFile(10 + i, (r.request.body as FormData).get('documentType') as ImportDocumentType)]),
+      );
+
+      expect(openFilingFor).toHaveBeenCalledWith({ kind: 'order', id: 1001 });
+      expect(internals.stagedFiles()).toEqual({});
+      expect(internals.uploadedFiles().length).toBe(3);
+    });
+
+    it('counts documents already filed on the server towards the requirement', () => {
+      nav.editOrderId.set(1001);
+      createFixture();
+      flushEditLoad(SAVED_ORDER, [
+        uploadedFile(1, ImportDocumentType.BILL_OF_LADING),
+        uploadedFile(2, ImportDocumentType.SUPPLIER_INVOICE),
+        uploadedFile(3, ImportDocumentType.PACKING_LIST),
+      ]);
+      const openFilingFor = vi.spyOn(nav, 'openFilingFor').mockImplementation(() => {});
+
+      internals.onFinish();
+      httpMock.expectOne({ method: 'PATCH', url: '/api/orders/1001' }).flush(SAVED_ORDER);
+
+      expect(uploadRequests().length).toBe(0); // nothing staged
+      expect(openFilingFor).toHaveBeenCalledWith({ kind: 'order', id: 1001 });
+    });
+
+    it('stays put and keeps the staged files when an upload fails', () => {
+      createFixture();
+      const openFilingFor = vi.spyOn(nav, 'openFilingFor').mockImplementation(() => {});
+      internals.selectedCustomer.set(CUSTOMER);
+      internals.stagedFiles.set(REQUIRED_STAGED);
+
+      internals.onFinish();
+      httpMock.expectOne({ method: 'POST', url: '/api/orders' }).flush(SAVED_ORDER);
+      const [first, ...rest] = uploadRequests();
+      first.flush({ message: 'too big' }, { status: 413, statusText: 'Payload Too Large' });
+      rest.forEach((r) => expect(r.cancelled).toBe(true));
+
+      expect(openFilingFor).not.toHaveBeenCalled();
+      expect(internals.savedOrder()?.id).toBe(1001); // the order itself is saved
+      expect(internals.errorMessage()).toBe('ההזמנה נשמרה, אך העלאת חלק מהמסמכים נכשלה');
+      expect(internals.stagedFiles()).toEqual(REQUIRED_STAGED);
+    });
+
+    it('does not navigate and shows the error when the save fails', () => {
+      createFixture();
+      const openFilingFor = vi.spyOn(nav, 'openFilingFor').mockImplementation(() => {});
+      internals.selectedCustomer.set(CUSTOMER);
+      internals.stagedFiles.set(REQUIRED_STAGED);
+
+      internals.onFinish();
       httpMock
         .expectOne('/api/orders')
         .flush({ message: 'incoterm mismatch' }, { status: 400, statusText: 'Bad Request' });
-      fixture.detectChanges();
 
+      expect(uploadRequests().length).toBe(0);
       expect(openFilingFor).not.toHaveBeenCalled();
       expect(internals.errorMessage()).toBe('שמירת ההזמנה נכשלה: incoterm mismatch');
     });
@@ -307,7 +478,7 @@ describe('OrderScreen', () => {
     expect(internals.savedOrder()).toBeNull();
     expect(internals.form.getRawValue()['shippingLine']).toBe('');
     expect(internals.customerError()).toBeNull();
-    expect(readonlyValue('מספר הזמנה פנימי')).toBe('יוקצה אוטומטית לאחר השמירה');
+    expect(headerNumber()).toBe('');
   });
 
   it('cancel does nothing if the confirmation is declined', () => {
@@ -333,8 +504,7 @@ describe('OrderScreen', () => {
       createFixture();
 
       expect(internals.pageTitle()).toBe('עדכון הזמנה');
-      httpMock.expectOne('/api/orders/1001').flush(SAVED_ORDER);
-      fixture.detectChanges();
+      flushEditLoad();
       expect(internals.pageTitle()).toBe('עדכון הזמנה'); // unaffected by the load resolving
     });
 
@@ -352,8 +522,7 @@ describe('OrderScreen', () => {
     it('cancel reverts the title back to "create" after editing an existing order', () => {
       nav.editOrderId.set(1001);
       createFixture();
-      httpMock.expectOne('/api/orders/1001').flush(SAVED_ORDER);
-      fixture.detectChanges();
+      flushEditLoad();
       expect(internals.pageTitle()).toBe('עדכון הזמנה');
 
       vi.spyOn(window, 'confirm').mockReturnValue(true);
@@ -366,8 +535,7 @@ describe('OrderScreen', () => {
     it('resets to a blank "create" draft when "יצירת הזמנה חדשה" is re-selected while mid-edit, with no confirmation', () => {
       nav.editOrderId.set(1001);
       createFixture();
-      httpMock.expectOne('/api/orders/1001').flush(SAVED_ORDER);
-      fixture.detectChanges();
+      flushEditLoad();
       expect(internals.selectedCustomer()?.id).toBe(3);
       expect(internals.pageTitle()).toBe('עדכון הזמנה');
 
@@ -382,62 +550,45 @@ describe('OrderScreen', () => {
     });
   });
 
-  describe('form actions: create (one button) vs. edit (link + update)', () => {
-    it('creating a new order shows exactly one button — the combined save-and-file action', () => {
+  describe('action bar', () => {
+    it('shows cancel / save / next on the first tab, and no filing link for a new order', () => {
       createFixture();
-
-      const buttons = formActionButtons();
-      expect(buttons.length).toBe(1);
-      expect(buttons[0].type).toBe('submit');
-      expect(buttons[0].textContent?.trim()).toBe('שמירה ומעבר לתיוק ניירת יבוא');
+      expect(actionBarLabels()).toEqual(['ביטול', 'שמירה', 'הבא']);
       expect(filingLink()).toBeNull(); // nothing saved yet to jump to
     });
 
-    it('submitting the form (Enter or the single button) while creating saves and navigates to filing', () => {
+    it('shows previous and finish on the last tab', () => {
       createFixture();
-      const openFilingFor = vi.spyOn(nav, 'openFilingFor').mockImplementation(() => {});
       internals.selectedCustomer.set(CUSTOMER);
-
-      internals.onSubmit();
-
-      httpMock.expectOne({ method: 'POST', url: '/api/orders' }).flush({ ...SAVED_ORDER, mblId: 9 });
-      expect(openFilingFor).toHaveBeenCalledWith({ kind: 'order', id: 1001 });
-    });
-
-    it('editing an existing order shows "ביטול" + "עדכן הזמנה", and a separate top-of-page filing link', () => {
-      nav.editOrderId.set(1001);
-      createFixture();
-      httpMock.expectOne('/api/orders/1001').flush({ ...SAVED_ORDER, mblId: 7 });
+      internals.onNext();
+      internals.onNext();
+      internals.onNext();
       fixture.detectChanges();
 
-      const buttons = formActionButtons();
-      expect(buttons.map((b) => b.textContent?.trim())).toEqual(['ביטול', 'עדכן הזמנה']);
-      expect(buttons[1].type).toBe('submit');
+      expect(internals.currentStep()).toBe(OrderStep.DOCUMENTS);
+      expect(actionBarLabels()).toEqual(['ביטול', 'שמירה', 'הקודם', 'סיום ומעבר לתיוק']);
+    });
+
+    it('editing an existing order shows the top-of-page filing link, and save just updates', () => {
+      nav.editOrderId.set(1001);
+      createFixture();
+      flushEditLoad({ ...SAVED_ORDER, mblId: 7 });
+      const openFilingFor = vi.spyOn(nav, 'openFilingFor').mockImplementation(() => {});
 
       const link = filingLink();
       expect(link).toBeTruthy();
       expect(link!.textContent?.trim()).toBe('מעבר לתיוק ניירת יבוא');
-    });
 
-    it('submitting the form while editing just updates — no filing navigation', () => {
-      nav.editOrderId.set(1001);
-      createFixture();
-      httpMock.expectOne('/api/orders/1001').flush(SAVED_ORDER);
-      fixture.detectChanges();
-      const openFilingFor = vi.spyOn(nav, 'openFilingFor').mockImplementation(() => {});
-
-      internals.onSubmit();
-
+      internals.onSave();
       httpMock.expectOne({ method: 'PATCH', url: '/api/orders/1001' }).flush(SAVED_ORDER);
       expect(openFilingFor).not.toHaveBeenCalled();
       expect(internals.successMessage()).toBe('ההזמנה נשמרה — מספר הזמנה 1001');
     });
 
-    it('the top-of-page filing link navigates straight to the order\'s case, with no save request at all', () => {
+    it('the top-of-page filing link navigates straight to the order, with no save request at all', () => {
       nav.editOrderId.set(1001);
       createFixture();
-      httpMock.expectOne('/api/orders/1001').flush({ ...SAVED_ORDER, mblId: 7 });
-      fixture.detectChanges();
+      flushEditLoad({ ...SAVED_ORDER, mblId: 7 });
       const openFilingFor = vi.spyOn(nav, 'openFilingFor').mockImplementation(() => {});
 
       internals.goToFiling();

@@ -1,253 +1,306 @@
-<form class="order-form" [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
-  <div class="order-header-row">
-    <div class="page-title">{{ pageTitle() }}</div>
+<form class="order-page" [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
+  <header class="order-header">
+    <h1 class="page-title order-header__title">
+      {{ pageTitle() }}
+      @if (orderNumber(); as number) {
+        <span class="order-header__sep" aria-hidden="true">·</span>
+        <span class="order-header__number" dir="ltr">{{ number }}</span>
+      }
+    </h1>
     @if (isEditingExisting()) {
       <button type="button" class="filing-link" (click)="goToFiling()">
         <i class="fa-solid fa-file-import" aria-hidden="true"></i>
         מעבר לתיוק ניירת יבוא
       </button>
     }
-  </div>
+  </header>
 
-  <!-- Section: Customer Information -->
-  <section class="form-section">
-    <h2 class="section-title">פרטי לקוח ופתיחה</h2>
-    <div class="grid-row">
-      <div class="form-group autocomplete-wrapper">
-        <label class="required">לקוח קיים</label>
-        <app-customer-autocomplete [(customer)]="selectedCustomer" />
-        @if (customerError(); as message) {
-          <p class="field-error" role="alert">{{ message }}</p>
+  <!-- Tabs -->
+  <nav class="order-steps" role="tablist" aria-label="שלבי ההזמנה">
+    @for (step of steps; track step; let i = $index) {
+      <button
+        type="button"
+        role="tab"
+        class="order-step"
+        [class.order-step--active]="currentStep() === step"
+        [class.order-step--done]="isStepDone(step)"
+        [class.order-step--error]="stepsWithErrors().has(step)"
+        [attr.aria-selected]="currentStep() === step"
+        [disabled]="!canOpenStep(step) || loadingOrder()"
+        (click)="goToStep(step)"
+      >
+        <span class="order-step__index" aria-hidden="true">
+          @if (isStepDone(step)) {
+            <i class="fa-solid fa-check"></i>
+          } @else {
+            {{ i + 1 }}
+          }
+        </span>
+        <i class="fa-solid order-step__icon" [class]="stepIcons[step]" aria-hidden="true"></i>
+        <span class="order-step__label">{{ stepLabels[step] }}</span>
+        @if (stepsWithErrors().has(step)) {
+          <span class="order-step__error-dot" aria-label="יש שגיאה בשלב זה"></span>
         }
-      </div>
+      </button>
+    }
+  </nav>
 
-      <div class="form-group">
-        <label>מספר הזמנה פנימי</label>
-        <input type="text" class="form-control" [value]="orderNumber()" readonly />
-      </div>
-
-      <div class="form-group">
-        <label>תאריך פתיחת הזמנה</label>
-        <input type="text" class="form-control" [value]="creationDate()" readonly />
-      </div>
-
-      <div class="form-group">
-        <label>פקיד מטפל</label>
-        <input type="text" class="form-control" [value]="handlerName()" readonly />
-      </div>
-
-      <div class="form-group autocomplete-wrapper">
-        <label for="supplierName">שם ספק</label>
-        <app-supplier-autocomplete inputId="supplierName" [(supplier)]="selectedSupplier" />
-      </div>
-    </div>
-  </section>
-
-  <!-- Section: Shipment Information -->
-  <section class="form-section">
-    <h2 class="section-title">פרטי משלוח</h2>
-
-    <div class="grid-row">
-      <div class="form-group">
-        <label class="required">סטטוס הזמנה</label>
-        <div class="choice-group">
-          @for (option of statuses; track option) {
-            <button
-              type="button"
-              class="choice-btn"
-              [class.active]="status() === option"
-              (click)="status.set(option)"
-            >
-              {{ statusLabels[option] }}
-            </button>
-          }
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label class="required">תנאי תשלום הובלה (Incoterms)</label>
-        <div class="choice-group">
-          @for (option of paymentTermsOptions; track option) {
-            <button
-              type="button"
-              class="choice-btn"
-              [class.active]="paymentTerms() === option"
-              (click)="paymentTerms.set(option)"
-            >
-              {{ paymentTermsLabels[option] }}
-            </button>
-          }
-        </div>
-
-        <select
-          id="incoterm"
-          class="form-control"
-          style="margin-top: 8px; width: 40%"
-          [value]="incoterm()"
-          (change)="incoterm.set($any($event.target).value)"
-        >
-          @for (option of incotermOptions(); track option) {
-            <option [value]="option">{{ incotermLabels[option] }}</option>
-          }
-        </select>
-        <p class="hint-text">האפשרויות תלויות בתנאי התשלום שנבחרו למעלה</p>
-      </div>
-    </div>
-
-    <div class="grid-row">
-      <div class="form-group">
-        <label class="required">סוג משלוח</label>
-        <div class="choice-group">
-          @for (option of shipmentTypes; track option) {
-            <button
-              type="button"
-              class="choice-btn"
-              [class.active]="shipmentType() === option"
-              (click)="shipmentType.set(option)"
-            >
-              {{ shipmentTypeLabels[option] }}
-            </button>
-          }
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label class="required">יעד</label>
-        <div class="choice-group">
-          @for (option of destinationOptions(); track option) {
-            <button
-              type="button"
-              class="choice-btn"
-              [class.active]="destination() === option"
-              (click)="destination.set(option)"
-            >
-              {{ destinationLabels[option] }}
-            </button>
-          }
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Section: Shipping Schedule -->
-  <section class="form-section">
-    <h2 class="section-title">לוחות זמנים</h2>
-    <div class="grid-row">
-      <div class="form-group">
-        <label for="factoryReadyDate">תאריך מוכנות במפעל</label>
-        <input
-          id="factoryReadyDate"
-          type="date"
-          class="form-control"
-          formControlName="factoryReadyDate"
-        />
-      </div>
-      <div class="form-group">
-        <label for="factoryPickupDate">תאריך איסוף מהמפעל</label>
-        <input
-          id="factoryPickupDate"
-          type="date"
-          class="form-control"
-          formControlName="factoryPickupDate"
-          [min]="pickupMinDate()"
-        />
-        @if (pickupDateError(); as message) {
-          <p class="field-error" role="alert">{{ message }}</p>
-        }
-      </div>
-      <div class="form-group">
-        <label for="departureDate">תאריך הפלגה / טיסה (יציאה)</label>
-        <input
-          id="departureDate"
-          type="date"
-          class="form-control"
-          formControlName="departureDate"
-          [min]="departureMinDate()"
-        />
-        @if (departureDateError(); as message) {
-          <p class="field-error" role="alert">{{ message }}</p>
-        }
-      </div>
-      <div class="form-group">
-        <label for="etaDate">תאריך הגעה משוער (ETA)</label>
-        <input id="etaDate" type="date" class="form-control" formControlName="etaDate" />
-      </div>
-    </div>
-  </section>
-
-  <!-- Section: Transportation Details -->
-  <section class="form-section">
-    <h2 class="section-title">פרטי הובלה</h2>
-    <div class="grid-row">
-      @if (seaVisible()) {
-        <div class="form-group autocomplete-wrapper transport-group">
-          <label for="shippingLine">חברת ספנות</label>
-          <input
-            id="shippingLine"
-            type="text"
-            class="form-control"
-            placeholder="חפש חברת ספנות..."
-            autocomplete="off"
-            formControlName="shippingLine"
-            (input)="shippingLine.onInput()"
-          />
-          <div class="autocomplete-list" [class.active]="shippingLine.open()">
-            @for (match of shippingLine.matches(); track match) {
-              <div class="autocomplete-item" (click)="pickShippingLine(match)">{{ match }}</div>
-            }
-          </div>
-        </div>
-        <div class="form-group transport-group">
-          <label for="voyageNumber">מספר הפלגה (Voyage Number)</label>
-          <input
-            id="voyageNumber"
-            type="text"
-            class="form-control"
-            placeholder="הזן מספר הפלגה"
-            formControlName="voyageNumber"
-          />
-        </div>
-      }
-
-      @if (airVisible()) {
-        <div class="form-group autocomplete-wrapper transport-group">
-          <label for="airline">חברת תעופה (Airline)</label>
-          <input
-            id="airline"
-            type="text"
-            class="form-control"
-            placeholder="חפש חברת תעופה..."
-            autocomplete="off"
-            formControlName="airline"
-            (input)="airline.onInput()"
-          />
-          <div class="autocomplete-list" [class.active]="airline.open()">
-            @for (match of airline.matches(); track match) {
-              <div class="autocomplete-item" (click)="pickAirline(match)">{{ match }}</div>
-            }
-          </div>
-        </div>
-        <div class="form-group transport-group">
-          <label for="flightNumber">מספר טיסה (Flight Number)</label>
-          <input
-            id="flightNumber"
-            type="text"
-            class="form-control"
-            placeholder="הזן מספר טיסה"
-            formControlName="flightNumber"
-          />
-        </div>
-      }
-    </div>
-  </section>
-
-  <!-- Save feedback -->
   @if (loadingOrder()) {
     <p class="form-message" role="status">
       <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
       טוען הזמנה לעריכה...
     </p>
+  } @else {
+    @switch (currentStep()) {
+      @case (OrderStep.CUSTOMER) {
+        <!-- Section: Customer Information -->
+        <section class="form-section order-card">
+          <h2 class="section-title order-card__title">פרטי לקוח ופתיחה</h2>
+          <div class="grid-row">
+            <div class="form-group autocomplete-wrapper">
+              <label class="required">לקוח קיים</label>
+              <app-customer-autocomplete [(customer)]="selectedCustomer" />
+              @if (customerError(); as message) {
+                <p class="field-error" role="alert">{{ message }}</p>
+              }
+            </div>
+
+            <div class="form-group">
+              <label>תאריך פתיחת הזמנה</label>
+              <input type="text" class="form-control" [value]="creationDate()" readonly />
+            </div>
+
+            <div class="form-group">
+              <label>פקיד מטפל</label>
+              <input type="text" class="form-control" [value]="handlerName()" readonly />
+            </div>
+
+            <div class="form-group autocomplete-wrapper">
+              <label for="supplierName">שם ספק</label>
+              <app-supplier-autocomplete inputId="supplierName" [(supplier)]="selectedSupplier" />
+            </div>
+          </div>
+        </section>
+      }
+      @case (OrderStep.SHIPMENT) {
+        <!-- Section: Shipment Information -->
+        <section class="form-section order-card">
+          <h2 class="section-title order-card__title">פרטי משלוח</h2>
+
+          <div class="grid-row">
+            <div class="form-group">
+              <label class="required">סטטוס הזמנה</label>
+              <div class="choice-group">
+                @for (option of statuses; track option) {
+                  <button
+                    type="button"
+                    class="choice-btn"
+                    [class.active]="status() === option"
+                    (click)="status.set(option)"
+                  >
+                    {{ statusLabels[option] }}
+                  </button>
+                }
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="required">תנאי תשלום הובלה (Incoterms)</label>
+              <div class="choice-group">
+                @for (option of paymentTermsOptions; track option) {
+                  <button
+                    type="button"
+                    class="choice-btn"
+                    [class.active]="paymentTerms() === option"
+                    (click)="paymentTerms.set(option)"
+                  >
+                    {{ paymentTermsLabels[option] }}
+                  </button>
+                }
+              </div>
+
+              <select
+                id="incoterm"
+                class="form-control"
+                style="margin-top: 8px; width: 40%"
+                [value]="incoterm()"
+                (change)="incoterm.set($any($event.target).value)"
+              >
+                @for (option of incotermOptions(); track option) {
+                  <option [value]="option">{{ incotermLabels[option] }}</option>
+                }
+              </select>
+              <p class="hint-text">האפשרויות תלויות בתנאי התשלום שנבחרו למעלה</p>
+            </div>
+          </div>
+
+          <div class="grid-row">
+            <div class="form-group">
+              <label class="required">סוג משלוח</label>
+              <div class="choice-group">
+                @for (option of shipmentTypes; track option) {
+                  <button
+                    type="button"
+                    class="choice-btn"
+                    [class.active]="shipmentType() === option"
+                    (click)="shipmentType.set(option)"
+                  >
+                    {{ shipmentTypeLabels[option] }}
+                  </button>
+                }
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="required">יעד</label>
+              <div class="choice-group">
+                @for (option of destinationOptions(); track option) {
+                  <button
+                    type="button"
+                    class="choice-btn"
+                    [class.active]="destination() === option"
+                    (click)="destination.set(option)"
+                  >
+                    {{ destinationLabels[option] }}
+                  </button>
+                }
+              </div>
+            </div>
+          </div>
+        </section>
+      }
+      @case (OrderStep.SCHEDULE) {
+        <!-- Section: Shipping Schedule -->
+        <section class="form-section order-card">
+          <h2 class="section-title order-card__title">לוחות זמנים</h2>
+          <div class="grid-row">
+            <div class="form-group">
+              <label for="factoryReadyDate">תאריך מוכנות במפעל</label>
+              <input
+                id="factoryReadyDate"
+                type="date"
+                class="form-control"
+                formControlName="factoryReadyDate"
+              />
+            </div>
+            <div class="form-group">
+              <label for="factoryPickupDate">תאריך איסוף מהמפעל</label>
+              <input
+                id="factoryPickupDate"
+                type="date"
+                class="form-control"
+                formControlName="factoryPickupDate"
+                [min]="pickupMinDate()"
+              />
+              @if (pickupDateError(); as message) {
+                <p class="field-error" role="alert">{{ message }}</p>
+              }
+            </div>
+            <div class="form-group">
+              <label for="departureDate">תאריך הפלגה / טיסה (יציאה)</label>
+              <input
+                id="departureDate"
+                type="date"
+                class="form-control"
+                formControlName="departureDate"
+                [min]="departureMinDate()"
+              />
+              @if (departureDateError(); as message) {
+                <p class="field-error" role="alert">{{ message }}</p>
+              }
+            </div>
+            <div class="form-group">
+              <label for="etaDate">תאריך הגעה משוער (ETA)</label>
+              <input id="etaDate" type="date" class="form-control" formControlName="etaDate" />
+            </div>
+          </div>
+        </section>
+
+        <!-- Section: Transportation Details -->
+        <section class="form-section order-card">
+          <h2 class="section-title order-card__title">פרטי הובלה</h2>
+          <div class="grid-row">
+            @if (seaVisible()) {
+              <div class="form-group autocomplete-wrapper transport-group">
+                <label for="shippingLine">חברת ספנות</label>
+                <input
+                  id="shippingLine"
+                  type="text"
+                  class="form-control"
+                  placeholder="חפש חברת ספנות..."
+                  autocomplete="off"
+                  formControlName="shippingLine"
+                  (input)="shippingLine.onInput()"
+                />
+                <div class="autocomplete-list" [class.active]="shippingLine.open()">
+                  @for (match of shippingLine.matches(); track match) {
+                    <div class="autocomplete-item" (click)="pickShippingLine(match)">{{ match }}</div>
+                  }
+                </div>
+              </div>
+              <div class="form-group transport-group">
+                <label for="voyageNumber">מספר הפלגה (Voyage Number)</label>
+                <input
+                  id="voyageNumber"
+                  type="text"
+                  class="form-control"
+                  placeholder="הזן מספר הפלגה"
+                  formControlName="voyageNumber"
+                />
+              </div>
+            }
+
+            @if (airVisible()) {
+              <div class="form-group autocomplete-wrapper transport-group">
+                <label for="airline">חברת תעופה (Airline)</label>
+                <input
+                  id="airline"
+                  type="text"
+                  class="form-control"
+                  placeholder="חפש חברת תעופה..."
+                  autocomplete="off"
+                  formControlName="airline"
+                  (input)="airline.onInput()"
+                />
+                <div class="autocomplete-list" [class.active]="airline.open()">
+                  @for (match of airline.matches(); track match) {
+                    <div class="autocomplete-item" (click)="pickAirline(match)">{{ match }}</div>
+                  }
+                </div>
+              </div>
+              <div class="form-group transport-group">
+                <label for="flightNumber">מספר טיסה (Flight Number)</label>
+                <input
+                  id="flightNumber"
+                  type="text"
+                  class="form-control"
+                  placeholder="הזן מספר טיסה"
+                  formControlName="flightNumber"
+                />
+              </div>
+            }
+          </div>
+        </section>
+      }
+      @case (OrderStep.DOCUMENTS) {
+        <section class="form-section order-card">
+          <h2 class="section-title order-card__title">מסמכים</h2>
+          <app-document-staging-list
+            [documentTypes]="documentTypes"
+            [requiredTypes]="requiredDocumentTypes"
+            [(files)]="stagedFiles"
+            [uploaded]="uploadedFiles()"
+            [showMissing]="showMissingDocuments()"
+            [openingId]="openingFileId()"
+            bannerText="הקבצים יועלו לשרת לאחר שמירת ההזמנה"
+            (openUploaded)="openUploadedFile($event)"
+          />
+        </section>
+      }
+    }
   }
+
+  <!-- Save feedback -->
   @if (successMessage(); as message) {
     <p class="form-message form-message--success" role="status">{{ message }}</p>
   }
@@ -255,9 +308,9 @@
     <p class="form-message form-message--error" role="alert">{{ message }}</p>
   }
 
-  <!-- Form Actions -->
-  @if (isEditingExisting()) {
-    <div class="form-actions">
+  <!-- Sticky action bar -->
+  <div class="order-actions">
+    <div class="order-actions__group">
       <button
         type="button"
         class="btn btn-secondary"
@@ -266,28 +319,44 @@
       >
         ביטול
       </button>
-      <button type="submit" class="btn btn-primary" [disabled]="saving() || loadingOrder()">
+      <button
+        type="button"
+        class="btn btn-secondary"
+        (click)="onSave()"
+        [disabled]="saving() || loadingOrder()"
+      >
         @if (saving()) {
           <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
           שומר...
         } @else {
-          עדכן הזמנה
+          <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
+          שמירה
         }
       </button>
     </div>
-  } @else {
-    <!-- Creating a new order offers exactly one action: save, then go
-         straight to filing (see OrderScreen.onSubmit/onSaveAndGoToFiling). -->
-    <div class="form-actions">
-      <button type="submit" class="btn btn-primary" [disabled]="saving() || loadingOrder()">
-        @if (saving()) {
-          <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
-          שומר...
-        } @else {
-          <i class="fa-solid fa-file-import" aria-hidden="true"></i>
-          שמירה ומעבר לתיוק ניירת יבוא
-        }
-      </button>
+    <div class="order-actions__group">
+      @if (!isFirstStep()) {
+        <button
+          type="button"
+          class="btn btn-secondary"
+          (click)="onPrevious()"
+          [disabled]="saving() || loadingOrder()"
+        >
+          <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+          הקודם
+        </button>
+      }
+      @if (isLastStep()) {
+        <button type="button" class="btn btn-primary" (click)="onFinish()" [disabled]="saving() || loadingOrder()">
+          <i class="fa-solid fa-flag-checkered" aria-hidden="true"></i>
+          סיום ומעבר לתיוק
+        </button>
+      } @else {
+        <button type="button" class="btn btn-primary" (click)="onNext()" [disabled]="saving() || loadingOrder()">
+          הבא
+          <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+        </button>
+      }
     </div>
-  }
+  </div>
 </form>

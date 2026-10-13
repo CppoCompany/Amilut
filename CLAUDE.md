@@ -103,7 +103,7 @@ adding an enum member on the server breaks the client build there until a
 label is added — that is intentional.
 
 The database CHECK constraints for enum-like columns (`status`,
-`shipment_type`, `payment_terms`, `incoterm`, `destination` in `orders`) must
+`shipment_type`, `payment_terms`, `incoterm`, `destination`, `last_step` in `orders`) must
 be kept in sync with the server enums by hand.
 
 ## Authentication

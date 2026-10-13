@@ -1,0 +1,88 @@
+<p class="doc-banner" role="note">
+  <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+  {{ bannerText() }}
+</p>
+
+<input
+  #fileInput
+  type="file"
+  multiple
+  hidden
+  accept=".pdf,.xlsx,.xls,image/*"
+  aria-label="בחירת קבצים להעלאה"
+  (change)="onFilesSelected($event)"
+/>
+
+<ul class="doc-list">
+  @for (type of documentTypes(); track type) {
+    @let staged = stagedFor(type);
+    @let stored = uploadedFor(type);
+    @let total = staged.length + stored.length;
+    <li
+      class="doc"
+      [class.doc--dragover]="dragOverType() === type"
+      [class.doc--error]="showMissing() && missing().has(type)"
+      (dragover)="onDragOver($event, type)"
+      (dragleave)="onDragLeave(type)"
+      (drop)="onDrop($event, type)"
+    >
+      <div class="doc__row">
+        <i class="fa-solid doc__icon" [class]="documentIcons[type]" aria-hidden="true"></i>
+        <span class="doc__name">
+          {{ documentTypeLabels[type] }}
+          @if (requiredTypes().has(type)) {
+            <span class="doc__required" title="מסמך חובה" aria-label="מסמך חובה">*</span>
+          }
+        </span>
+        @if (total === 0) {
+          <span class="doc-badge doc-badge--missing">חסר</span>
+        } @else {
+          <span class="doc-badge doc-badge--ok">{{ countLabel(total) }}</span>
+        }
+        <button type="button" class="btn btn-secondary doc__upload" (click)="openPicker(type)">
+          <i class="fa-solid fa-arrow-up-from-bracket" aria-hidden="true"></i>
+          העלאה
+        </button>
+        <span class="doc__drop-hint">או גררו קבצים לכאן</span>
+      </div>
+
+      @if (total > 0) {
+        <ul class="doc__files">
+          @for (file of stored; track file.id) {
+            <li class="doc__file doc__file--uploaded">
+              <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+              <span class="doc__file-name" dir="auto">{{ file.name }}</span>
+              <button
+                type="button"
+                class="icon-btn"
+                [attr.aria-label]="'פתח את ' + file.name"
+                [disabled]="openingId() !== null"
+                (click)="openUploaded.emit(file)"
+              >
+                @if (openingId() === file.id) {
+                  <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
+                } @else {
+                  <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
+                }
+              </button>
+            </li>
+          }
+          @for (file of staged; track $index) {
+            <li class="doc__file">
+              <i class="fa-regular fa-file" aria-hidden="true"></i>
+              <span class="doc__file-name" dir="auto">{{ file.name }}</span>
+              <button
+                type="button"
+                class="icon-btn icon-btn--danger"
+                [attr.aria-label]="'הסר את ' + file.name"
+                (click)="remove(type, $index)"
+              >
+                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+              </button>
+            </li>
+          }
+        </ul>
+      }
+    </li>
+  }
+</ul>

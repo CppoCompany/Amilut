@@ -13,6 +13,7 @@ import {
   Destination,
   Incoterm,
   OrderStatus,
+  OrderStep,
   PaymentTerms,
   ShipmentType,
 } from './orders/orders.enums';
@@ -30,6 +31,7 @@ export const NAMED_ENUMS: Record<string, Record<string, string>> = {
   CcfStatus,
   ShipmentType,
   OrderStatus,
+  OrderStep,
   PaymentTerms,
   Destination,
   Incoterm,

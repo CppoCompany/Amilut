@@ -53,82 +53,12 @@
       <section class="form-section ccf-card">
         <h2 class="section-title ccf-card__title">ניירת</h2>
 
-        <p class="ccf-banner" role="note">
-          <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
-          הקבצים יועלו לשרת לאחר שמירת התיק
-        </p>
-
-        <input
-          #stagingInput
-          type="file"
-          multiple
-          hidden
-          accept=".pdf,.xlsx,.xls,image/*"
-          aria-label="בחירת קבצים להעלאה"
-          (change)="onStagingFilesSelected($event)"
+        <app-document-staging-list
+          [documentTypes]="ccfDocumentTypes"
+          [requiredTypes]="requiredDocumentTypes"
+          [(files)]="stagedFiles"
+          bannerText="הקבצים יועלו לשרת לאחר שמירת התיק"
         />
-
-        <ul class="ccf-docs">
-          @for (type of ccfDocumentTypes; track type) {
-            @let files = stagedFilesFor(type);
-            <li
-              class="ccf-doc"
-              [class.ccf-doc--dragover]="dragOverType() === type"
-              (dragover)="onDocDragOver($event, type)"
-              (dragleave)="onDocDragLeave(type)"
-              (drop)="onDocDrop($event, type)"
-            >
-              <div class="ccf-doc__row">
-                <i
-                  class="fa-solid ccf-doc__icon"
-                  [class]="documentIcons[type]"
-                  aria-hidden="true"
-                ></i>
-                <span class="ccf-doc__name">
-                  {{ documentTypeLabels[type] }}
-                  @if (requiredDocumentTypes.has(type)) {
-                    <span class="ccf-doc__required" title="מסמך חובה" aria-label="מסמך חובה">*</span>
-                  }
-                </span>
-                @if (files.length === 0) {
-                  <span class="ccf-badge ccf-badge--missing">חסר</span>
-                } @else {
-                  <span class="ccf-badge ccf-badge--ok">
-                    {{ files.length === 1 ? 'קובץ אחד' : files.length + ' קבצים' }}
-                  </span>
-                }
-                <button
-                  type="button"
-                  class="btn btn-secondary ccf-doc__upload"
-                  (click)="openStagingPicker(type)"
-                >
-                  <i class="fa-solid fa-arrow-up-from-bracket" aria-hidden="true"></i>
-                  העלאה
-                </button>
-                <span class="ccf-doc__drop-hint">או גררו קבצים לכאן</span>
-              </div>
-
-              @if (files.length > 0) {
-                <ul class="ccf-doc__files">
-                  @for (file of files; track $index) {
-                    <li>
-                      <i class="fa-regular fa-file" aria-hidden="true"></i>
-                      <span class="ccf-doc__file-name" dir="auto">{{ file.name }}</span>
-                      <button
-                        type="button"
-                        class="icon-btn icon-btn--danger"
-                        [attr.aria-label]="'הסר את ' + file.name"
-                        (click)="removeStagedFile(type, $index)"
-                      >
-                        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
-                      </button>
-                    </li>
-                  }
-                </ul>
-              }
-            </li>
-          }
-        </ul>
       </section>
     }
 

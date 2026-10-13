@@ -16,6 +16,7 @@ import {
   MblShippingType,
   MblStatus,
   OrderStatus,
+  OrderStep,
   PaymentTerms,
   SeaMethod,
   ShipmentType,
@@ -32,6 +33,7 @@ export {
   MblShippingType,
   MblStatus,
   OrderStatus,
+  OrderStep,
   PaymentTerms,
   SeaMethod,
   ShipmentType,
@@ -44,6 +46,21 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   [OrderStatus.PICKED_UP]: 'נאספה',
   [OrderStatus.WAITING_AT_PORT]: 'ממתינה בנמל',
   [OrderStatus.DEPARTED]: 'יצאה לדרך',
+};
+
+/** Tabs of the order form ("יצירת הזמנה"), in display order; `orders.last_step` stores the furthest reached. */
+export const ORDER_STEPS: readonly OrderStep[] = [
+  OrderStep.CUSTOMER,
+  OrderStep.SHIPMENT,
+  OrderStep.SCHEDULE,
+  OrderStep.DOCUMENTS,
+];
+
+export const ORDER_STEP_LABELS: Record<OrderStep, string> = {
+  [OrderStep.CUSTOMER]: 'פרטי לקוח',
+  [OrderStep.SHIPMENT]: 'פרטי משלוח',
+  [OrderStep.SCHEDULE]: 'לוחות זמנים והובלה',
+  [OrderStep.DOCUMENTS]: 'מסמכים',
 };
 
 export const SHIPMENT_TYPE_LABELS: Record<ShipmentType, string> = {
@@ -149,6 +166,16 @@ export const CCF_IMPORT_DOCUMENT_TYPES: readonly ImportDocumentType[] = [
   ImportDocumentType.PACKING_LIST,
   ImportDocumentType.OTHER,
 ];
+
+/** The order form's "מסמכים" tab offers the same four kinds as the CCF screen. */
+export const ORDER_IMPORT_DOCUMENT_TYPES: readonly ImportDocumentType[] = CCF_IMPORT_DOCUMENT_TYPES;
+
+/** Must each have at least one file before the order form's "סיום" goes through. */
+export const ORDER_REQUIRED_DOCUMENT_TYPES: ReadonlySet<ImportDocumentType> = new Set([
+  ImportDocumentType.BILL_OF_LADING,
+  ImportDocumentType.SUPPLIER_INVOICE,
+  ImportDocumentType.PACKING_LIST,
+]);
 
 /** Regulatory approvals a classified product line may need ("אישורים" on the classification screen, multi-select). */
 export const CLASSIFICATION_APPROVAL_LABELS: Record<ClassificationApproval, string> = {

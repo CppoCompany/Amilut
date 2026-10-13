@@ -43,6 +43,25 @@ export enum PaymentTerms {
 }
 
 /**
+ * Furthest step of the tabbed order form ("יצירת הזמנה") the user has
+ * reached — saved with every save so reopening a partly-filled order resumes
+ * there. Kept in sync by hand with the CHECK constraint on `orders.last_step`
+ * (SQL-Migration/022_orders_last_step.sql).
+ *
+ * Hebrew UI labels:
+ * - CUSTOMER  → פרטי לקוח
+ * - SHIPMENT  → פרטי משלוח
+ * - SCHEDULE  → לוחות זמנים והובלה
+ * - DOCUMENTS → מסמכים
+ */
+export enum OrderStep {
+  CUSTOMER = 'customer',
+  SHIPMENT = 'shipment',
+  SCHEDULE = 'schedule',
+  DOCUMENTS = 'documents',
+}
+
+/**
  * Israeli port / airport of arrival.
  *
  * Hebrew UI labels:

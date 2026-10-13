@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 
-import { Destination, Incoterm, OrderStatus, PaymentTerms, ShipmentType } from './enums';
+import { Destination, Incoterm, OrderStatus, OrderStep, PaymentTerms, ShipmentType } from './enums';
 import type { CreateOrderDto, OrderDto } from './models';
 import { OrdersApi } from './orders-api';
 
@@ -29,6 +29,7 @@ const ORDER: OrderDto = {
   voyageNumber: null,
   airline: null,
   flightNumber: null,
+  lastStep: OrderStep.CUSTOMER,
   isActive: true,
   mblId: null,
 };

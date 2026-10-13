@@ -3,6 +3,7 @@ import {
   Destination,
   Incoterm,
   OrderStatus,
+  OrderStep,
   PaymentTerms,
   ShipmentType,
 } from '../orders.enums';
@@ -99,6 +100,10 @@ export class OrderDto {
 
   @ApiProperty({ type: 'string', nullable: true, example: 'LY001' })
   flightNumber!: string | null;
+
+  /** Furthest step of the tabbed order form reached — where reopening resumes. */
+  @ApiProperty({ enum: OrderStep, enumName: 'OrderStep' })
+  lastStep!: OrderStep;
 
   @ApiProperty({ example: true })
   isActive!: boolean;

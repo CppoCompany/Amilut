@@ -7,6 +7,7 @@ import {
   MblShippingType,
   MblStatus,
   OrderStatus,
+  OrderStep,
   PaymentTerms,
   SeaMethod,
   ShipmentType,
@@ -40,6 +41,7 @@ const ORDER: OrderDto = {
   voyageNumber: null,
   airline: null,
   flightNumber: null,
+  lastStep: OrderStep.CUSTOMER,
   isActive: true,
   mblId: null,
 };
