@@ -11,16 +11,23 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
-import { finalize, Observable, tap } from 'rxjs';
+import { catchError, finalize, forkJoin, map, Observable, of, switchMap, tap } from 'rxjs';
 
 import {
   DESTINATION_LABELS,
   DESTINATIONS_BY_SHIPMENT_TYPE,
   INCOTERM_LABELS,
+  IMPORT_DOCUMENT_TYPE_LABELS,
+  ImportDocumentType,
   INCOTERMS_BY_PAYMENT_TERMS,
+  ORDER_IMPORT_DOCUMENT_TYPES,
+  ORDER_REQUIRED_DOCUMENT_TYPES,
   ORDER_STATUS_LABELS,
   ORDER_STATUSES,
+  ORDER_STEP_LABELS,
+  ORDER_STEPS,
   OrderStatus,
+  OrderStep,
   PAYMENT_TERMS,
   PAYMENT_TERMS_LABELS,
   PaymentTerms,
@@ -28,11 +35,25 @@ import {
   SHIPMENT_TYPES,
   ShipmentType,
 } from '../../../../api/enums';
-import type { CustomerDto, OrderDto, SupplierDto } from '../../../../api/models';
+import type { FilingContext } from '../../../../api/filing-context.model';
+import { ImportFilesApi } from '../../../../api/import-files-api';
+import type {
+  CreateOrderDto,
+  CustomerDto,
+  OrderDto,
+  SupplierDto,
+  UploadedImportFileDto,
+} from '../../../../api/models';
 import { OrdersApi } from '../../../../api/orders-api';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { CustomerAutocomplete } from '../../../customers/customer-autocomplete/customer-autocomplete';
 import { SupplierAutocomplete } from '../../../suppliers/supplier-autocomplete/supplier-autocomplete';
+import {
+  DocumentStagingList,
+  missingRequiredTypes,
+  type StagedFiles,
+} from '../../document-staging-list/document-staging-list';
+import { BLOB_URL_TTL_MS } from '../../import-files-panel/import-files-panel';
 import { NavigationService } from '../../navigation.service';
 import { SelectionStateService } from '../../selection-state.service';
 import { Autocomplete } from './autocomplete';
@@ -74,11 +95,34 @@ const AIRLINES = [
 ];
 
 const CUSTOMER_REQUIRED = 'יש לבחור לקוח';
+const UPLOAD_FAILED = 'ההזמנה נשמרה, אך העלאת חלק מהמסמכים נכשלה';
+const OPEN_FILE_FAILED = 'פתיחת הקובץ נכשלה';
+const FILES_LOAD_FAILED = 'טעינת המסמכים של ההזמנה נכשלה';
 
-/** "פתיחת הזמנה" — new shipment order form, wired to `POST/PATCH /api/orders`. */
+/** Font Awesome icon per tab of the order form. */
+const STEP_ICONS: Record<OrderStep, string> = {
+  [OrderStep.CUSTOMER]: 'fa-user',
+  [OrderStep.SHIPMENT]: 'fa-truck-fast',
+  [OrderStep.SCHEDULE]: 'fa-calendar-days',
+  [OrderStep.DOCUMENTS]: 'fa-file-lines',
+};
+
+function stepIndex(step: OrderStep): number {
+  return ORDER_STEPS.indexOf(step);
+}
+
+/**
+ * "פתיחת הזמנה" — the order form, split into tabs (`ORDER_STEPS`), wired to
+ * `POST/PATCH /api/orders`. Any tab can be saved as progress once a customer
+ * is picked; every save also records the furthest tab reached
+ * (`lastStep`), which is where reopening the order resumes. The last tab
+ * stages paperwork (`DocumentStagingList`, same UI as the CCF screen) that is
+ * uploaded after each save; "סיום" requires the mandatory documents and then
+ * moves on to filing.
+ */
 @Component({
   selector: 'app-order-screen',
-  imports: [ReactiveFormsModule, CustomerAutocomplete, SupplierAutocomplete],
+  imports: [ReactiveFormsModule, CustomerAutocomplete, SupplierAutocomplete, DocumentStagingList],
   templateUrl: './order.html',
   styleUrl: './order.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -86,6 +130,7 @@ const CUSTOMER_REQUIRED = 'יש לבחור לקוח';
 export class OrderScreen {
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly ordersApi = inject(OrdersApi);
+  private readonly importFilesApi = inject(ImportFilesApi);
   private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly nav = inject(NavigationService);
@@ -120,11 +165,41 @@ export class OrderScreen {
     this.isEditingExisting() ? 'עדכון הזמנה' : 'יצירת הזמנה חדשה',
   );
 
+  // ── Tabs ───────────────────────────────────────────────────────────────────
+  protected readonly steps = ORDER_STEPS;
+  protected readonly stepLabels = ORDER_STEP_LABELS;
+  protected readonly stepIcons = STEP_ICONS;
+  protected readonly OrderStep = OrderStep;
+  protected readonly currentStep = signal<OrderStep>(OrderStep.CUSTOMER);
+  /** Furthest tab reached — saved as `lastStep`; tabs up to one past it are clickable. */
+  protected readonly furthestStep = signal<OrderStep>(OrderStep.CUSTOMER);
+  protected readonly isFirstStep = computed(() => stepIndex(this.currentStep()) === 0);
+  protected readonly isLastStep = computed(
+    () => stepIndex(this.currentStep()) === ORDER_STEPS.length - 1,
+  );
+
+  // ── Documents tab ──────────────────────────────────────────────────────────
+  protected readonly documentTypes = ORDER_IMPORT_DOCUMENT_TYPES;
+  protected readonly requiredDocumentTypes = ORDER_REQUIRED_DOCUMENT_TYPES;
+  /** Picked but not uploaded yet — uploaded after the next successful save. */
+  protected readonly stagedFiles = signal<StagedFiles>({});
+  /** Already filed under this order on the server. */
+  protected readonly uploadedFiles = signal<UploadedImportFileDto[]>([]);
+  protected readonly openingFileId = signal<number | null>(null);
+  /** Set by "סיום" — from then on, empty mandatory document rows are flagged. */
+  private readonly finishAttempted = signal(false);
+  protected readonly missingDocuments = computed(() =>
+    missingRequiredTypes(this.requiredDocumentTypes, this.stagedFiles(), this.uploadedFiles()),
+  );
+  protected readonly showMissingDocuments = computed(
+    () => this.finishAttempted() && this.missingDocuments().length > 0,
+  );
+
   // ── Read-only header fields ────────────────────────────────────────────────
-  /** A real order id only exists once the server has inserted the row. */
+  /** Shown in the page title; a real order id only exists once the server has inserted the row. */
   protected readonly orderNumber = computed(() => {
     const order = this.savedOrder();
-    return order ? String(order.id) : 'יוקצה אוטומטית לאחר השמירה';
+    return order ? String(order.id) : null;
   });
   /** Shows today until the first save, then the server's actual `createdAt`. */
   protected readonly creationDate = computed(() => {
@@ -230,6 +305,15 @@ export class OrderScreen {
       : null;
   });
 
+  /** Tabs holding a visible validation error — they get a red dot. */
+  protected readonly stepsWithErrors = computed(() => {
+    const steps = new Set<OrderStep>();
+    if (this.customerError()) steps.add(OrderStep.CUSTOMER);
+    if (this.pickupDateError() || this.departureDateError()) steps.add(OrderStep.SCHEDULE);
+    if (this.showMissingDocuments()) steps.add(OrderStep.DOCUMENTS);
+    return steps;
+  });
+
   constructor() {
     // A double-click on a row in "ההזמנות שלי" navigates to
     // `/workspace/order?orderId=N`, which NavigationService.applyUrl turns
@@ -333,68 +417,155 @@ export class OrderScreen {
           this.destination.set(order.destination);
           this.form.reset(orderToFormValue(order));
           this.savedOrder.set(order);
+          // Resume where the order was left off.
+          this.furthestStep.set(order.lastStep);
+          this.currentStep.set(order.lastStep);
+          this.loadUploadedFiles({ kind: 'order', id: order.id });
         },
         error: (error: unknown) => this.errorMessage.set(loadErrorMessage(error)),
       });
   }
 
-  /**
-   * The form's single submit handler (button clicks and Enter-to-submit
-   * alike): creating a brand-new order only ever offers the combined
-   * "שמירה ומעבר לתיוק ניירת יבוא" action ({@link onSaveAndGoToFiling});
-   * editing an already-saved one offers a plain "עדכן הזמנה" ({@link onSave})
-   * — "go to filing" for an existing order lives separately, at the top of
-   * the page (see {@link goToFiling}), since the order is already saved and
-   * doesn't need saving again just to get there.
-   */
+  // ── Tab navigation ─────────────────────────────────────────────────────────
+
+  /** Enter inside a field: advance like "הבא" (or finish on the last tab). */
   protected onSubmit(): void {
-    if (this.isEditingExisting()) {
-      this.onSave();
+    if (this.isLastStep()) {
+      this.onFinish();
     } else {
-      this.onSaveAndGoToFiling();
+      this.onNext();
     }
   }
 
-  /** Creates the order on the first save; PATCHes the same order on later saves. */
+  /** "הבא" — only the current tab is validated; moving back never is. */
+  protected onNext(): void {
+    if (!this.validateStep(this.currentStep())) return;
+    this.moveTo(ORDER_STEPS[stepIndex(this.currentStep()) + 1]);
+  }
+
+  protected onPrevious(): void {
+    if (this.isFirstStep()) return;
+    this.currentStep.set(ORDER_STEPS[stepIndex(this.currentStep()) - 1]);
+  }
+
+  /** A tab is reachable when visited before, or it is the very next one. */
+  protected canOpenStep(step: OrderStep): boolean {
+    return stepIndex(step) <= stepIndex(this.furthestStep()) + 1;
+  }
+
+  protected isStepDone(step: OrderStep): boolean {
+    return (
+      stepIndex(step) < stepIndex(this.furthestStep()) &&
+      step !== this.currentStep() &&
+      !this.stepsWithErrors().has(step)
+    );
+  }
+
+  /** Tab click: backwards always, forwards only past a valid current tab. */
+  protected goToStep(step: OrderStep): void {
+    if (step === this.currentStep() || !this.canOpenStep(step)) return;
+    if (stepIndex(step) > stepIndex(this.currentStep()) && !this.validateStep(this.currentStep())) {
+      return;
+    }
+    this.moveTo(step);
+  }
+
+  private moveTo(step: OrderStep | undefined): void {
+    if (step === undefined) return;
+    this.currentStep.set(step);
+    if (stepIndex(step) > stepIndex(this.furthestStep())) {
+      this.furthestStep.set(step);
+    }
+  }
+
+  /** Shows the tab's errors (via `submitAttempted`) and reports whether it may be left forwards. */
+  private validateStep(step: OrderStep): boolean {
+    this.submitAttempted.set(true);
+    switch (step) {
+      case OrderStep.CUSTOMER:
+        return this.selectedCustomer() !== null;
+      case OrderStep.SCHEDULE:
+        return this.form.valid;
+      default:
+        return true;
+    }
+  }
+
+  // ── Save / finish ──────────────────────────────────────────────────────────
+
+  /** "שמירה" — saves progress from any tab: creates the order on the first
+   *  save, PATCHes it afterwards, then uploads whatever is staged. */
   protected onSave(): void {
-    this.saveOrder()?.subscribe({
-      next: (order) => this.successMessage.set(`ההזמנה נשמרה — מספר הזמנה ${order.id}`),
+    const request$ = this.saveOrder();
+    if (!request$) {
+      this.focusFirstInvalidStep();
+      return;
+    }
+    request$.subscribe({
+      next: ({ order, uploadFailed }) => {
+        if (!uploadFailed) {
+          this.successMessage.set(`ההזמנה נשמרה — מספר הזמנה ${order.id}`);
+        }
+      },
       error: (error: unknown) => this.errorMessage.set(saveErrorMessage(error)),
     });
   }
 
-  /** "שמירה ומעבר לתיוק ניירת יבוא" — saves the order first (same as
-   *  {@link onSave}, just a quiet success instead of a banner message) and
-   *  only navigates to the filing screen once that save actually succeeds; a
-   *  failed save leaves the user on this screen with the error shown, same as
-   *  a plain save failing. Scoped by the order's own id — unlike its linked
-   *  shipping case (`order.mblId`), which may not exist yet, an order's own
-   *  id is never null once saved. */
-  protected onSaveAndGoToFiling(): void {
-    this.saveOrder()?.subscribe({
-      next: (order) => this.nav.openFilingFor({ kind: 'order', id: order.id }),
+  /** "סיום" — requires the mandatory documents (staged or already filed),
+   *  saves, uploads, and only then moves on to filing scoped to this order.
+   *  Any failure keeps the user here with the error shown. */
+  protected onFinish(): void {
+    if (this.saving()) return;
+    this.finishAttempted.set(true);
+    const missing = this.missingDocuments();
+    if (missing.length > 0) {
+      this.currentStep.set(OrderStep.DOCUMENTS);
+      this.successMessage.set(null);
+      this.errorMessage.set(
+        `יש להעלות את המסמכים הנדרשים: ${missing.map((t) => IMPORT_DOCUMENT_TYPE_LABELS[t]).join(', ')}`,
+      );
+      return;
+    }
+    const request$ = this.saveOrder();
+    if (!request$) {
+      this.focusFirstInvalidStep();
+      return;
+    }
+    request$.subscribe({
+      next: ({ order, uploadFailed }) => {
+        if (!uploadFailed) {
+          this.nav.openFilingFor({ kind: 'order', id: order.id });
+        }
+      },
       error: (error: unknown) => this.errorMessage.set(saveErrorMessage(error)),
     });
   }
 
   /** Top-of-page "מעבר לתיוק ניירת יבוא" link — only shown once editing an
    *  already-saved order (see order.html), so it jumps straight to filing
-   *  scoped to this order, with no save step (nothing to save: the order
-   *  already exists). Same destination, reached without saving, as the
-   *  "ייבוא מסמכים" row action in "ההזמנות שלי". */
+   *  scoped to this order, with no save step. Same destination, reached
+   *  without saving, as the "ייבוא מסמכים" row action in "ההזמנות שלי". */
   protected goToFiling(): void {
     const order = this.savedOrder();
     if (!order) return;
     this.nav.openFilingFor({ kind: 'order', id: order.id });
   }
 
+  /** After a blocked save, show the first tab that has an error. */
+  private focusFirstInvalidStep(): void {
+    const invalid = ORDER_STEPS.find((step) => this.stepsWithErrors().has(step));
+    if (invalid) this.currentStep.set(invalid);
+  }
+
   /**
-   * Builds and sends the create/update request — shared by {@link onSave} and
-   * {@link onSaveAndGoToFiling}, which only differ in what happens *after* a
-   * successful save. Returns `null` (does nothing) while a save is already in
-   * flight or no customer is picked yet, exactly like `onSave` always bailed.
+   * Builds and sends the create/update request (with `lastStep`), then
+   * uploads the staged documents under the saved order. Returns `null` (does
+   * nothing) while a save is already in flight, no customer is picked yet, or
+   * the schedule is invalid. An upload failure never fails the save — the
+   * order exists by then — it is reported via `uploadFailed` and the staged
+   * files are kept so the next save retries them.
    */
-  private saveOrder(): Observable<OrderDto> | null {
+  private saveOrder(): Observable<{ order: OrderDto; uploadFailed: boolean }> | null {
     if (this.saving()) {
       return null;
     }
@@ -414,18 +585,21 @@ export class OrderScreen {
       return null;
     }
 
-    const dto = toCreateOrderDto(
-      customer.id,
-      this.selectedSupplier()?.id,
-      {
-        status: this.status(),
-        shipmentType: this.shipmentType(),
-        paymentTerms: this.paymentTerms(),
-        incoterm: this.incoterm(),
-        destination: this.destination(),
-      },
-      this.form.getRawValue(),
-    );
+    const dto: CreateOrderDto = {
+      ...toCreateOrderDto(
+        customer.id,
+        this.selectedSupplier()?.id,
+        {
+          status: this.status(),
+          shipmentType: this.shipmentType(),
+          paymentTerms: this.paymentTerms(),
+          incoterm: this.incoterm(),
+          destination: this.destination(),
+        },
+        this.form.getRawValue(),
+      ),
+      lastStep: this.furthestStep(),
+    };
 
     const existing = this.savedOrder();
     const request$ = existing
@@ -435,15 +609,94 @@ export class OrderScreen {
     this.saving.set(true);
     return request$.pipe(
       tap((order) => this.savedOrder.set(order)),
+      switchMap((order) =>
+        this.uploadStagedFiles({ kind: 'order', id: order.id }).pipe(
+          map((uploadFailed) => ({ order, uploadFailed })),
+        ),
+      ),
       finalize(() => this.saving.set(false)),
       takeUntilDestroyed(this.destroyRef),
     );
   }
 
+  /** Uploads every staged type; emits `true` if any upload failed. */
+  private uploadStagedFiles(context: FilingContext): Observable<boolean> {
+    const entries = (Object.entries(this.stagedFiles()) as [ImportDocumentType, File[]][]).filter(
+      ([, files]) => files.length > 0,
+    );
+    if (entries.length === 0) {
+      return of(false);
+    }
+    return forkJoin(
+      entries.map(([type, files]) =>
+        this.importFilesApi.uploadMultipleImportFiles(context, type, files),
+      ),
+    ).pipe(
+      map((results) => {
+        const fresh = results.flat();
+        const freshNames = new Set(fresh.map((file) => file.name));
+        // A re-upload with the same name replaces the older entry server-side.
+        this.uploadedFiles.update((files) => [
+          ...fresh,
+          ...files.filter((file) => !freshNames.has(file.name)),
+        ]);
+        this.stagedFiles.set({});
+        return false;
+      }),
+      catchError(() => {
+        this.errorMessage.set(UPLOAD_FAILED);
+        return of(true);
+      }),
+    );
+  }
+
+  private loadUploadedFiles(context: FilingContext): void {
+    this.importFilesApi
+      .listImportFiles(context)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (files) => this.uploadedFiles.set(files),
+        error: () => this.errorMessage.set(FILES_LOAD_FAILED),
+      });
+  }
+
+  /** Opens an already-filed document in a new tab — same approach as `ImportFilesPanel.openDocument`:
+   *  the tab opens synchronously (popup blockers allow it) and is pointed at the blob once fetched. */
+  protected openUploadedFile(file: UploadedImportFileDto): void {
+    const order = this.savedOrder();
+    if (!order || this.openingFileId() !== null) return;
+    this.openingFileId.set(file.id);
+    const viewer = window.open('', '_blank');
+    this.importFilesApi
+      .getImportFileBlob({ kind: 'order', id: order.id }, file.id)
+      .pipe(
+        finalize(() => this.openingFileId.set(null)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (blob) => {
+          const url = URL.createObjectURL(blob);
+          if (viewer && !viewer.closed) {
+            viewer.location.href = url;
+          } else {
+            window.open(url, '_blank');
+          }
+          setTimeout(() => URL.revokeObjectURL(url), BLOB_URL_TTL_MS);
+        },
+        error: () => {
+          viewer?.close();
+          this.errorMessage.set(OPEN_FILE_FAILED);
+        },
+      });
+  }
+
   /** Clears everything so a fresh order can be entered. */
   protected onCancel(): void {
     const hasUnsavedInput =
-      this.selectedCustomer() !== null || this.selectedSupplier() !== null || this.form.dirty;
+      this.selectedCustomer() !== null ||
+      this.selectedSupplier() !== null ||
+      this.form.dirty ||
+      Object.values(this.stagedFiles()).some((files) => files.length > 0);
     if (hasUnsavedInput && !confirm('הפרטים שהוזנו יימחקו. לבטל בכל זאת?')) {
       return;
     }
@@ -469,5 +722,10 @@ export class OrderScreen {
     this.successMessage.set(null);
     this.errorMessage.set(null);
     this.isEditingExisting.set(false);
+    this.currentStep.set(OrderStep.CUSTOMER);
+    this.furthestStep.set(OrderStep.CUSTOMER);
+    this.stagedFiles.set({});
+    this.uploadedFiles.set([]);
+    this.finishAttempted.set(false);
   }
 }

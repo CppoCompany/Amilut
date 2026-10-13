@@ -1287,6 +1287,8 @@ export interface components {
         Incoterm: Incoterm;
         /** @enum {string} */
         Destination: Destination;
+        /** @enum {string} */
+        OrderStep: OrderStep;
         OrderDto: {
             /** @example 1000 */
             id: number;
@@ -1345,6 +1347,7 @@ export interface components {
             airline: string | null;
             /** @example LY001 */
             flightNumber: string | null;
+            lastStep: components["schemas"]["OrderStep"];
             /** @example true */
             isActive: boolean;
             /** @example 7 */
@@ -1397,6 +1400,7 @@ export interface components {
             airline?: string;
             /** @example LY001 */
             flightNumber?: string;
+            lastStep?: components["schemas"]["OrderStep"];
         };
         UpdateOrderDto: {
             /** @example 1 */
@@ -1436,6 +1440,7 @@ export interface components {
             airline?: string;
             /** @example LY001 */
             flightNumber?: string;
+            lastStep?: components["schemas"]["OrderStep"];
         };
         SupplierDto: {
             /** @example 1 */
@@ -2815,4 +2820,10 @@ export enum Destination {
     SOUTH_PORT = "south_port",
     HAIFA = "haifa",
     BEN_GURION = "ben_gurion"
+}
+export enum OrderStep {
+    CUSTOMER = "customer",
+    SHIPMENT = "shipment",
+    SCHEDULE = "schedule",
+    DOCUMENTS = "documents"
 }

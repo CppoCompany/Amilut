@@ -7,6 +7,7 @@ import {
   Destination,
   Incoterm,
   OrderStatus,
+  OrderStep,
   PaymentTerms,
   ShipmentType,
 } from './orders.enums';
@@ -46,6 +47,7 @@ const baseRow = {
   voyage_number: null,
   airline: null,
   flight_number: null,
+  last_step: OrderStep.CUSTOMER,
   is_active: true,
 };
 
@@ -266,6 +268,24 @@ describe('OrdersService', () => {
       );
       expect(params).toEqual(['EL AL', 1000]);
       expect(result.airline).toBe('EL AL');
+    });
+
+    it('persists the furthest form step reached', async () => {
+      db.queryOne
+        .mockResolvedValueOnce(baseRow) // findById (existing)
+        .mockResolvedValueOnce({ id: 1000 }) // UPDATE ... RETURNING id
+        .mockResolvedValueOnce({ ...baseRow, last_step: OrderStep.SCHEDULE }); // findById
+
+      const result = await service.update(1000, {
+        lastStep: OrderStep.SCHEDULE,
+      });
+
+      const [sql, params] = db.queryOne.mock.calls[1] as [string, unknown[]];
+      expect(sql).toBe(
+        'UPDATE orders SET last_step = $1, updated_at = now() WHERE id = $2 RETURNING id',
+      );
+      expect(params).toEqual([OrderStep.SCHEDULE, 1000]);
+      expect(result.lastStep).toBe(OrderStep.SCHEDULE);
     });
 
     it('re-validates incoterm against the merged payment terms', async () => {

@@ -11,6 +11,7 @@ import {
   Destination,
   Incoterm,
   OrderStatus,
+  OrderStep,
   PaymentTerms,
   ShipmentType,
 } from '../orders.enums';
@@ -94,4 +95,10 @@ export class CreateOrderDto {
   @IsString()
   @MaxLength(50)
   flightNumber?: string;
+
+  /** Furthest form step reached; defaults to `customer` in the DB. */
+  @ApiPropertyOptional({ enum: OrderStep, enumName: 'OrderStep' })
+  @IsOptional()
+  @IsEnum(OrderStep)
+  lastStep?: OrderStep;
 }

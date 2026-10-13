@@ -98,7 +98,7 @@ describe('CcfScreen', () => {
     createFixture('CCF1042');
     flushShipmentFiles();
 
-    expect(pageTitleText()).toContain('תיק סליקה');
+    expect(pageTitleText()).toContain('תיק עמילות');
     expect(headerFileNumber()).toBe('CCF1042');
   });
 

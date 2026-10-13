@@ -6,6 +6,7 @@ import {
   Destination,
   Incoterm,
   OrderStatus,
+  OrderStep,
   PaymentTerms,
   ShipmentType,
 } from '../../../../api/enums';
@@ -41,6 +42,7 @@ function order(id: number): OrderDto {
     voyageNumber: null,
     airline: null,
     flightNumber: null,
+    lastStep: OrderStep.CUSTOMER,
     isActive: true,
     mblId: null,
   };

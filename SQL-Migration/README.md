@@ -28,6 +28,7 @@ wired to `npm run db:generate`.
 | `019_create_customs_clearance_files.sql` | `customs_clearance_files` table ("תיק סליקת מכס"): server-generated sequential `file_number` (`CCF1000`, ...), optional 1:1 `shipment_file_id` → `mbl(id)` (UNIQUE, nullable), `status`, `created_by` | `Amilut` | `Admin` (via `SET ROLE`) |
 | `020_create_notifications.sql` | `notifications` table — minimal in-app notification system (recipient, message, optional `related_ccf_id` → `customs_clearance_files(id)`, read/unread), first used by the CCF feature | `Amilut` | `Admin` (via `SET ROLE`) |
 | `021_import_account_files_order_or_ccf.sql` | Re-points `import_account_files` from `mbl` (`account_id`) to either `orders.id` (`order_id`) or `customs_clearance_files.id` (`ccf_id`), exactly one via CHECK; truncates existing dev rows (no valid backfill target) | `Amilut` | `Admin` (via `SET ROLE`) |
+| `022_orders_last_step.sql` | Adds `orders.last_step` (`customer`/`shipment`/`schedule`/`documents`, default `customer`) — the furthest tab of the order form reached, so a saved partial order resumes there | `Amilut` | `Admin` (via `SET ROLE`) |
 | `run-migrations.mjs` | Applies `001`, then every other `NNN_*.sql` in name order | — | — |
 | `reset-superuser-password.ps1` | Recovery tool: resets a lost `postgres` superuser password on this machine (elevated PowerShell; `-SaveToEnv` writes it into the root `.env`) | — | Windows admin |
 
@@ -79,7 +80,7 @@ Amilut
 │              status, shipment_type, payment_terms, incoterm, destination,
 │              factory_ready_date, factory_pickup_date, departure_date, eta_date,
 │              shipping_line, voyage_number, airline, flight_number,
-│              updated_at, isActive)
+│              last_step [022], updated_at, isActive)
 ├── order_account (id [1 case → many orders.case_id],
 │              bill_of_lading_number, document_type, bl_issue_date,
 │              forwarder_name, voyage_flight_number, vessel_name,
@@ -151,7 +152,7 @@ Amilut
                -- CCF feature
 
 Enum-like columns (`status`, `shipment_type`, `payment_terms`, `incoterm`,
-`destination` in `orders`; `document_type` in `order_account`; `shipping_type`,
+`destination`, `last_step` in `orders`; `document_type` in `order_account`; `shipping_type`,
 `sea_method`, `freight_terms`, `status` in `mbl`; `status` in
 `customs_clearance_files`) store English codes guarded by CHECK constraints;
 the source of truth for `orders`' enums is `server/src/orders/orders.enums.ts`,

@@ -23,6 +23,7 @@ import {
   Incoterm,
   INCOTERMS_BY_PAYMENT_TERMS,
   OrderStatus,
+  OrderStep,
   PaymentTerms,
   ShipmentType,
 } from './orders.enums';
@@ -51,6 +52,7 @@ interface OrderRow {
   voyage_number: string | null;
   airline: string | null;
   flight_number: string | null;
+  last_step: OrderStep;
   is_active: boolean;
   mbl_id: number | null;
 }
@@ -72,6 +74,7 @@ const WRITABLE_COLUMNS: Record<keyof CreateOrderDto, string> = {
   voyageNumber: 'voyage_number',
   airline: 'airline',
   flightNumber: 'flight_number',
+  lastStep: 'last_step',
 };
 
 const WRITABLE_KEYS = Object.keys(WRITABLE_COLUMNS) as (keyof CreateOrderDto)[];
@@ -99,6 +102,7 @@ const ORDER_COLUMNS = `o.id,
          o.voyage_number,
          o.airline,
          o.flight_number,
+         o.last_step,
          o."isActive" AS is_active,
          h.mbl_id`;
 
@@ -394,6 +398,7 @@ function toOrderDto(row: OrderRow): OrderDto {
     voyageNumber: row.voyage_number ?? null,
     airline: row.airline ?? null,
     flightNumber: row.flight_number ?? null,
+    lastStep: row.last_step,
     isActive: row.is_active,
     mblId: row.mbl_id ?? null,
   };

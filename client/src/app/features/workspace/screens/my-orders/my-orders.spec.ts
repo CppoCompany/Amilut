@@ -5,7 +5,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { vi } from 'vitest';
 
-import { Destination, Incoterm, OrderStatus, PaymentTerms, ShipmentType } from '../../../../api/enums';
+import { Destination, Incoterm, OrderStatus, OrderStep, PaymentTerms, ShipmentType } from '../../../../api/enums';
 import type { OrderDto } from '../../../../api/models';
 import { NavigationService } from '../../navigation.service';
 import { provideWorkspaceTestRouting, settleNavigation } from '../../navigation.testing';
@@ -44,6 +44,7 @@ const ORDER_WITH_CASE: OrderDto = {
   voyageNumber: null,
   airline: null,
   flightNumber: null,
+  lastStep: OrderStep.CUSTOMER,
   isActive: true,
   mblId: 7,
 };
