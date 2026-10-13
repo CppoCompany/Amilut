@@ -152,7 +152,7 @@
         <table class="data-table">
           <thead>
             <tr>
-              <th>מספר תיק</th>
+              <th>הקשר</th>
               <th>מק"ט</th>
               <th>תיאור</th>
               <th>פרט מכס</th>
@@ -163,7 +163,7 @@
           <tbody>
             @for (line of data()!.myClassifications; track line.fileId + ':' + line.lineIndex) {
               <tr>
-                <td class="data-table__numeric">{{ line.mblId }}</td>
+                <td>{{ line.contextLabel }}</td>
                 <td>{{ line.item || '—' }}</td>
                 <td>{{ line.description || '—' }}</td>
                 <td class="data-table__numeric">{{ line.classificationCode || '—' }}</td>

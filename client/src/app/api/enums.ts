@@ -7,6 +7,7 @@
  * compilation here until a label is provided.
  */
 import {
+  CcfStatus,
   ClassificationApproval,
   ClassificationLicense,
   Destination,
@@ -22,6 +23,7 @@ import {
 } from './generated/schema';
 
 export {
+  CcfStatus,
   ClassificationApproval,
   ClassificationLicense,
   Destination,
@@ -79,6 +81,12 @@ export const MBL_STATUS_LABELS: Record<MblStatus, string> = {
   [MblStatus.CLOSED]: 'סגור',
 };
 
+/** Lifecycle status of a Customs Clearance File (`customs_clearance_files.status`). */
+export const CCF_STATUS_LABELS: Record<CcfStatus, string> = {
+  [CcfStatus.OPEN]: 'פתוח',
+  [CcfStatus.CLOSED]: 'סגור',
+};
+
 /** Incoterms are shown as their codes. */
 export const INCOTERM_LABELS: Record<Incoterm, string> = {
   [Incoterm.CFR]: 'CFR',
@@ -129,7 +137,18 @@ export const IMPORT_DOCUMENT_TYPE_LABELS: Record<ImportDocumentType, string> = {
   [ImportDocumentType.MASTER_BILL_OF_LADING]: 'שטר מטען-מסטר',
   [ImportDocumentType.PACKING_LIST]: 'מפרט אריזות',
   [ImportDocumentType.CERTIFICATE_OF_ORIGIN]: 'תעודת שוק/מקור',
+  [ImportDocumentType.OTHER]: 'מסמכים נוספים',
 };
+
+/** The four document kinds the CCF screen's inline upload widget offers — a
+ *  deliberate subset of ImportDocumentType (no MASTER_BILL_OF_LADING /
+ *  CERTIFICATE_OF_ORIGIN there); Filing's own dropdown keeps offering all. */
+export const CCF_IMPORT_DOCUMENT_TYPES: readonly ImportDocumentType[] = [
+  ImportDocumentType.BILL_OF_LADING,
+  ImportDocumentType.SUPPLIER_INVOICE,
+  ImportDocumentType.PACKING_LIST,
+  ImportDocumentType.OTHER,
+];
 
 /** Regulatory approvals a classified product line may need ("אישורים" on the classification screen, multi-select). */
 export const CLASSIFICATION_APPROVAL_LABELS: Record<ClassificationApproval, string> = {

@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
@@ -10,15 +10,18 @@ import type {
   SaveLineItemClassificationsDto,
   UploadedImportFileDto,
 } from './models';
+import type { FilingContext } from './filing-context.model';
 import { PagedQueryParams, toHttpParams } from './paging';
 
 /** Sort keys accepted by `GET /api/import-files/classifications` (whitelisted server-side). */
-export type ClassificationSortKey = 'createdAt' | 'accountId' | 'item' | 'classificationCode';
+export type ClassificationSortKey = 'createdAt' | 'orderId' | 'ccfId' | 'item' | 'classificationCode';
 
 /** Query parameters accepted by `GET /api/import-files/classifications` — "הסיווגים שלי". */
 export interface PagedClassificationsParams extends PagedQueryParams {
-  /** Only lines filed under this import case ("מספר תיק"). */
-  accountId?: number;
+  /** Only lines filed under this order. */
+  orderId?: number;
+  /** Only lines filed under this Customs Clearance File. */
+  ccfId?: number;
   sort?: ClassificationSortKey;
 }
 
@@ -28,9 +31,19 @@ export const IMPORT_FILES_FIELD = 'files';
 /** Multipart text field naming the kind of paperwork every file in the request is (`ImportDocumentType`). */
 export const IMPORT_DOCUMENT_TYPE_FIELD = 'documentType';
 
+/** `?orderId=`/`?ccfId=` — every import-files route is scoped by exactly one. */
+function contextParams(context: FilingContext): HttpParams {
+  return new HttpParams().set(
+    context.kind === 'order' ? 'orderId' : 'ccfId',
+    String(context.id),
+  );
+}
+
 /**
- * Thin HTTP client over `/api/import-files`. Files are sent as
- * `multipart/form-data`; the bearer token is attached by the auth interceptor.
+ * Thin HTTP client over `/api/import-files`. Every route is scoped by an
+ * Order or a Customs Clearance File (`?orderId=`/`?ccfId=`), never a path
+ * param. Files are sent as `multipart/form-data`; the bearer token is
+ * attached by the auth interceptor.
  */
 @Injectable({ providedIn: 'root' })
 export class ImportFilesApi {
@@ -39,7 +52,7 @@ export class ImportFilesApi {
 
   /**
    * `GET /api/import-files/classifications` — one page of classified
-   * supplier-invoice lines across every import case, filtered/sorted server-side.
+   * supplier-invoice lines across every order/CCF, filtered/sorted server-side.
    */
   listClassifications(params: PagedClassificationsParams = {}): Observable<PagedClassificationsDto> {
     return this.http.get<PagedClassificationsDto>(`${this.baseUrl}/classifications`, {
@@ -48,32 +61,34 @@ export class ImportFilesApi {
   }
 
   /**
-   * `GET /api/import-files/:accountNumber` — the files filed under the case,
-   * newest first, one per file name (a re-upload replaces the older entry).
+   * `GET /api/import-files?orderId=|ccfId=` — the files filed under the
+   * order/CCF, newest first, one per file name (a re-upload replaces the
+   * older entry).
    */
-  listImportFiles(accountNumber: number): Observable<UploadedImportFileDto[]> {
-    return this.http.get<UploadedImportFileDto[]>(`${this.baseUrl}/${accountNumber}`);
+  listImportFiles(context: FilingContext): Observable<UploadedImportFileDto[]> {
+    return this.http.get<UploadedImportFileDto[]>(this.baseUrl, { params: contextParams(context) });
   }
 
   /**
-   * `GET /api/import-files/:accountNumber/files/:fileId` — the bytes of one
+   * `GET /api/import-files/files/:fileId?orderId=|ccfId=` — the bytes of one
    * filed document, typed with its stored MIME type. Fetched through
    * `HttpClient` (not a plain link) so the bearer token travels with it.
    */
-  getImportFileBlob(accountNumber: number, fileId: number): Observable<Blob> {
-    return this.http.get(`${this.baseUrl}/${accountNumber}/files/${fileId}`, {
+  getImportFileBlob(context: FilingContext, fileId: number): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/files/${fileId}`, {
+      params: contextParams(context),
       responseType: 'blob',
     });
   }
 
   /**
-   * `POST /api/import-files/:accountNumber` — stores every file under
-   * `storage/<accountNumber>/` on the server, keeping the original names, and
-   * records each one as a `documentType` document of that case. The server
-   * requires `documentType` and rejects the request without it.
+   * `POST /api/import-files?orderId=|ccfId=` — stores every file under
+   * `storage/<order-N|ccf-N>/` on the server, keeping the original names,
+   * and records each one as a `documentType` document of that order/CCF.
+   * The server requires `documentType` and rejects the request without it.
    */
   uploadMultipleImportFiles(
-    accountNumber: number,
+    context: FilingContext,
     documentType: ImportDocumentType,
     files: readonly File[],
   ): Observable<UploadedImportFileDto[]> {
@@ -82,31 +97,36 @@ export class ImportFilesApi {
     for (const file of files) {
       body.append(IMPORT_FILES_FIELD, file, file.name);
     }
-    return this.http.post<UploadedImportFileDto[]>(`${this.baseUrl}/${accountNumber}`, body);
+    return this.http.post<UploadedImportFileDto[]>(this.baseUrl, body, {
+      params: contextParams(context),
+    });
   }
 
   /**
-   * `GET /api/import-files/:accountNumber/line-items` — the line items the
-   * server extracted from every supplier invoice filed under that case.
+   * `GET /api/import-files/line-items?orderId=|ccfId=` — the line items the
+   * server extracted from every supplier invoice filed under that order/CCF.
    */
-  getSupplierInvoiceLineItems(accountNumber: number): Observable<InvoiceLineItemDto[]> {
-    return this.http.get<InvoiceLineItemDto[]>(`${this.baseUrl}/${accountNumber}/line-items`);
+  getSupplierInvoiceLineItems(context: FilingContext): Observable<InvoiceLineItemDto[]> {
+    return this.http.get<InvoiceLineItemDto[]>(`${this.baseUrl}/line-items`, {
+      params: contextParams(context),
+    });
   }
 
   /**
-   * `PUT /api/import-files/:accountNumber/line-items/classification` — records
-   * the classification screen's columns against the stored supplier-invoice
-   * lines (`fileId` + `lineIndex` from the GET above) and returns the refreshed
-   * line list.
+   * `PUT /api/import-files/line-items/classification?orderId=|ccfId=` —
+   * records the classification screen's columns against the stored
+   * supplier-invoice lines (`fileId` + `lineIndex` from the GET above) and
+   * returns the refreshed line list.
    */
   saveLineItemClassifications(
-    accountNumber: number,
+    context: FilingContext,
     items: readonly LineItemClassificationUpdateDto[],
   ): Observable<InvoiceLineItemDto[]> {
     const body: SaveLineItemClassificationsDto = { items: [...items] };
     return this.http.put<InvoiceLineItemDto[]>(
-      `${this.baseUrl}/${accountNumber}/line-items/classification`,
+      `${this.baseUrl}/line-items/classification`,
       body,
+      { params: contextParams(context) },
     );
   }
 }

@@ -5,6 +5,7 @@
     <span>עמילות מכס & שילוח</span>
   </div>
   <div class="header-left">
+    <app-notification-bell />
     <div class="user-info">
       <span>שלום, {{ auth.user()?.name }}</span>
       <i class="fa-solid fa-circle-user fa-lg"></i>
@@ -167,6 +168,9 @@
         }
         @case ('classification') {
           <app-classification-screen />
+        }
+        @case ('ccf') {
+          <app-ccf-screen />
         }
         @case ('importDeclaration') {
           <app-import-declaration-screen />

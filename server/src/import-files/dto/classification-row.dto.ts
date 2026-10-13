@@ -11,9 +11,17 @@ export class ClassificationRowDto {
   @ApiProperty({ type: 'integer', example: 42 })
   fileId!: number;
 
-  /** The import case (`order_account.id`, "מספר תיק") the invoice was filed under. */
-  @ApiProperty({ type: 'integer', example: 1000 })
-  accountId!: number;
+  /** The order this invoice was filed under, when filed under an order. */
+  @ApiProperty({ type: 'integer', nullable: true, example: 1024 })
+  orderId!: number | null;
+
+  /** The Customs Clearance File this invoice was filed under, when filed under one. */
+  @ApiProperty({ type: 'integer', nullable: true, example: 7 })
+  ccfId!: number | null;
+
+  /** "הזמנה 1024" or "תיק עמילות CCF1007" — whichever of orderId/ccfId is set. */
+  @ApiProperty({ example: 'הזמנה 1024' })
+  contextLabel!: string;
 
   @ApiProperty({ example: 'invoice-2026-09.pdf' })
   fileName!: string;

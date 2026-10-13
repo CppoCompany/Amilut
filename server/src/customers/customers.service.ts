@@ -84,7 +84,8 @@ export class CustomersService {
     if (dto.address !== undefined) set('address', dto.address);
     if (dto.phone !== undefined) set('phone', dto.phone);
     if (dto.email !== undefined) set('email', dto.email);
-    if (dto.companyRegNumber !== undefined) set('company_reg_number', dto.companyRegNumber);
+    if (dto.companyRegNumber !== undefined)
+      set('company_reg_number', dto.companyRegNumber);
     if (dto.contactName !== undefined) set('contact_name', dto.contactName);
     if (dto.contactPhone !== undefined) set('contact_phone', dto.contactPhone);
     if (dto.isActive !== undefined) set('"isActive"', dto.isActive);

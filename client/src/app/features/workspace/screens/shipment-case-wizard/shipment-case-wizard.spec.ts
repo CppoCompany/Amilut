@@ -1,7 +1,55 @@
+import type { WritableSignal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { vi } from 'vitest';
 
+import { MblShippingType, MblStatus, SeaMethod } from '../../../../api/enums';
+import type { MblDto } from '../../../../api/models';
 import { NavigationService } from '../../navigation.service';
 import { ShipmentCaseWizardScreen } from './shipment-case-wizard';
+
+/** Only the "מעבר לתיק הסליקה" link cares about `ccfId`; every other field is
+ *  an arbitrary valid placeholder. */
+const MINIMAL_MBL: MblDto = {
+  id: 7,
+  shippingType: MblShippingType.SEA,
+  seaMethod: SeaMethod.FCL_FCL,
+  customerId: null,
+  customerName: null,
+  mblNumber: 'MBL-007',
+  bookingNumber: null,
+  vesselName: null,
+  voyageNumber: null,
+  portOfLoading: null,
+  portOfDischarge: null,
+  finalDestination: null,
+  shipperName: null,
+  shipperAddress: null,
+  consigneeName: null,
+  consigneeAddress: null,
+  notifyPartyName: null,
+  notifyPartyAddress: null,
+  containerNumber: null,
+  containerSealNumber: null,
+  cargoDescription: null,
+  grossWeightKg: null,
+  volumeCbm: null,
+  freightTerms: null,
+  receiptDeliveryType: null,
+  placeOfIssue: null,
+  dateOfIssue: null,
+  carrierName: null,
+  status: MblStatus.OPEN,
+  handlerUserId: null,
+  handlerName: null,
+  ccfId: null,
+  containers: [],
+  createdAt: '2026-09-01T08:30:00.000Z',
+  updatedAt: '2026-09-01T08:30:00.000Z',
+};
+
+type WizardInternals = {
+  savedMbl: WritableSignal<MblDto | null>;
+};
 
 describe('ShipmentCaseWizardScreen', () => {
   let fixture: ComponentFixture<ShipmentCaseWizardScreen>;
@@ -119,5 +167,36 @@ describe('ShipmentCaseWizardScreen', () => {
 
     expect(sectionTitle()).toContain('בחירת סוג משלוח');
     expect(methodCards().length).toBe(2);
+  });
+
+  describe('"מעבר לתיק הסליקה" link', () => {
+    function filingLink(): HTMLButtonElement | null {
+      return fixture.nativeElement.querySelector('.filing-link');
+    }
+
+    it('is absent before any case is saved', () => {
+      expect(filingLink()).toBeNull();
+    });
+
+    it('is absent when the saved case has no linked CCF', () => {
+      const internals = fixture.componentInstance as unknown as WizardInternals;
+      internals.savedMbl.set({ ...MINIMAL_MBL, ccfId: null });
+      fixture.detectChanges();
+
+      expect(filingLink()).toBeNull();
+    });
+
+    it('appears and navigates to the CCF when the saved case has one', () => {
+      const openCcfForView = vi.spyOn(nav, 'openCcfForView').mockImplementation(() => {});
+      const internals = fixture.componentInstance as unknown as WizardInternals;
+      internals.savedMbl.set({ ...MINIMAL_MBL, ccfId: 42 });
+      fixture.detectChanges();
+
+      const link = filingLink();
+      expect(link).not.toBeNull();
+      link!.click();
+
+      expect(openCcfForView).toHaveBeenCalledWith(42);
+    });
   });
 });

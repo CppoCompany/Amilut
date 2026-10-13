@@ -110,7 +110,9 @@ describe('DashboardService', () => {
       db.query.mockResolvedValueOnce([
         {
           file_id: 42,
-          mbl_id: 1000,
+          order_id: 1000,
+          ccf_id: null,
+          ccf_file_number: null,
           line_index: '2',
           item: null,
           description: 'Light Fixtures',
@@ -130,7 +132,9 @@ describe('DashboardService', () => {
       expect(result).toEqual([
         {
           fileId: 42,
-          mblId: 1000,
+          orderId: 1000,
+          ccfId: null,
+          contextLabel: 'הזמנה 1000',
           lineIndex: 2,
           item: '',
           description: 'Light Fixtures',
@@ -139,6 +143,29 @@ describe('DashboardService', () => {
           createdAt: '2026-09-01T08:00:00.000Z',
         },
       ]);
+    });
+
+    it('labels a CCF-scoped row by its file number', async () => {
+      db.query.mockResolvedValueOnce([
+        {
+          file_id: 43,
+          order_id: null,
+          ccf_id: 7,
+          ccf_file_number: 'CCF1007',
+          line_index: '0',
+          item: 'Y8022-140BK',
+          description: 'Light Fixtures',
+          classification_code: '9405.10.00',
+          country_name: null,
+          created_at: '2026-09-01T08:00:00.000Z',
+        },
+      ]);
+
+      const [result] = await service.findMyClassifications();
+
+      expect(result.orderId).toBeNull();
+      expect(result.ccfId).toBe(7);
+      expect(result.contextLabel).toBe('תיק עמילות CCF1007');
     });
   });
 

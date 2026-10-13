@@ -49,6 +49,7 @@ const mblRow = {
   status: MblStatus.OPEN,
   handler_user_id: 7,
   handler_name: 'Dana',
+  ccf_id: null,
   created_at: new Date('2026-09-01T08:00:00.000Z'),
   updated_at: new Date('2026-09-01T08:00:00.000Z'),
 };
@@ -124,6 +125,7 @@ describe('MblService', () => {
       expect(result.status).toBe(MblStatus.OPEN);
       expect(result.handlerUserId).toBe(7);
       expect(result.handlerName).toBe('Dana');
+      expect(result.ccfId).toBeNull();
     });
 
     it('leaves status to the database default when not provided', async () => {

@@ -55,7 +55,10 @@ export class HblController {
   @Patch(':id')
   @ApiOkResponse({ type: HblDto })
   @ApiNotFoundResponse()
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateHblDto): Promise<HblDto> {
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateHblDto,
+  ): Promise<HblDto> {
     return this.hbl.update(id, dto);
   }
 

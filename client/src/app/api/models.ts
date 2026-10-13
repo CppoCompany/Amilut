@@ -38,6 +38,13 @@ export type SaveLineItemClassificationsDto =
 
 export type CountryDto = components['schemas']['CountryDto'];
 
+export type CcfDto = components['schemas']['CcfDto'];
+export type CreateCcfDto = components['schemas']['CreateCcfDto'];
+export type NextCcfFileNumberDto = components['schemas']['NextCcfFileNumberDto'];
+
+export type NotificationDto = components['schemas']['NotificationDto'];
+export type UnreadCountDto = components['schemas']['UnreadCountDto'];
+
 export type DashboardResponseDto = components['schemas']['DashboardResponseDto'];
 export type DashboardOrderRowDto = components['schemas']['DashboardOrderRowDto'];
 export type DashboardCaseInReleaseRowDto = components['schemas']['DashboardCaseInReleaseRowDto'];

@@ -23,7 +23,11 @@ const trimToNull = ({ value }: { value: unknown }): unknown => {
 };
 
 export class CreateSupplierDto {
-  @ApiProperty({ example: 'Shanghai Tech Components Co., Ltd', minLength: 1, maxLength: 255 })
+  @ApiProperty({
+    example: 'Shanghai Tech Components Co., Ltd',
+    minLength: 1,
+    maxLength: 255,
+  })
   @Transform(trim)
   @IsString()
   @MinLength(1)

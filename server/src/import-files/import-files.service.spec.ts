@@ -17,18 +17,19 @@ import {
 } from '../classification/classification.enums';
 import { ImportDocumentType } from './import-files.enums';
 import {
-  INSERT_IMPORT_ACCOUNT_FILE_SQL,
   ImportAccountFileData,
+  ImportFilesContext,
   ImportFilesService,
-  SELECT_ACCOUNT_EXISTS_SQL,
+  INSERT_IMPORT_ACCOUNT_FILE_SQL,
+  SELECT_CCF_EXISTS_SQL,
   SELECT_EXISTING_COUNTRY_IDS_SQL,
-  SELECT_FILE_BY_ID_FOR_UPDATE_SQL,
-  SELECT_FILE_BY_ID_SQL,
-  SELECT_LATEST_FILES_SQL,
-  SELECT_LATEST_SUPPLIER_INVOICE_ROWS_SQL,
-  UPDATE_FILE_DATA_SQL,
+  SELECT_ORDER_EXISTS_SQL,
   resolveInsideStorage,
   safeFileName,
+  selectFileByIdSql,
+  selectLatestFilesSql,
+  selectLatestSupplierInvoiceRowsSql,
+  updateFileDataSql,
 } from './import-files.service';
 import { EMPTY_LINE_ITEM_CLASSIFICATION } from './line-item-classification';
 import { InvoiceExtractorService } from './invoice-extraction/invoice-extractor.service';
@@ -72,6 +73,16 @@ function fakeFile(
   return { originalname, buffer, size: buffer.length, mimetype };
 }
 
+/** Most tests use an order context — the CCF branch is exercised by its own
+ *  dedicated tests, since the service's logic is fully symmetric between
+ *  the two (parameterized on `contextColumn`/`contextDirName`). */
+function orderContext(id: number): ImportFilesContext {
+  return { kind: 'order', id };
+}
+function ccfContext(id: number): ImportFilesContext {
+  return { kind: 'ccf', id };
+}
+
 const INVOICE = ImportDocumentType.SUPPLIER_INVOICE;
 
 describe('ImportFilesService', () => {
@@ -81,11 +92,11 @@ describe('ImportFilesService', () => {
   let db: DbMock;
   let extractor: ExtractorMock;
 
-  /** Default DB behaviour: every account exists, inserts return ids 1, 2, 3, … */
-  function accountsExistAndInsertsSucceed() {
+  /** Default DB behaviour: every order/CCF exists, inserts return ids 1, 2, 3, … */
+  function contextsExistAndInsertsSucceed() {
     let nextId = 1;
     client.query.mockImplementation((sql: string, params: unknown[]) => {
-      if (sql === SELECT_ACCOUNT_EXISTS_SQL) {
+      if (sql === SELECT_ORDER_EXISTS_SQL || sql === SELECT_CCF_EXISTS_SQL) {
         return Promise.resolve({ rows: [{ id: params[0] }] });
       }
       if (sql === INSERT_IMPORT_ACCOUNT_FILE_SQL) {
@@ -101,9 +112,9 @@ describe('ImportFilesService', () => {
     );
   }
 
-  /** The JSON written for the n-th inserted row. */
+  /** The JSON written for the n-th inserted row (INSERT params: order_id, ccf_id, data). */
   function insertedData(index = 0): ImportAccountFileData {
-    const [, json] = insertCalls()[index][1];
+    const [, , json] = insertCalls()[index][1];
     return JSON.parse(json as string) as ImportAccountFileData;
   }
 
@@ -118,7 +129,7 @@ describe('ImportFilesService', () => {
         work(client),
       ),
     };
-    accountsExistAndInsertsSucceed();
+    contextsExistAndInsertsSucceed();
     extractor = {
       extract: jest
         .fn<Promise<InvoiceExtractionResult>, [unknown]>()
@@ -133,18 +144,22 @@ describe('ImportFilesService', () => {
 
   afterEach(() => rm(storageDir, { recursive: true, force: true }));
 
-  it('writes every file under <storage>/<accountNumber>/ keeping the original names', async () => {
-    const result = await service.uploadMultipleImportFiles(1000, INVOICE, [
-      fakeFile('חשבון ספק.pdf', 'invoice'),
-      fakeFile('packing list.xlsx', 'packing', 'application/vnd.ms-excel'),
-    ]);
+  it('writes every file under <storage>/order-<id>/ keeping the original names', async () => {
+    const result = await service.uploadMultipleImportFiles(
+      orderContext(1000),
+      INVOICE,
+      [
+        fakeFile('חשבון ספק.pdf', 'invoice'),
+        fakeFile('packing list.xlsx', 'packing', 'application/vnd.ms-excel'),
+      ],
+    );
 
-    const accountDir = path.join(storageDir, '1000');
-    expect((await readdir(accountDir)).sort()).toEqual([
+    const contextDir = path.join(storageDir, 'order-1000');
+    expect((await readdir(contextDir)).sort()).toEqual([
       'packing list.xlsx',
       'חשבון ספק.pdf',
     ]);
-    expect(await readFile(path.join(accountDir, 'חשבון ספק.pdf'), 'utf8')).toBe(
+    expect(await readFile(path.join(contextDir, 'חשבון ספק.pdf'), 'utf8')).toBe(
       'invoice',
     );
 
@@ -155,7 +170,7 @@ describe('ImportFilesService', () => {
       name: 'חשבון ספק.pdf',
       size: Buffer.byteLength('invoice'),
       mimeType: 'application/pdf',
-      relativePath: '1000/חשבון ספק.pdf',
+      relativePath: 'order-1000/חשבון ספק.pdf',
     });
     expect(result[1]).toMatchObject({ id: 2, name: 'packing list.xlsx' });
     expect(new Date(result[0].uploadedAt).toISOString()).toBe(
@@ -163,29 +178,49 @@ describe('ImportFilesService', () => {
     );
   });
 
+  it('writes every file under <storage>/ccf-<id>/ when scoped to a CCF', async () => {
+    const result = await service.uploadMultipleImportFiles(
+      ccfContext(7),
+      INVOICE,
+      [fakeFile('a.pdf', 'x')],
+    );
+
+    expect(client.query).toHaveBeenCalledWith(SELECT_CCF_EXISTS_SQL, [7]);
+    expect(
+      await readFile(path.join(storageDir, 'ccf-7', 'a.pdf'), 'utf8'),
+    ).toBe('x');
+    expect(result[0].relativePath).toBe('ccf-7/a.pdf');
+
+    const [orderId, ccfId] = insertCalls()[0][1];
+    expect(orderId).toBeNull();
+    expect(ccfId).toBe(7);
+  });
+
   it('inserts one import_account_files row per file inside one transaction', async () => {
-    const result = await service.uploadMultipleImportFiles(1000, INVOICE, [
-      fakeFile('a.pdf', 'aa'),
-      fakeFile('b.pdf', 'bbb', 'application/octet-stream'),
-    ]);
+    const result = await service.uploadMultipleImportFiles(
+      orderContext(1000),
+      INVOICE,
+      [
+        fakeFile('a.pdf', 'aa'),
+        fakeFile('b.pdf', 'bbb', 'application/octet-stream'),
+      ],
+    );
 
     expect(db.transaction).toHaveBeenCalledTimes(1);
-    expect(client.query).toHaveBeenCalledWith(
-      SELECT_ACCOUNT_EXISTS_SQL,
-      [1000],
-    );
+    expect(client.query).toHaveBeenCalledWith(SELECT_ORDER_EXISTS_SQL, [1000]);
 
     const inserts = insertCalls();
     expect(inserts).toHaveLength(2);
 
-    const [accountId, json] = inserts[1][1];
-    expect(accountId).toBe(1000);
+    const [orderId, ccfId, json] = inserts[1][1];
+    expect(orderId).toBe(1000);
+    expect(ccfId).toBeNull();
     expect(JSON.parse(json as string)).toEqual({
       documentType: INVOICE,
       name: 'b.pdf',
       size: 3,
       mimeType: 'application/octet-stream',
-      relativePath: '1000/b.pdf',
+      relativePath: 'order-1000/b.pdf',
       uploadedAt: result[1].uploadedAt,
       lineItems: [],
     });
@@ -197,9 +232,11 @@ describe('ImportFilesService', () => {
       extractor.extract.mockResolvedValue({ lineItems: [LINE_ITEM] });
       const file = fakeFile('חשבון ספק.pdf', 'invoice');
 
-      const result = await service.uploadMultipleImportFiles(1000, INVOICE, [
-        file,
-      ]);
+      const result = await service.uploadMultipleImportFiles(
+        orderContext(1000),
+        INVOICE,
+        [file],
+      );
 
       expect(extractor.extract).toHaveBeenCalledTimes(1);
       expect(extractor.extract).toHaveBeenCalledWith(
@@ -229,9 +266,11 @@ describe('ImportFilesService', () => {
         extractionError: 'No line-item table found',
       });
 
-      const result = await service.uploadMultipleImportFiles(1000, INVOICE, [
-        fakeFile('scan.pdf', 'x'),
-      ]);
+      const result = await service.uploadMultipleImportFiles(
+        orderContext(1000),
+        INVOICE,
+        [fakeFile('scan.pdf', 'x')],
+      );
 
       expect(insertedData()).toMatchObject({
         lineItems: [],
@@ -246,7 +285,7 @@ describe('ImportFilesService', () => {
 
     it('does not extract or store lineItems for other document types', async () => {
       const result = await service.uploadMultipleImportFiles(
-        1000,
+        orderContext(1000),
         ImportDocumentType.BILL_OF_LADING,
         [fakeFile('bl.pdf', 'x')],
       );
@@ -261,9 +300,11 @@ describe('ImportFilesService', () => {
     it('still stores the file when the extractor throws', async () => {
       extractor.extract.mockRejectedValue(new Error('pdf2json exploded'));
 
-      const result = await service.uploadMultipleImportFiles(1000, INVOICE, [
-        fakeFile('bad.pdf', 'x'),
-      ]);
+      const result = await service.uploadMultipleImportFiles(
+        orderContext(1000),
+        INVOICE,
+        [fakeFile('bad.pdf', 'x')],
+      );
 
       expect(result).toHaveLength(1);
       expect(insertedData()).toMatchObject({
@@ -272,7 +313,7 @@ describe('ImportFilesService', () => {
         extractionError: 'pdf2json exploded',
       });
       expect(
-        await readFile(path.join(storageDir, '1000', 'bad.pdf'), 'utf8'),
+        await readFile(path.join(storageDir, 'order-1000', 'bad.pdf'), 'utf8'),
       ).toBe('x');
     });
 
@@ -284,14 +325,18 @@ describe('ImportFilesService', () => {
       );
       const buffer = await readFile(SUPPLIER_INVOICE_FIXTURE);
 
-      const result = await service.uploadMultipleImportFiles(1000, INVOICE, [
-        {
-          originalname: 'חשבון ספק.pdf',
-          buffer,
-          size: buffer.length,
-          mimetype: 'application/pdf',
-        },
-      ]);
+      const result = await service.uploadMultipleImportFiles(
+        orderContext(1000),
+        INVOICE,
+        [
+          {
+            originalname: 'חשבון ספק.pdf',
+            buffer,
+            size: buffer.length,
+            mimetype: 'application/pdf',
+          },
+        ],
+      );
 
       const data = insertedData();
       expect(data.extractionError).toBeUndefined();
@@ -303,7 +348,7 @@ describe('ImportFilesService', () => {
 
   it('tags every row with the requested document type', async () => {
     const result = await service.uploadMultipleImportFiles(
-      5,
+      orderContext(5),
       ImportDocumentType.CERTIFICATE_OF_ORIGIN,
       [fakeFile('coo.pdf', 'x')],
     );
@@ -311,34 +356,27 @@ describe('ImportFilesService', () => {
     expect(result[0].documentType).toBe(
       ImportDocumentType.CERTIFICATE_OF_ORIGIN,
     );
-    const [, json] = insertCalls()[0][1];
+    const [, , json] = insertCalls()[0][1];
     const data = JSON.parse(json as string) as { documentType: string };
     expect(data.documentType).toBe(ImportDocumentType.CERTIFICATE_OF_ORIGIN);
   });
 
   it('overwrites a file that already exists with the same name', async () => {
-    await service.uploadMultipleImportFiles(7, INVOICE, [
+    await service.uploadMultipleImportFiles(orderContext(7), INVOICE, [
       fakeFile('a.pdf', 'old'),
     ]);
-    await service.uploadMultipleImportFiles(7, INVOICE, [
+    await service.uploadMultipleImportFiles(orderContext(7), INVOICE, [
       fakeFile('a.pdf', 'new'),
     ]);
 
-    expect(await readFile(path.join(storageDir, '7', 'a.pdf'), 'utf8')).toBe(
-      'new',
-    );
+    expect(
+      await readFile(path.join(storageDir, 'order-7', 'a.pdf'), 'utf8'),
+    ).toBe('new');
   });
 
   it('rejects an empty upload', async () => {
     await expect(
-      service.uploadMultipleImportFiles(1000, INVOICE, []),
-    ).rejects.toBeInstanceOf(BadRequestException);
-    expect(db.transaction).not.toHaveBeenCalled();
-  });
-
-  it('rejects a non-positive account number', async () => {
-    await expect(
-      service.uploadMultipleImportFiles(0, INVOICE, [fakeFile('a.pdf', 'x')]),
+      service.uploadMultipleImportFiles(orderContext(1000), INVOICE, []),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(db.transaction).not.toHaveBeenCalled();
   });
@@ -346,77 +384,83 @@ describe('ImportFilesService', () => {
   it('rejects a missing document type without touching disk or database', async () => {
     await expect(
       service.uploadMultipleImportFiles(
-        1000,
+        orderContext(1000),
         undefined as unknown as ImportDocumentType,
         [fakeFile('a.pdf', 'x')],
       ),
     ).rejects.toBeInstanceOf(BadRequestException);
 
     expect(db.transaction).not.toHaveBeenCalled();
-    await expect(readdir(path.join(storageDir, '1000'))).rejects.toMatchObject({
-      code: 'ENOENT',
-    });
+    await expect(
+      readdir(path.join(storageDir, 'order-1000')),
+    ).rejects.toMatchObject({ code: 'ENOENT' });
   });
 
   it('rejects a document type outside the enum', async () => {
     await expect(
-      service.uploadMultipleImportFiles(1000, 'INVOICE' as ImportDocumentType, [
-        fakeFile('a.pdf', 'x'),
-      ]),
+      service.uploadMultipleImportFiles(
+        orderContext(1000),
+        'INVOICE' as ImportDocumentType,
+        [fakeFile('a.pdf', 'x')],
+      ),
     ).rejects.toThrow('documentType must be one of');
     expect(db.transaction).not.toHaveBeenCalled();
   });
 
   it('writes nothing when one of the names is unsafe', async () => {
     await expect(
-      service.uploadMultipleImportFiles(9, INVOICE, [
+      service.uploadMultipleImportFiles(orderContext(9), INVOICE, [
         fakeFile('ok.pdf', 'x'),
         fakeFile('../evil.pdf', 'y'),
       ]),
     ).rejects.toBeInstanceOf(BadRequestException);
 
     expect(db.transaction).not.toHaveBeenCalled();
-    await expect(readdir(path.join(storageDir, '9'))).rejects.toMatchObject({
-      code: 'ENOENT',
-    });
+    await expect(
+      readdir(path.join(storageDir, 'order-9')),
+    ).rejects.toMatchObject({ code: 'ENOENT' });
   });
 
-  it('returns 404 and writes nothing when the account does not exist', async () => {
+  it('returns 404 and writes nothing when the order does not exist', async () => {
     client.query.mockImplementation((sql: string) =>
-      sql === SELECT_ACCOUNT_EXISTS_SQL
+      sql === SELECT_ORDER_EXISTS_SQL
         ? Promise.resolve({ rows: [] })
         : Promise.reject(new Error(`Unexpected SQL: ${sql}`)),
     );
 
     await expect(
-      service.uploadMultipleImportFiles(404, INVOICE, [fakeFile('a.pdf', 'x')]),
+      service.uploadMultipleImportFiles(orderContext(404), INVOICE, [
+        fakeFile('a.pdf', 'x'),
+      ]),
     ).rejects.toMatchObject({
       constructor: NotFoundException,
-      message: 'Import case (account) 404 not found',
+      message: 'Order 404 not found',
     });
 
     expect(insertCalls()).toHaveLength(0);
-    await expect(readdir(path.join(storageDir, '404'))).rejects.toMatchObject({
-      code: 'ENOENT',
-    });
+    await expect(
+      readdir(path.join(storageDir, 'order-404')),
+    ).rejects.toMatchObject({ code: 'ENOENT' });
   });
 
   it('maps a foreign-key violation on insert (23503) to 404', async () => {
     client.query.mockImplementation((sql: string, params: unknown[]) =>
-      sql === SELECT_ACCOUNT_EXISTS_SQL
+      sql === SELECT_ORDER_EXISTS_SQL
         ? Promise.resolve({ rows: [{ id: params[0] }] })
         : Promise.reject(Object.assign(new Error('fk'), { code: '23503' })),
     );
 
     await expect(
-      service.uploadMultipleImportFiles(12, INVOICE, [fakeFile('a.pdf', 'x')]),
+      service.uploadMultipleImportFiles(orderContext(12), INVOICE, [
+        fakeFile('a.pdf', 'x'),
+      ]),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('propagates other insert errors so the transaction rolls back', async () => {
     let calls = 0;
     client.query.mockImplementation((sql: string, params: unknown[]) => {
-      if (sql === SELECT_ACCOUNT_EXISTS_SQL) {
+      if (sql === SELECT_ORDER_EXISTS_SQL) {
         return Promise.resolve({ rows: [{ id: params[0] }] });
       }
       calls += 1;
@@ -426,7 +470,7 @@ describe('ImportFilesService', () => {
     });
 
     await expect(
-      service.uploadMultipleImportFiles(3, INVOICE, [
+      service.uploadMultipleImportFiles(orderContext(3), INVOICE, [
         fakeFile('a.pdf', 'x'),
         fakeFile('b.pdf', 'y'),
       ]),
@@ -437,7 +481,7 @@ describe('ImportFilesService', () => {
     );
   });
 
-  it('rejects file names that could escape the account folder', () => {
+  it('rejects file names that could escape the storage folder', () => {
     for (const bad of [
       '',
       ' ',
@@ -478,62 +522,59 @@ describe('ImportFilesService', () => {
           name,
           size: 1,
           mimeType: 'application/pdf',
-          relativePath: `1000/${name}`,
+          relativePath: `order-1000/${name}`,
           uploadedAt,
           ...extra,
         },
       };
     }
 
-    /** `db.queryOne` finds the account; `db.query` answers the line-item SQL with `rows`. */
-    function accountExistsWithRows(rows: { id?: number; data: unknown }[]) {
+    /** `db.queryOne` finds the order; `db.query` answers the line-item SQL with `rows`. */
+    function orderExistsWithRows(rows: { id?: number; data: unknown }[]) {
       db.queryOne.mockImplementation((sql: string, params: unknown[]) =>
-        sql === SELECT_ACCOUNT_EXISTS_SQL
+        sql === SELECT_ORDER_EXISTS_SQL
           ? Promise.resolve({ id: params[0] })
           : Promise.reject(new Error(`Unexpected SQL: ${sql}`)),
       );
       db.query.mockImplementation((sql: string) =>
-        sql === SELECT_LATEST_SUPPLIER_INVOICE_ROWS_SQL
+        sql === selectLatestSupplierInvoiceRowsSql(orderContext(1000))
           ? Promise.resolve(rows)
           : Promise.reject(new Error(`Unexpected SQL: ${sql}`)),
       );
     }
 
-    it('returns [] when the case has no supplier invoice rows', async () => {
-      accountExistsWithRows([]);
+    it('returns [] when the order has no supplier invoice rows', async () => {
+      orderExistsWithRows([]);
 
-      await expect(service.getSupplierInvoiceLineItems(1000)).resolves.toEqual(
-        [],
-      );
-      expect(db.queryOne).toHaveBeenCalledWith(
-        SELECT_ACCOUNT_EXISTS_SQL,
-        [1000],
-      );
+      await expect(
+        service.getSupplierInvoiceLineItems(orderContext(1000)),
+      ).resolves.toEqual([]);
+      expect(db.queryOne).toHaveBeenCalledWith(SELECT_ORDER_EXISTS_SQL, [1000]);
       expect(db.transaction).not.toHaveBeenCalled();
     });
 
     it('queries only the newest SUPPLIER_INVOICE row per file name and maps its items', async () => {
-      accountExistsWithRows([
+      orderExistsWithRows([
         invoiceRow('a.pdf', '2026-09-20T10:00:00.000Z', {
           lineItems: [SECOND_ITEM],
         }),
       ]);
 
-      const result = await service.getSupplierInvoiceLineItems(1000);
+      const result = await service.getSupplierInvoiceLineItems(
+        orderContext(1000),
+      );
 
       expect(db.query).toHaveBeenCalledTimes(1);
       expect(db.query).toHaveBeenCalledWith(
-        SELECT_LATEST_SUPPLIER_INVOICE_ROWS_SQL,
+        selectLatestSupplierInvoiceRowsSql(orderContext(1000)),
         [1000, INVOICE],
       );
       // The de-duplication lives in the SQL itself.
-      expect(SELECT_LATEST_SUPPLIER_INVOICE_ROWS_SQL).toContain(
-        "DISTINCT ON (data->>'name')",
-      );
-      expect(SELECT_LATEST_SUPPLIER_INVOICE_ROWS_SQL).toContain('id DESC');
-      expect(SELECT_LATEST_SUPPLIER_INVOICE_ROWS_SQL).toContain(
-        "data->>'documentType' = $2",
-      );
+      const sql = selectLatestSupplierInvoiceRowsSql(orderContext(1000));
+      expect(sql).toContain("DISTINCT ON (data->>'name')");
+      expect(sql).toContain('id DESC');
+      expect(sql).toContain("data->>'documentType' = $2");
+      expect(sql).toContain('WHERE order_id = $1');
       expect(result).toEqual([
         {
           ...SECOND_ITEM,
@@ -544,8 +585,13 @@ describe('ImportFilesService', () => {
       ]);
     });
 
+    it('scopes by ccf_id instead when given a CCF context', () => {
+      const sql = selectLatestSupplierInvoiceRowsSql(ccfContext(7));
+      expect(sql).toContain('WHERE ccf_id = $1');
+    });
+
     it('returns the stored classification of a line, normalised', async () => {
-      accountExistsWithRows([
+      orderExistsWithRows([
         invoiceRow('a.pdf', '2026-09-20T10:00:00.000Z', {
           lineItems: [
             {
@@ -567,7 +613,9 @@ describe('ImportFilesService', () => {
         }),
       ]);
 
-      const [first, second] = await service.getSupplierInvoiceLineItems(1000);
+      const [first, second] = await service.getSupplierInvoiceLineItems(
+        orderContext(1000),
+      );
 
       expect(first.classification).toEqual({
         tradeAgreement: TradeAgreement.EU,
@@ -580,7 +628,7 @@ describe('ImportFilesService', () => {
     });
 
     it('concatenates the items of several invoices in the order the SQL returns them (uploadedAt)', async () => {
-      accountExistsWithRows([
+      orderExistsWithRows([
         invoiceRow('first.pdf', '2026-09-20T10:00:00.000Z', {
           lineItems: [LINE_ITEM],
         }),
@@ -593,7 +641,9 @@ describe('ImportFilesService', () => {
         }),
       ]);
 
-      const result = await service.getSupplierInvoiceLineItems(1000);
+      const result = await service.getSupplierInvoiceLineItems(
+        orderContext(1000),
+      );
 
       expect(
         result.map(({ item, fileId, lineIndex }) => [item, fileId, lineIndex]),
@@ -605,7 +655,7 @@ describe('ImportFilesService', () => {
     });
 
     it('skips rows without lineItems and normalises missing fields', async () => {
-      accountExistsWithRows([
+      orderExistsWithRows([
         invoiceRow('no-items.pdf', '2026-09-20T10:00:00.000Z'),
         {
           id: 2,
@@ -620,7 +670,9 @@ describe('ImportFilesService', () => {
         },
       ]);
 
-      await expect(service.getSupplierInvoiceLineItems(1000)).resolves.toEqual([
+      await expect(
+        service.getSupplierInvoiceLineItems(orderContext(1000)),
+      ).resolves.toEqual([
         {
           fileId: 2,
           lineIndex: 0,
@@ -654,26 +706,27 @@ describe('ImportFilesService', () => {
       ]);
     });
 
-    it('returns 404 when the account does not exist', async () => {
+    it('returns 404 when the order does not exist', async () => {
       db.queryOne.mockResolvedValue(null);
 
       await expect(
-        service.getSupplierInvoiceLineItems(404),
+        service.getSupplierInvoiceLineItems(orderContext(404)),
       ).rejects.toMatchObject({
         constructor: NotFoundException,
-        message: 'Import case (account) 404 not found',
+        message: 'Order 404 not found',
       });
       expect(db.query).not.toHaveBeenCalled();
     });
 
-    it('rejects a non-positive or non-integer account number without querying', async () => {
-      for (const bad of [0, -1, 1.5, Number.NaN]) {
-        await expect(
-          service.getSupplierInvoiceLineItems(bad),
-        ).rejects.toBeInstanceOf(BadRequestException);
-      }
-      expect(db.queryOne).not.toHaveBeenCalled();
-      expect(db.query).not.toHaveBeenCalled();
+    it('returns 404 with a CCF-specific message when scoped to an unknown CCF', async () => {
+      db.queryOne.mockResolvedValue(null);
+
+      await expect(
+        service.getSupplierInvoiceLineItems(ccfContext(404)),
+      ).rejects.toMatchObject({
+        constructor: NotFoundException,
+        message: 'Customs clearance file 404 not found',
+      });
     });
   });
 
@@ -683,7 +736,7 @@ describe('ImportFilesService', () => {
       name: 'a.pdf',
       size: 1,
       mimeType: 'application/pdf',
-      relativePath: '1000/a.pdf',
+      relativePath: 'order-1000/a.pdf',
       uploadedAt: '2026-09-20T10:00:00.000Z',
       lineItems: [
         LINE_ITEM,
@@ -707,10 +760,10 @@ describe('ImportFilesService', () => {
       countryId: 106,
     };
 
-    /** Transaction client: account exists, countries exist, file 42 holds FILE_DATA, updates succeed. */
+    /** Transaction client: order exists, countries exist, file 42 holds FILE_DATA, updates succeed. */
     function fileRowExists(data: ImportAccountFileData | null = FILE_DATA) {
       client.query.mockImplementation((sql: string, params: unknown[]) => {
-        if (sql === SELECT_ACCOUNT_EXISTS_SQL) {
+        if (sql === SELECT_ORDER_EXISTS_SQL) {
           return Promise.resolve({ rows: [{ id: params[0] }] });
         }
         if (sql === SELECT_EXISTING_COUNTRY_IDS_SQL) {
@@ -720,12 +773,12 @@ describe('ImportFilesService', () => {
               .map((id) => ({ id })),
           });
         }
-        if (sql === SELECT_FILE_BY_ID_FOR_UPDATE_SQL) {
+        if (sql === selectFileByIdSql(orderContext(1000), true)) {
           return Promise.resolve({
             rows: params[0] === 42 && data ? [{ id: 42, data }] : [],
           });
         }
-        if (sql === UPDATE_FILE_DATA_SQL) {
+        if (sql === updateFileDataSql(orderContext(1000))) {
           return Promise.resolve({ rows: [], rowCount: 1 });
         }
         return Promise.reject(new Error(`Unexpected SQL: ${sql}`));
@@ -738,10 +791,15 @@ describe('ImportFilesService', () => {
     it('writes the classification into the stored line and returns the refreshed list', async () => {
       fileRowExists();
 
-      const result = await service.saveLineItemClassifications(1000, [UPDATE]);
+      const result = await service.saveLineItemClassifications(
+        orderContext(1000),
+        [UPDATE],
+      );
 
       const calls = client.query.mock.calls as [string, unknown[]][];
-      const updateCall = calls.find(([sql]) => sql === UPDATE_FILE_DATA_SQL);
+      const updateCall = calls.find(
+        ([sql]) => sql === updateFileDataSql(orderContext(1000)),
+      );
       expect(updateCall).toBeDefined();
       const [, params] = updateCall as [string, unknown[]];
       expect(params[0]).toBe(42);
@@ -762,13 +820,15 @@ describe('ImportFilesService', () => {
         },
       });
       expect(client.query).toHaveBeenCalledWith(
-        SELECT_FILE_BY_ID_FOR_UPDATE_SQL,
+        selectFileByIdSql(orderContext(1000), true),
         [42, 1000],
       );
-      expect(SELECT_FILE_BY_ID_FOR_UPDATE_SQL).toContain('FOR UPDATE');
+      expect(selectFileByIdSql(orderContext(1000), true)).toContain(
+        'FOR UPDATE',
+      );
       // Refreshed via the normal read path.
       expect(db.query).toHaveBeenCalledWith(
-        SELECT_LATEST_SUPPLIER_INVOICE_ROWS_SQL,
+        selectLatestSupplierInvoiceRowsSql(orderContext(1000)),
         [1000, INVOICE],
       );
       expect(result).toEqual([]);
@@ -777,11 +837,11 @@ describe('ImportFilesService', () => {
     it('does not open a transaction for an empty batch', async () => {
       fileRowExists();
 
-      await service.saveLineItemClassifications(1000, []);
+      await service.saveLineItemClassifications(orderContext(1000), []);
 
       expect(db.transaction).not.toHaveBeenCalled();
       expect(db.query).toHaveBeenCalledWith(
-        SELECT_LATEST_SUPPLIER_INVOICE_ROWS_SQL,
+        selectLatestSupplierInvoiceRowsSql(orderContext(1000)),
         [1000, INVOICE],
       );
     });
@@ -790,7 +850,7 @@ describe('ImportFilesService', () => {
       fileRowExists();
 
       await expect(
-        service.saveLineItemClassifications(1000, [
+        service.saveLineItemClassifications(orderContext(1000), [
           { ...UPDATE, lineIndex: 2 },
         ]),
       ).rejects.toMatchObject({
@@ -798,19 +858,21 @@ describe('ImportFilesService', () => {
         message: 'File 42 has no line item at index 2',
       });
       expect(client.query).not.toHaveBeenCalledWith(
-        UPDATE_FILE_DATA_SQL,
+        updateFileDataSql(orderContext(1000)),
         expect.anything(),
       );
     });
 
-    it('404s a fileId that is not a file of the case', async () => {
+    it('404s a fileId that is not a file of the order', async () => {
       fileRowExists();
 
       await expect(
-        service.saveLineItemClassifications(1000, [{ ...UPDATE, fileId: 7 }]),
+        service.saveLineItemClassifications(orderContext(1000), [
+          { ...UPDATE, fileId: 7 },
+        ]),
       ).rejects.toMatchObject({
         constructor: NotFoundException,
-        message: 'File 7 of import case (account) 1000 not found',
+        message: 'File 7 of order 1000 not found',
       });
     });
 
@@ -818,7 +880,7 @@ describe('ImportFilesService', () => {
       fileRowExists();
 
       await expect(
-        service.saveLineItemClassifications(1000, [
+        service.saveLineItemClassifications(orderContext(1000), [
           { ...UPDATE, countryId: 999 },
         ]),
       ).rejects.toMatchObject({
@@ -826,16 +888,9 @@ describe('ImportFilesService', () => {
         message: 'Unknown country id(s): 999',
       });
       expect(client.query).not.toHaveBeenCalledWith(
-        SELECT_FILE_BY_ID_FOR_UPDATE_SQL,
+        selectFileByIdSql(orderContext(1000), true),
         expect.anything(),
       );
-    });
-
-    it('rejects a bad account number without querying', async () => {
-      await expect(
-        service.saveLineItemClassifications(0, [UPDATE]),
-      ).rejects.toBeInstanceOf(BadRequestException);
-      expect(db.transaction).not.toHaveBeenCalled();
     });
   });
 
@@ -845,7 +900,7 @@ describe('ImportFilesService', () => {
       name: 'b.pdf',
       size: 2,
       mimeType: 'application/pdf',
-      relativePath: '1000/b.pdf',
+      relativePath: 'order-1000/b.pdf',
       uploadedAt: '2026-09-22T10:00:00.000Z',
     };
     const FILE_A = {
@@ -853,7 +908,7 @@ describe('ImportFilesService', () => {
       name: 'a.pdf',
       size: 1,
       mimeType: 'application/pdf',
-      relativePath: '1000/a.pdf',
+      relativePath: 'order-1000/a.pdf',
       uploadedAt: '2026-09-21T10:00:00.000Z',
     };
 
@@ -864,43 +919,39 @@ describe('ImportFilesService', () => {
         { id: 3, data: FILE_A },
       ]);
 
-      const result = await service.listImportFiles(1000);
+      const result = await service.listImportFiles(orderContext(1000));
 
-      expect(db.queryOne).toHaveBeenCalledWith(
-        SELECT_ACCOUNT_EXISTS_SQL,
+      expect(db.queryOne).toHaveBeenCalledWith(SELECT_ORDER_EXISTS_SQL, [1000]);
+      expect(db.query).toHaveBeenCalledWith(
+        selectLatestFilesSql(orderContext(1000)),
         [1000],
       );
-      expect(db.query).toHaveBeenCalledWith(SELECT_LATEST_FILES_SQL, [1000]);
       expect(result).toEqual([
         { id: 7, ...FILE_B },
         { id: 3, ...FILE_A },
       ]);
       // De-duplication, newest-first ordering and line-item stripping live in the SQL.
-      expect(SELECT_LATEST_FILES_SQL).toContain("DISTINCT ON (data->>'name')");
-      expect(SELECT_LATEST_FILES_SQL).toContain(
-        "data - 'lineItems' - 'extractionError'",
-      );
-      expect(SELECT_LATEST_FILES_SQL).toContain("(data->>'uploadedAt') DESC");
-      expect(SELECT_LATEST_FILES_SQL).toContain('WHERE account_id = $1');
+      const sql = selectLatestFilesSql(orderContext(1000));
+      expect(sql).toContain("DISTINCT ON (data->>'name')");
+      expect(sql).toContain("data - 'lineItems' - 'extractionError'");
+      expect(sql).toContain("(data->>'uploadedAt') DESC");
+      expect(sql).toContain('WHERE order_id = $1');
     });
 
-    it('returns [] for a case with no files', async () => {
+    it('returns [] for an order with no files', async () => {
       db.queryOne.mockResolvedValue({ id: 1000 });
       db.query.mockResolvedValue([]);
 
-      await expect(service.listImportFiles(1000)).resolves.toEqual([]);
+      await expect(
+        service.listImportFiles(orderContext(1000)),
+      ).resolves.toEqual([]);
     });
 
-    it('rejects a bad account number and 404s an unknown case', async () => {
-      await expect(service.listImportFiles(0)).rejects.toBeInstanceOf(
-        BadRequestException,
-      );
-      expect(db.queryOne).not.toHaveBeenCalled();
-
+    it('404s an unknown order', async () => {
       db.queryOne.mockResolvedValue(null);
-      await expect(service.listImportFiles(1000)).rejects.toBeInstanceOf(
-        NotFoundException,
-      );
+      await expect(
+        service.listImportFiles(orderContext(1000)),
+      ).rejects.toBeInstanceOf(NotFoundException);
       expect(db.query).not.toHaveBeenCalled();
     });
   });
@@ -924,10 +975,10 @@ describe('ImportFilesService', () => {
       };
     }
 
-    /** The account exists; the file lookup answers with `row`. */
-    function accountExistsWithFileRow(row: unknown) {
+    /** The order exists; the file lookup answers with `row`. */
+    function orderExistsWithFileRow(row: unknown) {
       db.queryOne.mockImplementation((sql: string, params: unknown[]) =>
-        sql === SELECT_ACCOUNT_EXISTS_SQL
+        sql === SELECT_ORDER_EXISTS_SQL
           ? Promise.resolve({ id: params[0] })
           : Promise.resolve(row),
       );
@@ -941,13 +992,16 @@ describe('ImportFilesService', () => {
     }
 
     it('resolves the row to its file on disk with name, MIME type and size', async () => {
-      accountExistsWithFileRow(fileRow('1000/חשבון ספק.pdf'));
-      const absolutePath = await putOnDisk('1000/חשבון ספק.pdf', 'pdf-bytes');
+      orderExistsWithFileRow(fileRow('order-1000/חשבון ספק.pdf'));
+      const absolutePath = await putOnDisk(
+        'order-1000/חשבון ספק.pdf',
+        'pdf-bytes',
+      );
 
-      const file = await service.getImportFile(1000, 42);
+      const file = await service.getImportFile(orderContext(1000), 42);
 
       expect(db.queryOne).toHaveBeenCalledWith(
-        SELECT_FILE_BY_ID_SQL,
+        selectFileByIdSql(orderContext(1000)),
         [42, 1000],
       );
       expect(file).toEqual({
@@ -959,55 +1013,56 @@ describe('ImportFilesService', () => {
     });
 
     it('falls back to application/octet-stream when the row has no MIME type', async () => {
-      accountExistsWithFileRow(fileRow('1000/blob.bin', { mimeType: '' }));
-      await putOnDisk('1000/blob.bin', 'x');
+      orderExistsWithFileRow(fileRow('order-1000/blob.bin', { mimeType: '' }));
+      await putOnDisk('order-1000/blob.bin', 'x');
 
-      const file = await service.getImportFile(1000, 42);
+      const file = await service.getImportFile(orderContext(1000), 42);
 
       expect(file.mimeType).toBe('application/octet-stream');
     });
 
-    it('404s when no row with that id belongs to the case', async () => {
-      accountExistsWithFileRow(null);
+    it('404s when no row with that id belongs to the order', async () => {
+      orderExistsWithFileRow(null);
 
-      await expect(service.getImportFile(1000, 42)).rejects.toBeInstanceOf(
-        NotFoundException,
-      );
+      await expect(
+        service.getImportFile(orderContext(1000), 42),
+      ).rejects.toBeInstanceOf(NotFoundException);
     });
 
     it('404s when the bytes are missing on disk', async () => {
-      accountExistsWithFileRow(fileRow('1000/gone.pdf'));
+      orderExistsWithFileRow(fileRow('order-1000/gone.pdf'));
 
-      await expect(service.getImportFile(1000, 42)).rejects.toBeInstanceOf(
-        NotFoundException,
-      );
+      await expect(
+        service.getImportFile(orderContext(1000), 42),
+      ).rejects.toBeInstanceOf(NotFoundException);
     });
 
     it('refuses a stored path that escapes the storage root', async () => {
-      accountExistsWithFileRow(fileRow('../outside.txt'));
+      orderExistsWithFileRow(fileRow('../outside.txt'));
       const outside = path.join(storageDir, '..', 'outside.txt');
       await writeFile(outside, 'secret');
       try {
-        await expect(service.getImportFile(1000, 42)).rejects.toBeInstanceOf(
-          NotFoundException,
-        );
+        await expect(
+          service.getImportFile(orderContext(1000), 42),
+        ).rejects.toBeInstanceOf(NotFoundException);
       } finally {
         await rm(outside, { force: true });
       }
     });
 
-    it('rejects a non-positive file id and an unknown case before touching the disk', async () => {
+    it('rejects a non-positive file id without touching the disk', async () => {
       db.queryOne.mockResolvedValue({ id: 1000 });
-      await expect(service.getImportFile(1000, 0)).rejects.toBeInstanceOf(
-        BadRequestException,
-      );
+      await expect(
+        service.getImportFile(orderContext(1000), 0),
+      ).rejects.toBeInstanceOf(BadRequestException);
       expect(db.queryOne).toHaveBeenCalledTimes(1);
+    });
 
-      db.queryOne.mockReset();
+    it('404s an unknown order before checking the file id', async () => {
       db.queryOne.mockResolvedValue(null);
-      await expect(service.getImportFile(1000, 42)).rejects.toBeInstanceOf(
-        NotFoundException,
-      );
+      await expect(
+        service.getImportFile(orderContext(1000), 42),
+      ).rejects.toBeInstanceOf(NotFoundException);
       expect(db.queryOne).toHaveBeenCalledTimes(1);
     });
   });
@@ -1016,7 +1071,9 @@ describe('ImportFilesService', () => {
     const classifiedRow = {
       total: '3',
       file_id: 42,
-      account_id: 1000,
+      order_id: 1000,
+      ccf_id: null,
+      ccf_file_number: null,
       file_name: 'invoice.pdf',
       line_index: 1,
       item: 'Y8022-140BK',
@@ -1039,7 +1096,7 @@ describe('ImportFilesService', () => {
 
       const result = await service.listClassificationsPaged({
         q: '8539',
-        accountId: 1000,
+        orderId: 1000,
         from: '2026-01-01',
         to: '2026-12-31',
         sort: 'classificationCode',
@@ -1063,7 +1120,7 @@ describe('ImportFilesService', () => {
       expect(sql).toMatch(
         /li\.item->>'item' ILIKE \$1 OR li\.item->>'description' ILIKE \$1 OR li\.item->'classification'->>'classificationCode' ILIKE \$1 OR f\.data->>'name' ILIKE \$1/,
       );
-      expect(sql).toMatch(/f\.account_id = \$2/);
+      expect(sql).toMatch(/f\.order_id = \$2/);
       expect(sql).toMatch(/f\.created_at::date >= \$3::date/);
       expect(sql).toMatch(/f\.created_at::date <= \$4::date/);
       expect(sql).toMatch(
@@ -1083,7 +1140,9 @@ describe('ImportFilesService', () => {
       expect(result.items).toEqual([
         {
           fileId: 42,
-          accountId: 1000,
+          orderId: 1000,
+          ccfId: null,
+          contextLabel: 'הזמנה 1000',
           fileName: 'invoice.pdf',
           lineIndex: 1,
           item: 'Y8022-140BK',
@@ -1102,6 +1161,23 @@ describe('ImportFilesService', () => {
           createdAt: '2026-09-01T08:00:00.000Z',
         },
       ]);
+    });
+
+    it('labels a CCF-scoped row by its file number', async () => {
+      db.query.mockResolvedValueOnce([
+        {
+          ...classifiedRow,
+          order_id: null,
+          ccf_id: 7,
+          ccf_file_number: 'CCF1007',
+        },
+      ]);
+
+      const result = await service.listClassificationsPaged({ ccfId: 7 });
+
+      expect(result.items[0].contextLabel).toBe('תיק עמילות CCF1007');
+      expect(result.items[0].orderId).toBeNull();
+      expect(result.items[0].ccfId).toBe(7);
     });
 
     it('defaults to newest upload first, page 1 of 25, and never interpolates an unknown sort key', async () => {
@@ -1125,8 +1201,8 @@ describe('ImportFilesService', () => {
 
   describe('resolveInsideStorage', () => {
     it('returns the absolute path of a relative path inside the root', () => {
-      expect(resolveInsideStorage(storageDir, '1000/a.pdf')).toBe(
-        path.join(storageDir, '1000', 'a.pdf'),
+      expect(resolveInsideStorage(storageDir, 'order-1000/a.pdf')).toBe(
+        path.join(storageDir, 'order-1000', 'a.pdf'),
       );
     });
 
@@ -1134,7 +1210,9 @@ describe('ImportFilesService', () => {
       expect(resolveInsideStorage(storageDir, '')).toBeNull();
       expect(resolveInsideStorage(storageDir, '.')).toBeNull();
       expect(resolveInsideStorage(storageDir, '../x.pdf')).toBeNull();
-      expect(resolveInsideStorage(storageDir, '1000/../../x.pdf')).toBeNull();
+      expect(
+        resolveInsideStorage(storageDir, 'order-1000/../../x.pdf'),
+      ).toBeNull();
       expect(
         resolveInsideStorage(storageDir, path.resolve(storageDir, '..', 'x')),
       ).toBeNull();

@@ -9,8 +9,9 @@ import { InvoiceExtractorService } from './invoice-extraction/invoice-extractor.
 
 /**
  * File uploads for "תיוק ניירת יבוא" — bytes stored on disk, one
- * `import_account_files` row per file. `DatabaseService` comes from the
- * global `DatabaseModule`, so nothing needs importing here.
+ * `import_account_files` row per file, scoped to exactly one of an Order or
+ * a Customs Clearance File. `DatabaseService` comes from the global
+ * `DatabaseModule`, so nothing needs importing here.
  */
 @Module({
   controllers: [ImportFilesController],

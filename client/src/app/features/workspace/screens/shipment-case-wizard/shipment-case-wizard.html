@@ -1,4 +1,12 @@
-<div class="page-title">{{ isEditingExisting() ? 'עדכון תיק שילוח' : 'יצירת תיק שילוח חדש' }}</div>
+<div class="wizard-header-row">
+  <div class="page-title">{{ isEditingExisting() ? 'עדכון תיק שילוח' : 'יצירת תיק שילוח חדש' }}</div>
+  @if (savedMbl()?.ccfId; as ccfId) {
+    <button type="button" class="filing-link" (click)="goToCcf()">
+      <i class="fa-solid fa-stamp" aria-hidden="true"></i>
+      מעבר לתיק הסליקה
+    </button>
+  }
+</div>
 
 @if (loadingCase()) {
   <section class="form-section">

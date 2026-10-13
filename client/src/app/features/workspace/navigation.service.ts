@@ -1,6 +1,7 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { ParamMap, Router } from '@angular/router';
 
+import type { FilingContext } from '../../api/filing-context.model';
 import {
   isTreeChildGroup,
   LIST_PAGE_KEYS,
@@ -29,6 +30,7 @@ const SLUG_ID_PREFIX = 'ws-';
 /** Query-param names carrying an "open X for edit" hand-off between screens. */
 export const ORDER_ID_QUERY_PARAM = 'orderId';
 export const CASE_ID_QUERY_PARAM = 'caseId';
+export const CCF_ID_QUERY_PARAM = 'ccfId';
 
 /** A positive integer query param, or `null` when absent/malformed. */
 function readIdParam(query: ParamMap, name: string): number | null {
@@ -36,6 +38,25 @@ function readIdParam(query: ParamMap, name: string): number | null {
   if (raw === null || !/^\d+$/.test(raw)) return null;
   const id = Number(raw);
   return Number.isSafeInteger(id) && id > 0 ? id : null;
+}
+
+/** Reads `?orderId=`/`?ccfId=` into a {@link FilingContext} when `onThisPage`
+ *  (the current slug matches the page this hand-off applies to); `orderId`
+ *  wins if somehow both are present. `null` when neither is set or the page
+ *  doesn't match. */
+function readFilingContext(query: ParamMap, onThisPage: boolean): FilingContext | null {
+  if (!onThisPage) return null;
+  const orderId = readIdParam(query, ORDER_ID_QUERY_PARAM);
+  if (orderId !== null) return { kind: 'order', id: orderId };
+  const ccfId = readIdParam(query, CCF_ID_QUERY_PARAM);
+  return ccfId !== null ? { kind: 'ccf', id: ccfId } : null;
+}
+
+/** The query params `openFilingFor`/`openClassificationFor` navigate with. */
+function filingContextQueryParams(context: FilingContext): Record<string, number> {
+  return context.kind === 'order'
+    ? { [ORDER_ID_QUERY_PARAM]: context.id }
+    : { [CCF_ID_QUERY_PARAM]: context.id };
 }
 
 /**
@@ -118,16 +139,38 @@ export class NavigationService {
   readonly editCaseId = signal<number | null>(null);
 
   /**
-   * MBL case id another screen (the Order screen's "תיוק ניירת יבוא" button,
-   * or "ייבוא מסמכים" in "ההזמנות שלי") wants the filing screen to preselect
-   * in its case picker. Travels in the URL as `/workspace/filing?caseId=N`
-   * (see {@link openFilingForCase}) and is set here by {@link applyUrl} —
-   * `null` whenever the current URL carries no id, including when the order
-   * it came from has no case yet (the filing screen then simply opens with no
-   * case preselected, same as today). Consumed once — the filing screen
+   * Order or CCF context another screen (the Order screen's "תיוק ניירת
+   * יבוא" link, "ייבוא מסמכים" in "ההזמנות שלי", or the CCF screen) wants the
+   * filing screen to preselect. Travels in the URL as
+   * `/workspace/filing?orderId=N` or `?ccfId=N` (see {@link openFilingFor})
+   * and is set here by {@link applyUrl} — `null` whenever the current URL
+   * carries neither id (a plain sidebar visit to "תיוק ניירת יבוא" then
+   * opens with nothing preselected, same as today). Consumed once — the
+   * filing screen clears it as soon as it starts loading.
+   */
+  readonly openFilingContext = signal<FilingContext | null>(null);
+
+  /**
+   * Order or CCF context the CCF screen wants the classification screen to
+   * preselect, after saving a Customs Clearance File linked to a shipping
+   * case. Travels in the URL as `/workspace/classification?orderId=N` or
+   * `?ccfId=N` (see {@link openClassificationFor}) and is set here by
+   * {@link applyUrl} — `null` whenever the current URL carries neither id
+   * (including a plain sidebar visit to "סיווג", which opens with nothing
+   * preselected, same as today). Consumed once — the classification screen
    * clears it as soon as it starts loading.
    */
-  readonly filingCaseId = signal<number | null>(null);
+  readonly openClassificationContext = signal<FilingContext | null>(null);
+
+  /**
+   * CCF id another screen (the shipping-case wizard's "מעבר לתיק הסליקה"
+   * link) wants the CCF screen to reload and show read-only, instead of
+   * starting a fresh draft. Travels in the URL as `/workspace/ccf?ccfId=N`
+   * (see {@link openCcfForView}) and is set here by {@link applyUrl} —
+   * `null` whenever the current URL carries no id. Consumed once — the CCF
+   * screen clears it as soon as it starts loading.
+   */
+  readonly viewCcfId = signal<number | null>(null);
 
   /**
    * Bumped each time "יצירת הזמנה חדשה"/"יצירת תיק שילוח" is explicitly
@@ -166,10 +209,11 @@ export class NavigationService {
         page: 'filing',
         label: 'תיוק ניירת יבוא',
         icon: 'fa-solid fa-file-import',
-        // Reached only via the Order screen's "תיוק ניירת יבוא" button and
-        // "ייבוא מסמכים" in "ההזמנות שלי" (see `openFilingForCase`), never
-        // directly from the sidebar — see the `hidden` doc comment.
-        hidden: true,
+        // Visible in the sidebar (unlike before this screen supported an
+        // Order/CCF picker): opening it directly now has a real "pick one"
+        // flow (FilingContextPicker) to land on, not just a hand-off from
+        // the Order/CCF screens' own "תיוק ניירת יבוא" links (see
+        // `openFilingFor`).
       },
       {
         id: 'ws-shipment-group',
@@ -223,6 +267,7 @@ export class NavigationService {
         ],
       },
       { id: 'ws-classification', page: 'classification', label: 'סיווג', icon: 'fa-solid fa-tags' },
+      { id: 'ws-ccf', page: 'ccf', label: 'תיק עמילות', icon: 'fa-solid fa-stamp' },
       {
         id: 'ws-post-classification',
         page: 'placeholder',
@@ -300,6 +345,7 @@ export class NavigationService {
     this.screenMap.set('filing', 'filing');
     this.screenMap.set('shipmentCaseWizard', 'shipmentCaseWizard');
     this.screenMap.set('classification', 'classification');
+    this.screenMap.set('ccf', 'ccf');
     this.screenMap.set('importDeclaration', 'importDeclaration');
     this.screenMap.set('myOrders', 'myOrders');
     this.screenMap.set('myFiles', 'myFiles');
@@ -341,9 +387,11 @@ export class NavigationService {
    * highlighted row is the list the edit came from ("ההזמנות שלי" /
    * "התיקים שלי"), not the "create new" row — the same choice
    * {@link openOrderForEdit} / {@link openCaseForEdit} always made.
-   * `?caseId=N` on the `filing` slug (see {@link filingCaseId} /
-   * {@link openFilingForCase}) works the same way, just with no row left to
-   * highlight — that row is {@link TreeChild.hidden hidden}.
+   * `?orderId=N`/`?ccfId=N` on the `filing`/`classification` slugs (see
+   * {@link openFilingContext} / {@link openFilingFor} and
+   * {@link openClassificationContext} / {@link openClassificationFor}) work
+   * the same way, just with no row left to highlight on `filing` — that row
+   * is {@link TreeChild.hidden hidden}.
    *
    * An unknown slug is replaced (no history entry) by the dashboard.
    */
@@ -356,12 +404,16 @@ export class NavigationService {
 
     const orderId = child.page === 'order' ? readIdParam(query, ORDER_ID_QUERY_PARAM) : null;
     const caseId = child.page === 'shipmentCaseWizard' ? readIdParam(query, CASE_ID_QUERY_PARAM) : null;
-    const filingCaseId = child.page === 'filing' ? readIdParam(query, CASE_ID_QUERY_PARAM) : null;
+    const viewCcfId = child.page === 'ccf' ? readIdParam(query, CCF_ID_QUERY_PARAM) : null;
+    const openFilingContext = readFilingContext(query, child.page === 'filing');
+    const openClassificationContext = readFilingContext(query, child.page === 'classification');
     // Set the hand-off ids *before* the page, so a screen mounted by the page
     // change already finds its id when its constructor runs.
     this.editOrderId.set(orderId);
     this.editCaseId.set(caseId);
-    this.filingCaseId.set(filingCaseId);
+    this.viewCcfId.set(viewCcfId);
+    this.openFilingContext.set(openFilingContext);
+    this.openClassificationContext.set(openClassificationContext);
 
     let rowId = child.id;
     if (orderId !== null) rowId = this.leafByPage('myOrders')?.id ?? rowId;
@@ -463,16 +515,41 @@ export class NavigationService {
     });
   }
 
-  /** Navigate to the (sidebar-hidden) import-document-filing screen, with
-   *  `caseId` (an MBL id) queued up for it to preselect in its case picker:
-   *  `/workspace/filing?caseId=N`. `caseId` is `null` when the order filing
-   *  was opened from has no shipping case yet — the screen then opens with no
-   *  case preselected, same as navigating here found no case at all today. */
-  openFilingForCase(caseId: number | null): void {
+  /** Navigate to the (sidebar-hidden) import-document-filing screen, with an
+   *  Order or CCF context queued up for it to preselect:
+   *  `/workspace/filing?orderId=N` or `?ccfId=N`. Every caller always has a
+   *  concrete context — an order's own id is never null, unlike the shipping
+   *  case it may or may not have — so unlike the old MBL-scoped version
+   *  there is no "nothing to preselect" case to special-case. */
+  openFilingFor(context: FilingContext): void {
     const row = this.leafByPage('filing');
     if (!row) return;
     void this.router.navigate(this.urlCommandsFor(row), {
-      queryParams: caseId !== null ? { [CASE_ID_QUERY_PARAM]: caseId } : {},
+      queryParams: filingContextQueryParams(context),
+    });
+  }
+
+  /** Navigate to the classification screen with an Order or CCF context
+   *  queued up for it to preselect: `/workspace/classification?orderId=N`
+   *  or `?ccfId=N`. Used after saving a CCF that was linked to a shipping
+   *  case (scoped to the CCF's own id, not the shipping case's). */
+  openClassificationFor(context: FilingContext): void {
+    const row = this.leafByPage('classification');
+    if (!row) return;
+    void this.router.navigate(this.urlCommandsFor(row), {
+      queryParams: filingContextQueryParams(context),
+    });
+  }
+
+  /** Navigate to the CCF screen with `ccfId` queued up for it to load and
+   *  show read-only instead of starting a fresh draft:
+   *  `/workspace/ccf?ccfId=N`. Used by the shipping-case wizard's "מעבר לתיק
+   *  הסליקה" link to return to an already-saved CCF. */
+  openCcfForView(ccfId: number): void {
+    const row = this.leafByPage('ccf');
+    if (!row) return;
+    void this.router.navigate(this.urlCommandsFor(row), {
+      queryParams: { [CCF_ID_QUERY_PARAM]: ccfId },
     });
   }
 

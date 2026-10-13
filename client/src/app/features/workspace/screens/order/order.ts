@@ -367,23 +367,25 @@ export class OrderScreen {
    *  {@link onSave}, just a quiet success instead of a banner message) and
    *  only navigates to the filing screen once that save actually succeeds; a
    *  failed save leaves the user on this screen with the error shown, same as
-   *  a plain save failing. */
+   *  a plain save failing. Scoped by the order's own id — unlike its linked
+   *  shipping case (`order.mblId`), which may not exist yet, an order's own
+   *  id is never null once saved. */
   protected onSaveAndGoToFiling(): void {
     this.saveOrder()?.subscribe({
-      next: (order) => this.nav.openFilingForCase(order.mblId),
+      next: (order) => this.nav.openFilingFor({ kind: 'order', id: order.id }),
       error: (error: unknown) => this.errorMessage.set(saveErrorMessage(error)),
     });
   }
 
   /** Top-of-page "מעבר לתיוק ניירת יבוא" link — only shown once editing an
    *  already-saved order (see order.html), so it jumps straight to filing
-   *  using that order's own case, with no save step (nothing to save: the
-   *  order already exists). Same destination, reached without saving, as the
+   *  scoped to this order, with no save step (nothing to save: the order
+   *  already exists). Same destination, reached without saving, as the
    *  "ייבוא מסמכים" row action in "ההזמנות שלי". */
   protected goToFiling(): void {
     const order = this.savedOrder();
     if (!order) return;
-    this.nav.openFilingForCase(order.mblId);
+    this.nav.openFilingFor({ kind: 'order', id: order.id });
   }
 
   /**

@@ -1,0 +1,57 @@
+<div class="form-group filing-context-picker">
+  <label class="required">הקשר</label>
+  <div class="kind-toggle">
+    <button
+      type="button"
+      class="kind-toggle-btn"
+      [class.active]="kind() === 'order'"
+      (click)="onKindChange('order')"
+    >
+      הזמנה
+    </button>
+    <button
+      type="button"
+      class="kind-toggle-btn"
+      [class.active]="kind() === 'ccf'"
+      (click)="onKindChange('ccf')"
+    >
+      תיק עמילות
+    </button>
+  </div>
+
+  @if (kind() === 'order') {
+    <select class="form-control" (change)="onOrderChange($event)">
+      <option value="" [selected]="context() === null">
+        {{ loadingOrders() ? 'טוען הזמנות…' : 'בחר הזמנה' }}
+      </option>
+      @for (order of orders(); track order.id) {
+        <option [value]="order.id" [selected]="context()?.kind === 'order' && context()?.id === order.id">
+          {{ orderLabel(order) }}
+        </option>
+      }
+    </select>
+    @if (!loadingOrders() && orders().length === 0) {
+      <p class="hint-text">אין עדיין הזמנות</p>
+    }
+  } @else {
+    <select class="form-control" (change)="onCcfChange($event)">
+      <option value="" [selected]="context() === null">
+        {{ loadingCcfs() ? 'טוען תיקי עמילות…' : 'בחר תיק עמילות' }}
+      </option>
+      @for (ccf of ccfs(); track ccf.id) {
+        <option [value]="ccf.id" [selected]="context()?.kind === 'ccf' && context()?.id === ccf.id">
+          {{ ccfLabel(ccf) }}
+        </option>
+      }
+    </select>
+    @if (!loadingCcfs() && ccfs().length === 0) {
+      <p class="hint-text">אין עדיין תיקי עמילות — צור תיק במסך יצירת תיק עמילות</p>
+    }
+  }
+
+  @if (errorMessage(); as message) {
+    <p class="form-message form-message--error" role="alert">{{ message }}</p>
+  } @else if (context() === null) {
+    <p class="hint-text">יש לבחור הזמנה או תיק עמילות כדי להציג את הנתונים שלה</p>
+  }
+</div>

@@ -18,6 +18,7 @@ import {
 } from '../common/paging/paging.util';
 import { DatabaseService } from '../database/database.service';
 import { ClassificationRowDto } from './dto/classification-row.dto';
+import { ImportFilesContextQuery } from './dto/import-files-context.query';
 import { InvoiceLineItemDto } from './dto/invoice-line-item.dto';
 import { LineItemClassificationUpdateDto } from './dto/line-item-classification.dto';
 import {
@@ -39,7 +40,7 @@ import {
   normaliseLineItemClassification,
 } from './line-item-classification';
 
-/** Injection token for the absolute directory that holds `<accountNumber>/<file>`. */
+/** Injection token for the absolute directory that holds `<order-N|ccf-N>/<file>`. */
 export const IMPORT_FILES_STORAGE_DIR = 'IMPORT_FILES_STORAGE_DIR';
 
 /**
@@ -79,66 +80,127 @@ export interface ImportAccountFileData {
   extractionError?: string;
 }
 
-/** The case a file is filed under is an MBL ("מספר תיק") — see migration 017. */
-export const SELECT_ACCOUNT_EXISTS_SQL = 'SELECT id FROM mbl WHERE id = $1';
+/**
+ * A file belongs to exactly one of an Order or a Customs Clearance File —
+ * never both, never neither (enforced in the DB by
+ * `import_account_files_exactly_one_context_chk`, migration 021). Built
+ * from the validated query via {@link toImportFilesContext}.
+ */
+export type ImportFilesContext =
+  | { kind: 'order'; id: number }
+  | { kind: 'ccf'; id: number };
 
-export const INSERT_IMPORT_ACCOUNT_FILE_SQL = `INSERT INTO import_account_files (account_id, data)
-   VALUES ($1, $2::jsonb)
+/** Validates "exactly one of orderId/ccfId" — not expressible via plain class-validator decorators. */
+export function toImportFilesContext(
+  query: ImportFilesContextQuery,
+): ImportFilesContext {
+  const hasOrder = query.orderId !== undefined;
+  const hasCcf = query.ccfId !== undefined;
+  if (hasOrder === hasCcf) {
+    throw new BadRequestException(
+      'Exactly one of orderId or ccfId is required',
+    );
+  }
+  return hasOrder
+    ? { kind: 'order', id: query.orderId as number }
+    : { kind: 'ccf', id: query.ccfId as number };
+}
+
+function contextColumn(context: ImportFilesContext): 'order_id' | 'ccf_id' {
+  return context.kind === 'order' ? 'order_id' : 'ccf_id';
+}
+
+/** Storage sub-directory name — `order-${id}`/`ccf-${id}`, not the bare id:
+ *  an order id and a ccf id are independent spaces and could otherwise
+ *  collide on the same folder. */
+function contextDirName(context: ImportFilesContext): string {
+  return context.kind === 'order' ? `order-${context.id}` : `ccf-${context.id}`;
+}
+
+export const SELECT_ORDER_EXISTS_SQL = 'SELECT id FROM orders WHERE id = $1';
+export const SELECT_CCF_EXISTS_SQL =
+  'SELECT id FROM customs_clearance_files WHERE id = $1';
+
+function existsSql(context: ImportFilesContext): string {
+  return context.kind === 'order'
+    ? SELECT_ORDER_EXISTS_SQL
+    : SELECT_CCF_EXISTS_SQL;
+}
+
+export const INSERT_IMPORT_ACCOUNT_FILE_SQL = `INSERT INTO import_account_files (order_id, ccf_id, data)
+   VALUES ($1, $2, $3::jsonb)
    RETURNING id`;
 
 /**
  * The current (newest by id) `SUPPLIER_INVOICE` row per file name for one
- * account, oldest upload first. Re-uploading a file adds a new row, so the
+ * context, oldest upload first. Re-uploading a file adds a new row, so the
  * highest id per name is the one whose line items are live.
  */
-export const SELECT_LATEST_SUPPLIER_INVOICE_ROWS_SQL = `SELECT id, data FROM (
+export function selectLatestSupplierInvoiceRowsSql(
+  context: ImportFilesContext,
+): string {
+  const col = contextColumn(context);
+  return `SELECT id, data FROM (
      SELECT DISTINCT ON (data->>'name') id, data
        FROM import_account_files
-      WHERE account_id = $1 AND data->>'documentType' = $2
+      WHERE ${col} = $1 AND data->>'documentType' = $2
       ORDER BY data->>'name', id DESC
    ) latest
    ORDER BY (data->>'uploadedAt'), (data->>'name')`;
+}
 
 /**
- * The current (newest by id) row per file name for one account, newest upload
- * first — what the filing screen's documents table shows. Supplier-invoice
- * line items are stripped: the list only needs the file descriptor.
+ * The current (newest by id) row per file name for one context, newest
+ * upload first — what the filing screen's documents table shows.
+ * Supplier-invoice line items are stripped: the list only needs the file
+ * descriptor.
  */
-export const SELECT_LATEST_FILES_SQL = `SELECT id, data - 'lineItems' - 'extractionError' AS data FROM (
+export function selectLatestFilesSql(context: ImportFilesContext): string {
+  const col = contextColumn(context);
+  return `SELECT id, data - 'lineItems' - 'extractionError' AS data FROM (
      SELECT DISTINCT ON (data->>'name') id, data
        FROM import_account_files
-      WHERE account_id = $1
+      WHERE ${col} = $1
       ORDER BY data->>'name', id DESC
    ) latest
    ORDER BY (data->>'uploadedAt') DESC, id DESC`;
+}
 
-/** One file row by id, scoped to its account so a file can never be read through another case. */
-export const SELECT_FILE_BY_ID_SQL = `SELECT id, data FROM import_account_files
-   WHERE id = $1 AND account_id = $2`;
-
-/** Same as SELECT_FILE_BY_ID_SQL but locks the row for the rest of the transaction. */
-export const SELECT_FILE_BY_ID_FOR_UPDATE_SQL = `${SELECT_FILE_BY_ID_SQL}
-   FOR UPDATE`;
+/** One file row by id, scoped to its context so a file can never be read through another order/CCF. */
+export function selectFileByIdSql(
+  context: ImportFilesContext,
+  forUpdate = false,
+): string {
+  const col = contextColumn(context);
+  return `SELECT id, data FROM import_account_files
+   WHERE id = $1 AND ${col} = $2${forUpdate ? '\n   FOR UPDATE' : ''}`;
+}
 
 /** Replaces the whole JSON descriptor of one file row. */
-export const UPDATE_FILE_DATA_SQL = `UPDATE import_account_files
+export function updateFileDataSql(context: ImportFilesContext): string {
+  const col = contextColumn(context);
+  return `UPDATE import_account_files
    SET data = $2::jsonb
-   WHERE id = $1 AND account_id = $3`;
+   WHERE id = $1 AND ${col} = $3`;
+}
 
 /** Which of the given country ids exist. */
 export const SELECT_EXISTING_COUNTRY_IDS_SQL =
   'SELECT id FROM countries WHERE id = ANY($1::int[])';
 
 /**
- * Every classified supplier-invoice line across all import cases, one row per
- * line ("הסיווגים שלי"). Only the newest row per (account, file name) counts —
- * a re-upload supersedes the older file exactly as on the classification
- * screen. A line is "classified" once the screen saved a `classification`
- * object onto it. `count(*) OVER()` carries the unpaged total for the pager.
+ * Every classified supplier-invoice line across all orders/CCFs, one row per
+ * line ("הסיווגים שלי"). Only the newest row per (context, file name)
+ * counts — a re-upload supersedes the older file exactly as on the
+ * classification screen. A line is "classified" once the screen saved a
+ * `classification` object onto it. `count(*) OVER()` carries the unpaged
+ * total for the pager.
  */
 export const SELECT_CLASSIFIED_LINES_SQL = `SELECT count(*) OVER() AS total,
           f.id AS file_id,
-          f.account_id,
+          f.order_id,
+          f.ccf_id,
+          ccf.file_number AS ccf_file_number,
           f.data->>'name' AS file_name,
           (li.idx - 1)::int AS line_index,
           li.item->>'item' AS item,
@@ -150,16 +212,22 @@ export const SELECT_CLASSIFIED_LINES_SQL = `SELECT count(*) OVER() AS total,
           co.name AS country_name,
           f.created_at
      FROM import_account_files f
+     LEFT JOIN customs_clearance_files ccf ON ccf.id = f.ccf_id
     CROSS JOIN LATERAL jsonb_array_elements(COALESCE(f.data->'lineItems', '[]'::jsonb))
           WITH ORDINALITY AS li(item, idx)
      LEFT JOIN countries co
        ON jsonb_typeof(li.item->'classification'->'countryId') = 'number'
       AND co.id = (li.item->'classification'->>'countryId')::int`;
 
-/** Predicates every classified-line row must satisfy (see SELECT_CLASSIFIED_LINES_SQL). */
+/** Predicates every classified-line row must satisfy (see SELECT_CLASSIFIED_LINES_SQL).
+ *  `IS NOT DISTINCT FROM` (NULL-safe equality) is needed since the dedup key
+ *  is now two nullable columns, exactly one of which is ever set per row. */
 export const CLASSIFIED_LINES_BASE_WHERE = [
   `jsonb_typeof(li.item->'classification') = 'object'`,
-  `f.id = (SELECT max(f2.id) FROM import_account_files f2 WHERE f2.account_id = f.account_id AND f2.data->>'name' = f.data->>'name')`,
+  `f.id = (SELECT max(f2.id) FROM import_account_files f2
+            WHERE f2.order_id IS NOT DISTINCT FROM f.order_id
+              AND f2.ccf_id   IS NOT DISTINCT FROM f.ccf_id
+              AND f2.data->>'name' = f.data->>'name')`,
 ] as const;
 
 /** ILIKE targets of the free-text search on GET /import-files/classifications. */
@@ -173,7 +241,9 @@ export const CLASSIFIED_LINES_SEARCH_EXPRESSIONS = [
 /** Row shape of SELECT_CLASSIFIED_LINES_SQL. */
 interface ClassifiedLineRow extends WithTotal {
   file_id: number;
-  account_id: number;
+  order_id: number | null;
+  ccf_id: number | null;
+  ccf_file_number: string | null;
   file_name: string | null;
   line_index: number;
   item: string | null;
@@ -184,6 +254,17 @@ interface ClassifiedLineRow extends WithTotal {
   classification: unknown;
   country_name: string | null;
   created_at: Date | string;
+}
+
+/** "הזמנה 1024" or "תיק עמילות CCF1007" — shared with DashboardService. */
+export function describeImportFilesContext(
+  orderId: number | null,
+  ccfId: number | null,
+  ccfFileNumber: string | null,
+): string {
+  return orderId !== null
+    ? `הזמנה ${orderId}`
+    : `תיק עמילות ${ccfFileNumber ?? ccfId}`;
 }
 
 /** A stored file resolved to its location on disk, ready to be streamed to the client. */
@@ -199,7 +280,7 @@ const PG_FOREIGN_KEY_VIOLATION = '23503';
 
 /**
  * Persists uploaded import paperwork: the bytes go to disk under
- * `<storage root>/<accountNumber>/` (original names kept) and one
+ * `<storage root>/<order-N|ccf-N>/` (original names kept) and one
  * `import_account_files` row per file records its descriptor as JSONB.
  * Supplier invoices additionally get their goods table extracted into the
  * same JSON (`lineItems`); extraction failures never fail the upload.
@@ -215,23 +296,20 @@ export class ImportFilesService {
   ) {}
 
   /**
-   * Saves every file in `files` to `<storageDir>/<accountNumber>/<originalname>`
+   * Saves every file in `files` to `<storageDir>/<order-N|ccf-N>/<originalname>`
    * and inserts one `import_account_files` row per file tagged with
-   * `documentType`. A file with the same name for the same account is
+   * `documentType`. A file with the same name for the same context is
    * overwritten on disk (a new row is still added).
    *
-   * @throws BadRequestException — bad account number, unknown documentType,
-   *   no files, or an unsafe file name (nothing is written in that case).
-   * @throws NotFoundException — `accountNumber` is not an `mbl` id.
+   * @throws BadRequestException — unknown documentType, no files, or an
+   *   unsafe file name (nothing is written in that case).
+   * @throws NotFoundException — the order/CCF does not exist.
    */
   async uploadMultipleImportFiles(
-    accountNumber: number,
+    context: ImportFilesContext,
     documentType: ImportDocumentType,
     files: UploadedFileInput[],
   ): Promise<UploadedImportFileDto[]> {
-    if (!Number.isInteger(accountNumber) || accountNumber <= 0) {
-      throw new BadRequestException('accountNumber must be a positive integer');
-    }
     if (!isImportDocumentType(documentType)) {
       throw new BadRequestException(
         `documentType must be one of: ${Object.values(ImportDocumentType).join(', ')}`,
@@ -257,27 +335,28 @@ export class ImportFilesService {
       }
     }
 
-    const accountDir = path.join(this.storageDir, String(accountNumber));
+    const dirName = contextDirName(context);
+    const contextDir = path.join(this.storageDir, dirName);
 
     return this.db.transaction(async (client) => {
-      // Fail before writing anything to disk when the case does not exist.
-      await assertAccountExists(client, accountNumber);
-      await mkdir(accountDir, { recursive: true });
+      // Fail before writing anything to disk when the order/CCF does not exist.
+      await assertContextExists(client, context);
+      await mkdir(contextDir, { recursive: true });
 
       const uploadedAt = new Date().toISOString();
       const results: UploadedImportFileDto[] = [];
       for (const { file, name } of named) {
-        await writeFile(path.join(accountDir, name), file.buffer);
+        await writeFile(path.join(contextDir, name), file.buffer);
         const data: ImportAccountFileData = {
           documentType,
           name,
           size: file.size,
           mimeType: file.mimetype,
-          relativePath: `${accountNumber}/${name}`,
+          relativePath: `${dirName}/${name}`,
           uploadedAt,
           ...extractions.get(file),
         };
-        const id = await insertFileRow(client, accountNumber, data);
+        const id = await insertFileRow(client, context, data);
         const { lineItems, ...descriptor } = data;
         results.push({
           id,
@@ -296,24 +375,23 @@ export class ImportFilesService {
   }
 
   /**
-   * Line items of every supplier invoice filed for the case, in upload order,
-   * using only the newest row of each file name (re-uploads supersede).
-   * Items are normalised so every field is present (`''` / `null`).
+   * Line items of every supplier invoice filed for the order/CCF, in upload
+   * order, using only the newest row of each file name (re-uploads
+   * supersede). Items are normalised so every field is present (`''` / `null`).
    *
-   * @returns `[]` when the case has no supplier invoice (or none had a table).
-   * @throws BadRequestException — bad account number.
-   * @throws NotFoundException — `accountNumber` is not an `mbl` id.
+   * @returns `[]` when none has been filed yet (or none had a table).
+   * @throws NotFoundException — the order/CCF does not exist.
    */
   async getSupplierInvoiceLineItems(
-    accountNumber: number,
+    context: ImportFilesContext,
   ): Promise<InvoiceLineItemDto[]> {
-    await this.assertAccountExists(accountNumber);
+    await this.assertContextExists(context);
 
     const rows = await this.db.query<{
       id: number;
       data: Partial<ImportAccountFileData>;
-    }>(SELECT_LATEST_SUPPLIER_INVOICE_ROWS_SQL, [
-      accountNumber,
+    }>(selectLatestSupplierInvoiceRowsSql(context), [
+      context.id,
       ImportDocumentType.SUPPLIER_INVOICE,
     ]);
     return rows.flatMap(({ id, data }) =>
@@ -333,22 +411,18 @@ export class ImportFilesService {
    * {@link getSupplierInvoiceLineItems}. All updates run in one transaction:
    * either every line is written or none is.
    *
-   * @throws BadRequestException — bad account number, a line index outside
-   *   the file's items, or an unknown country id.
-   * @throws NotFoundException — unknown case, or a `fileId` that is not a
-   *   file of that case.
+   * @throws BadRequestException — a line index outside the file's items, or
+   *   an unknown country id.
+   * @throws NotFoundException — unknown order/CCF, or a `fileId` that is not
+   *   a file of that order/CCF.
    */
   async saveLineItemClassifications(
-    accountNumber: number,
+    context: ImportFilesContext,
     items: LineItemClassificationUpdateDto[],
   ): Promise<InvoiceLineItemDto[]> {
-    if (!Number.isInteger(accountNumber) || accountNumber <= 0) {
-      throw new BadRequestException('accountNumber must be a positive integer');
-    }
-
     if (items.length > 0) {
       await this.db.transaction(async (client) => {
-        await assertAccountExists(client, accountNumber);
+        await assertContextExists(client, context);
         await assertCountriesExist(client, items);
 
         const byFile = new Map<number, LineItemClassificationUpdateDto[]>();
@@ -360,17 +434,19 @@ export class ImportFilesService {
           const found = await client.query<{
             id: number;
             data: Partial<ImportAccountFileData>;
-          }>(SELECT_FILE_BY_ID_FOR_UPDATE_SQL, [fileId, accountNumber]);
+          }>(selectFileByIdSql(context, true), [fileId, context.id]);
           const row = found.rows[0];
           if (!row) {
-            throw fileNotFound(accountNumber, fileId);
+            throw fileNotFound(context, fileId);
           }
           const lineItems = Array.isArray(row.data.lineItems)
             ? [...row.data.lineItems]
             : [];
           for (const update of updates) {
             const current = lineItems[update.lineIndex] as
-              InvoiceLineItem | null | undefined;
+              | InvoiceLineItem
+              | null
+              | undefined;
             if (update.lineIndex >= lineItems.length || current == null) {
               throw new BadRequestException(
                 `File ${fileId} has no line item at index ${update.lineIndex}`,
@@ -381,25 +457,24 @@ export class ImportFilesService {
               classification: toClassification(update),
             };
           }
-          await client.query(UPDATE_FILE_DATA_SQL, [
+          await client.query(updateFileDataSql(context), [
             fileId,
             JSON.stringify({ ...row.data, lineItems }),
-            accountNumber,
+            context.id,
           ]);
         }
       });
     }
 
-    return this.getSupplierInvoiceLineItems(accountNumber);
+    return this.getSupplierInvoiceLineItems(context);
   }
 
   /**
-   * One page of classified supplier-invoice lines across every import case —
-   * the data source of "הסיווגים שלי". Unscoped: files hang off
-   * `order_account`, which carries no owner, so there is no per-user filter.
-   * Free-text search covers item code, description, classification code and
-   * file name; `accountId` narrows to one case; `from`/`to` bound the upload
-   * date; `sort` is whitelisted.
+   * One page of classified supplier-invoice lines across every order/CCF —
+   * the data source of "הסיווגים שלי". Unscoped by default: free-text search
+   * covers item code, description, classification code and file name;
+   * `orderId`/`ccfId` each independently narrow to one context; `from`/`to`
+   * bound the upload date; `sort` is whitelisted.
    */
   async listClassificationsPaged(
     query: PagedClassificationsQuery,
@@ -408,9 +483,13 @@ export class ImportFilesService {
     const params: unknown[] = [];
 
     pushTextSearch(where, params, CLASSIFIED_LINES_SEARCH_EXPRESSIONS, query.q);
-    if (query.accountId !== undefined) {
-      params.push(query.accountId);
-      where.push(`f.account_id = $${params.length}`);
+    if (query.orderId !== undefined) {
+      params.push(query.orderId);
+      where.push(`f.order_id = $${params.length}`);
+    }
+    if (query.ccfId !== undefined) {
+      params.push(query.ccfId);
+      where.push(`f.ccf_id = $${params.length}`);
     }
     pushDateRange(where, params, 'f.created_at', query.from, query.to);
 
@@ -431,38 +510,38 @@ export class ImportFilesService {
   }
 
   /**
-   * The files filed under the case, newest upload first, one entry per file
-   * name (a re-upload replaces the older row in the list). Line items are not
-   * included.
+   * The files filed under the order/CCF, newest upload first, one entry per
+   * file name (a re-upload replaces the older row in the list). Line items
+   * are not included.
    *
-   * @throws BadRequestException — bad account number.
-   * @throws NotFoundException — `accountNumber` is not an `mbl` id.
+   * @throws NotFoundException — the order/CCF does not exist.
    */
   async listImportFiles(
-    accountNumber: number,
+    context: ImportFilesContext,
   ): Promise<UploadedImportFileDto[]> {
-    await this.assertAccountExists(accountNumber);
+    await this.assertContextExists(context);
 
     const rows = await this.db.query<{
       id: number;
       data: Omit<ImportAccountFileData, 'lineItems' | 'extractionError'>;
-    }>(SELECT_LATEST_FILES_SQL, [accountNumber]);
+    }>(selectLatestFilesSql(context), [context.id]);
     return rows.map(({ id, data }) => ({ id, ...data }));
   }
 
   /**
-   * Locates file `fileId` of the case on disk so the controller can stream it.
-   * The path recorded in the row is re-validated against the storage root.
+   * Locates file `fileId` of the order/CCF on disk so the controller can
+   * stream it. The path recorded in the row is re-validated against the
+   * storage root.
    *
-   * @throws BadRequestException — bad account number or file id.
-   * @throws NotFoundException — unknown case, no such file in that case, or
+   * @throws BadRequestException — bad file id.
+   * @throws NotFoundException — unknown order/CCF, no such file in it, or
    *   the bytes are gone from disk.
    */
   async getImportFile(
-    accountNumber: number,
+    context: ImportFilesContext,
     fileId: number,
   ): Promise<StoredImportFile> {
-    await this.assertAccountExists(accountNumber);
+    await this.assertContextExists(context);
     if (!Number.isInteger(fileId) || fileId <= 0) {
       throw new BadRequestException('fileId must be a positive integer');
     }
@@ -470,28 +549,28 @@ export class ImportFilesService {
     const row = await this.db.queryOne<{
       id: number;
       data: Partial<ImportAccountFileData>;
-    }>(SELECT_FILE_BY_ID_SQL, [fileId, accountNumber]);
+    }>(selectFileByIdSql(context), [fileId, context.id]);
     if (!row) {
-      throw fileNotFound(accountNumber, fileId);
+      throw fileNotFound(context, fileId);
     }
 
     const { name, mimeType, relativePath } = row.data;
     if (typeof relativePath !== 'string' || typeof name !== 'string') {
-      throw fileNotFound(accountNumber, fileId);
+      throw fileNotFound(context, fileId);
     }
     const absolutePath = resolveInsideStorage(this.storageDir, relativePath);
     if (absolutePath === null) {
-      throw fileNotFound(accountNumber, fileId);
+      throw fileNotFound(context, fileId);
     }
 
     let onDisk;
     try {
       onDisk = await stat(absolutePath);
     } catch {
-      throw fileNotFound(accountNumber, fileId);
+      throw fileNotFound(context, fileId);
     }
     if (!onDisk.isFile()) {
-      throw fileNotFound(accountNumber, fileId);
+      throw fileNotFound(context, fileId);
     }
 
     return {
@@ -505,17 +584,15 @@ export class ImportFilesService {
     };
   }
 
-  /** Validates `accountNumber` and checks the case exists (outside a transaction). */
-  private async assertAccountExists(accountNumber: number): Promise<void> {
-    if (!Number.isInteger(accountNumber) || accountNumber <= 0) {
-      throw new BadRequestException('accountNumber must be a positive integer');
-    }
-    const account = await this.db.queryOne<{ id: number }>(
-      SELECT_ACCOUNT_EXISTS_SQL,
-      [accountNumber],
-    );
-    if (!account) {
-      throw accountNotFound(accountNumber);
+  /** Checks the order/CCF exists (outside a transaction). */
+  private async assertContextExists(
+    context: ImportFilesContext,
+  ): Promise<void> {
+    const found = await this.db.queryOne<{ id: number }>(existsSql(context), [
+      context.id,
+    ]);
+    if (!found) {
+      throw contextNotFound(context);
     }
   }
 
@@ -542,32 +619,36 @@ function isImportDocumentType(value: unknown): value is ImportDocumentType {
   );
 }
 
-async function assertAccountExists(
+async function assertContextExists(
   client: PoolClient,
-  accountNumber: number,
+  context: ImportFilesContext,
 ): Promise<void> {
-  const found = await client.query<{ id: number }>(SELECT_ACCOUNT_EXISTS_SQL, [
-    accountNumber,
+  const found = await client.query<{ id: number }>(existsSql(context), [
+    context.id,
   ]);
   if (found.rows.length === 0) {
-    throw accountNotFound(accountNumber);
+    throw contextNotFound(context);
   }
 }
 
 /** Inserts one `import_account_files` row and returns its id. */
 async function insertFileRow(
   client: PoolClient,
-  accountNumber: number,
+  context: ImportFilesContext,
   data: ImportAccountFileData,
 ): Promise<number> {
   let inserted;
   try {
     inserted = await client.query<{ id: number }>(
       INSERT_IMPORT_ACCOUNT_FILE_SQL,
-      [accountNumber, JSON.stringify(data)],
+      [
+        context.kind === 'order' ? context.id : null,
+        context.kind === 'ccf' ? context.id : null,
+        JSON.stringify(data),
+      ],
     );
   } catch (err) {
-    throw translateWriteError(err, accountNumber);
+    throw translateWriteError(err, context);
   }
   const id = inserted.rows[0]?.id;
   if (id === undefined) {
@@ -576,11 +657,14 @@ async function insertFileRow(
   return id;
 }
 
-/** The FK on `account_id` can still fire if the case is deleted mid-request. */
-function translateWriteError(err: unknown, accountNumber: number): unknown {
+/** The FK on order_id/ccf_id can still fire if the order/CCF is deleted mid-request. */
+function translateWriteError(
+  err: unknown,
+  context: ImportFilesContext,
+): unknown {
   const code = (err as { code?: unknown } | null)?.code;
   if (code === PG_FOREIGN_KEY_VIOLATION) {
-    return accountNotFound(accountNumber);
+    return contextNotFound(context);
   }
   return err;
 }
@@ -608,7 +692,13 @@ function normaliseLineItem(
 function toClassificationRow(row: ClassifiedLineRow): ClassificationRowDto {
   return {
     fileId: row.file_id,
-    accountId: row.account_id,
+    orderId: row.order_id,
+    ccfId: row.ccf_id,
+    contextLabel: describeImportFilesContext(
+      row.order_id,
+      row.ccf_id,
+      row.ccf_file_number,
+    ),
     fileName: row.file_name ?? '',
     lineIndex: row.line_index,
     item: row.item ?? '',
@@ -668,19 +758,21 @@ function numberOrNull(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
-function accountNotFound(accountNumber: number): NotFoundException {
-  return new NotFoundException(
-    `Import case (account) ${accountNumber} not found`,
-  );
+function contextNotFound(context: ImportFilesContext): NotFoundException {
+  return context.kind === 'order'
+    ? new NotFoundException(`Order ${context.id} not found`)
+    : new NotFoundException(`Customs clearance file ${context.id} not found`);
 }
 
 function fileNotFound(
-  accountNumber: number,
+  context: ImportFilesContext,
   fileId: number,
 ): NotFoundException {
-  return new NotFoundException(
-    `File ${fileId} of import case (account) ${accountNumber} not found`,
-  );
+  const owner =
+    context.kind === 'order'
+      ? `order ${context.id}`
+      : `customs clearance file ${context.id}`;
+  return new NotFoundException(`File ${fileId} of ${owner} not found`);
 }
 
 /**
@@ -707,7 +799,7 @@ export function resolveInsideStorage(
 
 /**
  * Keeps the original file name but refuses anything that could escape the
- * account folder (path separators, `..`, empty names, NUL bytes).
+ * storage folder (path separators, `..`, empty names, NUL bytes).
  */
 export function safeFileName(originalName: string): string {
   const name = originalName.trim();

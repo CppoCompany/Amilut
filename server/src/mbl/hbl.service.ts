@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
 import { CreateHblDto } from './dto/create-hbl.dto';
 import { HblDto, HblOrderSummaryDto } from './dto/hbl.dto';
@@ -105,7 +109,9 @@ export class HblService {
       id: number;
       sea_method: SeaMethod | null;
       customer_id: number | null;
-    }>('SELECT id, sea_method, customer_id FROM mbl WHERE id = $1', [dto.mblId]);
+    }>('SELECT id, sea_method, customer_id FROM mbl WHERE id = $1', [
+      dto.mblId,
+    ]);
     if (!mbl) {
       throw new NotFoundException(`MBL ${dto.mblId} not found`);
     }
@@ -114,7 +120,10 @@ export class HblService {
     this.validateCustomer(mbl.sea_method, mbl.customer_id, dto.customerId);
     await assertCustomerExists(this.db, dto.customerId);
     if (dto.orderIds?.length) {
-      await assertOrdersExist((sql, params) => this.db.query(sql, params), dto.orderIds);
+      await assertOrdersExist(
+        (sql, params) => this.db.query(sql, params),
+        dto.orderIds,
+      );
     }
 
     const newId = await this.db.transaction(async (client) => {
@@ -154,12 +163,16 @@ export class HblService {
 
       // System-generated reference, e.g. "IB-001" — formatted from the row's
       // own id once it exists, so it's stable even if the format rule changes.
-      await client.query(`UPDATE hbl SET ibl_number = 'IB-' || lpad(id::text, 3, '0') WHERE id = $1`, [
-        hblId,
-      ]);
+      await client.query(
+        `UPDATE hbl SET ibl_number = 'IB-' || lpad(id::text, 3, '0') WHERE id = $1`,
+        [hblId],
+      );
 
       if (dto.orderIds?.length) {
-        await client.query('UPDATE orders SET hbl_id = $1 WHERE id = ANY($2)', [hblId, dto.orderIds]);
+        await client.query('UPDATE orders SET hbl_id = $1 WHERE id = ANY($2)', [
+          hblId,
+          dto.orderIds,
+        ]);
       }
 
       return hblId;
@@ -169,7 +182,10 @@ export class HblService {
   }
 
   async findById(id: number): Promise<HblDto> {
-    const row = await this.db.queryOne<HblRow>(`${HBL_SELECT} WHERE h.id = $1`, [id]);
+    const row = await this.db.queryOne<HblRow>(
+      `${HBL_SELECT} WHERE h.id = $1`,
+      [id],
+    );
     if (!row) {
       throw new NotFoundException(`HBL ${id} not found`);
     }
@@ -186,7 +202,9 @@ export class HblService {
     );
     const result: HblDto[] = [];
     for (const row of rows) {
-      const orders = await this.db.query<HblOrderRow>(HBL_ORDERS_SELECT, [row.id]);
+      const orders = await this.db.query<HblOrderRow>(HBL_ORDERS_SELECT, [
+        row.id,
+      ]);
       result.push(toHblDto(row, orders));
     }
     return result;
@@ -215,7 +233,10 @@ export class HblService {
     params.push(id);
 
     try {
-      await this.db.query(`UPDATE hbl SET ${sets.join(', ')} WHERE id = $${params.length}`, params);
+      await this.db.query(
+        `UPDATE hbl SET ${sets.join(', ')} WHERE id = $${params.length}`,
+        params,
+      );
     } catch (err) {
       throw translateWriteError(err);
     }
@@ -226,22 +247,29 @@ export class HblService {
    *  is valid — order association is optional for an HBL. */
   async updateOrders(id: number, orderIds: number[]): Promise<HblDto> {
     await this.db.transaction(async (client) => {
-      const existing = await client.query<{ id: number }>('SELECT id FROM hbl WHERE id = $1', [id]);
+      const existing = await client.query<{ id: number }>(
+        'SELECT id FROM hbl WHERE id = $1',
+        [id],
+      );
       if (existing.rows.length === 0) {
         throw new NotFoundException(`HBL ${id} not found`);
       }
 
       await assertOrdersExist(
-        (sql, params) => client.query<{ id: number }>(sql, params).then((r) => r.rows),
+        (sql, params) =>
+          client.query<{ id: number }>(sql, params).then((r) => r.rows),
         orderIds,
       );
 
-      await client.query('UPDATE orders SET hbl_id = NULL WHERE hbl_id = $1 AND NOT (id = ANY($2))', [
-        id,
-        orderIds,
-      ]);
+      await client.query(
+        'UPDATE orders SET hbl_id = NULL WHERE hbl_id = $1 AND NOT (id = ANY($2))',
+        [id, orderIds],
+      );
       if (orderIds.length > 0) {
-        await client.query('UPDATE orders SET hbl_id = $1 WHERE id = ANY($2)', [id, orderIds]);
+        await client.query('UPDATE orders SET hbl_id = $1 WHERE id = ANY($2)', [
+          id,
+          orderIds,
+        ]);
       }
     });
 
@@ -251,9 +279,10 @@ export class HblService {
   /** Hard delete — `orders.hbl_id` (ON DELETE SET NULL) frees this HBL's
    *  orders back to unassigned automatically. */
   async remove(id: number): Promise<void> {
-    const row = await this.db.queryOne<{ id: number }>('DELETE FROM hbl WHERE id = $1 RETURNING id', [
-      id,
-    ]);
+    const row = await this.db.queryOne<{ id: number }>(
+      'DELETE FROM hbl WHERE id = $1 RETURNING id',
+      [id],
+    );
     if (!row) {
       throw new NotFoundException(`HBL ${id} not found`);
     }
@@ -266,17 +295,23 @@ export class HblService {
   ): Promise<void> {
     if (seaMethod === SeaMethod.GROUPAGE_FCL) {
       if (containerId === undefined) {
-        throw new BadRequestException('containerId is required for an HBL under a groupage_fcl MBL');
+        throw new BadRequestException(
+          'containerId is required for an HBL under a groupage_fcl MBL',
+        );
       }
       const container = await this.db.queryOne<{ id: number }>(
         'SELECT id FROM mbl_container WHERE id = $1 AND mbl_id = $2',
         [containerId, mblId],
       );
       if (!container) {
-        throw new BadRequestException(`Container ${containerId} does not belong to MBL ${mblId}`);
+        throw new BadRequestException(
+          `Container ${containerId} does not belong to MBL ${mblId}`,
+        );
       }
     } else if (containerId !== undefined) {
-      throw new BadRequestException('containerId is only applicable for a groupage_fcl MBL');
+      throw new BadRequestException(
+        'containerId is only applicable for a groupage_fcl MBL',
+      );
     }
   }
 
@@ -285,7 +320,11 @@ export class HblService {
     mblCustomerId: number | null,
     hblCustomerId: number,
   ): void {
-    if (seaMethod === SeaMethod.FCL_LCL && mblCustomerId !== null && hblCustomerId !== mblCustomerId) {
+    if (
+      seaMethod === SeaMethod.FCL_LCL &&
+      mblCustomerId !== null &&
+      hblCustomerId !== mblCustomerId
+    ) {
       throw new BadRequestException(
         `This MBL's HBLs must all use customer ${mblCustomerId} (fcl_lcl shares one customer)`,
       );
@@ -299,10 +338,14 @@ const PG_UNIQUE_VIOLATION = '23505';
 function translateWriteError(err: unknown): unknown {
   const code = (err as { code?: unknown } | null)?.code;
   if (code === PG_FOREIGN_KEY_VIOLATION) {
-    return new BadRequestException('Referenced MBL, container, or customer does not exist');
+    return new BadRequestException(
+      'Referenced MBL, container, or customer does not exist',
+    );
   }
   if (code === PG_UNIQUE_VIOLATION) {
-    return new BadRequestException('Duplicate HBL sequence number for this MBL');
+    return new BadRequestException(
+      'Duplicate HBL sequence number for this MBL',
+    );
   }
   return err;
 }
@@ -337,7 +380,10 @@ function toHblDto(row: HblRow, orders: HblOrderRow[]): HblDto {
     volumeCbm: toNumberOrNull(row.volume_cbm),
     remarks: row.remarks,
     orders: orders.map(
-      (order): HblOrderSummaryDto => ({ id: order.id, customerName: order.customer_name }),
+      (order): HblOrderSummaryDto => ({
+        id: order.id,
+        customerName: order.customer_name,
+      }),
     ),
     createdAt: toIsoString(row.created_at),
     updatedAt: toIsoString(row.updated_at),

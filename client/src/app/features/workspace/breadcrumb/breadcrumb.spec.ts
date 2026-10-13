@@ -76,6 +76,7 @@ const MBL: MblDto = {
   status: MblStatus.OPEN,
   handlerUserId: null,
   handlerName: null,
+  ccfId: null,
   containers: [],
   createdAt: '2026-09-01T08:30:00.000Z',
   updatedAt: '2026-09-01T08:30:00.000Z',

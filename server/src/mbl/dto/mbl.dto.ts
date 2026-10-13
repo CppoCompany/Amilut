@@ -120,6 +120,12 @@ export class MblDto {
   @ApiProperty({ type: 'string', nullable: true, example: 'Dana Levi' })
   handlerName!: string | null;
 
+  /** The Customs Clearance File linked to this case, if any
+   *  (`customs_clearance_files.shipment_file_id → mbl.id`). `null` until a
+   *  CCF has been opened for this case. */
+  @ApiProperty({ type: 'integer', nullable: true, example: 7 })
+  ccfId!: number | null;
+
   /** Only non-empty for `seaMethod = 'groupage_fcl'`. */
   @ApiProperty({ type: () => MblContainerDto, isArray: true })
   containers!: MblContainerDto[];
