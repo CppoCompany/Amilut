@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
+import { describeImportFilesContext } from '../import-files/import-files.service';
 import { MblShippingType, MblStatus } from '../mbl/mbl.enums';
 import { OrderStatus } from '../orders/orders.enums';
 import {
@@ -39,7 +40,9 @@ interface MblCaseRow {
 
 interface ClassificationRow {
   file_id: number;
-  mbl_id: number;
+  order_id: number | null;
+  ccf_id: number | null;
+  ccf_file_number: string | null;
   line_index: number | string;
   item: string | null;
   description: string | null;
@@ -107,12 +110,14 @@ export const IMPORT_PROCESSES_SQL = `${MBL_CASE_SELECT}
 
 /**
  * "הסיווגים שלי" — one row per supplier-invoice line item that has a saved
- * classification (`data.lineItems[].classification`). Unscoped: no ownership
- * column exists on the file → case chain.
+ * classification (`data.lineItems[].classification`). Unscoped: no owning
+ * user column exists on the file → order/CCF chain.
  */
 export const MY_CLASSIFICATIONS_SQL = `
   SELECT f.id AS file_id,
-         f.account_id AS mbl_id,
+         f.order_id,
+         f.ccf_id,
+         ccf.file_number AS ccf_file_number,
          li.idx - 1 AS line_index,
          li.item->>'item' AS item,
          li.item->>'description' AS description,
@@ -120,6 +125,7 @@ export const MY_CLASSIFICATIONS_SQL = `
          co.name AS country_name,
          f.created_at
     FROM import_account_files f
+    LEFT JOIN customs_clearance_files ccf ON ccf.id = f.ccf_id
    CROSS JOIN LATERAL jsonb_array_elements(COALESCE(f.data->'lineItems', '[]'::jsonb))
          WITH ORDINALITY AS li(item, idx)
     LEFT JOIN countries co
@@ -201,7 +207,13 @@ export class DashboardService {
     );
     return rows.map((row) => ({
       fileId: row.file_id,
-      mblId: row.mbl_id,
+      orderId: row.order_id,
+      ccfId: row.ccf_id,
+      contextLabel: describeImportFilesContext(
+        row.order_id,
+        row.ccf_id,
+        row.ccf_file_number,
+      ),
       lineIndex: Number(row.line_index),
       item: row.item ?? '',
       description: row.description ?? '',

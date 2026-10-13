@@ -5,12 +5,14 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
+import { CcfModule } from './ccf/ccf.module';
 import { CountriesModule } from './countries/countries.module';
 import { CustomersModule } from './customers/customers.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { DatabaseModule } from './database/database.module';
 import { ImportFilesModule } from './import-files/import-files.module';
 import { MblModule } from './mbl/mbl.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { OrdersModule } from './orders/orders.module';
 import { SuppliersModule } from './suppliers/suppliers.module';
 
@@ -19,11 +21,13 @@ import { SuppliersModule } from './suppliers/suppliers.module';
     ConfigModule.forRoot({ isGlobal: true }),
     DatabaseModule,
     AuthModule,
+    CcfModule,
     CountriesModule,
     CustomersModule,
     DashboardModule,
     ImportFilesModule,
     MblModule,
+    NotificationsModule,
     OrdersModule,
     SuppliersModule,
   ],

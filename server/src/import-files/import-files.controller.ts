@@ -30,11 +30,15 @@ import {
   UploadImportFilesDto,
 } from './dto/upload-import-files.dto';
 import { PagedClassificationsDto } from './dto/classification-row.dto';
+import { ImportFilesContextQuery } from './dto/import-files-context.query';
 import { InvoiceLineItemDto } from './dto/invoice-line-item.dto';
 import { SaveLineItemClassificationsDto } from './dto/line-item-classification.dto';
 import { PagedClassificationsQuery } from './dto/paged-classifications.query';
 import { UploadedImportFileDto } from './dto/uploaded-import-file.dto';
-import { ImportFilesService } from './import-files.service';
+import {
+  ImportFilesService,
+  toImportFilesContext,
+} from './import-files.service';
 
 /** Multipart field name the client must use for every file. */
 export const IMPORT_FILES_FIELD = 'files';
@@ -42,18 +46,19 @@ export const IMPORT_FILES_FIELD = 'files';
 export const MAX_IMPORT_FILES_PER_UPLOAD = 20;
 export const MAX_IMPORT_FILE_SIZE_BYTES = 25 * 1024 * 1024;
 
-/** Authentication is enforced by the global JwtAuthGuard (APP_GUARD). */
+/**
+ * Every route is scoped by exactly one of `?orderId=` / `?ccfId=` (see
+ * `ImportFilesContextQuery`) — never a path param, since "order or CCF,
+ * never both" doesn't fit one path segment cleanly. Authentication is
+ * enforced by the global JwtAuthGuard (APP_GUARD).
+ */
 @ApiTags('import-files')
 @ApiBearerAuth()
 @Controller('import-files')
 export class ImportFilesController {
   constructor(private readonly importFiles: ImportFilesService) {}
 
-  /**
-   * "הסיווגים שלי": every classified supplier-invoice line across all import
-   * cases, paged/sorted/filtered. Declared before the `:accountNumber` routes
-   * so the static segment wins route matching.
-   */
+  /** "הסיווגים שלי": every classified supplier-invoice line across all orders/CCFs, paged/sorted/filtered. */
   @Get('classifications')
   @ApiOkResponse({ type: PagedClassificationsDto })
   listClassifications(
@@ -63,11 +68,12 @@ export class ImportFilesController {
   }
 
   /**
-   * Stores the uploaded files under `storage/<accountNumber>/` (keeping their
-   * names) and records one `import_account_files` row per file, all tagged
-   * with the `documentType` text field sent in the same multipart request.
+   * Stores the uploaded files under `storage/<order-N|ccf-N>/` (keeping
+   * their names) and records one `import_account_files` row per file, all
+   * tagged with the `documentType` text field sent in the same multipart
+   * request.
    */
-  @Post(':accountNumber')
+  @Post()
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {
@@ -87,10 +93,10 @@ export class ImportFilesController {
   @ApiCreatedResponse({ type: UploadedImportFileDto, isArray: true })
   @ApiBadRequestResponse({
     description:
-      'No files, missing or invalid documentType, or an unsafe file name.',
+      'No files, missing or invalid documentType, an unsafe file name, or neither/both of orderId/ccfId given.',
   })
   @ApiNotFoundResponse({
-    description: 'No import case (mbl) with this account number.',
+    description: 'No order or customs clearance file with this id.',
   })
   @UseInterceptors(
     FilesInterceptor(IMPORT_FILES_FIELD, MAX_IMPORT_FILES_PER_UPLOAD, {
@@ -101,33 +107,33 @@ export class ImportFilesController {
     }),
   )
   uploadMultipleImportFiles(
-    @Param('accountNumber', ParseIntPipe) accountNumber: number,
+    @Query() context: ImportFilesContextQuery,
     @Body() body: UploadImportFilesDto,
     @UploadedFiles() files: Express.Multer.File[],
   ): Promise<UploadedImportFileDto[]> {
     return this.importFiles.uploadMultipleImportFiles(
-      accountNumber,
+      toImportFilesContext(context),
       body.documentType,
       files,
     );
   }
 
   /**
-   * The files filed under the case, newest first, one per file name — the
-   * rows of the filing screen's documents table. Line items are omitted.
+   * The files filed under the order/CCF, newest first, one per file name —
+   * the rows of the filing screen's documents table. Line items are omitted.
    */
-  @Get(':accountNumber')
+  @Get()
   @ApiOkResponse({ type: UploadedImportFileDto, isArray: true })
   @ApiBadRequestResponse({
-    description: 'accountNumber is not a positive integer.',
+    description: 'Neither/both of orderId/ccfId given.',
   })
   @ApiNotFoundResponse({
-    description: 'No import case (mbl) with this account number.',
+    description: 'No order or customs clearance file with this id.',
   })
   listImportFiles(
-    @Param('accountNumber', ParseIntPipe) accountNumber: number,
+    @Query() context: ImportFilesContextQuery,
   ): Promise<UploadedImportFileDto[]> {
-    return this.importFiles.listImportFiles(accountNumber);
+    return this.importFiles.listImportFiles(toImportFilesContext(context));
   }
 
   /**
@@ -135,24 +141,28 @@ export class ImportFilesController {
    * with the stored MIME type and an `inline` disposition, so PDFs and images
    * open in the browser; anything else is offered as a download.
    */
-  @Get(':accountNumber/files/:fileId')
+  @Get('files/:fileId')
   @ApiProduces('application/octet-stream')
   @ApiOkResponse({
     description: 'The file contents, with Content-Type set to its MIME type.',
     schema: { type: 'string', format: 'binary' },
   })
   @ApiBadRequestResponse({
-    description: 'accountNumber or fileId is not a positive integer.',
+    description:
+      'fileId is not a positive integer, or neither/both of orderId/ccfId given.',
   })
   @ApiNotFoundResponse({
     description:
-      'Unknown case, no such file in that case, or the file is missing on disk.',
+      'Unknown order/CCF, no such file in it, or the file is missing on disk.',
   })
   async getImportFile(
-    @Param('accountNumber', ParseIntPipe) accountNumber: number,
     @Param('fileId', ParseIntPipe) fileId: number,
+    @Query() context: ImportFilesContextQuery,
   ): Promise<StreamableFile> {
-    const file = await this.importFiles.getImportFile(accountNumber, fileId);
+    const file = await this.importFiles.getImportFile(
+      toImportFilesContext(context),
+      fileId,
+    );
     return new StreamableFile(createReadStream(file.absolutePath), {
       type: file.mimeType,
       disposition: inlineDisposition(file.name),
@@ -161,44 +171,46 @@ export class ImportFilesController {
   }
 
   /**
-   * Goods lines of the supplier invoices filed for the case (newest upload of
-   * each file name), concatenated in upload order — for the classification
-   * screen. Empty when no supplier invoice has been filed yet.
+   * Goods lines of the supplier invoices filed for the order/CCF (newest
+   * upload of each file name), concatenated in upload order — for the
+   * classification screen. Empty when no supplier invoice has been filed yet.
    */
-  @Get(':accountNumber/line-items')
+  @Get('line-items')
   @ApiOkResponse({ type: InvoiceLineItemDto, isArray: true })
   @ApiBadRequestResponse({
-    description: 'accountNumber is not a positive integer.',
+    description: 'Neither/both of orderId/ccfId given.',
   })
   @ApiNotFoundResponse({
-    description: 'No import case (mbl) with this account number.',
+    description: 'No order or customs clearance file with this id.',
   })
   getSupplierInvoiceLineItems(
-    @Param('accountNumber', ParseIntPipe) accountNumber: number,
+    @Query() context: ImportFilesContextQuery,
   ): Promise<InvoiceLineItemDto[]> {
-    return this.importFiles.getSupplierInvoiceLineItems(accountNumber);
+    return this.importFiles.getSupplierInvoiceLineItems(
+      toImportFilesContext(context),
+    );
   }
 
   /**
-   * Saves what the classification screen recorded against the case's supplier
-   * invoice lines (trade agreement, classification code, approvals, country)
-   * into the stored line items, and returns the refreshed line list.
+   * Saves what the classification screen recorded against the order/CCF's
+   * supplier invoice lines (trade agreement, classification code, approvals,
+   * country) into the stored line items, and returns the refreshed line list.
    */
-  @Put(':accountNumber/line-items/classification')
+  @Put('line-items/classification')
   @ApiOkResponse({ type: InvoiceLineItemDto, isArray: true })
   @ApiBadRequestResponse({
     description:
-      'Invalid payload, a line index outside its file, or an unknown country id.',
+      'Invalid payload, a line index outside its file, an unknown country id, or neither/both of orderId/ccfId given.',
   })
   @ApiNotFoundResponse({
-    description: 'Unknown case, or a fileId that is not a file of that case.',
+    description: 'Unknown order/CCF, or a fileId that is not a file of it.',
   })
   saveLineItemClassifications(
-    @Param('accountNumber', ParseIntPipe) accountNumber: number,
+    @Query() context: ImportFilesContextQuery,
     @Body() body: SaveLineItemClassificationsDto,
   ): Promise<InvoiceLineItemDto[]> {
     return this.importFiles.saveLineItemClassifications(
-      accountNumber,
+      toImportFilesContext(context),
       body.items,
     );
   }

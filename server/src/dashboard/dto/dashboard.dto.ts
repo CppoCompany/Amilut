@@ -48,9 +48,17 @@ export class DashboardClassificationRowDto {
   @ApiProperty({ type: 'integer', example: 42 })
   fileId!: number;
 
-  /** The case the file was filed under (`import_account_files.account_id`). */
-  @ApiProperty({ type: 'integer', example: 1000 })
-  mblId!: number;
+  /** The order the file was filed under, when filed under an order. */
+  @ApiProperty({ type: 'integer', nullable: true, example: 1024 })
+  orderId!: number | null;
+
+  /** The Customs Clearance File the file was filed under, when filed under one. */
+  @ApiProperty({ type: 'integer', nullable: true, example: 7 })
+  ccfId!: number | null;
+
+  /** "הזמנה 1024" or "תיק עמילות CCF1007" — whichever of orderId/ccfId is set. */
+  @ApiProperty({ example: 'הזמנה 1024' })
+  contextLabel!: string;
 
   /** Zero-based position of the line inside the file's `lineItems`. */
   @ApiProperty({ type: 'integer', example: 0 })

@@ -47,7 +47,9 @@ const FULL: DashboardResponseDto = {
   myClassifications: [
     {
       fileId: 42,
-      mblId: 1000,
+      orderId: 1000,
+      ccfId: null,
+      contextLabel: 'הזמנה 1000',
       lineIndex: 0,
       item: 'Y8022-140BK',
       description: 'Light Fixtures',

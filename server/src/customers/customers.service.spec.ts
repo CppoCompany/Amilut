@@ -107,7 +107,15 @@ describe('CustomersService', () => {
       const [sql, params] = db.queryOne.mock.calls[0] as [string, unknown[]];
       expect(sql).toMatch(/INSERT INTO customers/);
       expect(sql).toMatch(/RETURNING/);
-      expect(params).toEqual(['Acme Imports', null, null, null, null, null, null]);
+      expect(params).toEqual([
+        'Acme Imports',
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+      ]);
       expect(result).toBeInstanceOf(CustomerDto);
       expect(result).toEqual({
         id: 42,

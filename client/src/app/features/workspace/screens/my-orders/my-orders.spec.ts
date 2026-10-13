@@ -67,9 +67,9 @@ describe('MyOrdersScreen', () => {
     nav = TestBed.inject(NavigationService);
     location = TestBed.inject(Location);
     // Hosts a real `<router-outlet>` (via `WorkspaceSlugStub`) so a later
-    // `nav.openFilingForCase`/`openOrderForEdit` actually activates the route
+    // `nav.openFilingFor`/`openOrderForEdit` actually activates the route
     // and runs `applyUrl` — without it, `router.navigate` only updates the
-    // URL, never the `editOrderId`/`filingCaseId` hand-off signals.
+    // URL, never the `editOrderId`/`openFilingContext` hand-off signals.
     await RouterTestingHarness.create('/workspace/my-orders');
 
     fixture = TestBed.createComponent(MyOrdersScreen);
@@ -81,7 +81,7 @@ describe('MyOrdersScreen', () => {
 
   afterEach(() => httpMock.verify());
 
-  it('"ייבוא מסמכים" navigates to filing with the order\'s case preselected, and never bubbles into the row\'s own (dblclick) edit handler', async () => {
+  it('"ייבוא מסמכים" navigates to filing scoped to the order itself, and never bubbles into the row\'s own (dblclick) edit handler', async () => {
     const event = new Event('click');
     const stopPropagation = vi.spyOn(event, 'stopPropagation');
 
@@ -89,16 +89,16 @@ describe('MyOrdersScreen', () => {
     await settleNavigation();
 
     expect(stopPropagation).toHaveBeenCalled();
-    expect(location.path()).toBe('/workspace/filing?caseId=7');
-    expect(nav.filingCaseId()).toBe(7);
+    expect(location.path()).toBe('/workspace/filing?orderId=1001');
+    expect(nav.openFilingContext()).toEqual({ kind: 'order', id: 1001 });
   });
 
-  it('navigates to filing with no case preselected when the order has none yet', async () => {
+  it('navigates to filing scoped to the order even when it has no linked shipping case', async () => {
     internals.onImportDocuments(ORDER_WITHOUT_CASE, new Event('click'));
     await settleNavigation();
 
-    expect(location.path()).toBe('/workspace/filing');
-    expect(nav.filingCaseId()).toBeNull();
+    expect(location.path()).toBe('/workspace/filing?orderId=1002');
+    expect(nav.openFilingContext()).toEqual({ kind: 'order', id: 1002 });
   });
 
   it('double-clicking the row still opens the order for edit, unchanged', async () => {

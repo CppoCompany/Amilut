@@ -8,14 +8,15 @@ import {
   TradeAgreement,
 } from '../../../../api/enums';
 import type { CountryDto, InvoiceLineItemDto } from '../../../../api/models';
-import { CurrentCaseService } from '../../current-case.service';
+import { FilingContextService } from '../../filing-context.service';
 import { ClassificationScreen, goodsDescriptionOf } from './classification';
 
-const CASE_ID = 1000;
-const LINE_ITEMS_URL = `/api/import-files/${CASE_ID}/line-items`;
-const SAVE_URL = `${LINE_ITEMS_URL}/classification`;
+const ORDER_ID = 1000;
+const LINE_ITEMS_URL = `/api/import-files/line-items?orderId=${ORDER_ID}`;
+const SAVE_URL = `/api/import-files/line-items/classification?orderId=${ORDER_ID}`;
 const COUNTRIES_URL = '/api/countries';
-const CASES_URL = '/api/mbl';
+const ORDERS_URL = '/api/orders';
+const CCFS_URL = '/api/ccf';
 
 const COUNTRIES: CountryDto[] = [
   { id: 106, name: 'ישראל', key: 'IL' },
@@ -60,26 +61,27 @@ describe('goodsDescriptionOf', () => {
 
 let fixture: ComponentFixture<ClassificationScreen>;
 let httpMock: HttpTestingController;
-let currentCase: CurrentCaseService;
+let filingContext: FilingContextService;
 
 /**
- * Creates the screen with `caseId` already picked (or none) and answers the
- * case picker's lookup with an empty list — the picker itself is covered by
- * its own spec.
+ * Creates the screen with an order context already picked (or none) and
+ * answers the context picker's lookups with empty lists — the picker itself
+ * is covered by its own spec.
  */
-async function setup(caseId: number | null): Promise<void> {
+async function setup(orderId: number | null): Promise<void> {
   await TestBed.configureTestingModule({
     imports: [ClassificationScreen],
     providers: [provideHttpClient(), provideHttpClientTesting()],
   }).compileComponents();
 
   httpMock = TestBed.inject(HttpTestingController);
-  currentCase = TestBed.inject(CurrentCaseService);
+  filingContext = TestBed.inject(FilingContextService);
   fixture = TestBed.createComponent(ClassificationScreen);
   fixture.detectChanges();
-  httpMock.expectOne((req) => req.url === CASES_URL).flush([]);
-  // Picked after the (empty) lookup so the picker does not reset it as a deleted case.
-  currentCase.caseId.set(caseId);
+  httpMock.expectOne((req) => req.url === ORDERS_URL).flush([]);
+  httpMock.expectOne((req) => req.url === CCFS_URL).flush([]);
+  // Picked after the (empty) lookups so the picker does not reset it as a deleted order.
+  filingContext.context.set(orderId !== null ? { kind: 'order', id: orderId } : null);
   fixture.detectChanges();
 }
 
@@ -107,7 +109,7 @@ describe('ClassificationScreen before a case is picked', () => {
   it('loads the line items once a case is picked', () => {
     httpMock.expectOne(COUNTRIES_URL).flush(COUNTRIES);
 
-    currentCase.caseId.set(CASE_ID);
+    filingContext.context.set({ kind: 'order', id: ORDER_ID });
     fixture.detectChanges();
 
     httpMock.expectOne(LINE_ITEMS_URL).flush([lineItem()]);
@@ -120,7 +122,7 @@ describe('ClassificationScreen before a case is picked', () => {
 });
 
 describe('ClassificationScreen', () => {
-  beforeEach(() => setup(CASE_ID));
+  beforeEach(() => setup(ORDER_ID));
 
   afterEach(() => httpMock.verify());
 

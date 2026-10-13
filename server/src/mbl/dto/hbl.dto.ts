@@ -56,7 +56,11 @@ export class HblDto {
   @ApiProperty({ type: 'string', nullable: true })
   notifyPartyAddress!: string | null;
 
-  @ApiProperty({ type: 'string', nullable: true, example: 'Hand Tools (assorted)' })
+  @ApiProperty({
+    type: 'string',
+    nullable: true,
+    example: 'Hand Tools (assorted)',
+  })
   cargoDescription!: string | null;
 
   @ApiProperty({ type: 'string', nullable: true, example: '120 cartons' })
@@ -68,7 +72,11 @@ export class HblDto {
   @ApiProperty({ type: 'number', nullable: true, example: 8.5 })
   volumeCbm!: number | null;
 
-  @ApiProperty({ type: 'string', nullable: true, example: 'LCL - 3 PARTIES / CY/CFS' })
+  @ApiProperty({
+    type: 'string',
+    nullable: true,
+    example: 'LCL - 3 PARTIES / CY/CFS',
+  })
   remarks!: string | null;
 
   @ApiProperty({ type: () => HblOrderSummaryDto, isArray: true })

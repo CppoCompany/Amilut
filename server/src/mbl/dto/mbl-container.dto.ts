@@ -1,5 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNumber, IsOptional, IsString, Min, MaxLength } from 'class-validator';
+import {
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+  MaxLength,
+} from 'class-validator';
 
 /** One row of an MBL's container table — only ever populated (and only ever
  *  more than one row) for `sea_method = 'groupage_fcl'`. */
@@ -16,7 +22,9 @@ export class CreateMblContainerDto {
   @MaxLength(30)
   containerSealNumber?: string;
 
-  @ApiPropertyOptional({ example: 'CONSOLIDATED CARGO (3 PARTIES / 3 INTERNAL B/Ls)' })
+  @ApiPropertyOptional({
+    example: 'CONSOLIDATED CARGO (3 PARTIES / 3 INTERNAL B/Ls)',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(500)
@@ -45,7 +53,11 @@ export class MblContainerDto {
   @ApiProperty({ type: 'string', nullable: true, example: 'TCLU1234567' })
   containerSealNumber!: string | null;
 
-  @ApiProperty({ type: 'string', nullable: true, example: 'CONSOLIDATED CARGO' })
+  @ApiProperty({
+    type: 'string',
+    nullable: true,
+    example: 'CONSOLIDATED CARGO',
+  })
   cargoDescription!: string | null;
 
   @ApiProperty({ type: 'number', nullable: true, example: 5400 })

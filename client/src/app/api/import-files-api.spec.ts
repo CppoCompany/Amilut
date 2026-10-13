@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 
 import { ClassificationApproval, ImportDocumentType, TradeAgreement } from './enums';
+import type { FilingContext } from './filing-context.model';
 import { IMPORT_DOCUMENT_TYPE_FIELD, IMPORT_FILES_FIELD, ImportFilesApi } from './import-files-api';
 import type {
   InvoiceLineItemDto,
@@ -10,13 +11,16 @@ import type {
   UploadedImportFileDto,
 } from './models';
 
+const ORDER_CONTEXT: FilingContext = { kind: 'order', id: 1000 };
+const CCF_CONTEXT: FilingContext = { kind: 'ccf', id: 7 };
+
 const STORED_INVOICE: UploadedImportFileDto = {
   id: 42,
   documentType: ImportDocumentType.SUPPLIER_INVOICE,
   name: 'חשבון ספק.pdf',
   size: 7,
   mimeType: 'application/pdf',
-  relativePath: '1000/חשבון ספק.pdf',
+  relativePath: 'order-1000/חשבון ספק.pdf',
   uploadedAt: '2026-09-22T16:05:18.000Z',
 };
 
@@ -34,22 +38,27 @@ describe('ImportFilesApi', () => {
 
   afterEach(() => http.verify());
 
-  it('listImportFiles GETs the files of the case', () => {
+  it('listImportFiles GETs the files of an order context', () => {
     let result: UploadedImportFileDto[] | undefined;
-    api.listImportFiles(1000).subscribe((r) => (result = r));
+    api.listImportFiles(ORDER_CONTEXT).subscribe((r) => (result = r));
 
-    const req = http.expectOne('/api/import-files/1000');
+    const req = http.expectOne('/api/import-files?orderId=1000');
     expect(req.request.method).toBe('GET');
 
     req.flush([STORED_INVOICE]);
     expect(result).toEqual([STORED_INVOICE]);
   });
 
+  it('listImportFiles GETs the files of a CCF context', () => {
+    api.listImportFiles(CCF_CONTEXT).subscribe();
+    http.expectOne('/api/import-files?ccfId=7').flush([]);
+  });
+
   it('getImportFileBlob GETs one file as a Blob', () => {
     let result: Blob | undefined;
-    api.getImportFileBlob(1000, 42).subscribe((r) => (result = r));
+    api.getImportFileBlob(ORDER_CONTEXT, 42).subscribe((r) => (result = r));
 
-    const req = http.expectOne('/api/import-files/1000/files/42');
+    const req = http.expectOne('/api/import-files/files/42?orderId=1000');
     expect(req.request.method).toBe('GET');
     expect(req.request.responseType).toBe('blob');
 
@@ -65,10 +74,13 @@ describe('ImportFilesApi', () => {
 
     let result: UploadedImportFileDto[] | undefined;
     api
-      .uploadMultipleImportFiles(1000, ImportDocumentType.SUPPLIER_INVOICE, [invoice, packing])
+      .uploadMultipleImportFiles(ORDER_CONTEXT, ImportDocumentType.SUPPLIER_INVOICE, [
+        invoice,
+        packing,
+      ])
       .subscribe((r) => (result = r));
 
-    const req = http.expectOne('/api/import-files/1000');
+    const req = http.expectOne('/api/import-files?orderId=1000');
     expect(req.request.method).toBe('POST');
     expect(req.request.body).toBeInstanceOf(FormData);
     const body = req.request.body as FormData;
@@ -97,13 +109,13 @@ describe('ImportFilesApi', () => {
     },
   };
 
-  it('getSupplierInvoiceLineItems GETs the line items of the case', () => {
+  it('getSupplierInvoiceLineItems GETs the line items of the context', () => {
     const response: InvoiceLineItemDto[] = [LINE_ITEM];
 
     let result: InvoiceLineItemDto[] | undefined;
-    api.getSupplierInvoiceLineItems(1000).subscribe((r) => (result = r));
+    api.getSupplierInvoiceLineItems(ORDER_CONTEXT).subscribe((r) => (result = r));
 
-    const req = http.expectOne('/api/import-files/1000/line-items');
+    const req = http.expectOne('/api/import-files/line-items?orderId=1000');
     expect(req.request.method).toBe('GET');
 
     req.flush(response);
@@ -124,9 +136,9 @@ describe('ImportFilesApi', () => {
     ];
 
     let result: InvoiceLineItemDto[] | undefined;
-    api.saveLineItemClassifications(1000, items).subscribe((r) => (result = r));
+    api.saveLineItemClassifications(ORDER_CONTEXT, items).subscribe((r) => (result = r));
 
-    const req = http.expectOne('/api/import-files/1000/line-items/classification');
+    const req = http.expectOne('/api/import-files/line-items/classification?orderId=1000');
     expect(req.request.method).toBe('PUT');
     expect(req.request.body).toEqual({ items });
 

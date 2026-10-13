@@ -63,6 +63,8 @@ interface MblRow {
   status: MblStatus;
   handler_user_id: number | null;
   handler_name: string | null;
+  /** The Customs Clearance File linked to this case, if any (`customs_clearance_files.shipment_file_id → mbl.id`). */
+  ccf_id: number | null;
   created_at: Date | string;
   updated_at: Date | string;
 }
@@ -157,11 +159,13 @@ const MBL_SELECT = `
          m.status,
          m.handler_user_id,
          u.name AS handler_name,
+         ccf.id AS ccf_id,
          m.created_at,
          m.updated_at
     FROM mbl m
     LEFT JOIN customers c ON c.id = m.customer_id
-    LEFT JOIN users     u ON u.id = m.handler_user_id`;
+    LEFT JOIN users     u ON u.id = m.handler_user_id
+    LEFT JOIN customs_clearance_files ccf ON ccf.shipment_file_id = m.id`;
 
 const CONTAINER_SELECT = `
   SELECT id, container_number, container_seal_number, cargo_description, gross_weight_kg, volume_cbm
@@ -531,6 +535,7 @@ function toMblDto(row: MblRow, containers: MblContainerRow[]): MblDto {
     status: row.status,
     handlerUserId: row.handler_user_id ?? null,
     handlerName: row.handler_name ?? null,
+    ccfId: row.ccf_id ?? null,
     containers: containers.map(toMblContainerDto),
     createdAt: toIsoString(row.created_at),
     updatedAt: toIsoString(row.updated_at),

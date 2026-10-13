@@ -1,0 +1,66 @@
+// Component-scoped additions to the shared form styles (see src/styles.scss).
+
+.form-message {
+  margin: 0.75rem 0 0;
+  padding: 0.6rem 0.9rem;
+  border-radius: 6px;
+  font-size: 0.95rem;
+
+  &--success {
+    background: color-mix(in srgb, var(--success, #16a34a) 12%, white);
+    color: var(--success, #15803d);
+  }
+
+  &--error {
+    background: color-mix(in srgb, var(--danger, #ef4444) 12%, white);
+    color: var(--danger, #ef4444);
+  }
+}
+
+// "סוג מסמך" picker above the drop zone — narrow like the order screen's selects.
+.document-type-group {
+  max-width: 360px;
+  margin-bottom: 12px;
+}
+
+.upload-btn[disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.documents-hint {
+  margin-top: 12px;
+}
+
+// One section per document type — "organized by category".
+.document-categories {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-top: 16px;
+}
+
+.document-category__title {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0 0 8px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--primary-blue);
+}
+
+.document-category__count {
+  font-weight: 400;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.document-category__empty {
+  margin: 0;
+  padding: 10px 12px;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  background: var(--bg-color);
+  border-radius: var(--radius-md);
+}

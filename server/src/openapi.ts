@@ -1,6 +1,7 @@
 import type { INestApplication } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import type { OpenAPIObject } from '@nestjs/swagger';
+import { CcfStatus } from './ccf/ccf.enums';
 import {
   ClassificationApproval,
   ClassificationLicense,
@@ -26,6 +27,7 @@ export const OPENAPI_DOCS_PATH = 'api/docs';
  * declaration order) so a client generator can reproduce the same members.
  */
 export const NAMED_ENUMS: Record<string, Record<string, string>> = {
+  CcfStatus,
   ShipmentType,
   OrderStatus,
   PaymentTerms,

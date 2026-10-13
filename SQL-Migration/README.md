@@ -25,6 +25,9 @@ wired to `npm run db:generate`.
 | `016_remove_legacy_shipment_cases.sql` | Deletes all rows from `order_account` — the old shipping-case workflow (and its `ShipmentsModule`/`ShipmentScreen`) has been fully replaced by MBL/HBL; the table/column themselves are left in place, just unused | `Amilut` | `Admin` (via `SET ROLE`) |
 | `017_import_account_files_to_mbl.sql` | Re-points `import_account_files.account_id` from `order_account` to `mbl(id)` — paperwork is now filed under the MBL case ("מספר תיק"), since 016 left no `order_account` rows to file under | `Amilut` | `Admin` (via `SET ROLE`) |
 | `018_mbl_handler_and_status.sql` | Adds `mbl.handler_user_id` (→ `users.id`, the user who opened the case — drives "התיקים שלי") and `mbl.status` (`open`/`in_release`/`released`/`closed`, default `open` — drives "תיקים בהתרה"), with indexes | `Amilut` | `Admin` (via `SET ROLE`) |
+| `019_create_customs_clearance_files.sql` | `customs_clearance_files` table ("תיק סליקת מכס"): server-generated sequential `file_number` (`CCF1000`, ...), optional 1:1 `shipment_file_id` → `mbl(id)` (UNIQUE, nullable), `status`, `created_by` | `Amilut` | `Admin` (via `SET ROLE`) |
+| `020_create_notifications.sql` | `notifications` table — minimal in-app notification system (recipient, message, optional `related_ccf_id` → `customs_clearance_files(id)`, read/unread), first used by the CCF feature | `Amilut` | `Admin` (via `SET ROLE`) |
+| `021_import_account_files_order_or_ccf.sql` | Re-points `import_account_files` from `mbl` (`account_id`) to either `orders.id` (`order_id`) or `customs_clearance_files.id` (`ccf_id`), exactly one via CHECK; truncates existing dev rows (no valid backfill target) | `Amilut` | `Admin` (via `SET ROLE`) |
 | `run-migrations.mjs` | Applies `001`, then every other `NNN_*.sql` in name order | — | — |
 | `reset-superuser-password.ps1` | Recovery tool: resets a lost `postgres` superuser password on this machine (elevated PowerShell; `-SaveToEnv` writes it into the root `.env`) | — | Windows admin |
 
@@ -90,8 +93,10 @@ Amilut
 │              created_at, updated_at)
 │              -- created as `shipments` by 005, renamed by 006;
 │              -- was 1:1 with orders.order_id until 012 flipped it to orders.case_id
-├── import_account_files (id, account_id → mbl.id [ON DELETE CASCADE — 017;
-│              was order_account.id until then],
+├── import_account_files (id, order_id → orders.id [nullable, ON DELETE
+│              CASCADE], ccf_id → customs_clearance_files.id [nullable, ON
+│              DELETE CASCADE] — exactly one set, CHECK (021; was
+│              account_id → mbl.id from 017 until then),
 │              data [JSONB: documentType, name, size, mimeType, relativePath,
 │              uploadedAt; for SUPPLIER_INVOICE also lineItems[] — each with
 │              item, description, quantity, price, total and, once the
@@ -119,24 +124,39 @@ Amilut
 │              container_seal_number, cargo_description, gross_weight_kg,
 │              volume_cbm, created_at)
 │              -- 015: only populated for mbl.sea_method = 'groupage_fcl'
-└── hbl       (id, mbl_id → mbl.id [ON DELETE CASCADE], container_id →
-               mbl_container.id [groupage_fcl only, ON DELETE SET NULL],
-               customer_id → customers.id, sequence_number [the "Internal
-               B/L {N}" ordinal within its MBL, UNIQUE per mbl_id],
-               ibl_number [system-generated, e.g. "IB-001"], hbl_number
-               [free text, external house B/L number], shipper_name/address,
-               consignee_name/address, notify_party_name/address — all
-               HBL-specific, NOT inherited from the MBL — cargo_description,
-               quantity, gross_weight_kg, volume_cbm, remarks, created_at,
-               updated_at)
-               -- 015: the unit orders attach to via the new orders.hbl_id
-               -- (parallel to orders.case_id → order_account.id)
+├── hbl       (id, mbl_id → mbl.id [ON DELETE CASCADE], container_id →
+│              mbl_container.id [groupage_fcl only, ON DELETE SET NULL],
+│              customer_id → customers.id, sequence_number [the "Internal
+│              B/L {N}" ordinal within its MBL, UNIQUE per mbl_id],
+│              ibl_number [system-generated, e.g. "IB-001"], hbl_number
+│              [free text, external house B/L number], shipper_name/address,
+│              consignee_name/address, notify_party_name/address — all
+│              HBL-specific, NOT inherited from the MBL — cargo_description,
+│              quantity, gross_weight_kg, volume_cbm, remarks, created_at,
+│              updated_at)
+│              -- 015: the unit orders attach to via the new orders.hbl_id
+│              -- (parallel to orders.case_id → order_account.id)
+├── customs_clearance_files (id, file_number [UNIQUE, e.g. "CCF1000" — from
+│              customs_clearance_files_file_number_seq, server-generated only],
+│              shipment_file_id → mbl.id [nullable, UNIQUE, ON DELETE SET
+│              NULL — at most one CCF per shipping case], status[open|closed,
+│              default open], created_by → users.id, created_at, updated_at)
+│              -- 019: "תיק סליקת מכס" — can exist standalone or linked 1:1
+│              -- to an mbl shipping case
+└── notifications (id, recipient_user_id → users.id [ON DELETE CASCADE],
+               message, related_ccf_id → customs_clearance_files.id
+               [nullable, ON DELETE CASCADE], is_read[default false],
+               created_at)
+               -- 020: minimal in-app notification system, first used by the
+               -- CCF feature
 
 Enum-like columns (`status`, `shipment_type`, `payment_terms`, `incoterm`,
 `destination` in `orders`; `document_type` in `order_account`; `shipping_type`,
-`sea_method`, `freight_terms`, `status` in `mbl`) store English codes guarded by
-CHECK constraints; the source of truth for `orders`' enums is
-`server/src/orders/orders.enums.ts` and for `mbl`'s is `server/src/mbl/mbl.enums.ts`.
+`sea_method`, `freight_terms`, `status` in `mbl`; `status` in
+`customs_clearance_files`) store English codes guarded by CHECK constraints;
+the source of truth for `orders`' enums is `server/src/orders/orders.enums.ts`,
+for `mbl`'s is `server/src/mbl/mbl.enums.ts`, and for `customs_clearance_files`'
+is `server/src/ccf/ccf.enums.ts`.
 ```
 
 Connect the app with role `Admin` / password `Admin` on `127.0.0.1:5432`.

@@ -223,45 +223,45 @@ describe('OrderScreen', () => {
   });
 
   describe('onSaveAndGoToFiling ("תיוק ניירת יבוא")', () => {
-    it('saves the order first, then navigates to filing for its case once the save succeeds', () => {
+    it('saves the order first, then navigates to filing scoped to the order itself once the save succeeds', () => {
       createFixture();
-      const openFilingForCase = vi.spyOn(nav, 'openFilingForCase').mockImplementation(() => {});
+      const openFilingFor = vi.spyOn(nav, 'openFilingFor').mockImplementation(() => {});
       internals.selectedCustomer.set(CUSTOMER);
       internals.onSaveAndGoToFiling();
 
       const req = httpMock.expectOne({ method: 'POST', url: '/api/orders' });
-      expect(openFilingForCase).not.toHaveBeenCalled(); // never before the save resolves
+      expect(openFilingFor).not.toHaveBeenCalled(); // never before the save resolves
       req.flush({ ...SAVED_ORDER, mblId: 7 });
 
-      expect(openFilingForCase).toHaveBeenCalledTimes(1);
-      expect(openFilingForCase).toHaveBeenCalledWith(7);
+      expect(openFilingFor).toHaveBeenCalledTimes(1);
+      expect(openFilingFor).toHaveBeenCalledWith({ kind: 'order', id: 1001 });
       expect(internals.savedOrder()?.id).toBe(1001); // order data preserved, same as a plain save
     });
 
-    it('navigates with no case preselected when the order has none yet', () => {
+    it('navigates by the order\'s own id even when it has no linked shipping case', () => {
       createFixture();
-      const openFilingForCase = vi.spyOn(nav, 'openFilingForCase').mockImplementation(() => {});
+      const openFilingFor = vi.spyOn(nav, 'openFilingFor').mockImplementation(() => {});
       internals.selectedCustomer.set(CUSTOMER);
       internals.onSaveAndGoToFiling();
 
       httpMock.expectOne({ method: 'POST', url: '/api/orders' }).flush(SAVED_ORDER); // mblId: null
-      expect(openFilingForCase).toHaveBeenCalledWith(null);
+      expect(openFilingFor).toHaveBeenCalledWith({ kind: 'order', id: 1001 });
     });
 
     it('sends nothing and does not navigate when no customer is selected', () => {
       createFixture();
-      const openFilingForCase = vi.spyOn(nav, 'openFilingForCase').mockImplementation(() => {});
+      const openFilingFor = vi.spyOn(nav, 'openFilingFor').mockImplementation(() => {});
       internals.onSaveAndGoToFiling();
       fixture.detectChanges();
 
       httpMock.expectNone('/api/orders');
-      expect(openFilingForCase).not.toHaveBeenCalled();
+      expect(openFilingFor).not.toHaveBeenCalled();
       expect(internals.customerError()).toBe('יש לבחור לקוח');
     });
 
     it('prevents navigation and shows the error when the save fails', () => {
       createFixture();
-      const openFilingForCase = vi.spyOn(nav, 'openFilingForCase').mockImplementation(() => {});
+      const openFilingFor = vi.spyOn(nav, 'openFilingFor').mockImplementation(() => {});
       internals.selectedCustomer.set(CUSTOMER);
       internals.onSaveAndGoToFiling();
 
@@ -270,7 +270,7 @@ describe('OrderScreen', () => {
         .flush({ message: 'incoterm mismatch' }, { status: 400, statusText: 'Bad Request' });
       fixture.detectChanges();
 
-      expect(openFilingForCase).not.toHaveBeenCalled();
+      expect(openFilingFor).not.toHaveBeenCalled();
       expect(internals.errorMessage()).toBe('שמירת ההזמנה נכשלה: incoterm mismatch');
     });
   });
@@ -395,13 +395,13 @@ describe('OrderScreen', () => {
 
     it('submitting the form (Enter or the single button) while creating saves and navigates to filing', () => {
       createFixture();
-      const openFilingForCase = vi.spyOn(nav, 'openFilingForCase').mockImplementation(() => {});
+      const openFilingFor = vi.spyOn(nav, 'openFilingFor').mockImplementation(() => {});
       internals.selectedCustomer.set(CUSTOMER);
 
       internals.onSubmit();
 
       httpMock.expectOne({ method: 'POST', url: '/api/orders' }).flush({ ...SAVED_ORDER, mblId: 9 });
-      expect(openFilingForCase).toHaveBeenCalledWith(9);
+      expect(openFilingFor).toHaveBeenCalledWith({ kind: 'order', id: 1001 });
     });
 
     it('editing an existing order shows "ביטול" + "עדכן הזמנה", and a separate top-of-page filing link', () => {
@@ -424,12 +424,12 @@ describe('OrderScreen', () => {
       createFixture();
       httpMock.expectOne('/api/orders/1001').flush(SAVED_ORDER);
       fixture.detectChanges();
-      const openFilingForCase = vi.spyOn(nav, 'openFilingForCase').mockImplementation(() => {});
+      const openFilingFor = vi.spyOn(nav, 'openFilingFor').mockImplementation(() => {});
 
       internals.onSubmit();
 
       httpMock.expectOne({ method: 'PATCH', url: '/api/orders/1001' }).flush(SAVED_ORDER);
-      expect(openFilingForCase).not.toHaveBeenCalled();
+      expect(openFilingFor).not.toHaveBeenCalled();
       expect(internals.successMessage()).toBe('ההזמנה נשמרה — מספר הזמנה 1001');
     });
 
@@ -438,11 +438,11 @@ describe('OrderScreen', () => {
       createFixture();
       httpMock.expectOne('/api/orders/1001').flush({ ...SAVED_ORDER, mblId: 7 });
       fixture.detectChanges();
-      const openFilingForCase = vi.spyOn(nav, 'openFilingForCase').mockImplementation(() => {});
+      const openFilingFor = vi.spyOn(nav, 'openFilingFor').mockImplementation(() => {});
 
       internals.goToFiling();
 
-      expect(openFilingForCase).toHaveBeenCalledWith(7);
+      expect(openFilingFor).toHaveBeenCalledWith({ kind: 'order', id: 1001 });
       httpMock.expectNone({ method: 'PATCH', url: '/api/orders/1001' });
       httpMock.expectNone({ method: 'POST', url: '/api/orders' });
     });

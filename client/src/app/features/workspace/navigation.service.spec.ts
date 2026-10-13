@@ -129,25 +129,55 @@ describe('NavigationService', () => {
     expect(nav.isChildActive('ws-shipment')).toBe(false);
   });
 
-  it('openFilingForCase queues an MBL id (or none) for the sidebar-hidden filing screen', async () => {
-    nav.openFilingForCase(42);
+  it('openFilingFor queues an Order or CCF context for the filing screen', async () => {
+    nav.openFilingFor({ kind: 'order', id: 42 });
     await settleNavigation();
 
-    expect(location.path()).toBe('/workspace/filing?caseId=42');
-    expect(nav.filingCaseId()).toBe(42);
+    expect(location.path()).toBe('/workspace/filing?orderId=42');
+    expect(nav.openFilingContext()).toEqual({ kind: 'order', id: 42 });
     expect(nav.activeScreen()).toBe('filing');
 
-    nav.openFilingForCase(null);
+    nav.openFilingFor({ kind: 'ccf', id: 7 });
     await settleNavigation();
 
-    expect(location.path()).toBe('/workspace/filing');
-    expect(nav.filingCaseId()).toBeNull();
+    expect(location.path()).toBe('/workspace/filing?ccfId=7');
+    expect(nav.openFilingContext()).toEqual({ kind: 'ccf', id: 7 });
   });
 
-  it('"תיוק ניירת יבוא" is hidden from the sidebar but stays a real, reachable row', () => {
+  it('"תיוק ניירת יבוא" is a real, sidebar-visible row (it needs a direct-access picker now)', () => {
     const filing = flattenLeaves().find((c) => c.id === 'ws-filing');
-    expect(filing?.hidden).toBe(true);
+    expect(filing?.hidden).toBeFalsy();
     expect(nav.childBySlug('filing')).toBe(filing);
+  });
+
+  it('openClassificationFor queues an Order or CCF context for the classification screen', async () => {
+    nav.openClassificationFor({ kind: 'ccf', id: 7 });
+    await settleNavigation();
+
+    expect(location.path()).toBe('/workspace/classification?ccfId=7');
+    expect(nav.openClassificationContext()).toEqual({ kind: 'ccf', id: 7 });
+    expect(nav.activeScreen()).toBe('classification');
+  });
+
+  it('openCcfForView queues a CCF id for the CCF screen', async () => {
+    nav.openCcfForView(7);
+    await settleNavigation();
+
+    expect(location.path()).toBe('/workspace/ccf?ccfId=7');
+    expect(nav.viewCcfId()).toBe(7);
+    expect(nav.activeScreen()).toBe('ccf');
+  });
+
+  it('"תיק עמילות" is a real, sidebar-visible row', () => {
+    const ccf = flattenLeaves().find((c) => c.id === 'ws-ccf');
+    expect(ccf?.hidden).toBeFalsy();
+    expect(nav.childBySlug('ccf')).toBe(ccf);
+  });
+
+  it('ignores a malformed CCF id', async () => {
+    await harness.navigateByUrl('/workspace/ccf?ccfId=abc');
+    expect(nav.viewCcfId()).toBeNull();
+    expect(nav.activeScreen()).toBe('ccf');
   });
 
   it('selectChild on "יצירת הזמנה חדשה" bumps newOrderRequested (so the mounted screen resets even if it doesn\'t remount) and drops the edit id from the URL', async () => {
@@ -271,6 +301,7 @@ describe('NavigationService', () => {
         'list-my-cases': 'ws-list-my-cases',
         'list-import-processes': 'ws-list-import-processes',
         classification: 'ws-classification',
+        ccf: 'ws-ccf',
         'post-classification': 'ws-post-classification',
         'doc-review': 'ws-doc-review',
         transmit: 'ws-transmit',

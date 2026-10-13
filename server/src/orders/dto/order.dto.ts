@@ -49,7 +49,11 @@ export class OrderDto {
   @ApiProperty({ type: 'integer', nullable: true, example: 1 })
   supplierId!: number | null;
 
-  @ApiProperty({ type: 'string', nullable: true, example: 'Shanghai Tech Components Co., Ltd' })
+  @ApiProperty({
+    type: 'string',
+    nullable: true,
+    example: 'Shanghai Tech Components Co., Ltd',
+  })
   supplierName!: string | null;
 
   @ApiProperty({

@@ -1,10 +1,19 @@
 import { DecimalPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { catchError, EMPTY, finalize, map, of, switchMap } from 'rxjs';
 
 import { CountriesApi } from '../../../../api/countries-api';
+import type { FilingContext } from '../../../../api/filing-context.model';
 import {
   CLASSIFICATION_APPROVAL_LABELS,
   CLASSIFICATION_APPROVALS,
@@ -23,8 +32,9 @@ import type {
   LineItemClassificationUpdateDto,
 } from '../../../../api/models';
 import { MultiSelect, MultiSelectOption } from '../../../../shared/multi-select/multi-select';
-import { CasePicker } from '../../case-picker/case-picker';
-import { CurrentCaseService } from '../../current-case.service';
+import { FilingContextPicker } from '../../filing-context-picker/filing-context-picker';
+import { FilingContextService } from '../../filing-context.service';
+import { NavigationService } from '../../navigation.service';
 
 interface Product {
   /** Where the line is stored (`import_account_files` row + position); `null` for rows added by hand. */
@@ -44,10 +54,10 @@ interface Product {
   countryId: number | null;
 }
 
-/** "סיווג" — goods classification view with an editable products table saved back to the case's invoice lines. */
+/** "סיווג" — goods classification view with an editable products table saved back to the Order/CCF's invoice lines. */
 @Component({
   selector: 'app-classification-screen',
-  imports: [ReactiveFormsModule, DecimalPipe, MultiSelect, CasePicker],
+  imports: [ReactiveFormsModule, DecimalPipe, MultiSelect, FilingContextPicker],
   templateUrl: './classification.html',
   styleUrl: './classification.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -57,9 +67,11 @@ export class ClassificationScreen {
   private readonly importFilesApi = inject(ImportFilesApi);
   private readonly countriesApi = inject(CountriesApi);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly nav = inject(NavigationService);
+  private readonly filingContext = inject(FilingContextService);
 
-  /** The case (`mbl` id) picked in the case picker; `null` until one is picked, and nothing is loaded or saved while it is. */
-  protected readonly caseId = inject(CurrentCaseService).caseId;
+  /** The Order/CCF picked in the context picker; `null` until one is picked, and nothing is loaded or saved while it is. */
+  protected readonly context = this.filingContext.context;
 
   protected readonly approvalOptions: readonly MultiSelectOption[] = CLASSIFICATION_APPROVALS.map(
     (value) => ({ value, label: CLASSIFICATION_APPROVAL_LABELS[value] }),
@@ -89,8 +101,24 @@ export class ClassificationScreen {
   protected readonly saveError = signal<string | null>(null);
 
   constructor() {
-    this.loadLineItemsOnCaseChange();
+    this.loadLineItemsOnContextChange();
     this.loadCountries();
+
+    // The CCF screen navigates here after saving a Customs Clearance File
+    // linked to a shipping case: `/workspace/classification?ccfId=N`, which
+    // NavigationService.applyUrl turns into `openClassificationContext`
+    // before this screen shows. Consume it once as soon as it appears and
+    // preselect it in the (shared) context picker — same effect+untracked
+    // shape as the filing screen's hand-off, for the same reason:
+    // Back/Forward can land on this URL while the screen is already mounted.
+    effect(() => {
+      const incoming = this.nav.openClassificationContext();
+      if (incoming === null) return;
+      untracked(() => {
+        this.nav.openClassificationContext.set(null);
+        this.filingContext.context.set(incoming);
+      });
+    });
   }
 
   protected addRow(): void {
@@ -129,8 +157,8 @@ export class ClassificationScreen {
    * kept on screen but not sent.
    */
   protected onSubmit(): void {
-    const caseId = this.caseId();
-    if (caseId === null || this.saving()) return;
+    const context = this.context();
+    if (context === null || this.saving()) return;
     const rows = this.products();
     const items = rows.flatMap((row): LineItemClassificationUpdateDto[] =>
       row.fileId === null || row.lineIndex === null
@@ -153,22 +181,22 @@ export class ClassificationScreen {
     this.saveMessage.set(null);
     this.saveError.set(null);
     this.importFilesApi
-      .saveLineItemClassifications(caseId, items)
+      .saveLineItemClassifications(context, items)
       .pipe(
         takeUntilDestroyed(this.destroyRef),
         finalize(() => this.saving.set(false)),
       )
       .subscribe({
         next: (saved) => {
-          // Saved, but another case was picked meanwhile — its table is not these rows'.
-          if (this.caseId() !== caseId) return;
+          // Saved, but another context was picked meanwhile — its table is not these rows'.
+          if (!sameContext(this.context(), context)) return;
           this.products.set([...saved.map(toProduct), ...manualRows]);
           this.saveMessage.set(
             items.length === 1 ? 'הסיווג נשמר (שורה אחת)' : `הסיווג נשמר (${items.length} שורות)`,
           );
         },
         error: () => {
-          if (this.caseId() !== caseId) return;
+          if (!sameContext(this.context(), context)) return;
           this.saveError.set('שמירת הסיווג נכשלה');
         },
       });
@@ -197,23 +225,23 @@ export class ClassificationScreen {
 
   /**
    * Fills the products table from the supplier invoices filed under the
-   * picked case, and the "תיאור טובין" field from their product names — again
-   * whenever another case is picked. With no case picked the table is simply
-   * empty — nothing is requested, so nothing can fail.
+   * picked Order/CCF, and the "תיאור טובין" field from their product names —
+   * again whenever another one is picked. With nothing picked the table is
+   * simply empty — nothing is requested, so nothing can fail.
    */
-  private loadLineItemsOnCaseChange(): void {
-    toObservable(this.caseId)
+  private loadLineItemsOnContextChange(): void {
+    toObservable(this.context)
       .pipe(
-        switchMap((caseId) => {
+        switchMap((context) => {
           this.products.set([]);
           this.form.controls.goodsDescription.setValue('');
           this.errorMessage.set(null);
           this.saveMessage.set(null);
           this.saveError.set(null);
-          if (caseId === null) return EMPTY;
+          if (context === null) return EMPTY;
 
           this.loading.set(true);
-          return this.importFilesApi.getSupplierInvoiceLineItems(caseId).pipe(
+          return this.importFilesApi.getSupplierInvoiceLineItems(context).pipe(
             map((items) => items.map(toProduct)),
             catchError(() => {
               this.errorMessage.set('טעינת פריטי חשבון הספק נכשלה');
@@ -229,6 +257,11 @@ export class ClassificationScreen {
         this.form.controls.goodsDescription.setValue(goodsDescriptionOf(products));
       });
   }
+}
+
+function sameContext(a: FilingContext | null, b: FilingContext | null): boolean {
+  if (a === null || b === null) return a === b;
+  return a.kind === b.kind && a.id === b.id;
 }
 
 /** Maps an extracted invoice line (with whatever classification was saved for it) to a products-table row. */

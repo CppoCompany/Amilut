@@ -295,6 +295,15 @@ export class ShipmentCaseWizardScreen {
     this.nav.goToMyFiles();
   }
 
+  /** Top-of-page "מעבר לתיק הסליקה" link — only shown once this case has a
+   *  linked Customs Clearance File (`savedMbl().ccfId`), jumps straight to
+   *  viewing it, no save step. Mirrors `OrderScreen.goToFiling()` exactly. */
+  protected goToCcf(): void {
+    const mbl = this.savedMbl();
+    if (!mbl || mbl.ccfId === null) return;
+    this.nav.openCcfForView(mbl.ccfId);
+  }
+
   protected containerControls() {
     return this.mblForm.controls.containers.controls;
   }

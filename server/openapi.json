@@ -58,6 +58,160 @@
         ]
       }
     },
+    "/api/ccf": {
+      "get": {
+        "operationId": "CcfController_findAll",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/CcfStatus"
+            }
+          },
+          {
+            "name": "shipmentFileId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": 42,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": 200,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CcfDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "ccf"
+        ]
+      },
+      "post": {
+        "operationId": "CcfController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCcfDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CcfDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "ccf"
+        ]
+      }
+    },
+    "/api/ccf/next-file-number": {
+      "get": {
+        "operationId": "CcfController_peekNextFileNumber",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NextCcfFileNumberDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "ccf"
+        ]
+      }
+    },
+    "/api/ccf/{id}": {
+      "get": {
+        "operationId": "CcfController_findById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CcfDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "ccf"
+        ]
+      }
+    },
     "/api/countries": {
       "get": {
         "operationId": "CountriesController_findAll",
@@ -352,11 +506,20 @@
             }
           },
           {
-            "name": "accountId",
+            "name": "orderId",
             "required": false,
             "in": "query",
             "schema": {
-              "example": 1000,
+              "example": 1024,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "ccfId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": 7,
               "type": "integer"
             }
           },
@@ -369,7 +532,8 @@
               "type": "string",
               "enum": [
                 "createdAt",
-                "accountId",
+                "orderId",
+                "ccfId",
                 "item",
                 "classificationCode"
               ]
@@ -398,16 +562,28 @@
         ]
       }
     },
-    "/api/import-files/{accountNumber}": {
+    "/api/import-files": {
       "post": {
         "operationId": "ImportFilesController_uploadMultipleImportFiles",
         "parameters": [
           {
-            "name": "accountNumber",
-            "required": true,
-            "in": "path",
+            "name": "orderId",
+            "required": false,
+            "in": "query",
+            "description": "orders.id",
             "schema": {
-              "type": "number"
+              "example": 1024,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "ccfId",
+            "required": false,
+            "in": "query",
+            "description": "customs_clearance_files.id",
+            "schema": {
+              "example": 7,
+              "type": "integer"
             }
           }
         ],
@@ -452,10 +628,10 @@
             }
           },
           "400": {
-            "description": "No files, missing or invalid documentType, or an unsafe file name."
+            "description": "No files, missing or invalid documentType, an unsafe file name, or neither/both of orderId/ccfId given."
           },
           "404": {
-            "description": "No import case (mbl) with this account number."
+            "description": "No order or customs clearance file with this id."
           }
         },
         "security": [
@@ -471,11 +647,23 @@
         "operationId": "ImportFilesController_listImportFiles",
         "parameters": [
           {
-            "name": "accountNumber",
-            "required": true,
-            "in": "path",
+            "name": "orderId",
+            "required": false,
+            "in": "query",
+            "description": "orders.id",
             "schema": {
-              "type": "number"
+              "example": 1024,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "ccfId",
+            "required": false,
+            "in": "query",
+            "description": "customs_clearance_files.id",
+            "schema": {
+              "example": 7,
+              "type": "integer"
             }
           }
         ],
@@ -494,10 +682,10 @@
             }
           },
           "400": {
-            "description": "accountNumber is not a positive integer."
+            "description": "Neither/both of orderId/ccfId given."
           },
           "404": {
-            "description": "No import case (mbl) with this account number."
+            "description": "No order or customs clearance file with this id."
           }
         },
         "security": [
@@ -510,12 +698,12 @@
         ]
       }
     },
-    "/api/import-files/{accountNumber}/files/{fileId}": {
+    "/api/import-files/files/{fileId}": {
       "get": {
         "operationId": "ImportFilesController_getImportFile",
         "parameters": [
           {
-            "name": "accountNumber",
+            "name": "fileId",
             "required": true,
             "in": "path",
             "schema": {
@@ -523,11 +711,23 @@
             }
           },
           {
-            "name": "fileId",
-            "required": true,
-            "in": "path",
+            "name": "orderId",
+            "required": false,
+            "in": "query",
+            "description": "orders.id",
             "schema": {
-              "type": "number"
+              "example": 1024,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "ccfId",
+            "required": false,
+            "in": "query",
+            "description": "customs_clearance_files.id",
+            "schema": {
+              "example": 7,
+              "type": "integer"
             }
           }
         ],
@@ -544,10 +744,10 @@
             }
           },
           "400": {
-            "description": "accountNumber or fileId is not a positive integer."
+            "description": "fileId is not a positive integer, or neither/both of orderId/ccfId given."
           },
           "404": {
-            "description": "Unknown case, no such file in that case, or the file is missing on disk."
+            "description": "Unknown order/CCF, no such file in it, or the file is missing on disk."
           }
         },
         "security": [
@@ -560,16 +760,28 @@
         ]
       }
     },
-    "/api/import-files/{accountNumber}/line-items": {
+    "/api/import-files/line-items": {
       "get": {
         "operationId": "ImportFilesController_getSupplierInvoiceLineItems",
         "parameters": [
           {
-            "name": "accountNumber",
-            "required": true,
-            "in": "path",
+            "name": "orderId",
+            "required": false,
+            "in": "query",
+            "description": "orders.id",
             "schema": {
-              "type": "number"
+              "example": 1024,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "ccfId",
+            "required": false,
+            "in": "query",
+            "description": "customs_clearance_files.id",
+            "schema": {
+              "example": 7,
+              "type": "integer"
             }
           }
         ],
@@ -588,10 +800,10 @@
             }
           },
           "400": {
-            "description": "accountNumber is not a positive integer."
+            "description": "Neither/both of orderId/ccfId given."
           },
           "404": {
-            "description": "No import case (mbl) with this account number."
+            "description": "No order or customs clearance file with this id."
           }
         },
         "security": [
@@ -604,16 +816,28 @@
         ]
       }
     },
-    "/api/import-files/{accountNumber}/line-items/classification": {
+    "/api/import-files/line-items/classification": {
       "put": {
         "operationId": "ImportFilesController_saveLineItemClassifications",
         "parameters": [
           {
-            "name": "accountNumber",
-            "required": true,
-            "in": "path",
+            "name": "orderId",
+            "required": false,
+            "in": "query",
+            "description": "orders.id",
             "schema": {
-              "type": "number"
+              "example": 1024,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "ccfId",
+            "required": false,
+            "in": "query",
+            "description": "customs_clearance_files.id",
+            "schema": {
+              "example": 7,
+              "type": "integer"
             }
           }
         ],
@@ -642,10 +866,10 @@
             }
           },
           "400": {
-            "description": "Invalid payload, a line index outside its file, or an unknown country id."
+            "description": "Invalid payload, a line index outside its file, an unknown country id, or neither/both of orderId/ccfId given."
           },
           "404": {
-            "description": "Unknown case, or a fileId that is not a file of that case."
+            "description": "Unknown order/CCF, or a fileId that is not a file of it."
           }
         },
         "security": [
@@ -1262,6 +1486,89 @@
         ]
       }
     },
+    "/api/notifications": {
+      "get": {
+        "operationId": "NotificationsController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NotificationDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/notifications/unread-count": {
+      "get": {
+        "operationId": "NotificationsController_unreadCount",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnreadCountDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/notifications/{id}/read": {
+      "patch": {
+        "operationId": "NotificationsController_markRead",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
     "/api/orders": {
       "get": {
         "operationId": "OrdersController_findAll",
@@ -1854,6 +2161,98 @@
         "type": "object",
         "properties": {}
       },
+      "CcfStatus": {
+        "type": "string",
+        "enum": [
+          "open",
+          "closed"
+        ],
+        "x-enum-varnames": [
+          "OPEN",
+          "CLOSED"
+        ]
+      },
+      "CcfDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "fileNumber": {
+            "type": "string",
+            "example": "CCF1000"
+          },
+          "shipmentFileId": {
+            "type": "integer",
+            "nullable": true,
+            "example": 42
+          },
+          "shipmentFileMblNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "MBL-987654321"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CcfStatus"
+              }
+            ]
+          },
+          "createdBy": {
+            "type": "integer",
+            "example": 7
+          },
+          "createdByName": {
+            "type": "string",
+            "nullable": true,
+            "example": "Dana Levi"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-20T08:30:00.000Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-20T08:30:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "fileNumber",
+          "shipmentFileId",
+          "shipmentFileMblNumber",
+          "status",
+          "createdBy",
+          "createdByName",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "NextCcfFileNumberDto": {
+        "type": "object",
+        "properties": {
+          "fileNumber": {
+            "type": "string",
+            "example": "CCF1000"
+          }
+        },
+        "required": [
+          "fileNumber"
+        ]
+      },
+      "CreateCcfDto": {
+        "type": "object",
+        "properties": {
+          "shipmentFileId": {
+            "type": "integer",
+            "example": 42
+          }
+        }
+      },
       "CountryDto": {
         "type": "object",
         "properties": {
@@ -2164,9 +2563,19 @@
             "type": "integer",
             "example": 42
           },
-          "mblId": {
+          "orderId": {
             "type": "integer",
-            "example": 1000
+            "nullable": true,
+            "example": 1024
+          },
+          "ccfId": {
+            "type": "integer",
+            "nullable": true,
+            "example": 7
+          },
+          "contextLabel": {
+            "type": "string",
+            "example": "הזמנה 1024"
           },
           "lineIndex": {
             "type": "integer",
@@ -2197,7 +2606,9 @@
         },
         "required": [
           "fileId",
-          "mblId",
+          "orderId",
+          "ccfId",
+          "contextLabel",
           "lineIndex",
           "item",
           "description",
@@ -2544,9 +2955,19 @@
             "type": "integer",
             "example": 42
           },
-          "accountId": {
+          "orderId": {
             "type": "integer",
-            "example": 1000
+            "nullable": true,
+            "example": 1024
+          },
+          "ccfId": {
+            "type": "integer",
+            "nullable": true,
+            "example": 7
+          },
+          "contextLabel": {
+            "type": "string",
+            "example": "הזמנה 1024"
           },
           "fileName": {
             "type": "string",
@@ -2595,7 +3016,9 @@
         },
         "required": [
           "fileId",
-          "accountId",
+          "orderId",
+          "ccfId",
+          "contextLabel",
           "fileName",
           "lineIndex",
           "item",
@@ -2644,7 +3067,8 @@
           "BILL_OF_LADING",
           "MASTER_BILL_OF_LADING",
           "PACKING_LIST",
-          "CERTIFICATE_OF_ORIGIN"
+          "CERTIFICATE_OF_ORIGIN",
+          "OTHER"
         ],
         "description": "Kind of paperwork this file represents.",
         "x-enum-varnames": [
@@ -2652,7 +3076,8 @@
           "BILL_OF_LADING",
           "MASTER_BILL_OF_LADING",
           "PACKING_LIST",
-          "CERTIFICATE_OF_ORIGIN"
+          "CERTIFICATE_OF_ORIGIN",
+          "OTHER"
         ]
       },
       "InvoiceLineItemDto": {
@@ -3373,6 +3798,11 @@
             "nullable": true,
             "example": "Dana Levi"
           },
+          "ccfId": {
+            "type": "integer",
+            "nullable": true,
+            "example": 7
+          },
           "containers": {
             "type": "array",
             "items": {
@@ -3422,6 +3852,7 @@
           "status",
           "handlerUserId",
           "handlerName",
+          "ccfId",
           "containers",
           "createdAt",
           "updatedAt"
@@ -3849,6 +4280,52 @@
         },
         "required": [
           "orderIds"
+        ]
+      },
+      "NotificationDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "message": {
+            "type": "string",
+            "example": "נפתח תיק סליקת מכס חדש, מקושר לתיק שילוח 42"
+          },
+          "relatedCcfId": {
+            "type": "integer",
+            "nullable": true,
+            "example": 7
+          },
+          "isRead": {
+            "type": "boolean",
+            "example": false
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-20T08:30:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "message",
+          "relatedCcfId",
+          "isRead",
+          "createdAt"
+        ]
+      },
+      "UnreadCountDto": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer",
+            "example": 3
+          }
+        },
+        "required": [
+          "count"
         ]
       },
       "ShipmentType": {

@@ -52,6 +52,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ccf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CcfController_findAll"];
+        put?: never;
+        post: operations["CcfController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ccf/next-file-number": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CcfController_peekNextFileNumber"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ccf/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CcfController_findById"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/countries": {
         parameters: {
             query?: never;
@@ -132,7 +180,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/import-files/{accountNumber}": {
+    "/api/import-files": {
         parameters: {
             query?: never;
             header?: never;
@@ -148,7 +196,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/import-files/{accountNumber}/files/{fileId}": {
+    "/api/import-files/files/{fileId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -164,7 +212,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/import-files/{accountNumber}/line-items": {
+    "/api/import-files/line-items": {
         parameters: {
             query?: never;
             header?: never;
@@ -180,7 +228,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/import-files/{accountNumber}/line-items/classification": {
+    "/api/import-files/line-items/classification": {
         parameters: {
             query?: never;
             header?: never;
@@ -292,6 +340,54 @@ export interface paths {
         patch: operations["HblController_updateOrders"];
         trace?: never;
     };
+    "/api/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["NotificationsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/unread-count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["NotificationsController_unreadCount"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/{id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["NotificationsController_markRead"];
+        trace?: never;
+    };
     "/api/orders": {
         parameters: {
             query?: never;
@@ -377,6 +473,41 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         LoginDto: Record<string, never>;
+        /** @enum {string} */
+        CcfStatus: CcfStatus;
+        CcfDto: {
+            /** @example 1 */
+            id: number;
+            /** @example CCF1000 */
+            fileNumber: string;
+            /** @example 42 */
+            shipmentFileId: number | null;
+            /** @example MBL-987654321 */
+            shipmentFileMblNumber: string | null;
+            status: components["schemas"]["CcfStatus"];
+            /** @example 7 */
+            createdBy: number;
+            /** @example Dana Levi */
+            createdByName: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-20T08:30:00.000Z
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-20T08:30:00.000Z
+             */
+            updatedAt: string;
+        };
+        NextCcfFileNumberDto: {
+            /** @example CCF1000 */
+            fileNumber: string;
+        };
+        CreateCcfDto: {
+            /** @example 42 */
+            shipmentFileId?: number;
+        };
         CountryDto: {
             /** @example 106 */
             id: number;
@@ -486,8 +617,12 @@ export interface components {
         DashboardClassificationRowDto: {
             /** @example 42 */
             fileId: number;
-            /** @example 1000 */
-            mblId: number;
+            /** @example 1024 */
+            orderId: number | null;
+            /** @example 7 */
+            ccfId: number | null;
+            /** @example הזמנה 1024 */
+            contextLabel: string;
             /** @example 0 */
             lineIndex: number;
             /** @example Y8022-140BK */
@@ -589,8 +724,12 @@ export interface components {
         ClassificationRowDto: {
             /** @example 42 */
             fileId: number;
-            /** @example 1000 */
-            accountId: number;
+            /** @example 1024 */
+            orderId: number | null;
+            /** @example 7 */
+            ccfId: number | null;
+            /** @example הזמנה 1024 */
+            contextLabel: string;
             /** @example invoice-2026-09.pdf */
             fileName: string;
             /** @example 0 */
@@ -926,6 +1065,8 @@ export interface components {
             handlerUserId: number | null;
             /** @example Dana Levi */
             handlerName: string | null;
+            /** @example 7 */
+            ccfId: number | null;
             containers: components["schemas"]["MblContainerDto"][];
             /**
              * Format: date-time
@@ -1120,6 +1261,25 @@ export interface components {
              *     ]
              */
             orderIds: number[];
+        };
+        NotificationDto: {
+            /** @example 1 */
+            id: number;
+            /** @example נפתח תיק סליקת מכס חדש, מקושר לתיק שילוח 42 */
+            message: string;
+            /** @example 7 */
+            relatedCcfId: number | null;
+            /** @example false */
+            isRead: boolean;
+            /**
+             * Format: date-time
+             * @example 2026-09-20T08:30:00.000Z
+             */
+            createdAt: string;
+        };
+        UnreadCountDto: {
+            /** @example 3 */
+            count: number;
         };
         /** @enum {string} */
         ShipmentType: ShipmentType;
@@ -1383,6 +1543,98 @@ export interface operations {
             };
         };
     };
+    CcfController_findAll: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["CcfStatus"];
+                shipmentFileId?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CcfDto"][];
+                };
+            };
+        };
+    };
+    CcfController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCcfDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CcfDto"];
+                };
+            };
+        };
+    };
+    CcfController_peekNextFileNumber: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NextCcfFileNumberDto"];
+                };
+            };
+        };
+    };
+    CcfController_findById: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CcfDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     CountriesController_findAll: {
         parameters: {
             query?: never;
@@ -1536,7 +1788,8 @@ export interface operations {
                 dir?: PathsApiImportFilesClassificationsGetParametersQueryDir;
                 page?: number;
                 pageSize?: number;
-                accountId?: number;
+                orderId?: number;
+                ccfId?: number;
                 sort?: PathsApiImportFilesClassificationsGetParametersQuerySort;
             };
             header?: never;
@@ -1557,11 +1810,14 @@ export interface operations {
     };
     ImportFilesController_listImportFiles: {
         parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                accountNumber: number;
+            query?: {
+                /** @description orders.id */
+                orderId?: number;
+                /** @description customs_clearance_files.id */
+                ccfId?: number;
             };
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -1574,14 +1830,14 @@ export interface operations {
                     "application/json": components["schemas"]["UploadedImportFileDto"][];
                 };
             };
-            /** @description accountNumber is not a positive integer. */
+            /** @description Neither/both of orderId/ccfId given. */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description No import case (mbl) with this account number. */
+            /** @description No order or customs clearance file with this id. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -1592,11 +1848,14 @@ export interface operations {
     };
     ImportFilesController_uploadMultipleImportFiles: {
         parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                accountNumber: number;
+            query?: {
+                /** @description orders.id */
+                orderId?: number;
+                /** @description customs_clearance_files.id */
+                ccfId?: number;
             };
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody: {
@@ -1616,14 +1875,14 @@ export interface operations {
                     "application/json": components["schemas"]["UploadedImportFileDto"][];
                 };
             };
-            /** @description No files, missing or invalid documentType, or an unsafe file name. */
+            /** @description No files, missing or invalid documentType, an unsafe file name, or neither/both of orderId/ccfId given. */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description No import case (mbl) with this account number. */
+            /** @description No order or customs clearance file with this id. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -1634,10 +1893,14 @@ export interface operations {
     };
     ImportFilesController_getImportFile: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description orders.id */
+                orderId?: number;
+                /** @description customs_clearance_files.id */
+                ccfId?: number;
+            };
             header?: never;
             path: {
-                accountNumber: number;
                 fileId: number;
             };
             cookie?: never;
@@ -1653,14 +1916,14 @@ export interface operations {
                     "application/octet-stream": string;
                 };
             };
-            /** @description accountNumber or fileId is not a positive integer. */
+            /** @description fileId is not a positive integer, or neither/both of orderId/ccfId given. */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description Unknown case, no such file in that case, or the file is missing on disk. */
+            /** @description Unknown order/CCF, no such file in it, or the file is missing on disk. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -1671,11 +1934,14 @@ export interface operations {
     };
     ImportFilesController_getSupplierInvoiceLineItems: {
         parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                accountNumber: number;
+            query?: {
+                /** @description orders.id */
+                orderId?: number;
+                /** @description customs_clearance_files.id */
+                ccfId?: number;
             };
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -1688,14 +1954,14 @@ export interface operations {
                     "application/json": components["schemas"]["InvoiceLineItemDto"][];
                 };
             };
-            /** @description accountNumber is not a positive integer. */
+            /** @description Neither/both of orderId/ccfId given. */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description No import case (mbl) with this account number. */
+            /** @description No order or customs clearance file with this id. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -1706,11 +1972,14 @@ export interface operations {
     };
     ImportFilesController_saveLineItemClassifications: {
         parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                accountNumber: number;
+            query?: {
+                /** @description orders.id */
+                orderId?: number;
+                /** @description customs_clearance_files.id */
+                ccfId?: number;
             };
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody: {
@@ -1727,14 +1996,14 @@ export interface operations {
                     "application/json": components["schemas"]["InvoiceLineItemDto"][];
                 };
             };
-            /** @description Invalid payload, a line index outside its file, or an unknown country id. */
+            /** @description Invalid payload, a line index outside its file, an unknown country id, or neither/both of orderId/ccfId given. */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description Unknown case, or a fileId that is not a file of that case. */
+            /** @description Unknown order/CCF, or a fileId that is not a file of it. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -2069,6 +2338,63 @@ export interface operations {
             };
         };
     };
+    NotificationsController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationDto"][];
+                };
+            };
+        };
+    };
+    NotificationsController_unreadCount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnreadCountDto"];
+                };
+            };
+        };
+    };
+    NotificationsController_markRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     OrdersController_findAll: {
         parameters: {
             query?: {
@@ -2348,7 +2674,8 @@ export enum PathsApiImportFilesClassificationsGetParametersQueryDir {
 }
 export enum PathsApiImportFilesClassificationsGetParametersQuerySort {
     createdAt = "createdAt",
-    accountId = "accountId",
+    orderId = "orderId",
+    ccfId = "ccfId",
     item = "item",
     classificationCode = "classificationCode"
 }
@@ -2372,6 +2699,10 @@ export enum PathsApiOrdersPagedGetParametersQuerySort {
     customerName = "customerName",
     status = "status",
     createdAt = "createdAt"
+}
+export enum CcfStatus {
+    OPEN = "open",
+    CLOSED = "closed"
 }
 export enum OrderStatus {
     PREPARING = "preparing",
@@ -2446,7 +2777,8 @@ export enum ImportDocumentType {
     BILL_OF_LADING = "BILL_OF_LADING",
     MASTER_BILL_OF_LADING = "MASTER_BILL_OF_LADING",
     PACKING_LIST = "PACKING_LIST",
-    CERTIFICATE_OF_ORIGIN = "CERTIFICATE_OF_ORIGIN"
+    CERTIFICATE_OF_ORIGIN = "CERTIFICATE_OF_ORIGIN",
+    OTHER = "OTHER"
 }
 export enum SeaMethod {
     FCL_FCL = "fcl_fcl",

@@ -95,8 +95,10 @@ describe('Workspace shell', () => {
       expect(icon!.querySelector('.icon-nav-tooltip')?.textContent?.trim()).toBe('סיווג');
     });
 
-    it('"תיוק ניירת יבוא" is reachable (see NavigationService.openFilingForCase) but hidden from both sidebar modes', () => {
-      expect(leafIconByLabel('תיוק ניירת יבוא')).toBeNull();
+    it('"תיוק ניירת יבוא" is sidebar-visible — it needs a direct entry point for its Order/CCF picker', () => {
+      const icon = leafIconByLabel('תיוק ניירת יבוא');
+      expect(icon).toBeTruthy();
+      expect(icon!.querySelector('.icon-nav-tooltip')?.textContent?.trim()).toBe('תיוק ניירת יבוא');
 
       toggleButton().click();
       fixture.detectChanges();
@@ -104,7 +106,7 @@ describe('Workspace shell', () => {
         fixture.nativeElement.querySelectorAll('.tree-child-item'),
       );
       const expandedLabels = expandedItems.map((a) => a.textContent?.trim());
-      expect(expandedLabels).not.toContain('תיוק ניירת יבוא');
+      expect(expandedLabels).toContain('תיוק ניירת יבוא');
     });
 
     it('a group keeps a single icon, revealing its children as a hover flyout', () => {

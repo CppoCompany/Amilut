@@ -7,6 +7,8 @@ import { AuthService } from '../../core/auth/auth.service';
 import { Breadcrumb } from './breadcrumb/breadcrumb';
 import { isTreeChildGroup } from './navigation.model';
 import { NavigationService } from './navigation.service';
+import { NotificationBell } from './notification-bell/notification-bell';
+import { CcfScreen } from './screens/ccf/ccf';
 import { ClassificationScreen } from './screens/classification/classification';
 import { DashboardScreen } from './screens/dashboard/dashboard';
 import { FilingScreen } from './screens/filing/filing';
@@ -37,11 +39,13 @@ import { ShipmentCaseWizardScreen } from './screens/shipment-case-wizard/shipmen
   selector: 'app-workspace',
   imports: [
     Breadcrumb,
+    NotificationBell,
     DashboardScreen,
     OrderScreen,
     FilingScreen,
     ShipmentCaseWizardScreen,
     ClassificationScreen,
+    CcfScreen,
     ImportDeclarationScreen,
     MyOrdersScreen,
     MyFilesScreen,

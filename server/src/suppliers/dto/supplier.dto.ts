@@ -18,7 +18,11 @@ export class SupplierDto {
   @ApiProperty({ type: String, nullable: true, example: '+972-3-1234567' })
   phone!: string | null;
 
-  @ApiProperty({ type: String, nullable: true, example: 'office@supplier.co.il' })
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    example: 'office@supplier.co.il',
+  })
   email!: string | null;
 
   @ApiProperty({ example: true })

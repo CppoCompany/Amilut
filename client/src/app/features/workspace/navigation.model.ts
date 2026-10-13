@@ -33,6 +33,7 @@ export type PageKey =
   | 'filing'
   | 'shipmentCaseWizard'
   | 'classification'
+  | 'ccf'
   | 'importDeclaration'
   | 'myOrders'
   | 'myFiles'
@@ -47,6 +48,7 @@ export type ScreenId =
   | 'filing'
   | 'shipmentCaseWizard'
   | 'classification'
+  | 'ccf'
   | 'importDeclaration'
   | 'myOrders'
   | 'myFiles'
@@ -66,9 +68,11 @@ export interface TreeChild {
   icon: string;
   /** Omits the row from the rendered sidebar (both the expanded tree and the
    *  collapsed icon rail) while keeping it fully "real" for everything else —
-   *  URL slug resolution, `leafByPage`, the breadcrumb trail. Used for screens
-   *  reached only through another screen's own button, never directly from
-   *  the sidebar (e.g. "תיוק ניירת יבוא" — see `NavigationService.openFilingForCase`). */
+   *  URL slug resolution, `leafByPage`, the breadcrumb trail. For a screen
+   *  reached only through another screen's own button/link, never directly
+   *  from the sidebar. Unused today (every row is currently sidebar-visible,
+   *  including "תיוק ניירת יבוא" — it needs a direct-access entry point for
+   *  its Order/CCF picker) — kept for the next screen that needs it. */
   hidden?: boolean;
 }
 
