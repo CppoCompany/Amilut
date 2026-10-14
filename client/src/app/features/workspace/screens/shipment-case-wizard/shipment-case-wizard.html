@@ -19,51 +19,68 @@
 } @else {
 <div class="wizard-layout">
   <div class="wizard-main">
-    @if (shippingType() === null) {
+    @if (currentStep() === 'type') {
+      <!-- Step 1. Live while no Job is saved; once one exists it's shown
+           read-only (the chosen card highlighted, every card disabled). -->
       <section class="form-section">
         <h2 class="section-title">שלב 1 — בחירת סוג משלוח</h2>
+        @if (choicesLocked()) {
+          <p class="hint-text method-locked-hint">סוג המשלוח נקבע בעת יצירת ה-Job ואינו ניתן לשינוי.</p>
+        }
         <div class="method-cards">
-          <button type="button" class="method-card" (click)="selectShippingType(MblShippingType.SEA)">
+          <button
+            type="button"
+            class="method-card"
+            [class.method-card--selected]="shippingType() === MblShippingType.SEA"
+            [disabled]="choicesLocked()"
+            (click)="selectShippingType(MblShippingType.SEA)"
+          >
             <i class="fa-solid fa-ship" aria-hidden="true"></i>
             <span class="method-card__label">{{ SHIPPING_TYPE_LABELS[MblShippingType.SEA] }}</span>
           </button>
-          <button type="button" class="method-card" (click)="selectShippingType(MblShippingType.AIR)">
+          <button
+            type="button"
+            class="method-card"
+            [class.method-card--selected]="shippingType() === MblShippingType.AIR"
+            [disabled]="choicesLocked()"
+            (click)="selectShippingType(MblShippingType.AIR)"
+          >
             <i class="fa-solid fa-plane" aria-hidden="true"></i>
             <span class="method-card__label">{{ SHIPPING_TYPE_LABELS[MblShippingType.AIR] }}</span>
           </button>
         </div>
       </section>
+    } @else if (currentStep() === 'method') {
+      <!-- Step 2 (sea only) — same live/locked split as step 1. -->
+      <section class="form-section">
+        <h2 class="section-title">שלב 2 — בחירת שיטת שילוח ימי</h2>
+        @if (choicesLocked()) {
+          <p class="hint-text method-locked-hint">שיטת השילוח נקבעה בעת יצירת ה-Job ואינה ניתנת לשינוי.</p>
+        }
+        <div class="method-cards">
+          @for (seaMethodOption of seaMethods; track seaMethodOption) {
+            <button
+              type="button"
+              class="method-card"
+              [class.method-card--selected]="seaMethod() === seaMethodOption"
+              [disabled]="choicesLocked()"
+              (click)="selectSeaMethod(seaMethodOption)"
+            >
+              <span class="method-card__label">{{ SEA_METHOD_LABELS[seaMethodOption] }}</span>
+              <span class="method-card__description">{{ SEA_METHOD_DESCRIPTIONS[seaMethodOption] }}</span>
+            </button>
+          }
+        </div>
+      </section>
     } @else if (shippingType() === MblShippingType.AIR) {
       <section class="form-section">
-        @if (isEditingExisting()) {
-          <button type="button" class="btn btn-secondary back-btn" (click)="backToMyFiles()">
-            <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
-            חזרה לתיקים שלי
-          </button>
-        } @else {
-          <button type="button" class="btn btn-secondary back-btn" (click)="backToShippingType()">
-            <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
-            חזרה לבחירת סוג משלוח
-          </button>
-        }
         <h2 class="section-title">משלוח אווירי</h2>
         <p class="hint-text">תהליך יצירת תיק למשלוח אווירי ייבנה בשלב מאוחר יותר.</p>
       </section>
     } @else if (seaMethod(); as method) {
       <section class="form-section">
-        @if (isEditingExisting()) {
-          <button type="button" class="btn btn-secondary back-btn" (click)="backToMyFiles()">
-            <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
-            חזרה לתיקים שלי
-          </button>
-        } @else {
-          <button type="button" class="btn btn-secondary back-btn" (click)="backToSeaMethod()">
-            <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
-            חזרה לבחירת שיטת שילוח
-          </button>
-        }
         <h2 class="section-title">
-          {{ SEA_METHOD_LABELS[method] }} — {{ !savedMbl() || editingMbl() ? 'טופס MBL' : 'יצירת תיקי HBL' }}
+          {{ SEA_METHOD_LABELS[method] }} — {{ !savedMbl() || editingMbl() ? 'טופס Job' : 'יצירת Files' }}
         </h2>
 
         @if (!savedMbl() || editingMbl()) {
@@ -74,12 +91,12 @@
               <div class="grid-row">
                 @if (editingMbl()) {
                   <div class="form-group">
-                    <label>לקוח (משותף לכל תיקי ה-HBL — לא ניתן לשינוי)</label>
+                    <label>לקוח (משותף לכל ה-Files — לא ניתן לשינוי)</label>
                     <input type="text" class="form-control" [value]="savedMbl()?.customerName ?? '—'" readonly />
                   </div>
                 } @else {
                   <div class="form-group autocomplete-wrapper">
-                    <label for="mblCustomer">לקוח (משותף לכל תיקי ה-HBL במסטר זה)</label>
+                    <label for="mblCustomer">לקוח (משותף לכל ה-Files ב-Job זה)</label>
                     <app-customer-autocomplete
                       inputId="mblCustomer"
                       placeholder="הקלד שם לקוח..."
@@ -327,22 +344,16 @@
                   <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
                   שומר...
                 } @else {
-                  {{ editingMbl() ? 'עדכן MBL' : 'שמור MBL' }}
+                  {{ editingMbl() ? 'עדכן Job' : 'שמור Job' }}
                 }
               </button>
             </div>
           </form>
         } @else if (savedMbl(); as mbl) {
-          <!-- ── HBL step ──────────────────────────────────────────────────── -->
-          <p class="form-message form-message--success" role="status">
-            ה-MBL נשמר בהצלחה — מספר {{ mbl.mblNumber || ('#' + mbl.id) }}.
-          </p>
-          <div class="form-actions">
-            <button type="button" class="btn btn-secondary" (click)="startEditMbl()">ערוך פרטי MBL</button>
-          </div>
-
+          <!-- ── Files (HBL) step. Editing the Job itself is reached via the
+               "Job" link in "התקדמות התיק" / the tree node, not from here. ── -->
           @if (hbls().length) {
-            <h3 class="subsection-title">תיקי HBL שנוצרו</h3>
+            <h3 class="subsection-title">Files שנוצרו</h3>
             <div class="data-table-wrapper">
               <table class="data-table">
                 <thead>
@@ -381,10 +392,6 @@
 
           @if (showHblForm()) {
             <form class="hbl-form" [formGroup]="hblForm" (ngSubmit)="onSaveHbl()" novalidate>
-              <h3 class="subsection-title">
-                {{ editingHblId() !== null ? 'עריכת תיק HBL' : hbls().length ? 'הוספת תיק HBL נוסף' : 'יצירת תיק HBL' }}
-              </h3>
-
               @if (editingHblId() !== null) {
                 <div class="grid-row">
                   <div class="form-group">
@@ -414,7 +421,7 @@
                             type="button"
                             class="choice-btn"
                             [class.active]="hblContainerId() === container.id"
-                            (click)="hblContainerId.set(container.id)"
+                            (click)="selectHblContainer(container.id)"
                           >
                             {{ container.containerNumber || ('מכולה #' + container.id) }}
                           </button>
@@ -438,7 +445,7 @@
                 } @else {
                   <div class="grid-row">
                     <div class="form-group">
-                      <label>לקוח (משותף מה-MBL)</label>
+                      <label>לקוח (משותף מה-Job)</label>
                       <input type="text" class="form-control" [value]="mbl.customerName ?? '—'" readonly />
                     </div>
                   </div>
@@ -551,71 +558,25 @@
               </div>
 
               <h3 class="subsection-title">שיוך הזמנות (אופציונלי)</h3>
-              <div class="filter-bar">
-                <div class="form-group autocomplete-wrapper">
-                  <label for="hblOrderFilterCustomer">סינון לפי לקוח</label>
-                  <app-customer-autocomplete
-                    inputId="hblOrderFilterCustomer"
-                    placeholder="הקלד שם לקוח לסינון..."
-                    [(customer)]="hblOrderFilterCustomer"
-                  />
-                </div>
-                <div class="form-group autocomplete-wrapper">
-                  <label for="hblOrderFilterSupplier">סינון לפי ספק</label>
-                  <app-supplier-autocomplete
-                    inputId="hblOrderFilterSupplier"
-                    placeholder="הקלד שם ספק לסינון..."
-                    [(supplier)]="hblOrderFilterSupplier"
-                  />
-                </div>
-              </div>
-
-              @if (hblOrdersError(); as message) {
-                <p class="form-message form-message--error" role="alert">{{ message }}</p>
-              }
-
-              <div class="data-table-wrapper">
-                @if (hblOrdersLoading() && hblOrderCandidatesDisplay().length === 0) {
-                  <p class="data-table__empty">טוען...</p>
-                } @else if (hblOrderCandidatesDisplay().length === 0) {
-                  <p class="data-table__empty">לא נמצאו הזמנות ללא שיוך</p>
-                } @else {
-                  <div class="orders-scroll-list">
-                    <table class="data-table">
-                      <thead>
-                        <tr>
-                          <th>
-                            <input
-                              type="checkbox"
-                              aria-label="בחר הכל"
-                              [checked]="allHblOrdersSelected()"
-                              (change)="toggleSelectAllHblOrders()"
-                            />
-                          </th>
-                          <th>מספר הזמנה</th>
-                          <th>לקוח</th>
-                          <th>ספק</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        @for (order of hblOrderCandidatesDisplay(); track order.id) {
-                          <tr [class.data-table__row--selected]="isHblOrderSelected(order.id)">
-                            <td>
-                              <input
-                                type="checkbox"
-                                [checked]="isHblOrderSelected(order.id)"
-                                (change)="toggleHblOrderSelection(order.id)"
-                              />
-                            </td>
-                            <td class="data-table__numeric">{{ order.id }}</td>
-                            <td>{{ order.customerName ?? '—' }}</td>
-                            <td>{{ order.supplierName ?? '—' }}</td>
-                          </tr>
-                        }
-                      </tbody>
-                    </table>
+              <div class="orders-assoc">
+                @if (hblSelectedOrderChips().length) {
+                  <div class="chip-list">
+                    @for (chip of hblSelectedOrderChips(); track chip.id) {
+                      <span class="chip">{{ chip.text }}</span>
+                    }
                   </div>
+                } @else {
+                  <span class="chip-list--empty">לא שויכו הזמנות</span>
                 }
+                <button
+                  type="button"
+                  class="filing-link orders-assoc__link"
+                  [disabled]="hblSelectedOrdersLoading()"
+                  (click)="openOrdersPicker()"
+                >
+                  <i class="fa-solid fa-link" aria-hidden="true"></i>
+                  לשיוך להזמנה
+                </button>
               </div>
               <p class="hint-text selection-count">{{ hblSelectedOrderIds().size }} הזמנות נבחרו</p>
 
@@ -630,38 +591,30 @@
                     <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
                     שומר...
                   } @else {
-                    {{ editingHblId() !== null ? 'עדכן HBL' : 'שמור HBL' }}
+                    {{ editingHblId() !== null ? 'עדכן File' : 'שמור File' }}
                   }
                 </button>
               </div>
             </form>
+
+            @if (showOrdersPicker()) {
+              <app-hbl-orders-picker-dialog
+                [initialSelection]="hblSelectedOrders()"
+                (confirmed)="onOrdersPicked($event)"
+                (cancelled)="closeOrdersPicker()"
+              />
+            }
           } @else if (canAddAnotherHbl()) {
             <div class="form-actions">
               <button type="button" class="btn btn-primary" (click)="openNewHblForm()">
                 <i class="fa-solid fa-plus" aria-hidden="true"></i>
-                {{ hbls().length ? 'הוספת תיק HBL נוסף' : 'יצירת תיק HBL' }}
+                {{ hbls().length ? 'הוספת File נוסף' : 'יצירת File' }}
               </button>
             </div>
           } @else {
-            <p class="hint-text">תיק ה-HBL היחיד עבור FCL/FCL כבר נוצר.</p>
+            <p class="hint-text">ה-File היחיד עבור FCL/FCL כבר נוצר.</p>
           }
         }
-      </section>
-    } @else {
-      <section class="form-section">
-        <button type="button" class="btn btn-secondary back-btn" (click)="backToShippingType()">
-          <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
-          חזרה לבחירת סוג משלוח
-        </button>
-        <h2 class="section-title">שלב 2 — בחירת שיטת שילוח ימי</h2>
-        <div class="method-cards">
-          @for (seaMethodOption of seaMethods; track seaMethodOption) {
-            <button type="button" class="method-card" (click)="selectSeaMethod(seaMethodOption)">
-              <span class="method-card__label">{{ SEA_METHOD_LABELS[seaMethodOption] }}</span>
-              <span class="method-card__description">{{ SEA_METHOD_DESCRIPTIONS[seaMethodOption] }}</span>
-            </button>
-          }
-        </div>
       </section>
     }
   </div>
@@ -672,31 +625,81 @@
       התקדמות התיק
     </div>
 
+    <!-- Each step is a link: enabled when the station is reachable from the
+         current state (see the `canGoTo…` guards), otherwise a plain label. -->
     <ol class="wizard-steps">
-      <li class="wizard-step" [class.wizard-step--done]="shippingType() !== null">
-        <span class="wizard-step__icon">
-          <i class="fa-solid" [class.fa-check]="shippingType() !== null" [class.fa-circle]="shippingType() === null"></i>
-        </span>
-        <span>סוג משלוח</span>
+      <li
+        class="wizard-step"
+        [class.wizard-step--done]="shippingType() !== null"
+        [class.wizard-step--current]="currentStep() === 'type'"
+      >
+        <button
+          type="button"
+          class="wizard-step__link"
+          [disabled]="!canGoToTypeStep()"
+          [attr.aria-current]="currentStep() === 'type' ? 'step' : null"
+          (click)="goToTypeStep()"
+        >
+          <span class="wizard-step__icon">
+            <i class="fa-solid" [class.fa-check]="shippingType() !== null" [class.fa-circle]="shippingType() === null"></i>
+          </span>
+          <span>סוג משלוח</span>
+        </button>
       </li>
       @if (shippingType() === MblShippingType.SEA) {
-        <li class="wizard-step" [class.wizard-step--done]="seaMethod() !== null">
-          <span class="wizard-step__icon">
-            <i class="fa-solid" [class.fa-check]="seaMethod() !== null" [class.fa-circle]="seaMethod() === null"></i>
-          </span>
-          <span>שיטת שילוח ימי</span>
+        <li
+          class="wizard-step"
+          [class.wizard-step--done]="seaMethod() !== null"
+          [class.wizard-step--current]="currentStep() === 'method'"
+        >
+          <button
+            type="button"
+            class="wizard-step__link"
+            [disabled]="!canGoToMethodStep()"
+            [attr.aria-current]="currentStep() === 'method' ? 'step' : null"
+            (click)="goToMethodStep()"
+          >
+            <span class="wizard-step__icon">
+              <i class="fa-solid" [class.fa-check]="seaMethod() !== null" [class.fa-circle]="seaMethod() === null"></i>
+            </span>
+            <span>שיטת שילוח ימי</span>
+          </button>
         </li>
-        <li class="wizard-step" [class.wizard-step--done]="savedMbl() !== null">
-          <span class="wizard-step__icon">
-            <i class="fa-solid" [class.fa-check]="savedMbl() !== null" [class.fa-circle]="savedMbl() === null"></i>
-          </span>
-          <span>MBL</span>
+        <li
+          class="wizard-step"
+          [class.wizard-step--done]="savedMbl() !== null"
+          [class.wizard-step--current]="currentStep() === 'job'"
+        >
+          <button
+            type="button"
+            class="wizard-step__link"
+            [disabled]="!canGoToJobStep()"
+            [attr.aria-current]="currentStep() === 'job' ? 'step' : null"
+            (click)="goToJobStep()"
+          >
+            <span class="wizard-step__icon">
+              <i class="fa-solid" [class.fa-check]="savedMbl() !== null" [class.fa-circle]="savedMbl() === null"></i>
+            </span>
+            <span>Job</span>
+          </button>
         </li>
-        <li class="wizard-step" [class.wizard-step--done]="hbls().length > 0">
-          <span class="wizard-step__icon">
-            <i class="fa-solid" [class.fa-check]="hbls().length > 0" [class.fa-circle]="hbls().length === 0"></i>
-          </span>
-          <span>תיקי HBL</span>
+        <li
+          class="wizard-step"
+          [class.wizard-step--done]="hbls().length > 0"
+          [class.wizard-step--current]="currentStep() === 'files'"
+        >
+          <button
+            type="button"
+            class="wizard-step__link"
+            [disabled]="!canGoToFilesStep()"
+            [attr.aria-current]="currentStep() === 'files' ? 'step' : null"
+            (click)="goToFilesStep()"
+          >
+            <span class="wizard-step__icon">
+              <i class="fa-solid" [class.fa-check]="hbls().length > 0" [class.fa-circle]="hbls().length === 0"></i>
+            </span>
+            <span>Files</span>
+          </button>
         </li>
       } @else if (shippingType() === MblShippingType.AIR) {
         <li class="wizard-step">
@@ -718,7 +721,7 @@
               (click)="startEditMbl()"
             >
               <i class="fa-solid fa-file-lines" aria-hidden="true"></i>
-              <span class="wizard-tree-node__label">MBL {{ mbl.mblNumber || ('#' + mbl.id) }}</span>
+              <span class="wizard-tree-node__label">Job {{ mbl.mblNumber || ('#' + mbl.id) }}</span>
             </button>
 
             @if (isGroupage()) {
@@ -729,7 +732,7 @@
                       type="button"
                       class="wizard-tree-node wizard-tree-node--container"
                       [class.active]="editingHblId() === null && hblContainerId() === container.id"
-                      (click)="selectContainerNode(container.id)"
+                      (click)="selectHblContainer(container.id)"
                     >
                       <i class="fa-solid fa-box" aria-hidden="true"></i>
                       <span class="wizard-tree-node__label">
@@ -746,12 +749,12 @@
                             (click)="startEditHbl(hbl)"
                           >
                             <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
-                            <span class="wizard-tree-node__label">{{ hbl.customerName || ('HBL #' + hbl.id) }}</span>
+                            <span class="wizard-tree-node__label">{{ hbl.customerName || ('File #' + hbl.id) }}</span>
                           </button>
                         </li>
                       }
                       @if (hblsForContainer(container.id).length === 0) {
-                        <li class="wizard-tree-empty">אין תיקי HBL עדיין</li>
+                        <li class="wizard-tree-empty">אין Files עדיין</li>
                       }
                     </ul>
                   </li>
@@ -768,12 +771,12 @@
                       (click)="startEditHbl(hbl)"
                     >
                       <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
-                      <span class="wizard-tree-node__label">{{ hbl.customerName || ('HBL #' + hbl.id) }}</span>
+                      <span class="wizard-tree-node__label">{{ hbl.customerName || ('File #' + hbl.id) }}</span>
                     </button>
                   </li>
                 }
                 @if (hbls().length === 0) {
-                  <li class="wizard-tree-empty">אין תיקי HBL עדיין</li>
+                  <li class="wizard-tree-empty">אין Files עדיין</li>
                 }
               </ul>
             }

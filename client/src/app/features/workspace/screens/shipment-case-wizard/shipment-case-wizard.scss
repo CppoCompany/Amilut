@@ -50,6 +50,25 @@
   }
 }
 
+// "שיוך הזמנות" row of the File form: the chips of already-chosen orders and
+// the "לשיוך להזמנה" link that opens the picker popup, side by side.
+.orders-assoc {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-md);
+}
+
+.orders-assoc__link:disabled {
+  cursor: default;
+  opacity: 0.6;
+  text-decoration: none;
+}
+
 .wizard-layout {
   display: flex;
   align-items: flex-start;
@@ -95,11 +114,29 @@
     color: var(--secondary-blue);
   }
 
-  &:hover {
+  &:hover:not(:disabled) {
     border-color: var(--secondary-blue);
     box-shadow: 0 2px 8px rgba(27, 99, 199, 0.12);
     transform: translateY(-1px);
   }
+
+  // Read-only view of steps 1/2 once a Job exists: the choice is fixed.
+  &:disabled {
+    cursor: default;
+    opacity: 0.55;
+  }
+
+  &--selected,
+  &--selected:disabled {
+    opacity: 1;
+    border-color: var(--secondary-blue);
+    background: var(--light-blue-bg);
+    box-shadow: 0 0 0 2px rgba(27, 99, 199, 0.18);
+  }
+}
+
+.method-locked-hint {
+  margin: 0;
 }
 
 .method-card__label {
@@ -111,16 +148,6 @@
 .method-card__description {
   font-size: 0.82rem;
   color: var(--text-muted);
-}
-
-.back-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 16px;
-
-  // RTL: "back" points right, so the arrow icon should too — fa-arrow-right
-  // already points the correct visual direction for this layout.
 }
 
 // ── Progress sidebar ───────────────────────────────────────────────────────────
@@ -166,9 +193,41 @@
 .wizard-step {
   display: flex;
   align-items: center;
-  gap: 10px;
   font-size: 0.88rem;
   color: var(--text-muted);
+}
+
+// Each step is a link to that station. Disabled = not reachable from here
+// (future step, or steps 1/2 of a case loaded for edit) — kept visually quiet
+// rather than greyed-out, since "not done" is already muted by `.wizard-step`.
+.wizard-step__link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 2px 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: right;
+  cursor: pointer;
+
+  &:disabled {
+    cursor: default;
+  }
+
+  &:not(:disabled):hover,
+  &:not(:disabled):focus-visible {
+    color: var(--secondary-blue);
+    text-decoration: underline;
+    outline: none;
+  }
+}
+
+.wizard-step--current {
+  color: var(--primary-blue);
+  font-weight: 700;
 }
 
 .wizard-step__icon {

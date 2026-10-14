@@ -1,0 +1,82 @@
+<div class="dialog-backdrop" (click)="onBackdropClick($event)">
+  <div class="dialog-card" role="dialog" aria-modal="true" aria-labelledby="hbl-orders-picker-title">
+    <header class="dialog-card__header">
+      <h2 id="hbl-orders-picker-title" class="dialog-card__title">
+        <i class="fa-solid fa-link" aria-hidden="true"></i>
+        שיוך הזמנות ל-File
+      </h2>
+      <button type="button" class="dialog-card__close" aria-label="סגור" (click)="onCancel()">
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      </button>
+    </header>
+
+    <div class="dialog-card__body">
+      <div class="filter-bar">
+        <div class="form-group autocomplete-wrapper">
+          <label for="hblOrderFilterCustomer">סינון לפי לקוח</label>
+          <app-customer-autocomplete
+            inputId="hblOrderFilterCustomer"
+            placeholder="הקלד שם לקוח לסינון..."
+            [(customer)]="filterCustomer"
+          />
+        </div>
+        <div class="form-group autocomplete-wrapper">
+          <label for="hblOrderFilterSupplier">סינון לפי ספק</label>
+          <app-supplier-autocomplete
+            inputId="hblOrderFilterSupplier"
+            placeholder="הקלד שם ספק לסינון..."
+            [(supplier)]="filterSupplier"
+          />
+        </div>
+      </div>
+
+      @if (error(); as message) {
+        <p class="form-message form-message--error" role="alert">{{ message }}</p>
+      }
+
+      <div class="data-table-wrapper orders-scroll-list">
+        @if (loading() && rows().length === 0) {
+          <p class="data-table__empty">טוען...</p>
+        } @else if (rows().length === 0) {
+          <p class="data-table__empty">לא נמצאו הזמנות ללא שיוך</p>
+        } @else {
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>
+                  <input
+                    type="checkbox"
+                    aria-label="בחר הכל"
+                    [checked]="allSelected()"
+                    (change)="toggleAll()"
+                  />
+                </th>
+                <th>מספר הזמנה</th>
+                <th>לקוח</th>
+                <th>ספק</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (order of rows(); track order.id) {
+                <tr [class.data-table__row--selected]="isSelected(order.id)">
+                  <td>
+                    <input type="checkbox" [checked]="isSelected(order.id)" (change)="toggle(order)" />
+                  </td>
+                  <td class="data-table__numeric">{{ order.id }}</td>
+                  <td>{{ order.customerName ?? '—' }}</td>
+                  <td>{{ order.supplierName ?? '—' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        }
+      </div>
+      <p class="hint-text">{{ selectedCount() }} הזמנות נבחרו</p>
+    </div>
+
+    <footer class="dialog-card__footer">
+      <button type="button" class="btn btn-secondary" (click)="onCancel()">ביטול</button>
+      <button type="button" class="btn btn-primary" (click)="onConfirm()">אישור</button>
+    </footer>
+  </div>
+</div>

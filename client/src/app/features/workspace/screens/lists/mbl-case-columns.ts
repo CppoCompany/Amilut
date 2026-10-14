@@ -23,7 +23,7 @@ export function mblCaseColumns(): GridColumn<MblSummaryDto>[] {
     { key: 'shippingType', header: 'שיטת משלוח', cell: mblMethodLabel },
     { key: 'customerNames', header: 'לקוחות', cell: (c) => joinOrEmDash(c.customerNames) },
     { key: 'carrierName', header: 'מוביל', sortable: true, cell: (c) => textOrEmDash(c.carrierName) },
-    { key: 'hblCount', header: 'תיקי HBL', cssClass: 'data-table__numeric' },
+    { key: 'hblCount', header: 'Files', cssClass: 'data-table__numeric' },
     { key: 'orderCount', header: 'הזמנות', cssClass: 'data-table__numeric' },
     { key: 'handlerName', header: 'פקיד מטפל', cell: (c) => textOrEmDash(c.handlerName) },
     {

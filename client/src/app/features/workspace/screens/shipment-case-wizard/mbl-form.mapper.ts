@@ -158,7 +158,7 @@ export function toCreateMblDto(
   });
 }
 
-/** Maps a saved `MblDto` back into the form's flat string shape, for "ערוך פרטי MBL". */
+/** Maps a saved `MblDto` back into the form's flat string shape, for re-editing a saved Job. */
 export function mblToFormValue(mbl: MblDto): MblFormValue {
   return {
     mblNumber: mbl.mblNumber ?? '',
