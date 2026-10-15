@@ -38,4 +38,15 @@ describe('DashboardApi', () => {
     req.flush(EMPTY);
     expect(result).toEqual(EMPTY);
   });
+
+  it('lists the CCFs pending classification with GET /api/dashboard/ccfs-pending-classification', () => {
+    let result: unknown;
+
+    api.ccfsPendingClassification().subscribe((rows) => (result = rows));
+
+    const req = httpMock.expectOne('/api/dashboard/ccfs-pending-classification');
+    expect(req.request.method).toBe('GET');
+    req.flush([]);
+    expect(result).toEqual([]);
+  });
 });

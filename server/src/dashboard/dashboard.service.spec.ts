@@ -153,6 +153,15 @@ describe('DashboardService', () => {
       expect(result).toEqual([ccfDto]);
     });
 
+    it('passes a caller-supplied row limit through', async () => {
+      db.query.mockResolvedValueOnce([]);
+
+      await service.findCcfsPendingClassification(200);
+
+      const [, params] = db.query.mock.calls[0] as [string, unknown[]];
+      expect(params).toEqual([ImportDocumentType.SUPPLIER_INVOICE, 200]);
+    });
+
     it('maps a standalone CCF with no customers', async () => {
       db.query.mockResolvedValueOnce([
         {
