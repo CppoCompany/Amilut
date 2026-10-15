@@ -194,7 +194,7 @@ export class NavigationService {
    */
   setupTreeNavigation(): void {
     const tree: TreeEntry[] = [
-      { id: 'ws-dashboard', page: 'dashboard', label: 'לוח בקרה', icon: 'fa-solid fa-gauge' },
+      { id: 'ws-dashboard', page: 'dashboard', label: 'איזור האישי', icon: 'fa-solid fa-gauge' },
       {
         id: 'ws-orders-group',
         label: 'הזמנות',
@@ -233,6 +233,10 @@ export class NavigationService {
         id: 'ws-lists-group',
         label: 'רשימות',
         icon: 'fa-solid fa-table-list',
+        // Not in the sidebar: the list pages are reached from the dashboard
+        // cards' "צפה בהכל" links (and their own URLs), which still need
+        // these rows to exist.
+        hidden: true,
         children: [
           {
             id: 'ws-list-my-orders',
@@ -249,13 +253,13 @@ export class NavigationService {
           {
             id: 'ws-list-my-classifications',
             page: 'listMyClassifications',
-            label: 'הסיווגים שלי',
+            label: 'תיקי עמילות שלא עברו סיווג',
             icon: 'fa-solid fa-tags',
           },
           {
             id: 'ws-list-my-cases',
             page: 'listMyCases',
-            label: 'התיקים שלי',
+            label: 'תיקי עמילות',
             icon: 'fa-solid fa-folder-open',
           },
           {

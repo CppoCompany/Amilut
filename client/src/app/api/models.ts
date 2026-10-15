@@ -48,8 +48,7 @@ export type UnreadCountDto = components['schemas']['UnreadCountDto'];
 export type DashboardResponseDto = components['schemas']['DashboardResponseDto'];
 export type DashboardOrderRowDto = components['schemas']['DashboardOrderRowDto'];
 export type DashboardCaseInReleaseRowDto = components['schemas']['DashboardCaseInReleaseRowDto'];
-export type DashboardClassificationRowDto = components['schemas']['DashboardClassificationRowDto'];
-export type DashboardCaseRowDto = components['schemas']['DashboardCaseRowDto'];
+export type DashboardCcfRowDto = components['schemas']['DashboardCcfRowDto'];
 export type DashboardImportProcessRowDto = components['schemas']['DashboardImportProcessRowDto'];
 
 // Paged "view all" lists (רשימות)

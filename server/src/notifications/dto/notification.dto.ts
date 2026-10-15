@@ -11,6 +11,14 @@ export class NotificationDto {
   @ApiProperty({ type: 'integer', nullable: true, example: 7 })
   relatedCcfId!: number | null;
 
+  /** The user whose action triggered the notification; `null` when none was recorded. */
+  @ApiProperty({ type: 'integer', nullable: true, example: 7 })
+  actorUserId!: number | null;
+
+  /** Joined for display — `null` when `actorUserId` is `null`. */
+  @ApiProperty({ type: 'string', nullable: true, example: 'Dana Levi' })
+  actorName!: string | null;
+
   @ApiProperty({ example: false })
   isRead!: boolean;
 

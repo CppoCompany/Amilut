@@ -11,6 +11,8 @@ interface NotificationRow {
   id: number;
   message: string;
   related_ccf_id: number | null;
+  actor_user_id: number | null;
+  actor_name: string | null;
   is_read: boolean;
   created_at: Date | string;
 }
@@ -31,13 +33,16 @@ export class NotificationsService {
     return row!;
   }
 
-  /** Latest 50 notifications for the bell dropdown, newest first. */
+  /** Latest 50 notifications for the bell dropdown and the dashboard's
+   *  "הודעות" widget, newest first, with the triggering user's name. */
   async listForUser(userId: number): Promise<NotificationDto[]> {
     const rows = await this.db.query<NotificationRow>(
-      `SELECT id, message, related_ccf_id, is_read, created_at
-         FROM notifications
-        WHERE recipient_user_id = $1
-        ORDER BY created_at DESC
+      `SELECT n.id, n.message, n.related_ccf_id, n.actor_user_id,
+              u.name AS actor_name, n.is_read, n.created_at
+         FROM notifications n
+         LEFT JOIN users u ON u.id = n.actor_user_id
+        WHERE n.recipient_user_id = $1
+        ORDER BY n.created_at DESC, n.id DESC
         LIMIT 50`,
       [userId],
     );
@@ -64,6 +69,20 @@ export class NotificationsService {
       throw new NotFoundException(`Notification ${id} not found`);
     }
   }
+
+  /**
+   * Marks every unread notification of the user with `id <= upToId` read —
+   * what the dashboard does once its "הודעות" widget has shown them — and
+   * returns how many are still unread (any that arrived after `upToId`).
+   */
+  async markAllRead(userId: number, upToId: number): Promise<number> {
+    await this.db.query(
+      `UPDATE notifications SET is_read = true
+        WHERE recipient_user_id = $1 AND id <= $2 AND is_read = false`,
+      [userId, upToId],
+    );
+    return this.unreadCount(userId);
+  }
 }
 
 function toIsoString(value: Date | string): string {
@@ -75,6 +94,8 @@ function toNotificationDto(row: NotificationRow): NotificationDto {
     id: row.id,
     message: row.message,
     relatedCcfId: row.related_ccf_id,
+    actorUserId: row.actor_user_id,
+    actorName: row.actor_name,
     isRead: row.is_read,
     createdAt: toIsoString(row.created_at),
   };

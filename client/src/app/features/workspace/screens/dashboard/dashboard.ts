@@ -1,31 +1,53 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize } from 'rxjs';
 
 import { DashboardApi } from '../../../../api/dashboard-api';
-import { MBL_SHIPPING_TYPE_LABELS, MBL_STATUS_LABELS, MblStatus, ORDER_STATUS_LABELS } from '../../../../api/enums';
-import type { DashboardResponseDto } from '../../../../api/models';
+import {
+  CCF_STATUS_LABELS,
+  MBL_SHIPPING_TYPE_LABELS,
+  MBL_STATUS_LABELS,
+  MblStatus,
+  ORDER_STATUS_LABELS,
+} from '../../../../api/enums';
+import type {
+  DashboardCcfRowDto,
+  DashboardResponseDto,
+  NotificationDto,
+} from '../../../../api/models';
+import { NotificationsApi } from '../../../../api/notifications-api';
 import { isTreeChildGroup, TreeChild } from '../../navigation.model';
 import { NavigationService } from '../../navigation.service';
+import { NotificationsStateService } from '../../notifications-state.service';
 
 /** Sidebar row ids of the "view all" list pages each card links to (owned by the lists feature). */
 export const DASHBOARD_LIST_ROW_IDS = {
   myOrders: 'ws-list-my-orders',
   casesInRelease: 'ws-list-cases-in-release',
-  myClassifications: 'ws-list-my-classifications',
-  myCases: 'ws-list-my-cases',
+  ccfsPendingClassification: 'ws-list-my-classifications',
+  ccfs: 'ws-list-my-cases',
   importProcesses: 'ws-list-import-processes',
 } as const;
 
-/** Sidebar row ids of the two "actions" at the top of the dashboard. */
+/** Sidebar row ids of the "actions" at the top of the dashboard. */
 export const DASHBOARD_ACTION_ROW_IDS = {
   /** "יצירת הזמנה חדשה" */
   newOrder: 'ws-order',
   /** "יצירת תיק שילוח" — the MBL/HBL wizard is the import process. */
   newImportProcess: 'ws-shipment',
+  /** "תיק עמילות" — the Customs Clearance File screen opens as a fresh draft. */
+  newCcf: 'ws-ccf',
 } as const;
 
-/** "לוח בקרה" — landing screen: quick actions plus five compact "latest 5" cards. */
+/** "איזור האישי" — landing screen: quick actions, the "הודעות" widget and five compact "latest 5" cards. */
 @Component({
   selector: 'app-dashboard-screen',
   templateUrl: './dashboard.html',
@@ -35,23 +57,60 @@ export const DASHBOARD_ACTION_ROW_IDS = {
 export class DashboardScreen {
   private readonly dashboardApi = inject(DashboardApi);
   private readonly nav = inject(NavigationService);
+  private readonly notificationsApi = inject(NotificationsApi);
+  private readonly notificationsState = inject(NotificationsStateService);
   private readonly destroyRef = inject(DestroyRef);
 
   protected readonly data = signal<DashboardResponseDto | null>(null);
   protected readonly loading = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
 
+  // ── "הודעות" widget ─────────────────────────────────────────────────────────
+  /** The user's notifications as fetched — `isRead` is kept as it was at
+   *  fetch time, so the ones that were new on this visit stay highlighted
+   *  even though opening the dashboard marks them read. */
+  protected readonly messages = signal<NotificationDto[]>([]);
+  protected readonly messagesLoading = signal(false);
+  protected readonly messagesError = signal<string | null>(null);
+
   protected readonly orderStatusLabels = ORDER_STATUS_LABELS;
   protected readonly shippingTypeLabels = MBL_SHIPPING_TYPE_LABELS;
+  protected readonly ccfStatusLabels = CCF_STATUS_LABELS;
   protected readonly listRows = DASHBOARD_LIST_ROW_IDS;
 
   constructor() {
     this.load();
+    this.loadMessages();
+
+    // Viewing the dashboard is what clears the badge, so a notification the
+    // poll picks up while the user is already here is shown (and marked
+    // read) right away instead of leaving the badge lit.
+    effect(() => {
+      if (this.notificationsState.unreadCount() === 0) return;
+      untracked(() => {
+        if (!this.messagesLoading()) this.loadMessages();
+      });
+    });
   }
 
   protected reload(): void {
     if (this.loading()) return;
     this.load();
+  }
+
+  protected reloadMessages(): void {
+    if (this.messagesLoading()) return;
+    this.loadMessages();
+  }
+
+  /** "תיק עמילות חדש" → the existing "תיק עמילות" screen (fresh draft). */
+  protected newCcf(): void {
+    this.selectRow(DASHBOARD_ACTION_ROW_IDS.newCcf);
+  }
+
+  /** A message about a CCF opens that CCF; other messages are not clickable. */
+  protected openMessage(message: NotificationDto): void {
+    if (message.relatedCcfId !== null) this.openCcf(message.relatedCcfId);
   }
 
   /** "הזמנה חדשה" → the existing "יצירת הזמנה חדשה" screen (fresh draft). */
@@ -73,6 +132,31 @@ export class DashboardScreen {
     this.selectRow(rowId);
   }
 
+  /** "ההזמנות שלי" row → that order, loaded for editing. */
+  protected openOrder(orderId: number): void {
+    this.nav.openOrderForEdit(orderId);
+  }
+
+  /** "תיקי עמילות שלא עברו סיווג" row → the classification screen, scoped to that CCF. */
+  protected openCcfClassification(ccfId: number): void {
+    this.nav.openClassificationFor({ kind: 'ccf', id: ccfId });
+  }
+
+  /** "תיקי עמילות" row → the CCF screen with that file loaded. */
+  protected openCcf(ccfId: number): void {
+    this.nav.openCcfForView(ccfId);
+  }
+
+  /** "תהליכי יבוא" row → the shipping-case wizard, loaded for editing. */
+  protected openImportProcess(caseId: number): void {
+    this.nav.openCaseForEdit(caseId);
+  }
+
+  /** "1/4" — classified lines out of the CCF's supplier-invoice lines; "—" before any were filed. */
+  protected classificationProgress(ccf: DashboardCcfRowDto): string {
+    return ccf.lineCount === 0 ? '—' : `${ccf.classifiedLineCount}/${ccf.lineCount}`;
+  }
+
   protected mblStatusLabel(status: MblStatus): string {
     return MBL_STATUS_LABELS[status] ?? status;
   }
@@ -85,6 +169,18 @@ export class DashboardScreen {
     const date = new Date(iso);
     if (Number.isNaN(date.getTime())) return '—';
     return date.toLocaleDateString('he-IL', { year: 'numeric', month: '2-digit', day: '2-digit' });
+  }
+
+  protected formatDateTime(iso: string): string {
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) return '—';
+    return date.toLocaleString('he-IL', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   }
 
   /** Selects the sidebar leaf with this id, if the tree has one. */
@@ -121,6 +217,37 @@ export class DashboardScreen {
         error: () => {
           this.data.set(null);
           this.errorMessage.set('טעינת לוח הבקרה נכשלה');
+        },
+      });
+  }
+
+  /**
+   * Fetches the "הודעות" list, then marks what it shows as read — up to the
+   * newest id fetched, so one that arrives in between stays unread and keeps
+   * the badge (and the effect above) honest.
+   */
+  private loadMessages(): void {
+    this.messagesLoading.set(true);
+    this.messagesError.set(null);
+    this.notificationsApi
+      .list()
+      .pipe(
+        finalize(() => this.messagesLoading.set(false)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (messages) => {
+          this.messages.set(messages);
+          if (!messages.some((m) => !m.isRead)) return;
+          const upToId = Math.max(...messages.map((m) => m.id));
+          this.notificationsState
+            .markAllRead(upToId)
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe({ error: () => undefined });
+        },
+        error: () => {
+          this.messages.set([]);
+          this.messagesError.set('טעינת ההודעות נכשלה');
         },
       });
   }

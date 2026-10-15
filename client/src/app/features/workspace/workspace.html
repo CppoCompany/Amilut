@@ -47,7 +47,7 @@
       <!-- Expanded: unchanged from before the icon-only mode existed. -->
       <ul class="sidebar-menu">
         @for (entry of nav.tree(); track entry.id) {
-          @if (isGroup(entry)) {
+          @if (isGroup(entry) && !entry.hidden) {
             <li class="tree-node">
               <button
                 type="button"
@@ -82,16 +82,20 @@
                 }
               </ul>
             </li>
-          } @else if (!entry.hidden) {
+          } @else if (!isGroup(entry) && !entry.hidden) {
             <li>
               <a
                 href="#"
                 class="tree-child-item"
                 [class.active]="nav.isChildActive(entry.id)"
+                [attr.aria-label]="navLabel(entry)"
                 (click)="$event.preventDefault(); nav.selectChild(entry)"
               >
                 <i [class]="entry.icon"></i>
                 <span>{{ entry.label }}</span>
+                @if (badgeCount(entry) > 0) {
+                  <span class="nav-badge" aria-hidden="true">{{ badgeCount(entry) }}</span>
+                }
               </a>
             </li>
           }
@@ -105,7 +109,7 @@
            tree and the flattened leaves both already use. -->
       <ul class="sidebar-menu sidebar-menu--icons">
         @for (entry of nav.tree(); track entry.id) {
-          @if (isGroup(entry)) {
+          @if (isGroup(entry) && !entry.hidden) {
             <li class="icon-nav-group">
               <a
                 href="#"
@@ -130,17 +134,20 @@
                 }
               </div>
             </li>
-          } @else if (!entry.hidden) {
+          } @else if (!isGroup(entry) && !entry.hidden) {
             <li class="icon-nav-group">
               <a
                 href="#"
                 class="icon-nav-item"
                 [class.active]="nav.isChildActive(entry.id)"
-                [attr.aria-label]="entry.label"
+                [attr.aria-label]="navLabel(entry)"
                 [title]="entry.label"
                 (click)="$event.preventDefault(); nav.selectChild(entry)"
               >
                 <i [class]="entry.icon"></i>
+                @if (badgeCount(entry) > 0) {
+                  <span class="nav-badge nav-badge--icon" aria-hidden="true">{{ badgeCount(entry) }}</span>
+                }
                 <span class="icon-nav-tooltip">{{ entry.label }}</span>
               </a>
             </li>

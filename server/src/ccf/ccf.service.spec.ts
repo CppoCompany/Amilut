@@ -68,7 +68,7 @@ describe('CcfService', () => {
         unknown[],
       ];
       expect(notifSql).toMatch(/INSERT INTO notifications/);
-      expect(notifParams).toEqual([7, 'נפתח תיק סליקת מכס עצמאי חדש', 100]);
+      expect(notifParams).toEqual([7, 'נפתח תיק סליקת מכס עצמאי חדש', 100, 7]);
 
       expect(result.id).toBe(100);
       expect(result.fileNumber).toBe('CCF1000');
@@ -102,6 +102,7 @@ describe('CcfService', () => {
 
       const [, notifParams] = client.query.mock.calls[1] as [string, unknown[]];
       expect(notifParams[0]).toBe(9); // the MBL's handler, not the creator (7)
+      expect(notifParams[3]).toBe(7); // ...but the creator is the one who triggered it
     });
 
     it('falls back to notifying the creator when the linked shipment file has no handler on record', async () => {

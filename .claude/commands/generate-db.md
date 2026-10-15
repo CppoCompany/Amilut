@@ -31,6 +31,7 @@ invoke the runner directly.
    - `017_import_account_files_to_mbl.sql` — re-points `import_account_files.account_id` from `order_account` to `mbl(id)`; paperwork is filed under the MBL case
    - `018_mbl_handler_and_status.sql` — adds `mbl.handler_user_id` (→ `users.id`, who opened the case) and `mbl.status` (`open`/`in_release`/`released`/`closed`, default `open`), with indexes
    - `022_orders_last_step.sql` — adds `orders.last_step` (furthest order-form tab reached: `customer`/`shipment`/`schedule`/`documents`, default `customer`)
+   - `023_notifications_actor.sql` — adds `notifications.actor_user_id` (→ `users.id`, who triggered the notification; nullable, `ON DELETE SET NULL`)
    If the folder or files are missing, stop and tell Barak.
 
 2. **Decide whether the superuser password is needed.** It is needed **only

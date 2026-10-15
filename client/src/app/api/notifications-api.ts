@@ -23,6 +23,11 @@ export class NotificationsApi {
     return this.http.get<UnreadCountDto>(`${this.baseUrl}/unread-count`);
   }
 
+  /** Marks the user's notifications up to `upToId` read; returns what is still unread. */
+  markAllRead(upToId: number): Observable<UnreadCountDto> {
+    return this.http.patch<UnreadCountDto>(`${this.baseUrl}/read-all`, { upToId });
+  }
+
   markRead(id: number): Observable<void> {
     return this.http.patch<void>(`${this.baseUrl}/${id}/read`, {});
   }

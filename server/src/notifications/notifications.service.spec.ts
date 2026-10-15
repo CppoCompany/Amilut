@@ -39,11 +39,13 @@ describe('NotificationsService', () => {
         recipientUserId: 7,
         message: 'hi',
         relatedCcfId: 3,
+        actorUserId: 9,
       });
 
       const [sql, params] = db.queryOne.mock.calls[0] as [string, unknown[]];
       expect(sql).toMatch(/INSERT INTO notifications/);
-      expect(params).toEqual([7, 'hi', 3]);
+      expect(sql).toMatch(/actor_user_id/);
+      expect(params).toEqual([7, 'hi', 3, 9]);
       expect(result).toEqual({ id: 1 });
     });
   });
@@ -55,6 +57,8 @@ describe('NotificationsService', () => {
           id: 1,
           message: 'hi',
           related_ccf_id: 3,
+          actor_user_id: 9,
+          actor_name: 'Dana',
           is_read: false,
           created_at: new Date('2026-09-01T08:00:00.000Z'),
         },
@@ -62,11 +66,17 @@ describe('NotificationsService', () => {
 
       const result = await service.listForUser(7);
 
+      const [sql, params] = db.query.mock.calls[0] as [string, unknown[]];
+      expect(sql).toMatch(/LEFT JOIN users u ON u\.id = n\.actor_user_id/);
+      expect(sql).toMatch(/WHERE n\.recipient_user_id = \$1/);
+      expect(params).toEqual([7]);
       expect(result).toEqual([
         {
           id: 1,
           message: 'hi',
           relatedCcfId: 3,
+          actorUserId: 9,
+          actorName: 'Dana',
           isRead: false,
           createdAt: '2026-09-01T08:00:00.000Z',
         },
@@ -99,6 +109,20 @@ describe('NotificationsService', () => {
     it('throws NotFoundException when the notification does not belong to the user (or does not exist)', async () => {
       db.queryOne.mockResolvedValueOnce(null);
       await expect(service.markRead(1, 7)).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('markAllRead', () => {
+    it("marks only the user's notifications up to the given id and returns what is still unread", async () => {
+      db.query.mockResolvedValueOnce([]);
+      db.queryOne.mockResolvedValueOnce({ count: '1' });
+
+      expect(await service.markAllRead(7, 42)).toBe(1);
+
+      const [sql, params] = db.query.mock.calls[0] as [string, unknown[]];
+      expect(sql).toMatch(/UPDATE notifications SET is_read = true/);
+      expect(sql).toMatch(/recipient_user_id = \$1 AND id <= \$2/);
+      expect(params).toEqual([7, 42]);
     });
   });
 });

@@ -4,18 +4,25 @@ export interface CreateNotificationInput {
   recipientUserId: number;
   message: string;
   relatedCcfId?: number | null;
+  /** The user whose action triggered the notification (`users.id`). */
+  actorUserId?: number | null;
 }
 
 /** Shared by `insertNotification` and `NotificationsService.create` so the
  *  two insert paths (inside a caller's transaction vs. standalone) can never
  *  drift apart. */
 export const INSERT_NOTIFICATION_SQL = `
-  INSERT INTO notifications (recipient_user_id, message, related_ccf_id)
-  VALUES ($1, $2, $3)
+  INSERT INTO notifications (recipient_user_id, message, related_ccf_id, actor_user_id)
+  VALUES ($1, $2, $3, $4)
   RETURNING id`;
 
 export function notificationParams(input: CreateNotificationInput): unknown[] {
-  return [input.recipientUserId, input.message, input.relatedCcfId ?? null];
+  return [
+    input.recipientUserId,
+    input.message,
+    input.relatedCcfId ?? null,
+    input.actorUserId ?? null,
+  ];
 }
 
 /**

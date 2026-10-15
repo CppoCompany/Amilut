@@ -5,6 +5,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { RouterTestingHarness } from '@angular/router/testing';
 
 import { NavigationService } from './navigation.service';
+import { NotificationsStateService } from './notifications-state.service';
 import { provideWorkspaceTestRouting, settleNavigation } from './navigation.testing';
 import { Workspace } from './workspace';
 
@@ -109,6 +110,45 @@ describe('Workspace shell', () => {
       expect(expandedLabels).toContain('תיוק ניירת יבוא');
     });
 
+    it('"רשימות" is not in the sidebar, but its list pages still open by URL', async () => {
+      expect(groupIconByLabel('רשימות')).toBeNull();
+      expect(fixture.nativeElement.querySelector('.fa-table-list')).toBeNull();
+
+      toggleButton().click();
+      fixture.detectChanges();
+      const groupLabels = Array.from(
+        fixture.nativeElement.querySelectorAll('.tree-node-label') as NodeListOf<HTMLElement>,
+      ).map((el) => el.textContent?.trim());
+      expect(groupLabels).not.toContain('רשימות');
+      expect(fixture.nativeElement.querySelector('.fa-table-list')).toBeNull();
+
+      await harness.navigateByUrl('/workspace/list-my-orders');
+      fixture.detectChanges();
+      expect(renderedScreen()).toBe('app-my-orders-list-screen');
+    });
+
+    it('shows the unread-notification count as a badge on "איזור האישי" only, in both modes', () => {
+      const state = TestBed.inject(NotificationsStateService);
+      expect(fixture.nativeElement.querySelector('.nav-badge')).toBeNull();
+
+      state.unreadCount.set(3);
+      fixture.detectChanges();
+      const dashboardIcon = leafIconByLabel('איזור האישי')!;
+      expect(dashboardIcon.querySelector('.nav-badge')?.textContent?.trim()).toBe('3');
+      expect(dashboardIcon.getAttribute('aria-label')).toBe('איזור האישי (3 הודעות שלא נקראו)');
+      expect(fixture.nativeElement.querySelectorAll('.nav-badge').length).toBe(1);
+
+      toggleButton().click();
+      fixture.detectChanges();
+      const badges: HTMLElement[] = Array.from(fixture.nativeElement.querySelectorAll('.nav-badge'));
+      expect(badges.length).toBe(1);
+      expect(badges[0].closest('.tree-child-item')?.textContent).toContain('איזור האישי');
+
+      state.unreadCount.set(0);
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('.nav-badge')).toBeNull();
+    });
+
     it('a group keeps a single icon, revealing its children as a hover flyout', () => {
       expect(groupIconByLabel('תיקי שילוח')).toBeTruthy();
       expect(flyoutItemByLabel('תיקי שילוח', 'התיקים שלי')).toBeTruthy();
@@ -180,7 +220,7 @@ describe('Workspace shell', () => {
 
       expect(renderedScreen()).toBe('app-my-cases-list-screen');
       expect(breadcrumbText()).toContain('רשימות');
-      expect(breadcrumbText()).toContain('התיקים שלי');
+      expect(breadcrumbText()).toContain('תיקי עמילות');
     });
 
     it('Back/Forward swap the rendered screen without remounting the shell', async () => {
@@ -193,7 +233,7 @@ describe('Workspace shell', () => {
       await settle();
       expect(location.path()).toBe('/workspace/dashboard');
       expect(renderedScreen()).toBe('app-dashboard-screen');
-      expect(breadcrumbText()).toContain('לוח בקרה');
+      expect(breadcrumbText()).toContain('איזור האישי');
 
       location.forward();
       await settle();

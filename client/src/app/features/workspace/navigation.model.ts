@@ -93,6 +93,10 @@ export interface TreeChildGroup {
   icon: string;
   /** Leaf rows shown when the group is expanded. */
   children: TreeChild[];
+  /** Omits the whole group from the rendered sidebar, the same way
+   *  {@link TreeChild.hidden} does for one row: its children stay "real" for
+   *  URL slugs, `leafByPage`, the breadcrumb and other screens' links. */
+  hidden?: boolean;
 }
 
 /** One row in the sidebar tree — either a plain leaf, or an expandable group of leaves. */

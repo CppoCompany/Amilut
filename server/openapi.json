@@ -1541,6 +1541,42 @@
         ]
       }
     },
+    "/api/notifications/read-all": {
+      "patch": {
+        "operationId": "NotificationsController_markAllRead",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarkAllReadDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnreadCountDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
     "/api/notifications/{id}/read": {
       "patch": {
         "operationId": "NotificationsController_markRead",
@@ -2556,47 +2592,50 @@
           "createdAt"
         ]
       },
-      "DashboardClassificationRowDto": {
+      "DashboardCcfRowDto": {
         "type": "object",
         "properties": {
-          "fileId": {
+          "id": {
             "type": "integer",
-            "example": 42
-          },
-          "orderId": {
-            "type": "integer",
-            "nullable": true,
-            "example": 1024
-          },
-          "ccfId": {
-            "type": "integer",
-            "nullable": true,
             "example": 7
           },
-          "contextLabel": {
+          "fileNumber": {
             "type": "string",
-            "example": "הזמנה 1024"
+            "example": "CCF1007"
           },
-          "lineIndex": {
+          "shipmentFileId": {
             "type": "integer",
-            "example": 0
+            "nullable": true,
+            "example": 42
           },
-          "item": {
-            "type": "string",
-            "example": "Y8022-140BK"
-          },
-          "description": {
-            "type": "string",
-            "example": "Light Fixtures"
-          },
-          "classificationCode": {
-            "type": "string",
-            "example": "9405.10.00"
-          },
-          "countryName": {
+          "shipmentFileMblNumber": {
             "type": "string",
             "nullable": true,
-            "example": "סין"
+            "example": "MBL-987654321"
+          },
+          "customerNames": {
+            "example": [
+              "ACME Ltd."
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CcfStatus"
+              }
+            ]
+          },
+          "lineCount": {
+            "type": "integer",
+            "example": 4
+          },
+          "classifiedLineCount": {
+            "type": "integer",
+            "example": 1
           },
           "createdAt": {
             "type": "string",
@@ -2605,15 +2644,14 @@
           }
         },
         "required": [
-          "fileId",
-          "orderId",
-          "ccfId",
-          "contextLabel",
-          "lineIndex",
-          "item",
-          "description",
-          "classificationCode",
-          "countryName",
+          "id",
+          "fileNumber",
+          "shipmentFileId",
+          "shipmentFileMblNumber",
+          "customerNames",
+          "status",
+          "lineCount",
+          "classifiedLineCount",
           "createdAt"
         ]
       },
@@ -2626,62 +2664,6 @@
         "x-enum-varnames": [
           "SEA",
           "AIR"
-        ]
-      },
-      "DashboardCaseRowDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "example": 1
-          },
-          "mblNumber": {
-            "type": "string",
-            "nullable": true,
-            "example": "MBL-987654321"
-          },
-          "shippingType": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/MblShippingType"
-              }
-            ]
-          },
-          "customerNames": {
-            "example": [
-              "ACME Ltd."
-            ],
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "carrierName": {
-            "type": "string",
-            "nullable": true,
-            "example": "MAERSK LINE"
-          },
-          "status": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/MblStatus"
-              }
-            ]
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time",
-            "example": "2026-09-01T08:30:00.000Z"
-          }
-        },
-        "required": [
-          "id",
-          "mblNumber",
-          "shippingType",
-          "customerNames",
-          "carrierName",
-          "status",
-          "createdAt"
         ]
       },
       "DashboardImportProcessRowDto": {
@@ -2760,16 +2742,16 @@
               "$ref": "#/components/schemas/DashboardCaseInReleaseRowDto"
             }
           },
-          "myClassifications": {
+          "ccfsPendingClassification": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/DashboardClassificationRowDto"
+              "$ref": "#/components/schemas/DashboardCcfRowDto"
             }
           },
-          "myCases": {
+          "ccfs": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/DashboardCaseRowDto"
+              "$ref": "#/components/schemas/DashboardCcfRowDto"
             }
           },
           "importProcesses": {
@@ -2782,8 +2764,8 @@
         "required": [
           "myOrders",
           "casesInRelease",
-          "myClassifications",
-          "myCases",
+          "ccfsPendingClassification",
+          "ccfs",
           "importProcesses"
         ]
       },
@@ -4298,6 +4280,16 @@
             "nullable": true,
             "example": 7
           },
+          "actorUserId": {
+            "type": "integer",
+            "nullable": true,
+            "example": 7
+          },
+          "actorName": {
+            "type": "string",
+            "nullable": true,
+            "example": "Dana Levi"
+          },
           "isRead": {
             "type": "boolean",
             "example": false
@@ -4312,6 +4304,8 @@
           "id",
           "message",
           "relatedCcfId",
+          "actorUserId",
+          "actorName",
           "isRead",
           "createdAt"
         ]
@@ -4326,6 +4320,18 @@
         },
         "required": [
           "count"
+        ]
+      },
+      "MarkAllReadDto": {
+        "type": "object",
+        "properties": {
+          "upToId": {
+            "type": "integer",
+            "example": 42
+          }
+        },
+        "required": [
+          "upToId"
         ]
       },
       "ShipmentType": {

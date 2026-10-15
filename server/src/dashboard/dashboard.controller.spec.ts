@@ -27,8 +27,8 @@ describe('DashboardController', () => {
     const response: DashboardResponseDto = {
       myOrders: [],
       casesInRelease: [],
-      myClassifications: [],
-      myCases: [],
+      ccfsPendingClassification: [],
+      ccfs: [],
       importProcesses: [],
     };
     dashboard.getDashboard.mockResolvedValueOnce(response);

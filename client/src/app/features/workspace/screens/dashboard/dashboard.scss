@@ -55,6 +55,12 @@
     padding: 9px 12px;
     font-size: 0.88rem;
   }
+
+  // Rows open their entity on click/Enter — show where keyboard focus is.
+  .data-table__row--clickable:focus-visible {
+    outline: 2px solid var(--secondary-blue);
+    outline-offset: -2px;
+  }
 }
 
 .dashboard-card__title {
@@ -89,6 +95,27 @@
   i {
     font-size: 0.75rem;
   }
+}
+
+// ── "הודעות" widget ──────────────────────────────────────────────────────────
+// Shows every notification (up to the server's 50), so it scrolls instead of
+// growing past the other cards.
+.dashboard-messages {
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+// New on this visit (it was unread when the list was fetched).
+.dashboard-message--unread td {
+  font-weight: 700;
+}
+
+.dashboard-message--unread td:first-child {
+  box-shadow: inset -3px 0 0 var(--secondary-blue);
+}
+
+.dashboard-card__error {
+  margin-bottom: 10px;
 }
 
 // ── Error banner ─────────────────────────────────────────────────────────────

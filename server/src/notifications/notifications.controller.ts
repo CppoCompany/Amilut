@@ -1,4 +1,5 @@
 import {
+  Body,
   Controller,
   Get,
   HttpCode,
@@ -14,6 +15,7 @@ import {
 } from '@nestjs/swagger';
 import type { JwtPayload } from '../auth/auth.types';
 import { CurrentUser } from '../auth/current-user.decorator';
+import { MarkAllReadDto } from './dto/mark-all-read.dto';
 import { NotificationDto } from './dto/notification.dto';
 import { UnreadCountDto } from './dto/unread-count.dto';
 import { NotificationsService } from './notifications.service';
@@ -36,6 +38,19 @@ export class NotificationsController {
   @ApiOkResponse({ type: UnreadCountDto })
   async unreadCount(@CurrentUser() user: JwtPayload): Promise<UnreadCountDto> {
     return { count: await this.notifications.unreadCount(user.sub) };
+  }
+
+  /** Declared before `:id/read`; the dashboard calls this once its
+   *  "הודעות" widget has shown the list. Returns what is still unread. */
+  @Patch('read-all')
+  @ApiOkResponse({ type: UnreadCountDto })
+  async markAllRead(
+    @Body() dto: MarkAllReadDto,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<UnreadCountDto> {
+    return {
+      count: await this.notifications.markAllRead(user.sub, dto.upToId),
+    };
   }
 
   @Patch(':id/read')
