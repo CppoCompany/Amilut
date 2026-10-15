@@ -133,7 +133,7 @@ describe('ClassificationScreen before a case is picked', () => {
       Array.from(
         fixture.nativeElement.querySelectorAll('.section-title') as NodeListOf<HTMLElement>,
       ).map((el) => el.textContent?.trim()),
-    ).toEqual(['סיווג', 'מוצרים', 'תיקי עמילות שלא עברו סיווג']);
+    ).toEqual(['סיווג', 'תיקי עמילות שלא עברו סיווג', 'מוצרים']);
   });
 
   it('loads the line items once a case is picked', () => {

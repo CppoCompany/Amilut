@@ -147,6 +147,11 @@ export class ClassificationScreen {
     return ccf.lineCount === 0 ? '—' : `${ccf.classifiedLineCount}/${ccf.lineCount}`;
   }
 
+  /** Share of the CCF's lines already classified, 0–100, for the list item's progress bar. */
+  protected classificationPercent(ccf: DashboardCcfRowDto): number {
+    return ccf.lineCount === 0 ? 0 : Math.round((ccf.classifiedLineCount / ccf.lineCount) * 100);
+  }
+
   protected addRow(): void {
     this.products.update((rows) => [...rows, emptyProduct()]);
   }
