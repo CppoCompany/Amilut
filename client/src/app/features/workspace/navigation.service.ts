@@ -270,8 +270,8 @@ export class NavigationService {
           },
         ],
       },
-      { id: 'ws-classification', page: 'classification', label: 'סיווג', icon: 'fa-solid fa-tags' },
       { id: 'ws-ccf', page: 'ccf', label: 'תיק עמילות', icon: 'fa-solid fa-stamp' },
+      { id: 'ws-classification', page: 'classification', label: 'סיווג', icon: 'fa-solid fa-tags' },
       {
         id: 'ws-post-classification',
         page: 'placeholder',

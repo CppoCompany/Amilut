@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
-import type { DashboardResponseDto } from './models';
+import type { DashboardCcfRowDto, DashboardResponseDto } from './models';
 
 /**
  * Thin HTTP client over the dashboard resource (`GET /api/dashboard`) — the
@@ -16,5 +16,10 @@ export class DashboardApi {
 
   get(): Observable<DashboardResponseDto> {
     return this.http.get<DashboardResponseDto>(this.baseUrl);
+  }
+
+  /** Every CCF not fully classified yet, newest first — the classification screen's file list. */
+  ccfsPendingClassification(): Observable<DashboardCcfRowDto[]> {
+    return this.http.get<DashboardCcfRowDto[]>(`${this.baseUrl}/ccfs-pending-classification`);
   }
 }

@@ -13,6 +13,7 @@ import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { catchError, EMPTY, finalize, map, of, switchMap } from 'rxjs';
 
 import { CountriesApi } from '../../../../api/countries-api';
+import { DashboardApi } from '../../../../api/dashboard-api';
 import type { FilingContext } from '../../../../api/filing-context.model';
 import {
   CLASSIFICATION_APPROVAL_LABELS,
@@ -28,11 +29,11 @@ import {
 import { ImportFilesApi } from '../../../../api/import-files-api';
 import type {
   CountryDto,
+  DashboardCcfRowDto,
   InvoiceLineItemDto,
   LineItemClassificationUpdateDto,
 } from '../../../../api/models';
 import { MultiSelect, MultiSelectOption } from '../../../../shared/multi-select/multi-select';
-import { FilingContextPicker } from '../../filing-context-picker/filing-context-picker';
 import { FilingContextService } from '../../filing-context.service';
 import { NavigationService } from '../../navigation.service';
 
@@ -54,10 +55,14 @@ interface Product {
   countryId: number | null;
 }
 
-/** "סיווג" — goods classification view with an editable products table saved back to the Order/CCF's invoice lines. */
+/**
+ * "סיווג" — goods classification view: a list of the CCFs not fully
+ * classified yet on one side, and for the picked one an editable products
+ * table saved back to its invoice lines on the other.
+ */
 @Component({
   selector: 'app-classification-screen',
-  imports: [ReactiveFormsModule, DecimalPipe, MultiSelect, FilingContextPicker],
+  imports: [ReactiveFormsModule, DecimalPipe, MultiSelect],
   templateUrl: './classification.html',
   styleUrl: './classification.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -66,11 +71,12 @@ export class ClassificationScreen {
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly importFilesApi = inject(ImportFilesApi);
   private readonly countriesApi = inject(CountriesApi);
+  private readonly dashboardApi = inject(DashboardApi);
   private readonly destroyRef = inject(DestroyRef);
   private readonly nav = inject(NavigationService);
   private readonly filingContext = inject(FilingContextService);
 
-  /** The Order/CCF picked in the context picker; `null` until one is picked, and nothing is loaded or saved while it is. */
+  /** The Order/CCF being classified — picked from the pending list (or handed off by another screen); `null` until one is, and nothing is loaded or saved while it is. */
   protected readonly context = this.filingContext.context;
 
   protected readonly approvalOptions: readonly MultiSelectOption[] = CLASSIFICATION_APPROVALS.map(
@@ -96,6 +102,11 @@ export class ClassificationScreen {
   protected readonly countries = signal<CountryDto[]>([]);
   protected readonly countriesError = signal<string | null>(null);
 
+  /** "תיקי עמילות שלא עברו סיווג" — the file list to pick from. */
+  protected readonly pendingCcfs = signal<DashboardCcfRowDto[]>([]);
+  protected readonly pendingLoading = signal(false);
+  protected readonly pendingError = signal<string | null>(null);
+
   protected readonly saving = signal(false);
   protected readonly saveMessage = signal<string | null>(null);
   protected readonly saveError = signal<string | null>(null);
@@ -103,12 +114,13 @@ export class ClassificationScreen {
   constructor() {
     this.loadLineItemsOnContextChange();
     this.loadCountries();
+    this.loadPendingCcfs();
 
     // The CCF screen navigates here after saving a Customs Clearance File
     // linked to a shipping case: `/workspace/classification?ccfId=N`, which
     // NavigationService.applyUrl turns into `openClassificationContext`
     // before this screen shows. Consume it once as soon as it appears and
-    // preselect it in the (shared) context picker — same effect+untracked
+    // preselect it (shared with the filing screen) — same effect+untracked
     // shape as the filing screen's hand-off, for the same reason:
     // Back/Forward can land on this URL while the screen is already mounted.
     effect(() => {
@@ -119,6 +131,20 @@ export class ClassificationScreen {
         this.filingContext.context.set(incoming);
       });
     });
+  }
+
+  protected selectCcf(ccfId: number): void {
+    this.context.set({ kind: 'ccf', id: ccfId });
+  }
+
+  protected isSelectedCcf(ccfId: number): boolean {
+    const context = this.context();
+    return context?.kind === 'ccf' && context.id === ccfId;
+  }
+
+  /** "1/4" — classified lines out of the CCF's supplier-invoice lines; "—" before any were filed. */
+  protected classificationProgress(ccf: DashboardCcfRowDto): string {
+    return ccf.lineCount === 0 ? '—' : `${ccf.classifiedLineCount}/${ccf.lineCount}`;
   }
 
   protected addRow(): void {
@@ -194,6 +220,8 @@ export class ClassificationScreen {
           this.saveMessage.set(
             items.length === 1 ? 'הסיווג נשמר (שורה אחת)' : `הסיווג נשמר (${items.length} שורות)`,
           );
+          // Progress changed — and a now fully classified CCF leaves the list.
+          this.loadPendingCcfs();
         },
         error: () => {
           if (!sameContext(this.context(), context)) return;
@@ -206,6 +234,25 @@ export class ClassificationScreen {
     this.products.update((rows) =>
       rows.map((row, i) => (i === index ? { ...row, ...patch } : row)),
     );
+  }
+
+  /**
+   * (Re)loads the pending-classification file list. The picked context stays
+   * as it is even when it drops off the list (e.g. just fully classified).
+   */
+  private loadPendingCcfs(): void {
+    this.pendingLoading.set(true);
+    this.pendingError.set(null);
+    this.dashboardApi
+      .ccfsPendingClassification()
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => this.pendingLoading.set(false)),
+      )
+      .subscribe({
+        next: (ccfs) => this.pendingCcfs.set(ccfs),
+        error: () => this.pendingError.set('טעינת רשימת התיקים נכשלה'),
+      });
   }
 
   /** Loads the country lookup once; a failure only leaves the dropdown without options. */

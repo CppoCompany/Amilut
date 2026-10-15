@@ -15,6 +15,9 @@ import {
 /** Rows per card. */
 export const DASHBOARD_ROW_LIMIT = 5;
 
+/** Rows in the classification screen's "pending" list (the server's usual page-size ceiling). */
+export const PENDING_CLASSIFICATION_LIST_LIMIT = 200;
+
 /** `mbl.status` value that denotes "in customs release" ("בהתרה"). */
 export const MBL_STATUS_IN_RELEASE = MblStatus.IN_RELEASE;
 
@@ -221,9 +224,15 @@ export class DashboardService {
     }));
   }
 
-  /** "תיקי עמילות שלא עברו סיווג": CCFs with an unclassified (or no) invoice line. */
-  async findCcfsPendingClassification(): Promise<DashboardCcfRowDto[]> {
-    return this.findCcfRows(CCFS_PENDING_CLASSIFICATION_SQL);
+  /**
+   * "תיקי עמילות שלא עברו סיווג": CCFs with an unclassified (or no) invoice
+   * line. The card shows the newest {@link DASHBOARD_ROW_LIMIT}; the
+   * classification screen's list passes a larger `limit`.
+   */
+  async findCcfsPendingClassification(
+    limit = DASHBOARD_ROW_LIMIT,
+  ): Promise<DashboardCcfRowDto[]> {
+    return this.findCcfRows(CCFS_PENDING_CLASSIFICATION_SQL, limit);
   }
 
   /** "תיקי עמילות": every CCF, unscoped. */
@@ -248,10 +257,13 @@ export class DashboardService {
     }));
   }
 
-  private async findCcfRows(sql: string): Promise<DashboardCcfRowDto[]> {
+  private async findCcfRows(
+    sql: string,
+    limit = DASHBOARD_ROW_LIMIT,
+  ): Promise<DashboardCcfRowDto[]> {
     const rows = await this.db.query<CcfRow>(sql, [
       ImportDocumentType.SUPPLIER_INVOICE,
-      DASHBOARD_ROW_LIMIT,
+      limit,
     ]);
     return rows.map((row) => ({
       id: row.id,

@@ -1,7 +1,10 @@
 import { Test } from '@nestjs/testing';
 import type { JwtPayload } from '../auth/auth.types';
 import { DashboardController } from './dashboard.controller';
-import { DashboardService } from './dashboard.service';
+import {
+  DashboardService,
+  PENDING_CLASSIFICATION_LIST_LIMIT,
+} from './dashboard.service';
 import { DashboardResponseDto } from './dto/dashboard.dto';
 
 // The service's DatabaseService import drags in @nestjs/config (ESM-only);
@@ -12,10 +15,16 @@ jest.mock('../database/database.service', () => ({
 
 describe('DashboardController', () => {
   let controller: DashboardController;
-  let dashboard: { getDashboard: jest.Mock };
+  let dashboard: {
+    getDashboard: jest.Mock;
+    findCcfsPendingClassification: jest.Mock;
+  };
 
   beforeEach(async () => {
-    dashboard = { getDashboard: jest.fn() };
+    dashboard = {
+      getDashboard: jest.fn(),
+      findCcfsPendingClassification: jest.fn(),
+    };
     const moduleRef = await Test.createTestingModule({
       controllers: [DashboardController],
       providers: [{ provide: DashboardService, useValue: dashboard }],
@@ -41,5 +50,16 @@ describe('DashboardController', () => {
 
     await expect(controller.getDashboard(user)).resolves.toBe(response);
     expect(dashboard.getDashboard).toHaveBeenCalledWith(7);
+  });
+
+  it('lists the CCFs pending classification with the screen-list limit', async () => {
+    dashboard.findCcfsPendingClassification.mockResolvedValueOnce([]);
+
+    await expect(controller.getCcfsPendingClassification()).resolves.toEqual(
+      [],
+    );
+    expect(dashboard.findCcfsPendingClassification).toHaveBeenCalledWith(
+      PENDING_CLASSIFICATION_LIST_LIMIT,
+    );
   });
 });

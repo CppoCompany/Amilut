@@ -437,6 +437,35 @@
         ]
       }
     },
+    "/api/dashboard/ccfs-pending-classification": {
+      "get": {
+        "operationId": "DashboardController_getCcfsPendingClassification",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DashboardCcfRowDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "dashboard"
+        ]
+      }
+    },
     "/api/import-files/classifications": {
       "get": {
         "operationId": "ImportFilesController_listClassifications",

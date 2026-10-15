@@ -3,11 +3,12 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import {
+  CcfStatus,
   ClassificationApproval,
   ClassificationLicense,
   TradeAgreement,
 } from '../../../../api/enums';
-import type { CountryDto, InvoiceLineItemDto } from '../../../../api/models';
+import type { CountryDto, DashboardCcfRowDto, InvoiceLineItemDto } from '../../../../api/models';
 import { FilingContextService } from '../../filing-context.service';
 import { ClassificationScreen, goodsDescriptionOf } from './classification';
 
@@ -15,8 +16,22 @@ const ORDER_ID = 1000;
 const LINE_ITEMS_URL = `/api/import-files/line-items?orderId=${ORDER_ID}`;
 const SAVE_URL = `/api/import-files/line-items/classification?orderId=${ORDER_ID}`;
 const COUNTRIES_URL = '/api/countries';
-const ORDERS_URL = '/api/orders';
-const CCFS_URL = '/api/ccf';
+const PENDING_CCFS_URL = '/api/dashboard/ccfs-pending-classification';
+
+function pendingCcf(overrides: Partial<DashboardCcfRowDto> = {}): DashboardCcfRowDto {
+  return {
+    id: 7,
+    fileNumber: 'CCF1007',
+    shipmentFileId: 3,
+    shipmentFileMblNumber: 'MBL-1',
+    customerNames: ['ACME Ltd.'],
+    status: CcfStatus.OPEN,
+    lineCount: 4,
+    classifiedLineCount: 1,
+    createdAt: '2026-09-01T08:30:00.000Z',
+    ...overrides,
+  };
+}
 
 const COUNTRIES: CountryDto[] = [
   { id: 106, name: 'ישראל', key: 'IL' },
@@ -65,10 +80,12 @@ let filingContext: FilingContextService;
 
 /**
  * Creates the screen with an order context already picked (or none) and
- * answers the context picker's lookups with empty lists — the picker itself
- * is covered by its own spec.
+ * answers the pending-CCF list with `pending` (`'error'` fails it).
  */
-async function setup(orderId: number | null): Promise<void> {
+async function setup(
+  orderId: number | null,
+  pending: DashboardCcfRowDto[] | 'error' = [],
+): Promise<void> {
   await TestBed.configureTestingModule({
     imports: [ClassificationScreen],
     providers: [provideHttpClient(), provideHttpClientTesting()],
@@ -78,9 +95,12 @@ async function setup(orderId: number | null): Promise<void> {
   filingContext = TestBed.inject(FilingContextService);
   fixture = TestBed.createComponent(ClassificationScreen);
   fixture.detectChanges();
-  httpMock.expectOne((req) => req.url === ORDERS_URL).flush([]);
-  httpMock.expectOne((req) => req.url === CCFS_URL).flush([]);
-  // Picked after the (empty) lookups so the picker does not reset it as a deleted order.
+  const pendingReq = httpMock.expectOne(PENDING_CCFS_URL);
+  if (pending === 'error') {
+    pendingReq.flush({ message: 'boom' }, { status: 500, statusText: 'Internal Server Error' });
+  } else {
+    pendingReq.flush(pending);
+  }
   filingContext.context.set(orderId !== null ? { kind: 'order', id: orderId } : null);
   fixture.detectChanges();
 }
@@ -98,12 +118,22 @@ describe('ClassificationScreen before a case is picked', () => {
     expect(fixture.nativeElement.querySelector('.form-message--error')).toBeNull();
     expect(fixture.nativeElement.querySelector('.products-loading')).toBeNull();
     expect(fixture.nativeElement.querySelector('.products-empty td')?.textContent?.trim()).toBe(
-      'בחר תיק כדי להציג את פריטי חשבון הספק שלו',
+      'בחר תיק עמילות מהרשימה כדי להציג את פריטי חשבון הספק שלו',
     );
     const submit = fixture.nativeElement.querySelector(
       'button[type="submit"]',
     ) as HTMLButtonElement;
     expect(submit.disabled).toBe(true);
+  });
+
+  it('does not render the old Order/CCF picker', () => {
+    httpMock.expectOne(COUNTRIES_URL).flush(COUNTRIES);
+    expect(fixture.nativeElement.querySelector('app-filing-context-picker')).toBeNull();
+    expect(
+      Array.from(
+        fixture.nativeElement.querySelectorAll('.section-title') as NodeListOf<HTMLElement>,
+      ).map((el) => el.textContent?.trim()),
+    ).toEqual(['סיווג', 'מוצרים', 'תיקי עמילות שלא עברו סיווג']);
   });
 
   it('loads the line items once a case is picked', () => {
@@ -499,6 +529,7 @@ describe('ClassificationScreen', () => {
       }),
       lineItem({ lineIndex: 1, item: 'B', description: 'Cable' }),
     ]);
+    httpMock.expectOne(PENDING_CCFS_URL).flush([]);
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('.form-message--success')?.textContent?.trim()).toBe(
@@ -540,5 +571,93 @@ describe('ClassificationScreen', () => {
     expect(fixture.nativeElement.querySelector('.form-message--success')).toBeNull();
     expect(codeInputs()[0].value).toBe('1234');
     expect(submitButton().disabled).toBe(false);
+  });
+});
+
+describe('ClassificationScreen pending-CCF list', () => {
+  const CCF_LINE_ITEMS_URL = '/api/import-files/line-items?ccfId=7';
+
+  beforeEach(() =>
+    setup(null, [
+      pendingCcf(),
+      pendingCcf({
+        id: 8,
+        fileNumber: 'CCF1008',
+        shipmentFileMblNumber: null,
+        customerNames: [],
+        lineCount: 0,
+        classifiedLineCount: 0,
+      }),
+    ]),
+  );
+
+  afterEach(() => httpMock.verify());
+
+  const items = (): HTMLButtonElement[] =>
+    Array.from(fixture.nativeElement.querySelectorAll('.pending-ccfs__item'));
+
+  it('lists every pending CCF with its number, progress, MBL and customers', () => {
+    httpMock.expectOne(COUNTRIES_URL).flush(COUNTRIES);
+    fixture.detectChanges();
+
+    const spans = (b: HTMLButtonElement): string[] =>
+      Array.from(b.querySelectorAll('span')).map((el) => el.textContent?.trim() ?? '');
+    expect(items().map(spans)).toEqual([
+      ['CCF1007', '1/4', 'MBL-1', 'ACME Ltd.'],
+      ['CCF1008', '—'],
+    ]);
+    expect(items().some((b) => b.classList.contains('active'))).toBe(false);
+  });
+
+  it('picking a CCF from the list loads its line items and highlights it', () => {
+    httpMock.expectOne(COUNTRIES_URL).flush(COUNTRIES);
+
+    items()[0].click();
+    fixture.detectChanges();
+
+    expect(filingContext.context()).toEqual({ kind: 'ccf', id: 7 });
+    httpMock.expectOne(CCF_LINE_ITEMS_URL).flush([lineItem()]);
+    fixture.detectChanges();
+    expect(items()[0].classList.contains('active')).toBe(true);
+    expect(items()[0].getAttribute('aria-pressed')).toBe('true');
+    expect(items()[1].classList.contains('active')).toBe(false);
+    expect(fixture.nativeElement.querySelectorAll('.documents-table tbody tr').length).toBe(1);
+  });
+
+  it('refreshes the list after a successful save', () => {
+    httpMock.expectOne(COUNTRIES_URL).flush(COUNTRIES);
+    items()[0].click();
+    fixture.detectChanges();
+    httpMock.expectOne(CCF_LINE_ITEMS_URL).flush([lineItem()]);
+    fixture.detectChanges();
+
+    (fixture.nativeElement.querySelector('button[type="submit"]') as HTMLButtonElement).click();
+    httpMock.expectOne('/api/import-files/line-items/classification?ccfId=7').flush([lineItem()]);
+    httpMock.expectOne(PENDING_CCFS_URL).flush([pendingCcf({ id: 8, fileNumber: 'CCF1008' })]);
+    fixture.detectChanges();
+
+    expect(items().map((b) => b.querySelector('.pending-ccfs__number')?.textContent)).toEqual([
+      'CCF1008',
+    ]);
+    // The just-classified CCF stays open even though it left the list.
+    expect(filingContext.context()).toEqual({ kind: 'ccf', id: 7 });
+  });
+});
+
+describe('ClassificationScreen pending-CCF list failure', () => {
+  beforeEach(() => setup(null, 'error'));
+
+  afterEach(() => httpMock.verify());
+
+  it('shows an error line instead of the list', () => {
+    httpMock.expectOne(COUNTRIES_URL).flush(COUNTRIES);
+    fixture.detectChanges();
+
+    expect(
+      fixture.nativeElement
+        .querySelector('.pending-ccfs .form-message--error')
+        ?.textContent?.trim(),
+    ).toBe('טעינת רשימת התיקים נכשלה');
+    expect(fixture.nativeElement.querySelector('.pending-ccfs__item')).toBeNull();
   });
 });

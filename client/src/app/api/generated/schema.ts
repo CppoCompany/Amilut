@@ -164,6 +164,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/dashboard/ccfs-pending-classification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["DashboardController_getCcfsPendingClassification"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/import-files/classifications": {
         parameters: {
             query?: never;
@@ -1784,6 +1800,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DashboardResponseDto"];
+                };
+            };
+        };
+    };
+    DashboardController_getCcfsPendingClassification: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardCcfRowDto"][];
                 };
             };
         };
