@@ -95,6 +95,15 @@ const AIRLINES = [
 ];
 
 const CUSTOMER_REQUIRED = 'יש לבחור לקוח';
+const SUPPLIER_REQUIRED = 'יש לבחור ספק';
+/** Schedule dates that must all be filled before leaving the schedule tab forwards. */
+const REQUIRED_SCHEDULE_DATES = {
+  factoryReadyDate: 'יש להזין תאריך מוכנות במפעל',
+  factoryPickupDate: 'יש להזין תאריך איסוף מהמפעל',
+  departureDate: 'יש להזין תאריך הפלגה / טיסה (יציאה)',
+  etaDate: 'יש להזין תאריך הגעה משוער (ETA)',
+} as const;
+type ScheduleDateField = keyof typeof REQUIRED_SCHEDULE_DATES;
 const UPLOAD_FAILED = 'ההזמנה נשמרה, אך העלאת חלק מהמסמכים נכשלה';
 const OPEN_FILE_FAILED = 'פתיחת הקובץ נכשלה';
 const FILES_LOAD_FAILED = 'טעינת המסמכים של ההזמנה נכשלה';
@@ -142,6 +151,9 @@ export class OrderScreen {
   private readonly submitAttempted = signal(false);
   protected readonly customerError = computed(() =>
     this.submitAttempted() && !this.selectedCustomer() ? CUSTOMER_REQUIRED : null,
+  );
+  protected readonly supplierError = computed(() =>
+    this.submitAttempted() && !this.selectedSupplier() ? SUPPLIER_REQUIRED : null,
   );
 
   // ── Save state ─────────────────────────────────────────────────────────────
@@ -280,6 +292,35 @@ export class OrderScreen {
   private readonly departureDateValue = toSignal(this.form.controls.departureDate.valueChanges, {
     initialValue: this.form.controls.departureDate.value,
   });
+  private readonly etaDateValue = toSignal(this.form.controls.etaDate.valueChanges, {
+    initialValue: this.form.controls.etaDate.value,
+  });
+
+  /**
+   * Set by "הבא" / a forward tab click on the schedule tab, or by "סיום" —
+   * not by a plain "שמירה", so a draft can still be saved with dates missing.
+   */
+  private readonly scheduleAttempted = signal(false);
+  private readonly missingScheduleDates = computed(() => {
+    const values: Record<ScheduleDateField, string> = {
+      factoryReadyDate: this.factoryReadyDateValue(),
+      factoryPickupDate: this.factoryPickupDateValue(),
+      departureDate: this.departureDateValue(),
+      etaDate: this.etaDateValue(),
+    };
+    return (Object.keys(REQUIRED_SCHEDULE_DATES) as ScheduleDateField[]).filter(
+      (field) => !values[field],
+    );
+  });
+  /** Per-field "required" message for the schedule dates, once checked. */
+  protected readonly scheduleRequiredErrors = computed(() => {
+    const errors: Partial<Record<ScheduleDateField, string>> = {};
+    if (!this.scheduleAttempted()) return errors;
+    for (const field of this.missingScheduleDates()) {
+      errors[field] = REQUIRED_SCHEDULE_DATES[field];
+    }
+    return errors;
+  });
 
   /** `[min]` for the Pickup Date picker: the day after Ready Date, so same-day/earlier is greyed out. */
   protected readonly pickupMinDate = computed(() => minDateAfter(this.factoryReadyDateValue()));
@@ -308,8 +349,14 @@ export class OrderScreen {
   /** Tabs holding a visible validation error — they get a red dot. */
   protected readonly stepsWithErrors = computed(() => {
     const steps = new Set<OrderStep>();
-    if (this.customerError()) steps.add(OrderStep.CUSTOMER);
-    if (this.pickupDateError() || this.departureDateError()) steps.add(OrderStep.SCHEDULE);
+    if (this.customerError() || this.supplierError()) steps.add(OrderStep.CUSTOMER);
+    if (
+      this.pickupDateError() ||
+      this.departureDateError() ||
+      Object.keys(this.scheduleRequiredErrors()).length > 0
+    ) {
+      steps.add(OrderStep.SCHEDULE);
+    }
     if (this.showMissingDocuments()) steps.add(OrderStep.DOCUMENTS);
     return steps;
   });
@@ -461,13 +508,16 @@ export class OrderScreen {
     );
   }
 
-  /** Tab click: backwards always, forwards only past a valid current tab. */
+  /**
+   * Tab click: backwards always; forwards only when every tab being passed
+   * (the current one included) is valid — otherwise lands on the first
+   * invalid one, so e.g. the schedule cannot be skipped from the first tab.
+   */
   protected goToStep(step: OrderStep): void {
     if (step === this.currentStep() || !this.canOpenStep(step)) return;
-    if (stepIndex(step) > stepIndex(this.currentStep()) && !this.validateStep(this.currentStep())) {
-      return;
-    }
-    this.moveTo(step);
+    const passed = ORDER_STEPS.slice(stepIndex(this.currentStep()), stepIndex(step));
+    const invalid = passed.find((s) => !this.validateStep(s));
+    this.moveTo(invalid ?? step);
   }
 
   private moveTo(step: OrderStep | undefined): void {
@@ -483,9 +533,10 @@ export class OrderScreen {
     this.submitAttempted.set(true);
     switch (step) {
       case OrderStep.CUSTOMER:
-        return this.selectedCustomer() !== null;
+        return this.selectedCustomer() !== null && this.selectedSupplier() !== null;
       case OrderStep.SCHEDULE:
-        return this.form.valid;
+        this.scheduleAttempted.set(true);
+        return this.form.valid && this.missingScheduleDates().length === 0;
       default:
         return true;
     }
@@ -517,6 +568,13 @@ export class OrderScreen {
   protected onFinish(): void {
     if (this.saving()) return;
     this.finishAttempted.set(true);
+    this.scheduleAttempted.set(true);
+    if (this.missingScheduleDates().length > 0) {
+      this.currentStep.set(OrderStep.SCHEDULE);
+      this.successMessage.set(null);
+      this.errorMessage.set('יש להשלים את כל התאריכים בלוחות הזמנים');
+      return;
+    }
     const missing = this.missingDocuments();
     if (missing.length > 0) {
       this.currentStep.set(OrderStep.DOCUMENTS);
@@ -560,7 +618,7 @@ export class OrderScreen {
   /**
    * Builds and sends the create/update request (with `lastStep`), then
    * uploads the staged documents under the saved order. Returns `null` (does
-   * nothing) while a save is already in flight, no customer is picked yet, or
+   * nothing) while a save is already in flight, no customer or supplier is picked yet, or
    * the schedule is invalid. An upload failure never fails the save — the
    * order exists by then — it is reported via `uploadFailed` and the staged
    * files are kept so the next save retries them.
@@ -574,7 +632,8 @@ export class OrderScreen {
     this.errorMessage.set(null);
 
     const customer = this.selectedCustomer();
-    if (!customer) {
+    const supplier = this.selectedSupplier();
+    if (!customer || !supplier) {
       return null;
     }
 
@@ -588,7 +647,7 @@ export class OrderScreen {
     const dto: CreateOrderDto = {
       ...toCreateOrderDto(
         customer.id,
-        this.selectedSupplier()?.id,
+        supplier.id,
         {
           status: this.status(),
           shipmentType: this.shipmentType(),

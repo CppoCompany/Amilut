@@ -13,15 +13,22 @@ import {
   PaymentTerms,
   ShipmentType,
 } from '../../../../api/enums';
-import type { CustomerDto, OrderDto, UploadedImportFileDto } from '../../../../api/models';
+import type {
+  CustomerDto,
+  OrderDto,
+  SupplierDto,
+  UploadedImportFileDto,
+} from '../../../../api/models';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { NavigationService } from '../../navigation.service';
 import { OrderScreen } from './order';
 
 type OrderInternals = {
   selectedCustomer: WritableSignal<CustomerDto | null>;
+  selectedSupplier: WritableSignal<SupplierDto | null>;
   savedOrder: () => OrderDto | null;
   customerError: () => string | null;
+  supplierError: () => string | null;
   successMessage: () => string | null;
   errorMessage: () => string | null;
   saving: () => boolean;
@@ -59,6 +66,8 @@ const CUSTOMER: CustomerDto = {
   isActive: true,
 };
 
+const SUPPLIER = { id: 5, name: 'Global Parts Ltd' } as SupplierDto;
+
 const SAVED_ORDER: OrderDto = {
   id: 1001,
   customerId: 3,
@@ -72,8 +81,8 @@ const SAVED_ORDER: OrderDto = {
   paymentTerms: PaymentTerms.PREPAID,
   incoterm: Incoterm.CFR,
   destination: Destination.ASHDOD,
-  supplierId: null,
-  supplierName: null,
+  supplierId: SUPPLIER.id,
+  supplierName: SUPPLIER.name,
   factoryReadyDate: null,
   factoryPickupDate: null,
   departureDate: null,
@@ -155,6 +164,16 @@ describe('OrderScreen', () => {
     fixture.detectChanges();
   }
 
+  /** Fills every required schedule date, in chronological order. */
+  function fillSchedule(): void {
+    internals.form.patchValue({
+      factoryReadyDate: '2026-09-01',
+      factoryPickupDate: '2026-09-03',
+      departureDate: '2026-09-05',
+      etaDate: '2026-09-20',
+    });
+  }
+
   function uploadRequests() {
     return httpMock.match((req) => req.method === 'POST' && req.url === '/api/import-files');
   }
@@ -209,6 +228,7 @@ describe('OrderScreen', () => {
   it('posts a CreateOrderDto without server-owned fields and renders the order number', () => {
     createFixture();
     internals.selectedCustomer.set(CUSTOMER);
+    internals.selectedSupplier.set(SUPPLIER);
     internals.form.patchValue({ factoryReadyDate: '2026-09-01', shippingLine: 'ZIM', etaDate: '' });
     internals.onSave();
 
@@ -245,6 +265,7 @@ describe('OrderScreen', () => {
   it('patches the saved order on subsequent saves instead of creating a duplicate', () => {
     createFixture();
     internals.selectedCustomer.set(CUSTOMER);
+    internals.selectedSupplier.set(SUPPLIER);
     internals.onSave();
     httpMock.expectOne({ method: 'POST', url: '/api/orders' }).flush(SAVED_ORDER);
 
@@ -261,6 +282,7 @@ describe('OrderScreen', () => {
   it('shows a Hebrew error with the server message when saving fails', () => {
     createFixture();
     internals.selectedCustomer.set(CUSTOMER);
+    internals.selectedSupplier.set(SUPPLIER);
     internals.onSave();
 
     httpMock
@@ -284,9 +306,93 @@ describe('OrderScreen', () => {
       expect(fixture.nativeElement.querySelector('.order-step--error')).toBeTruthy();
     });
 
+    it('"הבא" is blocked on the customer tab until a supplier is picked', () => {
+      createFixture();
+      internals.selectedCustomer.set(CUSTOMER);
+      internals.onNext();
+      fixture.detectChanges();
+
+      expect(internals.currentStep()).toBe(OrderStep.CUSTOMER);
+      expect(internals.customerError()).toBeNull();
+      expect(internals.supplierError()).toBe('יש לבחור ספק');
+      expect(fixture.nativeElement.querySelector('.field-error')?.textContent?.trim()).toBe(
+        'יש לבחור ספק',
+      );
+
+      internals.selectedSupplier.set(SUPPLIER);
+      internals.onNext();
+      expect(internals.supplierError()).toBeNull();
+      expect(internals.currentStep()).not.toBe(OrderStep.CUSTOMER);
+    });
+
+    it('"הבא" is blocked on the schedule tab until every date is filled, naming each missing one', () => {
+      createFixture();
+      internals.selectedCustomer.set(CUSTOMER);
+      internals.selectedSupplier.set(SUPPLIER);
+      internals.onNext();
+      internals.onNext();
+      expect(internals.currentStep()).toBe(OrderStep.SCHEDULE);
+
+      internals.form.patchValue({ factoryReadyDate: '2026-09-01' });
+      internals.onNext();
+      fixture.detectChanges();
+
+      expect(internals.currentStep()).toBe(OrderStep.SCHEDULE);
+      const errors = Array.from(
+        fixture.nativeElement.querySelectorAll('.field-error') as NodeListOf<HTMLElement>,
+      ).map((el) => el.textContent?.trim());
+      expect(errors).toEqual([
+        'יש להזין תאריך איסוף מהמפעל',
+        'יש להזין תאריך הפלגה / טיסה (יציאה)',
+        'יש להזין תאריך הגעה משוער (ETA)',
+      ]);
+      expect(fixture.nativeElement.querySelectorAll('.form-control.is-invalid').length).toBe(3);
+      expect(fixture.nativeElement.querySelector('.order-step--error')).toBeTruthy();
+
+      fillSchedule();
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelectorAll('.field-error').length).toBe(0);
+
+      internals.onNext();
+      expect(internals.currentStep()).toBe(OrderStep.DOCUMENTS);
+    });
+
+    it('a forward tab jump cannot skip a schedule with missing dates', () => {
+      createFixture();
+      internals.selectedCustomer.set(CUSTOMER);
+      internals.selectedSupplier.set(SUPPLIER);
+      internals.onNext();
+      internals.onNext();
+      fillSchedule();
+      internals.onNext();
+      expect(internals.currentStep()).toBe(OrderStep.DOCUMENTS);
+
+      internals.goToStep(OrderStep.SCHEDULE);
+      internals.form.patchValue({ etaDate: '' });
+      internals.goToStep(OrderStep.CUSTOMER);
+      internals.goToStep(OrderStep.DOCUMENTS);
+
+      fixture.detectChanges();
+      expect(internals.currentStep()).toBe(OrderStep.SCHEDULE);
+      expect(fixture.nativeElement.querySelector('.field-error')?.textContent?.trim()).toBe(
+        'יש להזין תאריך הגעה משוער (ETA)',
+      );
+    });
+
+    it('"שמירה" still saves a draft with schedule dates missing', () => {
+      createFixture();
+      internals.selectedCustomer.set(CUSTOMER);
+      internals.selectedSupplier.set(SUPPLIER);
+      internals.onSave();
+
+      httpMock.expectOne({ method: 'POST', url: '/api/orders' }).flush(SAVED_ORDER);
+      expect(internals.savedOrder()?.id).toBe(1001);
+    });
+
     it('moves forward with "הבא", back with "הקודם", and remembers the furthest tab reached', () => {
       createFixture();
       internals.selectedCustomer.set(CUSTOMER);
+      internals.selectedSupplier.set(SUPPLIER);
 
       internals.onNext();
       internals.onNext();
@@ -305,6 +411,7 @@ describe('OrderScreen', () => {
     it('a tab more than one past the furthest reached cannot be opened', () => {
       createFixture();
       internals.selectedCustomer.set(CUSTOMER);
+      internals.selectedSupplier.set(SUPPLIER);
       internals.goToStep(OrderStep.SCHEDULE);
       expect(internals.currentStep()).toBe(OrderStep.CUSTOMER);
 
@@ -315,6 +422,7 @@ describe('OrderScreen', () => {
     it('Enter (form submit) advances a tab instead of saving', () => {
       createFixture();
       internals.selectedCustomer.set(CUSTOMER);
+      internals.selectedSupplier.set(SUPPLIER);
       internals.onSubmit();
 
       expect(internals.currentStep()).toBe(OrderStep.SHIPMENT);
@@ -324,6 +432,7 @@ describe('OrderScreen', () => {
     it('saving progress mid-way sends the furthest tab reached as lastStep', () => {
       createFixture();
       internals.selectedCustomer.set(CUSTOMER);
+      internals.selectedSupplier.set(SUPPLIER);
       internals.onNext();
       internals.onSave();
 
@@ -356,11 +465,29 @@ describe('OrderScreen', () => {
   });
 
   describe('onFinish ("סיום ומעבר לתיוק")', () => {
+    it('is blocked and jumps to the schedule tab when a schedule date is missing', () => {
+      createFixture();
+      const openFilingFor = vi.spyOn(nav, 'openFilingFor').mockImplementation(() => {});
+      internals.selectedCustomer.set(CUSTOMER);
+      internals.selectedSupplier.set(SUPPLIER);
+      internals.stagedFiles.set(REQUIRED_STAGED);
+
+      internals.onFinish();
+
+      httpMock.expectNone('/api/orders');
+      expect(openFilingFor).not.toHaveBeenCalled();
+      expect(internals.currentStep()).toBe(OrderStep.SCHEDULE);
+      expect(internals.errorMessage()).toBe('יש להשלים את כל התאריכים בלוחות הזמנים');
+    });
+
     it('is blocked until every mandatory document has a file, and shows which are missing', () => {
       createFixture();
       const openFilingFor = vi.spyOn(nav, 'openFilingFor').mockImplementation(() => {});
       internals.selectedCustomer.set(CUSTOMER);
+      internals.selectedSupplier.set(SUPPLIER);
       internals.stagedFiles.set({ [ImportDocumentType.BILL_OF_LADING]: [pdf('bl.pdf')] });
+
+      fillSchedule();
 
       internals.onFinish();
       fixture.detectChanges();
@@ -376,7 +503,10 @@ describe('OrderScreen', () => {
       createFixture();
       const openFilingFor = vi.spyOn(nav, 'openFilingFor').mockImplementation(() => {});
       internals.selectedCustomer.set(CUSTOMER);
+      internals.selectedSupplier.set(SUPPLIER);
       internals.stagedFiles.set(REQUIRED_STAGED);
+
+      fillSchedule();
 
       internals.onFinish();
       httpMock.expectOne({ method: 'POST', url: '/api/orders' }).flush(SAVED_ORDER);
@@ -404,6 +534,8 @@ describe('OrderScreen', () => {
       ]);
       const openFilingFor = vi.spyOn(nav, 'openFilingFor').mockImplementation(() => {});
 
+      fillSchedule();
+
       internals.onFinish();
       httpMock.expectOne({ method: 'PATCH', url: '/api/orders/1001' }).flush(SAVED_ORDER);
 
@@ -415,7 +547,10 @@ describe('OrderScreen', () => {
       createFixture();
       const openFilingFor = vi.spyOn(nav, 'openFilingFor').mockImplementation(() => {});
       internals.selectedCustomer.set(CUSTOMER);
+      internals.selectedSupplier.set(SUPPLIER);
       internals.stagedFiles.set(REQUIRED_STAGED);
+
+      fillSchedule();
 
       internals.onFinish();
       httpMock.expectOne({ method: 'POST', url: '/api/orders' }).flush(SAVED_ORDER);
@@ -433,7 +568,10 @@ describe('OrderScreen', () => {
       createFixture();
       const openFilingFor = vi.spyOn(nav, 'openFilingFor').mockImplementation(() => {});
       internals.selectedCustomer.set(CUSTOMER);
+      internals.selectedSupplier.set(SUPPLIER);
       internals.stagedFiles.set(REQUIRED_STAGED);
+
+      fillSchedule();
 
       internals.onFinish();
       httpMock
@@ -465,6 +603,7 @@ describe('OrderScreen', () => {
     createFixture();
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     internals.selectedCustomer.set(CUSTOMER);
+    internals.selectedSupplier.set(SUPPLIER);
     internals.form.patchValue({ shippingLine: 'Maersk' });
     internals.onSave();
     httpMock.expectOne('/api/orders').flush(SAVED_ORDER);
@@ -485,6 +624,7 @@ describe('OrderScreen', () => {
     createFixture();
     vi.spyOn(window, 'confirm').mockReturnValue(false);
     internals.selectedCustomer.set(CUSTOMER);
+    internals.selectedSupplier.set(SUPPLIER);
 
     internals.onCancel();
     fixture.detectChanges();
@@ -511,6 +651,7 @@ describe('OrderScreen', () => {
     it('stays on the "create" title after a brand-new order is saved for the first time', () => {
       createFixture();
       internals.selectedCustomer.set(CUSTOMER);
+      internals.selectedSupplier.set(SUPPLIER);
       internals.onSave();
       httpMock.expectOne('/api/orders').flush(SAVED_ORDER);
       fixture.detectChanges();
@@ -560,8 +701,10 @@ describe('OrderScreen', () => {
     it('shows previous and finish on the last tab', () => {
       createFixture();
       internals.selectedCustomer.set(CUSTOMER);
+      internals.selectedSupplier.set(SUPPLIER);
       internals.onNext();
       internals.onNext();
+      fillSchedule();
       internals.onNext();
       fixture.detectChanges();
 
