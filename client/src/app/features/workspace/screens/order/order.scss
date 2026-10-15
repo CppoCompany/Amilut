@@ -36,7 +36,8 @@
 .order-page {
   width: 100%;
   max-width: var(--order-max-width);
-  margin-inline: auto;
+  // Start-aligned (right, in RTL) rather than centered.
+  margin-inline: 0 auto;
   display: flex;
   flex-direction: column;
   gap: var(--order-card-gap);
@@ -224,6 +225,10 @@
     text-decoration: underline;
     outline: none;
   }
+}
+
+.form-control.is-invalid {
+  border-color: var(--order-error);
 }
 
 .field-error {
