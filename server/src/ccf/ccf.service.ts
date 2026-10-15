@@ -100,6 +100,7 @@ export class CcfService {
           ? `נפתח תיק סליקת מכס חדש, מקושר לתיק שילוח ${shipmentFile.id}`
           : 'נפתח תיק סליקת מכס עצמאי חדש',
         relatedCcfId: ccfId,
+        actorUserId: userId,
       });
 
       return ccfId;

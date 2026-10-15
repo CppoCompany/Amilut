@@ -29,6 +29,7 @@ wired to `npm run db:generate`.
 | `020_create_notifications.sql` | `notifications` table — minimal in-app notification system (recipient, message, optional `related_ccf_id` → `customs_clearance_files(id)`, read/unread), first used by the CCF feature | `Amilut` | `Admin` (via `SET ROLE`) |
 | `021_import_account_files_order_or_ccf.sql` | Re-points `import_account_files` from `mbl` (`account_id`) to either `orders.id` (`order_id`) or `customs_clearance_files.id` (`ccf_id`), exactly one via CHECK; truncates existing dev rows (no valid backfill target) | `Amilut` | `Admin` (via `SET ROLE`) |
 | `022_orders_last_step.sql` | Adds `orders.last_step` (`customer`/`shipment`/`schedule`/`documents`, default `customer`) — the furthest tab of the order form reached, so a saved partial order resumes there | `Amilut` | `Admin` (via `SET ROLE`) |
+| `023_notifications_actor.sql` | Adds `notifications.actor_user_id` (→ `users.id`, nullable, `ON DELETE SET NULL`) — the user whose action triggered the notification | `Amilut` | `Admin` (via `SET ROLE`) |
 | `run-migrations.mjs` | Applies `001`, then every other `NNN_*.sql` in name order | — | — |
 | `reset-superuser-password.ps1` | Recovery tool: resets a lost `postgres` superuser password on this machine (elevated PowerShell; `-SaveToEnv` writes it into the root `.env`) | — | Windows admin |
 
@@ -147,7 +148,8 @@ Amilut
 └── notifications (id, recipient_user_id → users.id [ON DELETE CASCADE],
                message, related_ccf_id → customs_clearance_files.id
                [nullable, ON DELETE CASCADE], is_read[default false],
-               created_at)
+               actor_user_id → users.id [023, nullable, ON DELETE SET
+               NULL], created_at)
                -- 020: minimal in-app notification system, first used by the
                -- CCF feature
 

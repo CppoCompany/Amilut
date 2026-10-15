@@ -231,3 +231,32 @@
     outline: none;
   }
 }
+
+/* Unread-notification badge on "איזור האישי" — same look as the header
+   bell's badge. In the expanded tree it sits at the row's far (left) end;
+   on the collapsed rail it overlaps the icon's corner. */
+.nav-badge {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  margin-inline-start: auto;
+  border-radius: 999px;
+  background: #ef4444;
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-badge--icon {
+  position: absolute;
+  top: 8px;
+  right: calc(50% + 2px);
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  font-size: 0.65rem;
+}

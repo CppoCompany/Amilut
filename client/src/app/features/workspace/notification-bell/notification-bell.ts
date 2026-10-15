@@ -11,12 +11,14 @@ import { finalize } from 'rxjs';
 
 import type { NotificationDto } from '../../../api/models';
 import { NotificationsApi } from '../../../api/notifications-api';
+import { NotificationsStateService } from '../notifications-state.service';
 
 /**
  * Bell icon + unread badge + dropdown, mounted once in the workspace header
- * (`workspace.html`). No polling or websockets: the unread count is fetched
- * once when the app loads, and the full list is (re)fetched only when the
- * dropdown is opened.
+ * (`workspace.html`). The unread count is the shared
+ * {@link NotificationsStateService} one (polled by the workspace shell), so
+ * the bell, the sidebar badge and the dashboard widget always agree; the
+ * full list is (re)fetched only when the dropdown is opened.
  */
 @Component({
   selector: 'app-notification-bell',
@@ -30,28 +32,23 @@ import { NotificationsApi } from '../../../api/notifications-api';
 })
 export class NotificationBell {
   private readonly api = inject(NotificationsApi);
+  private readonly state = inject(NotificationsStateService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   protected readonly open = signal(false);
-  protected readonly unreadCount = signal(0);
+  protected readonly unreadCount = this.state.unreadCount;
   protected readonly notifications = signal<NotificationDto[]>([]);
   protected readonly loading = signal(false);
-
-  constructor() {
-    this.refreshUnreadCount();
-  }
 
   protected toggle(): void {
     const next = !this.open();
     this.open.set(next);
     if (next) {
       this.loadList();
-      // The badge is otherwise only set once at app load (no polling) — also
-      // refresh it on open so a notification that arrived since then (e.g.
-      // from a CCF the user just created in this same session) shows up
-      // without needing a full page reload.
-      this.refreshUnreadCount();
+      // Don't wait for the next poll — a notification that arrived since
+      // (e.g. from a CCF the user just created) shows up right away.
+      this.state.refresh();
     }
   }
 
@@ -73,16 +70,9 @@ export class NotificationBell {
           this.notifications.update((list) =>
             list.map((n) => (n.id === notification.id ? { ...n, isRead: true } : n)),
           );
-          this.unreadCount.update((count) => Math.max(0, count - 1));
+          this.state.markedOneRead();
         },
       });
-  }
-
-  private refreshUnreadCount(): void {
-    this.api
-      .unreadCount()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({ next: ({ count }) => this.unreadCount.set(count) });
   }
 
   private loadList(): void {

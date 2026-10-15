@@ -1,15 +1,17 @@
 import { Test } from '@nestjs/testing';
 import { DatabaseService } from '../database/database.service';
+import { CcfStatus } from '../ccf/ccf.enums';
+import { ImportDocumentType } from '../import-files/import-files.enums';
 import { MblShippingType } from '../mbl/mbl.enums';
 import { OrderStatus } from '../orders/orders.enums';
 import {
   CASES_IN_RELEASE_SQL,
+  CCFS_PENDING_CLASSIFICATION_SQL,
+  CCFS_SQL,
   DASHBOARD_ROW_LIMIT,
   DashboardService,
   IMPORT_PROCESSES_SQL,
   MBL_STATUS_IN_RELEASE,
-  MY_CASES_SQL,
-  MY_CLASSIFICATIONS_SQL,
   MY_ORDERS_SQL,
 } from './dashboard.service';
 
@@ -33,6 +35,30 @@ const mblRow = {
   hbl_count: '2',
   customer_names: ['ACME'],
   created_at: CREATED,
+};
+
+const ccfRow = {
+  id: 7,
+  file_number: 'CCF1007',
+  shipment_file_id: 5,
+  shipment_file_mbl_number: 'MBL-5',
+  customer_names: ['ACME'],
+  status: CcfStatus.OPEN,
+  line_count: '4',
+  classified_line_count: '1',
+  created_at: CREATED,
+};
+
+const ccfDto = {
+  id: 7,
+  fileNumber: 'CCF1007',
+  shipmentFileId: 5,
+  shipmentFileMblNumber: 'MBL-5',
+  customerNames: ['ACME'],
+  status: CcfStatus.OPEN,
+  lineCount: 4,
+  classifiedLineCount: 1,
+  createdAt: '2026-09-01T08:00:00.000Z',
 };
 
 describe('DashboardService', () => {
@@ -105,92 +131,65 @@ describe('DashboardService', () => {
     });
   });
 
-  describe('findMyClassifications', () => {
-    it('reads classified line items out of the JSONB and normalises missing text to ""', async () => {
-      db.query.mockResolvedValueOnce([
-        {
-          file_id: 42,
-          order_id: 1000,
-          ccf_id: null,
-          ccf_file_number: null,
-          line_index: '2',
-          item: null,
-          description: 'Light Fixtures',
-          classification_code: '9405.10.00',
-          country_name: 'סין',
-          created_at: '2026-09-01T08:00:00.000Z',
-        },
-      ]);
+  describe('findCcfsPendingClassification', () => {
+    it('keeps CCFs with no invoice lines or an uncoded line, newest first', async () => {
+      db.query.mockResolvedValueOnce([ccfRow]);
 
-      const result = await service.findMyClassifications();
+      const result = await service.findCcfsPendingClassification();
 
       const [sql, params] = db.query.mock.calls[0] as [string, unknown[]];
-      expect(sql).toBe(MY_CLASSIFICATIONS_SQL);
-      expect(sql).toMatch(/jsonb_array_elements/);
-      expect(sql).toMatch(/li\.item \? 'classification'/);
-      expect(params).toEqual([DASHBOARD_ROW_LIMIT]);
-      expect(result).toEqual([
-        {
-          fileId: 42,
-          orderId: 1000,
-          ccfId: null,
-          contextLabel: 'הזמנה 1000',
-          lineIndex: 2,
-          item: '',
-          description: 'Light Fixtures',
-          classificationCode: '9405.10.00',
-          countryName: 'סין',
-          createdAt: '2026-09-01T08:00:00.000Z',
-        },
+      expect(sql).toBe(CCFS_PENDING_CLASSIFICATION_SQL);
+      expect(sql).toMatch(/inv_lines\.line_count = 0/);
+      expect(sql).toMatch(
+        /inv_lines\.classified_line_count < inv_lines\.line_count/,
+      );
+      // Only the newest upload per file name counts, like the classification screen.
+      expect(sql).toMatch(/DISTINCT ON \(f\.data->>'name'\)/);
+      expect(sql).toMatch(/ORDER BY c\.id DESC/);
+      expect(params).toEqual([
+        ImportDocumentType.SUPPLIER_INVOICE,
+        DASHBOARD_ROW_LIMIT,
       ]);
+      expect(result).toEqual([ccfDto]);
     });
 
-    it('labels a CCF-scoped row by its file number', async () => {
+    it('maps a standalone CCF with no customers', async () => {
       db.query.mockResolvedValueOnce([
         {
-          file_id: 43,
-          order_id: null,
-          ccf_id: 7,
-          ccf_file_number: 'CCF1007',
-          line_index: '0',
-          item: 'Y8022-140BK',
-          description: 'Light Fixtures',
-          classification_code: '9405.10.00',
-          country_name: null,
-          created_at: '2026-09-01T08:00:00.000Z',
+          ...ccfRow,
+          shipment_file_id: null,
+          shipment_file_mbl_number: null,
+          customer_names: null,
+          line_count: 0,
+          classified_line_count: 0,
         },
       ]);
 
-      const [result] = await service.findMyClassifications();
+      const [result] = await service.findCcfsPendingClassification();
 
-      expect(result.orderId).toBeNull();
-      expect(result.ccfId).toBe(7);
-      expect(result.contextLabel).toBe('תיק עמילות CCF1007');
+      expect(result.shipmentFileId).toBeNull();
+      expect(result.shipmentFileMblNumber).toBeNull();
+      expect(result.customerNames).toEqual([]);
+      expect(result.lineCount).toBe(0);
+      expect(result.classifiedLineCount).toBe(0);
     });
   });
 
-  describe('findMyCases', () => {
-    it('scopes MBLs to the handler user id, newest first', async () => {
-      db.query.mockResolvedValueOnce([mblRow]);
+  describe('findCcfs', () => {
+    it('lists every CCF regardless of classification, newest first', async () => {
+      db.query.mockResolvedValueOnce([ccfRow]);
 
-      const result = await service.findMyCases(7);
+      const result = await service.findCcfs();
 
       const [sql, params] = db.query.mock.calls[0] as [string, unknown[]];
-      expect(sql).toBe(MY_CASES_SQL);
-      expect(sql).toMatch(/WHERE m\.handler_user_id = \$1/);
-      expect(sql).toMatch(/ORDER BY m\.id DESC/);
-      expect(params).toEqual([7, DASHBOARD_ROW_LIMIT]);
-      expect(result).toEqual([
-        {
-          id: 5,
-          mblNumber: 'MBL-5',
-          shippingType: MblShippingType.SEA,
-          customerNames: ['ACME'],
-          carrierName: 'MAERSK',
-          status: 'open',
-          createdAt: '2026-09-01T08:00:00.000Z',
-        },
+      expect(sql).toBe(CCFS_SQL);
+      expect(sql).not.toMatch(/WHERE inv_lines\./);
+      expect(sql).toMatch(/ORDER BY c\.id DESC/);
+      expect(params).toEqual([
+        ImportDocumentType.SUPPLIER_INVOICE,
+        DASHBOARD_ROW_LIMIT,
       ]);
+      expect(result).toEqual([ccfDto]);
     });
   });
 
@@ -233,16 +232,16 @@ describe('DashboardService', () => {
         expect.arrayContaining([
           MY_ORDERS_SQL,
           CASES_IN_RELEASE_SQL,
-          MY_CLASSIFICATIONS_SQL,
-          MY_CASES_SQL,
+          CCFS_PENDING_CLASSIFICATION_SQL,
+          CCFS_SQL,
           IMPORT_PROCESSES_SQL,
         ]),
       );
       expect(result).toEqual({
         myOrders: [],
         casesInRelease: [],
-        myClassifications: [],
-        myCases: [],
+        ccfsPendingClassification: [],
+        ccfs: [],
         importProcesses: [],
       });
     });

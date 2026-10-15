@@ -1,13 +1,14 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 import { combineLatest } from 'rxjs';
 
 import { AuthService } from '../../core/auth/auth.service';
 import { Breadcrumb } from './breadcrumb/breadcrumb';
-import { isTreeChildGroup } from './navigation.model';
+import { isTreeChildGroup, TreeChild } from './navigation.model';
 import { NavigationService } from './navigation.service';
 import { NotificationBell } from './notification-bell/notification-bell';
+import { NotificationsStateService } from './notifications-state.service';
 import { CcfScreen } from './screens/ccf/ccf';
 import { ClassificationScreen } from './screens/classification/classification';
 import { DashboardScreen } from './screens/dashboard/dashboard';
@@ -62,6 +63,7 @@ import { ShipmentCaseWizardScreen } from './screens/shipment-case-wizard/shipmen
 export class Workspace {
   protected readonly nav = inject(NavigationService);
   protected readonly auth = inject(AuthService);
+  protected readonly notifications = inject(NotificationsStateService);
   private readonly route = inject(ActivatedRoute);
   /** Lets the template tell a plain leaf row from an expandable sub-group. */
   protected readonly isGroup = isTreeChildGroup;
@@ -75,6 +77,21 @@ export class Workspace {
     combineLatest([this.route.paramMap, this.route.queryParamMap])
       .pipe(takeUntilDestroyed())
       .subscribe(([params, query]) => this.nav.applyUrl(params.get('slug') ?? '', query));
+
+    // One poll for the whole app: the bell, the sidebar badge and the
+    // dashboard's "הודעות" widget all read the same count.
+    this.notifications.startPolling(inject(DestroyRef));
+  }
+
+  /** Unread-notification count for the sidebar badge — only on "איזור האישי", where the "הודעות" widget lives. */
+  protected badgeCount(entry: TreeChild): number {
+    return entry.page === 'dashboard' ? this.notifications.unreadCount() : 0;
+  }
+
+  /** Accessible name of a top-level row, including the badge when one shows. */
+  protected navLabel(entry: TreeChild): string {
+    const count = this.badgeCount(entry);
+    return count > 0 ? `${entry.label} (${count} הודעות שלא נקראו)` : entry.label;
   }
 
   protected toggleSidebar(): void {

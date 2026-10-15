@@ -8,8 +8,8 @@ import type { DashboardResponseDto } from './models';
 const EMPTY: DashboardResponseDto = {
   myOrders: [],
   casesInRelease: [],
-  myClassifications: [],
-  myCases: [],
+  ccfsPendingClassification: [],
+  ccfs: [],
   importProcesses: [],
 };
 

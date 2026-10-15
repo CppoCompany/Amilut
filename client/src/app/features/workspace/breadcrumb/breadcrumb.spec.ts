@@ -111,7 +111,7 @@ describe('Breadcrumb', () => {
 
   it('shows the default landing trail ("ראשי" + the top-level dashboard page, no group) with no selection badge', () => {
     expect(trailText()).toContain('ראשי');
-    expect(trailText()).toContain('לוח בקרה');
+    expect(trailText()).toContain('איזור האישי');
     expect(trailText()).not.toContain('הזמנות');
     expect(selectionBadge()).toBeNull();
   });

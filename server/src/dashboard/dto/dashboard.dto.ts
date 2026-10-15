@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { CcfStatus } from '../../ccf/ccf.enums';
 import { MblShippingType, MblStatus } from '../../mbl/mbl.enums';
 import { OrderStatus } from '../../orders/orders.enums';
 
@@ -42,63 +43,41 @@ export class DashboardCaseInReleaseRowDto {
   createdAt!: string;
 }
 
-/** One row of the "הסיווגים שלי" dashboard card — a classified supplier-invoice line item. */
-export class DashboardClassificationRowDto {
-  /** The `import_account_files` row holding the line. */
-  @ApiProperty({ type: 'integer', example: 42 })
-  fileId!: number;
-
-  /** The order the file was filed under, when filed under an order. */
-  @ApiProperty({ type: 'integer', nullable: true, example: 1024 })
-  orderId!: number | null;
-
-  /** The Customs Clearance File the file was filed under, when filed under one. */
-  @ApiProperty({ type: 'integer', nullable: true, example: 7 })
-  ccfId!: number | null;
-
-  /** "הזמנה 1024" or "תיק עמילות CCF1007" — whichever of orderId/ccfId is set. */
-  @ApiProperty({ example: 'הזמנה 1024' })
-  contextLabel!: string;
-
-  /** Zero-based position of the line inside the file's `lineItems`. */
-  @ApiProperty({ type: 'integer', example: 0 })
-  lineIndex!: number;
-
-  @ApiProperty({ type: 'string', example: 'Y8022-140BK' })
-  item!: string;
-
-  @ApiProperty({ type: 'string', example: 'Light Fixtures' })
-  description!: string;
-
-  @ApiProperty({ type: 'string', example: '9405.10.00' })
-  classificationCode!: string;
-
-  @ApiProperty({ type: 'string', nullable: true, example: 'סין' })
-  countryName!: string | null;
-
-  @ApiProperty({ format: 'date-time', example: '2026-09-01T08:30:00.000Z' })
-  createdAt!: string;
-}
-
-/** One row of the "התיקים שלי" dashboard card — an MBL case handled by the signed-in user. */
-export class DashboardCaseRowDto {
-  @ApiProperty({ type: 'integer', example: 1 })
+/**
+ * One Customs Clearance File row, shared by the "תיקי עמילות שלא עברו סיווג"
+ * and "תיקי עמילות" dashboard cards. The line counts cover the current
+ * supplier-invoice lines filed under the CCF — exactly the rows the
+ * classification screen shows for it.
+ */
+export class DashboardCcfRowDto {
+  @ApiProperty({ type: 'integer', example: 7 })
   id!: number;
 
+  @ApiProperty({ example: 'CCF1007' })
+  fileNumber!: string;
+
+  /** The linked shipping case (`mbl.id`), `null` for a standalone CCF. */
+  @ApiProperty({ type: 'integer', nullable: true, example: 42 })
+  shipmentFileId!: number | null;
+
+  /** Joined for display — `null` when `shipmentFileId` is `null`. */
   @ApiProperty({ type: 'string', nullable: true, example: 'MBL-987654321' })
-  mblNumber!: string | null;
+  shipmentFileMblNumber!: string | null;
 
-  @ApiProperty({ enum: MblShippingType, enumName: 'MblShippingType' })
-  shippingType!: MblShippingType;
-
+  /** Customers of the linked shipping case's HBLs; `[]` for a standalone CCF. */
   @ApiProperty({ type: 'string', isArray: true, example: ['ACME Ltd.'] })
   customerNames!: string[];
 
-  @ApiProperty({ type: 'string', nullable: true, example: 'MAERSK LINE' })
-  carrierName!: string | null;
+  @ApiProperty({ enum: CcfStatus, enumName: 'CcfStatus' })
+  status!: CcfStatus;
 
-  @ApiProperty({ enum: MblStatus, enumName: 'MblStatus' })
-  status!: MblStatus;
+  /** Supplier-invoice lines filed under the CCF. */
+  @ApiProperty({ type: 'integer', example: 4 })
+  lineCount!: number;
+
+  /** How many of those lines have a saved customs code ("פרט מכס"). */
+  @ApiProperty({ type: 'integer', example: 1 })
+  classifiedLineCount!: number;
 
   @ApiProperty({ format: 'date-time', example: '2026-09-01T08:30:00.000Z' })
   createdAt!: string;
@@ -139,11 +118,13 @@ export class DashboardResponseDto {
   @ApiProperty({ type: DashboardCaseInReleaseRowDto, isArray: true })
   casesInRelease!: DashboardCaseInReleaseRowDto[];
 
-  @ApiProperty({ type: DashboardClassificationRowDto, isArray: true })
-  myClassifications!: DashboardClassificationRowDto[];
+  /** CCFs with no invoice lines yet, or with at least one line lacking a customs code. */
+  @ApiProperty({ type: DashboardCcfRowDto, isArray: true })
+  ccfsPendingClassification!: DashboardCcfRowDto[];
 
-  @ApiProperty({ type: DashboardCaseRowDto, isArray: true })
-  myCases!: DashboardCaseRowDto[];
+  /** Every CCF, whatever its classification state. */
+  @ApiProperty({ type: DashboardCcfRowDto, isArray: true })
+  ccfs!: DashboardCcfRowDto[];
 
   @ApiProperty({ type: DashboardImportProcessRowDto, isArray: true })
   importProcesses!: DashboardImportProcessRowDto[];

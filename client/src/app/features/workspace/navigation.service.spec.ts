@@ -66,14 +66,14 @@ describe('NavigationService', () => {
     );
   });
 
-  it('puts "לוח בקרה" first in the tree, as a top-level row', () => {
+  it('puts "איזור האישי" first in the tree, as a top-level row', () => {
     const first = nav.tree()[0];
     expect(isTreeChildGroup(first)).toBe(false);
     expect(first.id).toBe('ws-dashboard');
-    expect(first.label).toBe('לוח בקרה');
+    expect(first.label).toBe('איזור האישי');
   });
 
-  it('lands on "לוח בקרה" at /workspace/dashboard with no group expanded', () => {
+  it('lands on "איזור האישי" at /workspace/dashboard with no group expanded', () => {
     expect(location.path()).toBe('/workspace/dashboard');
     expect(nav.activeScreen()).toBe('dashboard');
     expect(nav.isChildActive('ws-dashboard')).toBe(true);
@@ -244,8 +244,8 @@ describe('NavigationService', () => {
     expect(lists.children.map((c) => [c.id, c.page, c.label])).toEqual([
       ['ws-list-my-orders', 'listMyOrders', 'ההזמנות שלי'],
       ['ws-list-cases-in-release', 'listCasesInRelease', 'תיקים בהתרה'],
-      ['ws-list-my-classifications', 'listMyClassifications', 'הסיווגים שלי'],
-      ['ws-list-my-cases', 'listMyCases', 'התיקים שלי'],
+      ['ws-list-my-classifications', 'listMyClassifications', 'תיקי עמילות שלא עברו סיווג'],
+      ['ws-list-my-cases', 'listMyCases', 'תיקי עמילות'],
       ['ws-list-import-processes', 'listImportProcesses', 'תהליכי יבוא'],
     ]);
 

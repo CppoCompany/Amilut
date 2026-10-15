@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
-import { describeImportFilesContext } from '../import-files/import-files.service';
+import { CcfStatus } from '../ccf/ccf.enums';
+import { ImportDocumentType } from '../import-files/import-files.enums';
 import { MblShippingType, MblStatus } from '../mbl/mbl.enums';
 import { OrderStatus } from '../orders/orders.enums';
 import {
   DashboardCaseInReleaseRowDto,
-  DashboardCaseRowDto,
-  DashboardClassificationRowDto,
+  DashboardCcfRowDto,
   DashboardImportProcessRowDto,
   DashboardOrderRowDto,
   DashboardResponseDto,
@@ -26,7 +26,7 @@ interface OrderRow {
   created_at: Date | string;
 }
 
-/** Row shape shared by the three MBL-backed cards (see MBL_CASE_SELECT). */
+/** Row shape shared by the two MBL-backed cards (see MBL_CASE_SELECT). */
 interface MblCaseRow {
   id: number;
   mbl_number: string | null;
@@ -38,16 +38,16 @@ interface MblCaseRow {
   created_at: Date | string;
 }
 
-interface ClassificationRow {
-  file_id: number;
-  order_id: number | null;
-  ccf_id: number | null;
-  ccf_file_number: string | null;
-  line_index: number | string;
-  item: string | null;
-  description: string | null;
-  classification_code: string | null;
-  country_name: string | null;
+/** Row shape shared by the two CCF cards (see CCF_ROW_SELECT). */
+interface CcfRow {
+  id: number;
+  file_number: string;
+  shipment_file_id: number | null;
+  shipment_file_mbl_number: string | null;
+  customer_names: string[] | null;
+  status: CcfStatus;
+  line_count: string | number;
+  classified_line_count: string | number;
   created_at: Date | string;
 }
 
@@ -95,13 +95,6 @@ export const CASES_IN_RELEASE_SQL = `${MBL_CASE_SELECT}
    ORDER BY m.id DESC
    LIMIT $2`;
 
-/** "התיקים שלי" — MBL cases handled by the signed-in user (`mbl.handler_user_id`), newest first. */
-export const MY_CASES_SQL = `${MBL_CASE_SELECT}
-   WHERE m.handler_user_id = $1
-   ${MBL_CASE_GROUP_BY}
-   ORDER BY m.id DESC
-   LIMIT $2`;
-
 /** "תהליכי יבוא" — every MBL case (all handlers, all statuses), newest first. */
 export const IMPORT_PROCESSES_SQL = `${MBL_CASE_SELECT}
    ${MBL_CASE_GROUP_BY}
@@ -109,32 +102,61 @@ export const IMPORT_PROCESSES_SQL = `${MBL_CASE_SELECT}
    LIMIT $1`;
 
 /**
- * "הסיווגים שלי" — one row per supplier-invoice line item that has a saved
- * classification (`data.lineItems[].classification`). Unscoped: no owning
- * user column exists on the file → order/CCF chain.
+ * One Customs Clearance File per row, with its linked shipping case and the
+ * classification progress of its supplier-invoice lines. Lines are counted
+ * the way the classification screen lists them: only the newest upload per
+ * file name counts (a re-upload supersedes the older file). A line counts as
+ * classified once it has a non-blank customs code ("פרט מכס"). Each card
+ * below adds its own WHERE/ORDER BY/LIMIT. `$1` is the supplier-invoice
+ * document type.
  */
-export const MY_CLASSIFICATIONS_SQL = `
-  SELECT f.id AS file_id,
-         f.order_id,
-         f.ccf_id,
-         ccf.file_number AS ccf_file_number,
-         li.idx - 1 AS line_index,
-         li.item->>'item' AS item,
-         li.item->>'description' AS description,
-         li.item->'classification'->>'classificationCode' AS classification_code,
-         co.name AS country_name,
-         f.created_at
-    FROM import_account_files f
-    LEFT JOIN customs_clearance_files ccf ON ccf.id = f.ccf_id
-   CROSS JOIN LATERAL jsonb_array_elements(COALESCE(f.data->'lineItems', '[]'::jsonb))
-         WITH ORDINALITY AS li(item, idx)
-    LEFT JOIN countries co
-      ON co.id = NULLIF(li.item->'classification'->>'countryId', '')::int
-   WHERE jsonb_typeof(li.item) = 'object'
-     AND li.item ? 'classification'
-     AND jsonb_typeof(li.item->'classification') = 'object'
-   ORDER BY f.created_at DESC, f.id DESC, li.idx
-   LIMIT $1`;
+const CCF_ROW_SELECT = `
+  SELECT c.id,
+         c.file_number,
+         c.shipment_file_id,
+         m.mbl_number AS shipment_file_mbl_number,
+         (SELECT array_agg(DISTINCT cu.name)
+            FROM hbl h
+            JOIN customers cu ON cu.id = h.customer_id
+           WHERE h.mbl_id = c.shipment_file_id) AS customer_names,
+         c.status,
+         inv_lines.line_count,
+         inv_lines.classified_line_count,
+         c.created_at
+    FROM customs_clearance_files c
+    LEFT JOIN mbl m ON m.id = c.shipment_file_id
+   CROSS JOIN LATERAL (
+         SELECT count(*) AS line_count,
+                count(*) FILTER (
+                  WHERE btrim(COALESCE(li.item->'classification'->>'classificationCode', '')) <> ''
+                ) AS classified_line_count
+           FROM (SELECT DISTINCT ON (f.data->>'name') f.data
+                   FROM import_account_files f
+                  WHERE f.ccf_id = c.id
+                    AND f.data->>'documentType' = $1
+                  ORDER BY f.data->>'name', f.id DESC) inv
+          CROSS JOIN LATERAL jsonb_array_elements(
+                CASE WHEN jsonb_typeof(inv.data->'lineItems') = 'array'
+                     THEN inv.data->'lineItems'
+                     ELSE '[]'::jsonb
+                END) AS li(item)
+         ) inv_lines`;
+
+/**
+ * "תיקי עמילות שלא עברו סיווג" — CCFs that are not fully classified: no
+ * supplier-invoice lines yet, or at least one line without a customs code.
+ * Unscoped (all users), newest first.
+ */
+export const CCFS_PENDING_CLASSIFICATION_SQL = `${CCF_ROW_SELECT}
+   WHERE inv_lines.line_count = 0
+      OR inv_lines.classified_line_count < inv_lines.line_count
+   ORDER BY c.id DESC
+   LIMIT $2`;
+
+/** "תיקי עמילות" — every CCF, whatever its classification state, newest first. */
+export const CCFS_SQL = `${CCF_ROW_SELECT}
+   ORDER BY c.id DESC
+   LIMIT $2`;
 
 /**
  * Read-only aggregator behind `GET /api/dashboard`. Each card has its own
@@ -149,21 +171,21 @@ export class DashboardService {
     const [
       myOrders,
       casesInRelease,
-      myClassifications,
-      myCases,
+      ccfsPendingClassification,
+      ccfs,
       importProcesses,
     ] = await Promise.all([
       this.findMyOrders(userId),
       this.findCasesInRelease(),
-      this.findMyClassifications(),
-      this.findMyCases(userId),
+      this.findCcfsPendingClassification(),
+      this.findCcfs(),
       this.findImportProcesses(),
     ]);
     return {
       myOrders,
       casesInRelease,
-      myClassifications,
-      myCases,
+      ccfsPendingClassification,
+      ccfs,
       importProcesses,
     };
   }
@@ -199,45 +221,14 @@ export class DashboardService {
     }));
   }
 
-  /** "הסיווגים שלי": classified invoice lines, unscoped (no owner column). */
-  async findMyClassifications(): Promise<DashboardClassificationRowDto[]> {
-    const rows = await this.db.query<ClassificationRow>(
-      MY_CLASSIFICATIONS_SQL,
-      [DASHBOARD_ROW_LIMIT],
-    );
-    return rows.map((row) => ({
-      fileId: row.file_id,
-      orderId: row.order_id,
-      ccfId: row.ccf_id,
-      contextLabel: describeImportFilesContext(
-        row.order_id,
-        row.ccf_id,
-        row.ccf_file_number,
-      ),
-      lineIndex: Number(row.line_index),
-      item: row.item ?? '',
-      description: row.description ?? '',
-      classificationCode: row.classification_code ?? '',
-      countryName: row.country_name,
-      createdAt: toIsoString(row.created_at),
-    }));
+  /** "תיקי עמילות שלא עברו סיווג": CCFs with an unclassified (or no) invoice line. */
+  async findCcfsPendingClassification(): Promise<DashboardCcfRowDto[]> {
+    return this.findCcfRows(CCFS_PENDING_CLASSIFICATION_SQL);
   }
 
-  /** "התיקים שלי": `mbl.handler_user_id = userId`. */
-  async findMyCases(userId: number): Promise<DashboardCaseRowDto[]> {
-    const rows = await this.db.query<MblCaseRow>(MY_CASES_SQL, [
-      userId,
-      DASHBOARD_ROW_LIMIT,
-    ]);
-    return rows.map((row) => ({
-      id: row.id,
-      mblNumber: row.mbl_number,
-      shippingType: row.shipping_type,
-      customerNames: row.customer_names ?? [],
-      carrierName: row.carrier_name,
-      status: row.status,
-      createdAt: toIsoString(row.created_at),
-    }));
+  /** "תיקי עמילות": every CCF, unscoped. */
+  async findCcfs(): Promise<DashboardCcfRowDto[]> {
+    return this.findCcfRows(CCFS_SQL);
   }
 
   /** "תהליכי יבוא": every MBL case, unscoped. */
@@ -253,6 +244,24 @@ export class DashboardService {
       carrierName: row.carrier_name,
       hblCount: Number(row.hbl_count),
       status: row.status,
+      createdAt: toIsoString(row.created_at),
+    }));
+  }
+
+  private async findCcfRows(sql: string): Promise<DashboardCcfRowDto[]> {
+    const rows = await this.db.query<CcfRow>(sql, [
+      ImportDocumentType.SUPPLIER_INVOICE,
+      DASHBOARD_ROW_LIMIT,
+    ]);
+    return rows.map((row) => ({
+      id: row.id,
+      fileNumber: row.file_number,
+      shipmentFileId: row.shipment_file_id,
+      shipmentFileMblNumber: row.shipment_file_mbl_number,
+      customerNames: row.customer_names ?? [],
+      status: row.status,
+      lineCount: Number(row.line_count),
+      classifiedLineCount: Number(row.classified_line_count),
       createdAt: toIsoString(row.created_at),
     }));
   }

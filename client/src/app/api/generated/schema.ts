@@ -372,6 +372,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/notifications/read-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["NotificationsController_markAllRead"];
+        trace?: never;
+    };
     "/api/notifications/{id}/read": {
         parameters: {
             query?: never;
@@ -614,25 +630,26 @@ export interface components {
              */
             createdAt: string;
         };
-        DashboardClassificationRowDto: {
-            /** @example 42 */
-            fileId: number;
-            /** @example 1024 */
-            orderId: number | null;
+        DashboardCcfRowDto: {
             /** @example 7 */
-            ccfId: number | null;
-            /** @example הזמנה 1024 */
-            contextLabel: string;
-            /** @example 0 */
-            lineIndex: number;
-            /** @example Y8022-140BK */
-            item: string;
-            /** @example Light Fixtures */
-            description: string;
-            /** @example 9405.10.00 */
-            classificationCode: string;
-            /** @example סין */
-            countryName: string | null;
+            id: number;
+            /** @example CCF1007 */
+            fileNumber: string;
+            /** @example 42 */
+            shipmentFileId: number | null;
+            /** @example MBL-987654321 */
+            shipmentFileMblNumber: string | null;
+            /**
+             * @example [
+             *       "ACME Ltd."
+             *     ]
+             */
+            customerNames: string[];
+            status: components["schemas"]["CcfStatus"];
+            /** @example 4 */
+            lineCount: number;
+            /** @example 1 */
+            classifiedLineCount: number;
             /**
              * Format: date-time
              * @example 2026-09-01T08:30:00.000Z
@@ -641,27 +658,6 @@ export interface components {
         };
         /** @enum {string} */
         MblShippingType: MblShippingType;
-        DashboardCaseRowDto: {
-            /** @example 1 */
-            id: number;
-            /** @example MBL-987654321 */
-            mblNumber: string | null;
-            shippingType: components["schemas"]["MblShippingType"];
-            /**
-             * @example [
-             *       "ACME Ltd."
-             *     ]
-             */
-            customerNames: string[];
-            /** @example MAERSK LINE */
-            carrierName: string | null;
-            status: components["schemas"]["MblStatus"];
-            /**
-             * Format: date-time
-             * @example 2026-09-01T08:30:00.000Z
-             */
-            createdAt: string;
-        };
         DashboardImportProcessRowDto: {
             /** @example 1 */
             id: number;
@@ -688,8 +684,8 @@ export interface components {
         DashboardResponseDto: {
             myOrders: components["schemas"]["DashboardOrderRowDto"][];
             casesInRelease: components["schemas"]["DashboardCaseInReleaseRowDto"][];
-            myClassifications: components["schemas"]["DashboardClassificationRowDto"][];
-            myCases: components["schemas"]["DashboardCaseRowDto"][];
+            ccfsPendingClassification: components["schemas"]["DashboardCcfRowDto"][];
+            ccfs: components["schemas"]["DashboardCcfRowDto"][];
             importProcesses: components["schemas"]["DashboardImportProcessRowDto"][];
         };
         /** @enum {string} */
@@ -1269,6 +1265,10 @@ export interface components {
             message: string;
             /** @example 7 */
             relatedCcfId: number | null;
+            /** @example 7 */
+            actorUserId: number | null;
+            /** @example Dana Levi */
+            actorName: string | null;
             /** @example false */
             isRead: boolean;
             /**
@@ -1280,6 +1280,10 @@ export interface components {
         UnreadCountDto: {
             /** @example 3 */
             count: number;
+        };
+        MarkAllReadDto: {
+            /** @example 42 */
+            upToId: number;
         };
         /** @enum {string} */
         ShipmentType: ShipmentType;
@@ -2370,6 +2374,29 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnreadCountDto"];
+                };
+            };
+        };
+    };
+    NotificationsController_markAllRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MarkAllReadDto"];
+            };
+        };
         responses: {
             200: {
                 headers: {

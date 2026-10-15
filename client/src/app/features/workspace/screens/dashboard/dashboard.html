@@ -1,4 +1,4 @@
-<div class="page-title">לוח בקרה</div>
+<div class="page-title">איזור האישי</div>
 
 <!-- Quick actions -->
 <section class="form-section dashboard-actions">
@@ -11,6 +11,10 @@
     <button type="button" class="btn btn-primary" (click)="newImportProcess()">
       <i class="fa-solid fa-truck-fast" aria-hidden="true"></i>
       תהליך יבוא חדש
+    </button>
+    <button type="button" class="btn btn-primary" (click)="newCcf()">
+      <i class="fa-solid fa-stamp" aria-hidden="true"></i>
+      תיק עמילות חדש
     </button>
   </div>
 </section>
@@ -25,6 +29,57 @@
 }
 
 <div class="dashboard-grid">
+  <!-- הודעות -->
+  <section class="form-section dashboard-card" data-card="messages">
+    <div class="section-header">
+      <div class="title-row">
+        <i class="fa-solid fa-envelope" aria-hidden="true"></i>
+        <h2 class="dashboard-card__title">הודעות</h2>
+      </div>
+    </div>
+    @if (messagesError(); as message) {
+      <p class="form-message form-message--error dashboard-card__error" role="alert">
+        {{ message }}
+        <button type="button" class="btn btn-secondary dashboard-retry" (click)="reloadMessages()">
+          נסה שוב
+        </button>
+      </p>
+    }
+    <div class="data-table-wrapper dashboard-messages">
+      @if (messagesLoading() && messages().length === 0) {
+        <p class="data-table__empty">טוען...</p>
+      } @else if (messages().length === 0) {
+        <p class="data-table__empty">אין הודעות</p>
+      } @else {
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>הודעה</th>
+              <th>בוצע ע"י</th>
+              <th>תאריך</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (message of messages(); track message.id) {
+              <tr
+                [class.dashboard-message--unread]="!message.isRead"
+                [class.data-table__row--clickable]="message.relatedCcfId !== null"
+                [attr.title]="message.relatedCcfId !== null ? 'לחץ לפתיחת תיק העמילות' : null"
+                [attr.tabindex]="message.relatedCcfId !== null ? 0 : null"
+                (click)="openMessage(message)"
+                (keydown.enter)="openMessage(message)"
+              >
+                <td>{{ message.message }}</td>
+                <td>{{ message.actorName ?? '—' }}</td>
+                <td class="data-table__numeric">{{ formatDateTime(message.createdAt) }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </div>
+  </section>
+
   <!-- ההזמנות שלי -->
   <section class="form-section dashboard-card" data-card="myOrders">
     <div class="section-header">
@@ -55,7 +110,13 @@
           </thead>
           <tbody>
             @for (order of data()!.myOrders; track order.id) {
-              <tr>
+              <tr
+                class="data-table__row--clickable"
+                title="לחץ לפתיחת ההזמנה"
+                tabindex="0"
+                (click)="openOrder(order.id)"
+                (keydown.enter)="openOrder(order.id)"
+              >
                 <td class="data-table__numeric">{{ order.id }}</td>
                 <td>{{ order.customerName ?? '—' }}</td>
                 <td>{{ order.handlerName ?? '—' }}</td>
@@ -127,17 +188,17 @@
     </div>
   </section>
 
-  <!-- הסיווגים שלי -->
-  <section class="form-section dashboard-card" data-card="myClassifications">
+  <!-- תיקי עמילות שלא עברו סיווג -->
+  <section class="form-section dashboard-card" data-card="ccfsPendingClassification">
     <div class="section-header">
       <div class="title-row">
         <i class="fa-solid fa-tags" aria-hidden="true"></i>
-        <h2 class="dashboard-card__title">הסיווגים שלי</h2>
+        <h2 class="dashboard-card__title">תיקי עמילות שלא עברו סיווג</h2>
       </div>
       <button
         type="button"
         class="dashboard-card__link"
-        (click)="openList(listRows.myClassifications)"
+        (click)="openList(listRows.ccfsPendingClassification)"
       >
         צפה בהכל
         <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
@@ -146,29 +207,33 @@
     <div class="data-table-wrapper">
       @if (loading() && !data()) {
         <p class="data-table__empty">טוען...</p>
-      } @else if (!data() || data()!.myClassifications.length === 0) {
+      } @else if (!data() || data()!.ccfsPendingClassification.length === 0) {
         <p class="data-table__empty">אין נתונים להצגה</p>
       } @else {
         <table class="data-table">
           <thead>
             <tr>
-              <th>הקשר</th>
-              <th>מק"ט</th>
-              <th>תיאור</th>
-              <th>פרט מכס</th>
-              <th>מדינה</th>
-              <th>תאריך</th>
+              <th>מספר תיק</th>
+              <th>מספר MBL</th>
+              <th>לקוחות</th>
+              <th>שורות מסווגות</th>
+              <th>תאריך פתיחה</th>
             </tr>
           </thead>
           <tbody>
-            @for (line of data()!.myClassifications; track line.fileId + ':' + line.lineIndex) {
-              <tr>
-                <td>{{ line.contextLabel }}</td>
-                <td>{{ line.item || '—' }}</td>
-                <td>{{ line.description || '—' }}</td>
-                <td class="data-table__numeric">{{ line.classificationCode || '—' }}</td>
-                <td>{{ line.countryName ?? '—' }}</td>
-                <td class="data-table__numeric">{{ formatDate(line.createdAt) }}</td>
+            @for (ccf of data()!.ccfsPendingClassification; track ccf.id) {
+              <tr
+                class="data-table__row--clickable"
+                title="לחץ למעבר לסיווג"
+                tabindex="0"
+                (click)="openCcfClassification(ccf.id)"
+                (keydown.enter)="openCcfClassification(ccf.id)"
+              >
+                <td>{{ ccf.fileNumber }}</td>
+                <td>{{ ccf.shipmentFileMblNumber ?? '—' }}</td>
+                <td>{{ joinOrEmDash(ccf.customerNames) }}</td>
+                <td class="data-table__numeric">{{ classificationProgress(ccf) }}</td>
+                <td class="data-table__numeric">{{ formatDate(ccf.createdAt) }}</td>
               </tr>
             }
           </tbody>
@@ -177,14 +242,14 @@
     </div>
   </section>
 
-  <!-- התיקים שלי -->
-  <section class="form-section dashboard-card" data-card="myCases">
+  <!-- תיקי עמילות -->
+  <section class="form-section dashboard-card" data-card="ccfs">
     <div class="section-header">
       <div class="title-row">
         <i class="fa-solid fa-folder-open" aria-hidden="true"></i>
-        <h2 class="dashboard-card__title">התיקים שלי</h2>
+        <h2 class="dashboard-card__title">תיקי עמילות</h2>
       </div>
-      <button type="button" class="dashboard-card__link" (click)="openList(listRows.myCases)">
+      <button type="button" class="dashboard-card__link" (click)="openList(listRows.ccfs)">
         צפה בהכל
         <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
       </button>
@@ -192,7 +257,7 @@
     <div class="data-table-wrapper">
       @if (loading() && !data()) {
         <p class="data-table__empty">טוען...</p>
-      } @else if (!data() || data()!.myCases.length === 0) {
+      } @else if (!data() || data()!.ccfs.length === 0) {
         <p class="data-table__empty">אין נתונים להצגה</p>
       } @else {
         <table class="data-table">
@@ -200,25 +265,31 @@
             <tr>
               <th>מספר תיק</th>
               <th>מספר MBL</th>
-              <th>סוג משלוח</th>
               <th>לקוחות</th>
+              <th>שורות מסווגות</th>
               <th>סטטוס</th>
               <th>תאריך פתיחה</th>
             </tr>
           </thead>
           <tbody>
-            @for (mblCase of data()!.myCases; track mblCase.id) {
-              <tr>
-                <td class="data-table__numeric">{{ mblCase.id }}</td>
-                <td>{{ mblCase.mblNumber ?? '—' }}</td>
-                <td>{{ shippingTypeLabels[mblCase.shippingType] }}</td>
-                <td>{{ joinOrEmDash(mblCase.customerNames) }}</td>
+            @for (ccf of data()!.ccfs; track ccf.id) {
+              <tr
+                class="data-table__row--clickable"
+                title="לחץ לפתיחת תיק העמילות"
+                tabindex="0"
+                (click)="openCcf(ccf.id)"
+                (keydown.enter)="openCcf(ccf.id)"
+              >
+                <td>{{ ccf.fileNumber }}</td>
+                <td>{{ ccf.shipmentFileMblNumber ?? '—' }}</td>
+                <td>{{ joinOrEmDash(ccf.customerNames) }}</td>
+                <td class="data-table__numeric">{{ classificationProgress(ccf) }}</td>
                 <td>
-                  <span [class]="'status-pill status-pill--' + mblCase.status">
-                    {{ mblStatusLabel(mblCase.status) }}
+                  <span [class]="'status-pill status-pill--' + ccf.status">
+                    {{ ccfStatusLabels[ccf.status] }}
                   </span>
                 </td>
-                <td class="data-table__numeric">{{ formatDate(mblCase.createdAt) }}</td>
+                <td class="data-table__numeric">{{ formatDate(ccf.createdAt) }}</td>
               </tr>
             }
           </tbody>
@@ -263,7 +334,13 @@
           </thead>
           <tbody>
             @for (process of data()!.importProcesses; track process.id) {
-              <tr>
+              <tr
+                class="data-table__row--clickable"
+                title="לחץ לפתיחת תיק השילוח"
+                tabindex="0"
+                (click)="openImportProcess(process.id)"
+                (keydown.enter)="openImportProcess(process.id)"
+              >
                 <td class="data-table__numeric">{{ process.id }}</td>
                 <td>{{ process.mblNumber ?? '—' }}</td>
                 <td>{{ shippingTypeLabels[process.shippingType] }}</td>
