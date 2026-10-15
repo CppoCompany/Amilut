@@ -50,9 +50,9 @@
   flex-direction: column;
   gap: 12px;
   padding: 12px;
-  border: 1px solid var(--border-color, #d8e0e9);
-  border-radius: var(--radius-lg, 12px);
-  background: var(--readonly-bg, #f8fafc);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  background: var(--readonly-bg);
 
   @media (max-width: 1200px) {
     position: static;
@@ -75,7 +75,7 @@
   &__actions.form-actions {
     margin-top: 0;
     padding-top: 10px;
-    border-top: 1px solid var(--border-color, #d8e0e9);
+    border-top: 1px solid var(--border-color);
 
     .btn {
       width: 100%;
@@ -111,11 +111,6 @@
   }
 }
 
-.products-actions {
-  margin-top: 8px;
-}
-
-.products-actions .btn,
 .classification-details__actions .btn {
   padding: 0.4rem 0.9rem;
   font-size: 0.875rem;
@@ -129,13 +124,9 @@
   display: flex;
   flex-direction: column;
   padding: 10px;
-  border: 1px solid var(--border-color, #d8e0e9);
-  border-radius: var(--radius-lg, 12px);
-  background: linear-gradient(
-    180deg,
-    var(--light-blue-bg, #eaf1fb) 0%,
-    var(--readonly-bg, #f8fafc) 70%
-  );
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, var(--light-blue-bg) 0%, var(--readonly-bg) 70%);
 
   @media (max-width: 1000px) {
     order: 0;
@@ -150,7 +141,7 @@
     gap: 8px;
     margin-bottom: 8px;
     padding: 0 2px 8px;
-    border-bottom: 1px solid var(--border-color, #d8e0e9);
+    border-bottom: 1px solid var(--border-color);
   }
 
   // Overrides the shared .section-title spacing for this compact panel.
@@ -160,7 +151,7 @@
     border: 0;
     font-size: 0.875rem;
     font-weight: 700;
-    color: var(--primary-blue, #0a3d82);
+    color: var(--primary-blue);
     line-height: 1.3;
   }
 
@@ -169,7 +160,7 @@
     min-width: 1.6rem;
     padding: 2px 8px;
     border-radius: 999px;
-    background: var(--secondary-blue, #1b63c7);
+    background: var(--secondary-blue);
     color: #fff;
     font-size: 0.8rem;
     font-weight: 700;
@@ -179,7 +170,7 @@
 
   &__hint {
     margin: 4px 2px;
-    color: var(--text-muted, #64748b);
+    color: var(--text-muted);
     font-size: 0.875rem;
   }
 
@@ -201,10 +192,10 @@
     align-items: center;
     gap: 2px 6px;
     padding: 7px 10px;
-    border: 1px solid var(--border-color, #d8e0e9);
-    border-radius: var(--radius-md, 8px);
-    background: var(--card-bg, #fff);
-    color: var(--text-dark, #202b3c);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background: var(--card-bg);
+    color: var(--text-dark);
     font: inherit;
     text-align: start;
     cursor: pointer;
@@ -224,31 +215,31 @@
     }
 
     &:hover {
-      border-color: color-mix(in srgb, var(--secondary-blue, #1b63c7) 45%, transparent);
+      border-color: color-mix(in srgb, var(--secondary-blue) 45%, transparent);
       box-shadow: var(--shadow-md);
       transform: translateY(-1px);
     }
 
     &:focus-visible {
-      outline: 2px solid var(--secondary-blue, #1b63c7);
+      outline: 2px solid var(--secondary-blue);
       outline-offset: 2px;
     }
 
     &.active {
-      background: var(--light-blue-bg, #eaf1fb);
-      border-color: var(--secondary-blue, #1b63c7);
-      box-shadow: 0 0 0 1px var(--secondary-blue, #1b63c7);
+      background: var(--light-blue-bg);
+      border-color: var(--secondary-blue);
+      box-shadow: 0 0 0 1px var(--secondary-blue);
 
       &::before {
-        background: var(--secondary-blue, #1b63c7);
+        background: var(--secondary-blue);
       }
 
       .pending-ccfs__number {
-        color: var(--primary-blue, #0a3d82);
+        color: var(--primary-blue);
       }
 
       .pending-ccfs__progress {
-        background: var(--secondary-blue, #1b63c7);
+        background: var(--secondary-blue);
         color: #fff;
       }
     }
@@ -262,8 +253,8 @@
   &__progress {
     padding: 1px 8px;
     border-radius: 999px;
-    background: var(--bg-color, #f4f7f9);
-    color: var(--text-muted, #64748b);
+    background: var(--bg-color);
+    color: var(--text-muted);
     font-size: 0.78rem;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
@@ -272,7 +263,7 @@
 
   &__meta {
     grid-column: 1 / -1;
-    color: var(--text-muted, #64748b);
+    color: var(--text-muted);
     font-size: 0.78rem;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -285,14 +276,14 @@
     height: 3px;
     margin-top: 4px;
     border-radius: 999px;
-    background: var(--bg-color, #f4f7f9);
+    background: var(--bg-color);
     overflow: hidden;
   }
 
   &__bar-fill {
     height: 100%;
     border-radius: inherit;
-    background: linear-gradient(90deg, var(--secondary-blue, #1b63c7), var(--success, #10b981));
+    background: linear-gradient(90deg, var(--secondary-blue), var(--success));
     transition: width 0.3s ease;
   }
 }
@@ -304,8 +295,8 @@
   font-size: 0.85rem;
 
   &--success {
-    background: color-mix(in srgb, var(--success, #16a34a) 12%, white);
-    color: var(--success, #15803d);
+    background: color-mix(in srgb, var(--success) 12%, white);
+    color: var(--success);
   }
 
   &--error {
@@ -316,34 +307,175 @@
 
 .products-loading {
   margin: 0 0 0.75rem;
-  color: var(--text-muted, #64748b);
+  color: var(--text-muted);
   font-size: 0.9rem;
 }
 
-.products-empty td {
-  color: var(--text-muted, #64748b);
-  text-align: center;
+// Products table: a card with a two-level sticky header (invoice / classification
+// groups), quiet rows that highlight on hover or while editing, and inline
+// controls that only show their border on hover / focus.
+.products-card {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  background: var(--card-bg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
 }
 
-// Compact grid; the wrapper's overflow: auto scrolls it when the area is narrower.
+.products-table-wrap {
+  overflow: auto;
+  max-height: calc(100vh - 260px);
+}
+
 .products-table {
-  th,
-  td {
-    padding: 6px 4px;
-    font-size: 0.8rem;
-    white-space: nowrap;
+  margin-top: 0;
+  border-collapse: separate;
+  border-spacing: 0;
+
+  thead {
+    position: sticky;
+    top: 0;
+    z-index: 1;
   }
 
-  // Number columns are short — don't let them take spare width.
-  td:nth-child(-n + 4),
-  th:nth-child(-n + 4) {
+  th,
+  td {
+    padding: 6px 6px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  th {
+    background: var(--readonly-bg);
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+  }
+
+  // Column-group captions above the column headers.
+  &__groups th {
+    padding: 5px 8px;
+    background: var(--light-blue-bg);
+    color: var(--primary-blue);
+    font-size: 0.72rem;
+    border-bottom-color: color-mix(in srgb, var(--secondary-blue) 20%, transparent);
+  }
+
+  // Divider between the invoice columns and the classification columns.
+  .col-group-start {
+    border-inline-start: 1px solid var(--border-color);
+  }
+
+  .num {
     width: 1%;
+    text-align: end;
+    font-variant-numeric: tabular-nums;
   }
 
   // The SKU may wrap to keep the table narrow.
-  td:first-child {
-    white-space: normal;
+  td.sku {
     min-width: 5.5rem;
+    white-space: normal;
+    text-align: right;
+    font-weight: 600;
+    color: var(--text-dark);
+  }
+
+  tbody tr {
+    transition: background-color 0.15s ease;
+
+    // Status strip on the row's inline-start edge (the right, in RTL).
+    td:first-child {
+      box-shadow: inset -3px 0 0 transparent;
+    }
+
+    &:nth-child(even) td {
+      background: color-mix(in srgb, var(--readonly-bg) 60%, transparent);
+    }
+
+    &:hover td,
+    &:focus-within td {
+      background: var(--light-blue-bg);
+    }
+
+    &.is-classified td:first-child {
+      box-shadow: inset -3px 0 0 var(--success);
+    }
+
+    &.is-manual td.sku::after {
+      content: 'ידני';
+      margin-inline-start: 6px;
+      padding: 0 6px;
+      border-radius: 999px;
+      background: var(--bg-color);
+      color: var(--text-muted);
+      font-size: 0.68rem;
+      font-weight: 600;
+    }
+
+    &:last-child td {
+      border-bottom: 0;
+    }
+  }
+
+  // Inline editors: borderless until hovered or focused.
+  .form-control {
+    border-color: transparent;
+    background-color: transparent;
+
+    &:hover {
+      border-color: var(--border-color);
+      background-color: var(--input-bg);
+    }
+
+    &:focus {
+      border-color: var(--secondary-blue);
+      background-color: var(--input-bg);
+    }
+  }
+}
+
+.products-loading {
+  margin: 0 0 0.5rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.products-table .products-empty td {
+  padding: 28px 16px;
+  color: var(--text-muted);
+  text-align: center;
+  white-space: normal;
+  background: none;
+  font-size: 0.85rem;
+}
+
+// "+ הוסף שורה" — a full-width dashed footer of the card.
+.products-add.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 0.45rem;
+  border: 0;
+  border-top: 1px dashed var(--border-color);
+  border-radius: 0;
+  background: var(--readonly-bg);
+  color: var(--secondary-blue);
+  font-size: 0.85rem;
+  font-weight: 600;
+
+  &:hover:not(:disabled) {
+    background: var(--light-blue-bg);
+  }
+
+  &:disabled {
+    color: var(--text-muted);
+    cursor: not-allowed;
+    opacity: 0.6;
   }
 }
 

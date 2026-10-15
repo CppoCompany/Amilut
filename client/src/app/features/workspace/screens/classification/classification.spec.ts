@@ -190,7 +190,7 @@ describe('ClassificationScreen', () => {
   const headers = (): string[] =>
     Array.from(
       fixture.nativeElement.querySelectorAll(
-        '.documents-table thead th',
+        '.documents-table thead tr:last-child th',
       ) as NodeListOf<HTMLElement>,
     ).map((th) => th.textContent?.trim() ?? '');
   const goodsDescription = (): HTMLInputElement =>
