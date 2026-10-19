@@ -23,21 +23,15 @@
       <div class="grid-row">
         <div class="form-group">
           <label for="shipmentFile">תיק שילוח מקושר</label>
-          <select
-            id="shipmentFile"
-            class="form-control"
+          <app-search-select
+            inputId="shipmentFile"
+            placeholder="חיפוש לפי מספר תיק, MBL או לקוח..."
+            clearLabel="ללא קישור (תיק עצמאי)"
+            [options]="shipmentFileOptions()"
+            [selected]="selectedShipmentFileId()"
             [disabled]="isReadOnly() || loadingShipmentFiles()"
-            (change)="onShipmentFileChange($event)"
-          >
-            <option value="" [selected]="selectedShipmentFileId() === null">
-              ללא קישור (תיק עצמאי)
-            </option>
-            @for (file of shipmentFiles(); track file.id) {
-              <option [value]="file.id" [selected]="selectedShipmentFileId() === file.id">
-                {{ shipmentFileLabel(file) }}
-              </option>
-            }
-          </select>
+            (selectedChange)="onShipmentFileChange($event)"
+          />
         </div>
 
         @if (savedCcf(); as ccf) {
@@ -50,16 +44,28 @@
     </section>
 
     @if (!isReadOnly()) {
-      <section class="form-section ccf-card">
-        <h2 class="section-title ccf-card__title">ניירת</h2>
+      @if (relatedOrderIds(); as orderIds) {
+        <!-- Linked to a shipping case: manage its orders' paperwork instead of the CCF's own. -->
+        <section class="form-section ccf-card">
+          <h2 class="section-title ccf-card__title">מסמכי ההזמנות בתיק השילוח</h2>
+          <app-related-order-documents
+            [orderIds]="orderIds"
+            [(staged)]="stagedOrderFiles"
+            bannerText="הקבצים יועלו להזמנות לאחר שמירת התיק"
+          />
+        </section>
+      } @else {
+        <section class="form-section ccf-card">
+          <h2 class="section-title ccf-card__title">ניירת</h2>
 
-        <app-document-staging-list
-          [documentTypes]="ccfDocumentTypes"
-          [requiredTypes]="requiredDocumentTypes"
-          [(files)]="stagedFiles"
-          bannerText="הקבצים יועלו לשרת לאחר שמירת התיק"
-        />
-      </section>
+          <app-document-staging-list
+            [documentTypes]="ccfDocumentTypes"
+            [requiredTypes]="requiredDocumentTypes"
+            [(files)]="stagedFiles"
+            bannerText="הקבצים יועלו לשרת לאחר שמירת התיק"
+          />
+        </section>
+      }
     }
 
     @if (ccfContext(); as context) {

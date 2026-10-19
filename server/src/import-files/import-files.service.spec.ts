@@ -19,6 +19,7 @@ import { ImportDocumentType } from './import-files.enums';
 import {
   ImportAccountFileData,
   ImportFilesContext,
+  deleteFilesByNameSql,
   ImportFilesService,
   INSERT_IMPORT_ACCOUNT_FILE_SQL,
   SELECT_CCF_EXISTS_SQL,
@@ -1196,6 +1197,87 @@ describe('ImportFilesService', () => {
       );
       expect(params).toEqual([25, 0]);
       expect(result).toEqual({ items: [], total: 0, page: 1, pageSize: 25 });
+    });
+  });
+
+  describe('deleteImportFile', () => {
+    const ROW = {
+      id: 42,
+      data: {
+        documentType: INVOICE,
+        name: 'invoice.pdf',
+        size: 1,
+        mimeType: 'application/pdf',
+        relativePath: 'order-1000/invoice.pdf',
+        uploadedAt: '2026-09-22T10:00:00.000Z',
+      },
+    };
+
+    /** Orders exist; the locked file lookup answers with `row`; deletes succeed. */
+    function fileLookupReturns(row: unknown) {
+      client.query.mockImplementation((sql: string, params: unknown[]) => {
+        if (sql === SELECT_ORDER_EXISTS_SQL || sql === SELECT_CCF_EXISTS_SQL) {
+          return Promise.resolve({ rows: [{ id: params[0] }] });
+        }
+        if (sql === selectFileByIdSql(orderContext(1000), true)) {
+          return Promise.resolve({ rows: row ? [row] : [] });
+        }
+        if (sql === deleteFilesByNameSql(orderContext(1000))) {
+          return Promise.resolve({ rows: [] });
+        }
+        return Promise.reject(new Error(`Unexpected SQL: ${sql}`));
+      });
+    }
+
+    it('deletes every row of that file name in the context, then the file on disk', async () => {
+      fileLookupReturns(ROW);
+      await mkdir(path.join(storageDir, 'order-1000'), { recursive: true });
+      await writeFile(path.join(storageDir, 'order-1000/invoice.pdf'), 'x');
+      await writeFile(path.join(storageDir, 'order-1000/other.pdf'), 'y');
+
+      await service.deleteImportFile(orderContext(1000), 42);
+
+      expect(client.query).toHaveBeenCalledWith(
+        selectFileByIdSql(orderContext(1000), true),
+        [42, 1000],
+      );
+      expect(client.query).toHaveBeenCalledWith(
+        deleteFilesByNameSql(orderContext(1000)),
+        [1000, 'invoice.pdf'],
+      );
+      expect(await readdir(path.join(storageDir, 'order-1000'))).toEqual([
+        'other.pdf',
+      ]);
+    });
+
+    it('scopes the delete to the context column', () => {
+      expect(deleteFilesByNameSql(orderContext(1))).toContain('order_id = $1');
+      expect(deleteFilesByNameSql(ccfContext(1))).toContain('ccf_id = $1');
+    });
+
+    it('still succeeds when the file is already gone from disk', async () => {
+      fileLookupReturns(ROW);
+      await expect(
+        service.deleteImportFile(orderContext(1000), 42),
+      ).resolves.toBeUndefined();
+    });
+
+    it('throws NotFound and deletes nothing when the file is not in the context', async () => {
+      fileLookupReturns(null);
+      await expect(
+        service.deleteImportFile(orderContext(1000), 42),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(client.query).not.toHaveBeenCalledWith(
+        deleteFilesByNameSql(orderContext(1000)),
+        expect.anything(),
+      );
+    });
+
+    it('rejects a non-positive file id before touching the DB', async () => {
+      await expect(
+        service.deleteImportFile(orderContext(1000), 0),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(db.transaction).not.toHaveBeenCalled();
     });
   });
 

@@ -28,7 +28,9 @@ const STORED: UploadedImportFileDto = {
       [(files)]="files"
       [uploaded]="uploaded()"
       [showMissing]="showMissing()"
+      [deletable]="deletable()"
       (openUploaded)="opened.set($event)"
+      (deleteUploaded)="deleted.set($event)"
     />
   `,
 })
@@ -39,6 +41,8 @@ class Host {
   readonly uploaded = signal<UploadedImportFileDto[]>([]);
   readonly showMissing = signal(false);
   readonly opened = signal<UploadedImportFileDto | null>(null);
+  readonly deletable = signal(false);
+  readonly deleted = signal<UploadedImportFileDto | null>(null);
 }
 
 describe('DocumentStagingList', () => {
@@ -92,6 +96,19 @@ describe('DocumentStagingList', () => {
 
     (stored.querySelector('button') as HTMLButtonElement).click();
     expect(host.opened()).toEqual(STORED);
+  });
+
+  it('offers an X on uploaded files when deletable, and emits the file on click', () => {
+    host.uploaded.set([STORED]);
+    host.deletable.set(true);
+    fixture.detectChanges();
+
+    const remove = rows()[0].querySelector(
+      '.doc__file--uploaded .icon-btn--danger',
+    ) as HTMLButtonElement;
+    expect(remove.getAttribute('aria-label')).toBe('מחק את stored.pdf');
+    remove.click();
+    expect(host.deleted()).toEqual(STORED);
   });
 
   it('flags empty required rows only when asked to', () => {

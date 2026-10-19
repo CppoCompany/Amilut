@@ -1,0 +1,54 @@
+@if (errorMessage(); as message) {
+  <p class="form-message form-message--error" role="alert">{{ message }}</p>
+}
+
+@if (orderIds().length === 0) {
+  <p class="hint-text related-docs__hint">לתיק השילוח שנבחר אין הזמנות מקושרות</p>
+} @else if (loading()) {
+  <p class="hint-text related-docs__hint" role="status">
+    <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
+    טוען מסמכים…
+  </p>
+} @else {
+  <div class="related-docs">
+    @for (order of orders(); track order.orderId) {
+      <section class="related-docs__order">
+        <h3 class="related-docs__title">
+          <i class="fa-solid fa-file-invoice" aria-hidden="true"></i>
+          הזמנה {{ order.orderId }}
+        </h3>
+        @if (order.error) {
+          <p class="related-docs__error" role="alert">טעינת המסמכים של הזמנה זו נכשלה</p>
+        } @else {
+          <app-document-staging-list
+            [documentTypes]="documentTypes"
+            [requiredTypes]="requiredDocumentTypes"
+            [files]="stagedFor(order.orderId)"
+            (filesChange)="onStagedChange(order.orderId, $event)"
+            [uploaded]="order.uploaded"
+            [openingId]="openingId()"
+            [bannerText]="bannerText()"
+            [deletable]="true"
+            [deletingId]="deletingId()"
+            (openUploaded)="openDocument(order.orderId, $event)"
+            (deleteUploaded)="requestDelete(order.orderId, $event)"
+          />
+        }
+      </section>
+    }
+  </div>
+}
+
+@if (fileToDelete(); as target) {
+  <app-confirm-dialog
+    [message]="
+      'למחוק את הקובץ „' +
+      target.file.name +
+      '” מהזמנה ' +
+      target.orderId +
+      '? לא ניתן לבטל פעולה זו.'
+    "
+    (confirmed)="confirmDelete()"
+    (cancelled)="fileToDelete.set(null)"
+  />
+}

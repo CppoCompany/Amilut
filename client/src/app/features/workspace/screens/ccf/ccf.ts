@@ -10,7 +10,7 @@ import {
   untracked,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { catchError, finalize, forkJoin, map, of, switchMap } from 'rxjs';
+import { Observable, catchError, finalize, forkJoin, map, of, switchMap } from 'rxjs';
 
 import { CcfApi } from '../../../../api/ccf-api';
 import {
@@ -28,6 +28,14 @@ import {
 } from '../../document-staging-list/document-staging-list';
 import { ImportFilesPanel } from '../../import-files-panel/import-files-panel';
 import { NavigationService } from '../../navigation.service';
+import {
+  RelatedOrderDocuments,
+  type StagedFilesByOrder,
+} from '../../related-order-documents/related-order-documents';
+import {
+  SearchSelect,
+  type SearchSelectOption,
+} from '../../../../shared/search-select/search-select';
 
 /** The server's page-size ceiling — same batch size the (retired) `CasePicker` used. */
 const MAX_SHIPMENT_FILES = 200;
@@ -41,6 +49,10 @@ const REQUIRED_DOCUMENT_TYPES: ReadonlySet<ImportDocumentType> = new Set([
   ImportDocumentType.BILL_OF_LADING,
   ImportDocumentType.SUPPLIER_INVOICE,
 ]);
+
+function hasStagedFiles(staged: StagedFiles): boolean {
+  return Object.values(staged).some((files) => files.length > 0);
+}
 
 function errorSuffix(error: unknown): string {
   if (error instanceof HttpErrorResponse) {
@@ -62,7 +74,7 @@ function errorSuffix(error: unknown): string {
  *  existing shipping case, wired to `POST/GET /api/ccf`. */
 @Component({
   selector: 'app-ccf-screen',
-  imports: [DocumentStagingList, ImportFilesPanel],
+  imports: [DocumentStagingList, ImportFilesPanel, RelatedOrderDocuments, SearchSelect],
   templateUrl: './ccf.html',
   styleUrl: './ccf.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -84,11 +96,28 @@ export class CcfScreen {
   // one, so `DocumentStagingList` holds them here and they are uploaded right
   // after creation succeeds.
   protected readonly stagedFiles = signal<StagedFiles>({});
+  /** Files picked for the linked shipping case's orders (keyed by order id),
+   *  uploaded to those orders right after the CCF is created. */
+  protected readonly stagedOrderFiles = signal<StagedFilesByOrder>({});
 
   // ── Shipment-file dropdown ──────────────────────────────────────────────────
   protected readonly shipmentFiles = signal<MblSummaryDto[]>([]);
   protected readonly loadingShipmentFiles = signal(false);
   protected readonly selectedShipmentFileId = signal<number | null>(null);
+
+  /** The dropdown's rows — searchable by everything in the label (case id, MBL, customers). */
+  protected readonly shipmentFileOptions = computed<SearchSelectOption<number>[]>(() =>
+    this.shipmentFiles().map((file) => ({ value: file.id, label: this.shipmentFileLabel(file) })),
+  );
+
+  /** Orders of the selected shipping case — while set, their paperwork
+   *  replaces the CCF's own "ניירת" card. `null` while no case is selected
+   *  (or the selected one is not in the loaded list). */
+  protected readonly relatedOrderIds = computed<readonly number[] | null>(() => {
+    const id = this.selectedShipmentFileId();
+    if (id === null) return null;
+    return this.shipmentFiles().find((file) => file.id === id)?.orderIds ?? null;
+  });
 
   // ── Save / load state ───────────────────────────────────────────────────────
   /** The CCF as last returned by the server; `null` until the first successful save. */
@@ -142,13 +171,12 @@ export class CcfScreen {
     });
   }
 
-  protected onShipmentFileChange(event: Event): void {
-    const value = (event.target as HTMLSelectElement).value;
-    this.selectedShipmentFileId.set(value === '' ? null : Number(value));
+  protected onShipmentFileChange(id: number | null): void {
+    this.selectedShipmentFileId.set(id);
   }
 
   /** "תיק 7 · MBL-987654321 · ACME Ltd." */
-  protected shipmentFileLabel(mblCase: MblSummaryDto): string {
+  private shipmentFileLabel(mblCase: MblSummaryDto): string {
     return [`תיק ${mblCase.id}`, mblCase.mblNumber, mblCase.customerNames.join(', ')]
       .filter((part) => !!part)
       .join(' · ');
@@ -159,12 +187,14 @@ export class CcfScreen {
     if (this.saving() || this.isReadOnly()) return;
     const hasInput =
       this.selectedShipmentFileId() !== null ||
-      Object.values(this.stagedFiles()).some((files) => files.length > 0);
+      hasStagedFiles(this.stagedFiles()) ||
+      Object.values(this.stagedOrderFiles()).some(hasStagedFiles);
     if (hasInput && !confirm('הפרטים שהוזנו יימחקו. לבטל בכל זאת?')) {
       return;
     }
     this.selectedShipmentFileId.set(null);
     this.stagedFiles.set({});
+    this.stagedOrderFiles.set({});
     this.errorMessage.set(null);
   }
 
@@ -172,13 +202,14 @@ export class CcfScreen {
    * Creates the CCF. Guards against double-submit (`saving()`) and against
    * resubmitting an already-saved CCF (`isReadOnly()`) — the record is only
    * ever created here, never on page load, so a refresh cannot duplicate it
-   * either. On success: a CCF linked to a shipping case auto-navigates to
-   * Classification (scoped to this CCF's own id, not the shipment file's);
-   * a standalone CCF stays right here — `ccfContext()` now resolves, so the
-   * inline upload panel appears in place, which is strictly more useful than
-   * bouncing to a Filing screen that would just make the user re-pick the
-   * very CCF just created. Never navigates on failure, and nothing already
-   * entered is cleared on failure either.
+   * either. Then uploads the staged paperwork: to the linked shipping case's
+   * orders when one is selected, otherwise to the CCF itself. On success: a
+   * CCF linked to a shipping case auto-navigates to Classification (scoped
+   * to this CCF's own id, not the shipment file's); a standalone CCF stays
+   * right here — `ccfContext()` now resolves, so the inline upload panel
+   * appears in place. Never navigates on failure (including a failed upload,
+   * so its error stays visible), and nothing entered is cleared on a failed
+   * create.
    */
   protected onSave(): void {
     if (this.saving() || this.isReadOnly()) {
@@ -188,19 +219,28 @@ export class CcfScreen {
     this.errorMessage.set(null);
 
     const shipmentFileId = this.selectedShipmentFileId();
+    const orderIds = this.relatedOrderIds();
     this.ccfApi
       .create(shipmentFileId !== null ? { shipmentFileId } : {})
       .pipe(
-        switchMap((ccf) =>
-          this.uploadStagedFiles({ kind: 'ccf', id: ccf.id }).pipe(map(() => ccf)),
-        ),
+        switchMap((ccf) => {
+          const uploads =
+            orderIds !== null
+              ? orderIds.map((id) =>
+                  this.uploadStagedFiles({ kind: 'order', id }, this.stagedOrderFiles()[id] ?? {}),
+                )
+              : [this.uploadStagedFiles({ kind: 'ccf', id: ccf.id }, this.stagedFiles())];
+          return forkJoin(uploads).pipe(
+            map((failed) => ({ ccf, uploadFailed: failed.some(Boolean) })),
+          );
+        }),
         finalize(() => this.saving.set(false)),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
-        next: (ccf) => {
+        next: ({ ccf, uploadFailed }) => {
           this.savedCcf.set(ccf);
-          if (ccf.shipmentFileId !== null) {
+          if (ccf.shipmentFileId !== null && !uploadFailed) {
             this.nav.openClassificationFor({ kind: 'ccf', id: ccf.id });
           }
         },
@@ -209,23 +249,26 @@ export class CcfScreen {
   }
 
   /**
-   * Uploads whatever was staged in the four document categories, now that
-   * `context` has a real ccfId to file them under. Upload failures are
-   * reported but never block the CCF itself from being considered saved —
-   * the record already exists in the DB by this point.
+   * Uploads whatever was staged per document type under `context` (the new
+   * CCF, or one of the linked orders); emits `true` if an upload failed.
+   * Upload failures are reported but never block the CCF itself from being
+   * considered saved — the record already exists in the DB by this point.
    */
-  private uploadStagedFiles(context: FilingContext) {
-    const entries = Object.entries(this.stagedFiles()) as [ImportDocumentType, File[]][];
+  private uploadStagedFiles(context: FilingContext, staged: StagedFiles): Observable<boolean> {
+    const entries = Object.entries(staged) as [ImportDocumentType, File[]][];
     const nonEmpty = entries.filter(([, files]) => files.length > 0);
     if (nonEmpty.length === 0) {
-      return of(null);
+      return of(false);
     }
     return forkJoin(
-      nonEmpty.map(([type, files]) => this.importFilesApi.uploadMultipleImportFiles(context, type, files)),
+      nonEmpty.map(([type, files]) =>
+        this.importFilesApi.uploadMultipleImportFiles(context, type, files),
+      ),
     ).pipe(
+      map(() => false),
       catchError((error: unknown) => {
         this.errorMessage.set(`${UPLOAD_FAILED}${errorSuffix(error)}`);
-        return of(null);
+        return of(true);
       }),
     );
   }

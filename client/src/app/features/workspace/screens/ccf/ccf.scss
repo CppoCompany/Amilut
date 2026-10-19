@@ -28,10 +28,10 @@
 }
 
 // ── Page frame ───────────────────────────────────────────────────────────────
+// Anchored to the inline-start edge (the right, in RTL) rather than centred.
 .ccf-page {
   width: 100%;
   max-width: var(--ccf-max-width);
-  margin-inline: auto;
   display: flex;
   flex-direction: column;
   gap: var(--ccf-card-gap);

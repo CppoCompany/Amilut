@@ -63,6 +63,11 @@ export class DocumentStagingList {
   /** Row id of an uploaded file currently being opened, for its spinner. */
   readonly openingId = input<number | null>(null);
   readonly openUploaded = output<UploadedImportFileDto>();
+  /** Shows an X on each uploaded file; the parent confirms and deletes it. */
+  readonly deletable = input(false);
+  /** Row id of an uploaded file currently being deleted, for its spinner. */
+  readonly deletingId = input<number | null>(null);
+  readonly deleteUploaded = output<UploadedImportFileDto>();
 
   protected readonly documentTypeLabels = IMPORT_DOCUMENT_TYPE_LABELS;
   protected readonly documentIcons = DOCUMENT_ICONS;
