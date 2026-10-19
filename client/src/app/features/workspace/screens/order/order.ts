@@ -46,6 +46,7 @@ import type {
 } from '../../../../api/models';
 import { OrdersApi } from '../../../../api/orders-api';
 import { AuthService } from '../../../../core/auth/auth.service';
+import { ConfirmDialog } from '../../../../shared/confirm-dialog/confirm-dialog';
 import { CustomerAutocomplete } from '../../../customers/customer-autocomplete/customer-autocomplete';
 import { SupplierAutocomplete } from '../../../suppliers/supplier-autocomplete/supplier-autocomplete';
 import {
@@ -106,6 +107,7 @@ const REQUIRED_SCHEDULE_DATES = {
 type ScheduleDateField = keyof typeof REQUIRED_SCHEDULE_DATES;
 const UPLOAD_FAILED = 'ההזמנה נשמרה, אך העלאת חלק מהמסמכים נכשלה';
 const OPEN_FILE_FAILED = 'פתיחת הקובץ נכשלה';
+const DELETE_FILE_FAILED = 'מחיקת הקובץ נכשלה';
 const FILES_LOAD_FAILED = 'טעינת המסמכים של ההזמנה נכשלה';
 
 /** Font Awesome icon per tab of the order form. */
@@ -131,7 +133,13 @@ function stepIndex(step: OrderStep): number {
  */
 @Component({
   selector: 'app-order-screen',
-  imports: [ReactiveFormsModule, CustomerAutocomplete, SupplierAutocomplete, DocumentStagingList],
+  imports: [
+    ReactiveFormsModule,
+    CustomerAutocomplete,
+    SupplierAutocomplete,
+    DocumentStagingList,
+    ConfirmDialog,
+  ],
   templateUrl: './order.html',
   styleUrl: './order.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -198,6 +206,9 @@ export class OrderScreen {
   /** Already filed under this order on the server. */
   protected readonly uploadedFiles = signal<UploadedImportFileDto[]>([]);
   protected readonly openingFileId = signal<number | null>(null);
+  /** The uploaded file awaiting delete confirmation; drives the confirm dialog. */
+  protected readonly fileToDelete = signal<UploadedImportFileDto | null>(null);
+  protected readonly deletingFileId = signal<number | null>(null);
   /** Set by "סיום" — from then on, empty mandatory document rows are flagged. */
   private readonly finishAttempted = signal(false);
   protected readonly missingDocuments = computed(() =>
@@ -716,6 +727,32 @@ export class OrderScreen {
       .subscribe({
         next: (files) => this.uploadedFiles.set(files),
         error: () => this.errorMessage.set(FILES_LOAD_FAILED),
+      });
+  }
+
+  /** X on an uploaded file → asks for confirmation first (see `confirmDeleteFile`). */
+  protected requestDeleteFile(file: UploadedImportFileDto): void {
+    if (this.deletingFileId() !== null) return;
+    this.fileToDelete.set(file);
+  }
+
+  /** Deletes the confirmed file on the server and drops it from the list. */
+  protected confirmDeleteFile(): void {
+    const file = this.fileToDelete();
+    const order = this.savedOrder();
+    this.fileToDelete.set(null);
+    if (!file || !order) return;
+    this.deletingFileId.set(file.id);
+    this.errorMessage.set(null);
+    this.importFilesApi
+      .deleteImportFile({ kind: 'order', id: order.id }, file.id)
+      .pipe(
+        finalize(() => this.deletingFileId.set(null)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: () => this.uploadedFiles.update((files) => files.filter((f) => f.id !== file.id)),
+        error: () => this.errorMessage.set(DELETE_FILE_FAILED),
       });
   }
 

@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { mkdir, stat, writeFile } from 'node:fs/promises';
+import { mkdir, rm, stat, writeFile } from 'node:fs/promises';
 import * as path from 'node:path';
 import type { PoolClient } from 'pg';
 import { Paged } from '../common/paging/paged.dto';
@@ -182,6 +182,17 @@ export function updateFileDataSql(context: ImportFilesContext): string {
   return `UPDATE import_account_files
    SET data = $2::jsonb
    WHERE id = $1 AND ${col} = $3`;
+}
+
+/**
+ * Every row of one file name in one context — the current upload and the
+ * older ones it superseded (they share the file on disk). Deleting only the
+ * newest would let an older upload of the same name reappear in the list.
+ */
+export function deleteFilesByNameSql(context: ImportFilesContext): string {
+  const col = contextColumn(context);
+  return `DELETE FROM import_account_files
+   WHERE ${col} = $1 AND data->>'name' = $2`;
 }
 
 /** Which of the given country ids exist. */
@@ -582,6 +593,50 @@ export class ImportFilesService {
           : 'application/octet-stream',
       size: onDisk.size,
     };
+  }
+
+  /**
+   * Deletes file `fileId` of the order/CCF: every row of that file name in
+   * the context (re-uploads included, so no older version resurfaces) and,
+   * once that is committed, the file on disk. Supplier-invoice line items
+   * and their classifications live in those rows and go with them.
+   *
+   * @throws BadRequestException — bad file id.
+   * @throws NotFoundException — unknown order/CCF or no such file in it.
+   */
+  async deleteImportFile(
+    context: ImportFilesContext,
+    fileId: number,
+  ): Promise<void> {
+    if (!Number.isInteger(fileId) || fileId <= 0) {
+      throw new BadRequestException('fileId must be a positive integer');
+    }
+
+    const relativePath = await this.db.transaction(async (client) => {
+      await assertContextExists(client, context);
+      const found = await client.query<{
+        id: number;
+        data: Partial<ImportAccountFileData>;
+      }>(selectFileByIdSql(context, true), [fileId, context.id]);
+      const row = found.rows[0];
+      if (!row || typeof row.data.name !== 'string') {
+        throw fileNotFound(context, fileId);
+      }
+      await client.query(deleteFilesByNameSql(context), [
+        context.id,
+        row.data.name,
+      ]);
+      return row.data.relativePath;
+    });
+
+    // Best-effort: the rows are gone, so a leftover file is unreachable anyway.
+    const absolutePath =
+      typeof relativePath === 'string'
+        ? resolveInsideStorage(this.storageDir, relativePath)
+        : null;
+    if (absolutePath !== null) {
+      await rm(absolutePath, { force: true }).catch(() => undefined);
+    }
   }
 
   /** Checks the order/CCF exists (outside a transaction). */

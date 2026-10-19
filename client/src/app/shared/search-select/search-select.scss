@@ -1,0 +1,65 @@
+// Builds on the global `.autocomplete-wrapper` / `.autocomplete-list` /
+// `.autocomplete-item` classes in src/styles.scss.
+
+:host {
+  display: block;
+
+  // One row = fixed line + the global item's 10px vertical padding, so the
+  // list height below shows exactly `--search-select-visible` rows.
+  --search-select-line: 1.4rem;
+  --search-select-row: calc(var(--search-select-line) + 20px);
+}
+
+.search-select {
+  position: relative;
+
+  &__input {
+    // Room for the search icon on the inline-end side (left in RTL).
+    padding-inline-end: 36px;
+  }
+
+  &__icon {
+    position: absolute;
+    top: 50%;
+    inset-inline-end: 12px;
+    transform: translateY(-50%);
+    pointer-events: none;
+    font-size: 0.85rem;
+    color: var(--text-muted, #64748b);
+  }
+}
+
+.search-select__list {
+  max-height: calc(var(--search-select-visible, 8) * var(--search-select-row) + 2px);
+}
+
+.search-select__item {
+  line-height: var(--search-select-line);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  &--active,
+  &--active:hover {
+    background-color: var(--bg-color, #f4f7f9);
+    color: var(--secondary-blue, #1b63c7);
+  }
+
+  &--selected {
+    font-weight: 700;
+  }
+
+  &--clear {
+    color: var(--text-muted, #64748b);
+  }
+
+  &--empty {
+    cursor: default;
+    color: var(--text-muted, #64748b);
+
+    &:hover {
+      background-color: transparent;
+      color: var(--text-muted, #64748b);
+    }
+  }
+}

@@ -1,0 +1,51 @@
+<div class="search-select">
+  <input
+    class="form-control search-select__input"
+    type="text"
+    role="combobox"
+    autocomplete="off"
+    [id]="inputId()"
+    [value]="text()"
+    [placeholder]="placeholder()"
+    [disabled]="disabled()"
+    [attr.aria-expanded]="open()"
+    [attr.aria-controls]="listId()"
+    [attr.aria-activedescendant]="activeOptionId()"
+    aria-autocomplete="list"
+    (focus)="onFocus($event)"
+    (input)="onInput($event)"
+    (blur)="onBlur()"
+    (keydown)="onKeydown($event)"
+  />
+  <i class="fa-solid fa-magnifying-glass search-select__icon" aria-hidden="true"></i>
+</div>
+
+<div
+  class="autocomplete-list search-select__list"
+  role="listbox"
+  [id]="listId()"
+  [class.active]="open()"
+  [style.--search-select-visible]="maxVisible()"
+  (mousedown)="onListMousedown($event)"
+>
+  @for (row of rows(); track $index; let i = $index) {
+    <div
+      class="autocomplete-item search-select__item"
+      role="option"
+      [id]="optionId(i)"
+      [title]="row.label"
+      [class.search-select__item--active]="activeIndex() === i"
+      [class.search-select__item--selected]="isSelected(row)"
+      [class.search-select__item--clear]="row.value === null"
+      [attr.aria-selected]="isSelected(row)"
+      (mouseenter)="setActive(i)"
+      (click)="pick(row)"
+    >
+      {{ row.label }}
+    </div>
+  } @empty {
+    <div class="autocomplete-item search-select__item search-select__item--empty">
+      לא נמצאו תוצאות
+    </div>
+  }
+</div>

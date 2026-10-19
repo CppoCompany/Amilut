@@ -11,6 +11,8 @@ import { CcfScreen } from './ccf';
 
 type CcfInternals = {
   selectedShipmentFileId: WritableSignal<number | null>;
+  stagedFiles: WritableSignal<Partial<Record<string, File[]>>>;
+  stagedOrderFiles: WritableSignal<Record<number, Partial<Record<string, File[]>>>>;
   savedCcf: () => CcfDto | null;
   saving: () => boolean;
   loadingExisting: () => boolean;
@@ -86,6 +88,17 @@ describe('CcfScreen', () => {
     httpMock.expectOne((req) => req.url === '/api/mbl').flush(files);
   }
 
+  /** Each linked order's stored paperwork loads once a shipping case is selected. */
+  function flushOrderDocuments(orderIds: number[] = SHIPMENT_FILE.orderIds): void {
+    for (const orderId of orderIds) {
+      httpMock
+        .expectOne(
+          (req) => req.url === '/api/import-files' && req.params.get('orderId') === String(orderId),
+        )
+        .flush([]);
+    }
+  }
+
   function pageTitleText(): string {
     return fixture.nativeElement.querySelector('.page-title')?.textContent?.trim() ?? '';
   }
@@ -100,6 +113,33 @@ describe('CcfScreen', () => {
 
     expect(pageTitleText()).toContain('תיק עמילות');
     expect(headerFileNumber()).toBe('CCF1042');
+  });
+
+  it("replaces the CCF paperwork card with the linked orders' documents once a shipping case is selected", () => {
+    createFixture();
+    flushShipmentFiles();
+    const cardTitles = (): string[] =>
+      Array.from(
+        fixture.nativeElement.querySelectorAll('.ccf-card__title') as NodeListOf<HTMLElement>,
+      ).map((el) => el.textContent!.trim());
+
+    expect(cardTitles()).toEqual(['פרטי תיק', 'ניירת']);
+
+    internals.selectedShipmentFileId.set(42);
+    fixture.detectChanges();
+    flushOrderDocuments();
+    fixture.detectChanges();
+
+    expect(cardTitles()).toEqual(['פרטי תיק', 'מסמכי ההזמנות בתיק השילוח']);
+    const orderTitles = Array.from(
+      fixture.nativeElement.querySelectorAll('.related-docs__title') as NodeListOf<HTMLElement>,
+    ).map((el) => el.textContent!.trim());
+    expect(orderTitles).toEqual(['הזמנה 1000', 'הזמנה 1001']);
+    expect(fixture.nativeElement.querySelectorAll('app-document-staging-list').length).toBe(2);
+
+    internals.selectedShipmentFileId.set(null);
+    fixture.detectChanges();
+    expect(cardTitles()).toEqual(['פרטי תיק', 'ניירת']);
   });
 
   describe('onSave', () => {
@@ -154,6 +194,59 @@ describe('CcfScreen', () => {
       expect(openClassificationFor).toHaveBeenCalledWith({ kind: 'ccf', id: 100 });
     });
 
+    it('uploads files staged for the linked orders to those orders, not to the CCF', () => {
+      createFixture();
+      flushShipmentFiles();
+      const openClassificationFor = vi
+        .spyOn(nav, 'openClassificationFor')
+        .mockImplementation(() => {});
+      const invoice = new File(['x'], 'invoice.pdf', { type: 'application/pdf' });
+      const ccfOnly = new File(['y'], 'ccf.pdf', { type: 'application/pdf' });
+
+      internals.stagedFiles.set({ BILL_OF_LADING: [ccfOnly] }); // hidden while linked — not uploaded
+      internals.selectedShipmentFileId.set(42);
+      internals.stagedOrderFiles.set({ 1001: { SUPPLIER_INVOICE: [invoice] } });
+      internals.onSave();
+
+      httpMock
+        .expectOne({ method: 'POST', url: '/api/ccf' })
+        .flush({ ...SAVED_CCF, shipmentFileId: 42, shipmentFileMblNumber: 'MBL-987654321' });
+
+      const upload = httpMock.expectOne(
+        (req) => req.method === 'POST' && req.url === '/api/import-files',
+      );
+      expect(upload.request.params.get('orderId')).toBe('1001');
+      expect(upload.request.params.get('ccfId')).toBeNull();
+      const body = upload.request.body as FormData;
+      expect(body.get('documentType')).toBe('SUPPLIER_INVOICE');
+      expect((body.get('files') as File).name).toBe('invoice.pdf');
+      upload.flush([]);
+
+      expect(openClassificationFor).toHaveBeenCalledWith({ kind: 'ccf', id: 100 });
+    });
+
+    it('stays on the page when an order upload fails', () => {
+      createFixture();
+      flushShipmentFiles();
+      const openClassificationFor = vi
+        .spyOn(nav, 'openClassificationFor')
+        .mockImplementation(() => {});
+
+      internals.selectedShipmentFileId.set(42);
+      internals.stagedOrderFiles.set({ 1000: { BILL_OF_LADING: [new File(['x'], 'bl.pdf')] } });
+      internals.onSave();
+
+      httpMock
+        .expectOne({ method: 'POST', url: '/api/ccf' })
+        .flush({ ...SAVED_CCF, shipmentFileId: 42, shipmentFileMblNumber: 'MBL-987654321' });
+      httpMock
+        .expectOne((req) => req.method === 'POST' && req.url === '/api/import-files')
+        .flush(null, { status: 500, statusText: 'Server Error' });
+
+      expect(openClassificationFor).not.toHaveBeenCalled();
+      expect(internals.errorMessage()).toBe('התיק נשמר, אך העלאת חלק מהמסמכים נכשלה');
+    });
+
     it('preserves the selection and shows the error when the save fails', () => {
       createFixture();
       flushShipmentFiles();
@@ -167,6 +260,7 @@ describe('CcfScreen', () => {
           { status: 400, statusText: 'Bad Request' },
         );
       fixture.detectChanges();
+      flushOrderDocuments();
 
       expect(internals.errorMessage()).toBe(
         'שמירת תיק הסליקה נכשלה: לתיק השילוח הזה כבר יש תיק סליקת מכס',
@@ -188,7 +282,9 @@ describe('CcfScreen', () => {
         .flush({ ...SAVED_CCF, shipmentFileId: 42, shipmentFileMblNumber: 'MBL-987654321' });
       fixture.detectChanges();
       // Read-only mode mounts the inline ImportFilesPanel, which loads its own list.
-      httpMock.expectOne((req) => req.url === '/api/import-files').flush([]);
+      httpMock
+        .expectOne((req) => req.url === '/api/import-files' && req.params.get('ccfId') === '100')
+        .flush([]);
 
       expect(nav.viewCcfId()).toBeNull(); // consumed once
       expect(internals.isReadOnly()).toBe(true);

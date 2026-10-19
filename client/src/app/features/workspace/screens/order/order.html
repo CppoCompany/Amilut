@@ -318,10 +318,20 @@
             [uploaded]="uploadedFiles()"
             [showMissing]="showMissingDocuments()"
             [openingId]="openingFileId()"
+            [deletable]="true"
+            [deletingId]="deletingFileId()"
             bannerText="הקבצים יועלו לשרת לאחר שמירת ההזמנה"
             (openUploaded)="openUploadedFile($event)"
+            (deleteUploaded)="requestDeleteFile($event)"
           />
         </section>
+        @if (fileToDelete(); as file) {
+          <app-confirm-dialog
+            [message]="'למחוק את הקובץ „' + file.name + '”? לא ניתן לבטל פעולה זו.'"
+            (confirmed)="confirmDeleteFile()"
+            (cancelled)="fileToDelete.set(null)"
+          />
+        }
       }
     }
   }

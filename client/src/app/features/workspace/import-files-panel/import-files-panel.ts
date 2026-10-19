@@ -21,6 +21,7 @@ import {
 import type { FilingContext } from '../../../api/filing-context.model';
 import { ImportFilesApi } from '../../../api/import-files-api';
 import type { UploadedImportFileDto } from '../../../api/models';
+import { ConfirmDialog } from '../../../shared/confirm-dialog/confirm-dialog';
 
 /** One row of a category's documents list — a file stored on the server for
  *  the current context. */
@@ -58,6 +59,7 @@ export const BLOB_URL_TTL_MS = 60_000;
  */
 @Component({
   selector: 'app-import-files-panel',
+  imports: [ConfirmDialog],
   templateUrl: './import-files-panel.html',
   styleUrl: './import-files-panel.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -88,6 +90,10 @@ export class ImportFilesPanel {
   protected readonly loading = signal(false);
   /** Row id of the file currently being fetched for viewing, if any. */
   protected readonly openingId = signal<number | null>(null);
+  /** The file awaiting delete confirmation; drives the confirm dialog. */
+  protected readonly docToDelete = signal<ShipmentDocument | null>(null);
+  /** Row id of the file currently being deleted, if any. */
+  protected readonly deletingId = signal<number | null>(null);
 
   /** `documents()` grouped into one section per offered type (in
    *  `documentTypes()`'s order — Bill of Lading / Supplier Invoice / Packing
@@ -204,6 +210,40 @@ export class ImportFilesPanel {
         error: () => {
           viewer?.close();
           this.errorMessage.set(`פתיחת הקובץ "${doc.name}" נכשלה`);
+        },
+      });
+  }
+
+  /** X → asks for confirmation first (see `confirmDelete`). */
+  protected requestDelete(doc: ShipmentDocument): void {
+    if (this.deletingId() !== null) return;
+    this.docToDelete.set(doc);
+  }
+
+  /** Deletes the confirmed file on the server and drops its row. */
+  protected confirmDelete(): void {
+    const doc = this.docToDelete();
+    const context = this.context();
+    this.docToDelete.set(null);
+    if (!doc || context === null) return;
+    this.deletingId.set(doc.id);
+    this.successMessage.set(null);
+    this.errorMessage.set(null);
+
+    this.importFilesApi
+      .deleteImportFile(context, doc.id)
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => this.deletingId.set(null)),
+      )
+      .subscribe({
+        next: () => {
+          if (!sameContext(this.context(), context)) return;
+          this.documents.update((docs) => docs.filter((d) => d.id !== doc.id));
+        },
+        error: () => {
+          if (!sameContext(this.context(), context)) return;
+          this.errorMessage.set(`מחיקת הקובץ "${doc.name}" נכשלה`);
         },
       });
   }
