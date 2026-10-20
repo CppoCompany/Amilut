@@ -1,7 +1,10 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   ParseIntPipe,
   Post,
@@ -18,6 +21,7 @@ import {
   ApiBody,
   ApiConsumes,
   ApiCreatedResponse,
+  ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiProduces,
@@ -168,6 +172,30 @@ export class ImportFilesController {
       disposition: inlineDisposition(file.name),
       length: file.size,
     });
+  }
+
+  /**
+   * Deletes one filed document — every upload of that file name in the
+   * order/CCF, and the file on disk.
+   */
+  @Delete('files/:fileId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiNoContentResponse({ description: 'The file was deleted.' })
+  @ApiBadRequestResponse({
+    description:
+      'fileId is not a positive integer, or neither/both of orderId/ccfId given.',
+  })
+  @ApiNotFoundResponse({
+    description: 'Unknown order/CCF, or no such file in it.',
+  })
+  deleteImportFile(
+    @Param('fileId', ParseIntPipe) fileId: number,
+    @Query() context: ImportFilesContextQuery,
+  ): Promise<void> {
+    return this.importFiles.deleteImportFile(
+      toImportFilesContext(context),
+      fileId,
+    );
   }
 
   /**

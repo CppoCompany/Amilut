@@ -222,7 +222,7 @@ export interface paths {
         get: operations["ImportFilesController_getImportFile"];
         put?: never;
         post?: never;
-        delete?: never;
+        delete: operations["ImportFilesController_deleteImportFile"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1968,6 +1968,45 @@ export interface operations {
                 content?: never;
             };
             /** @description Unknown order/CCF, no such file in it, or the file is missing on disk. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ImportFilesController_deleteImportFile: {
+        parameters: {
+            query?: {
+                /** @description orders.id */
+                orderId?: number;
+                /** @description customs_clearance_files.id */
+                ccfId?: number;
+            };
+            header?: never;
+            path: {
+                fileId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The file was deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description fileId is not a positive integer, or neither/both of orderId/ccfId given. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unknown order/CCF, or no such file in it. */
             404: {
                 headers: {
                     [name: string]: unknown;

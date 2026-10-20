@@ -82,6 +82,17 @@ export class ImportFilesApi {
   }
 
   /**
+   * `DELETE /api/import-files/files/:fileId?orderId=|ccfId=` — removes the
+   * filed document (every upload of that file name in the order/CCF) and its
+   * bytes on disk.
+   */
+  deleteImportFile(context: FilingContext, fileId: number): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/files/${fileId}`, {
+      params: contextParams(context),
+    });
+  }
+
+  /**
    * `POST /api/import-files?orderId=|ccfId=` — stores every file under
    * `storage/<order-N|ccf-N>/` on the server, keeping the original names,
    * and records each one as a `documentType` document of that order/CCF.

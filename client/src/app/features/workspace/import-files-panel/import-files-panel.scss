@@ -64,3 +64,9 @@
   background: var(--bg-color);
   border-radius: var(--radius-md);
 }
+
+// X beside "פתח" — removes the file (after a confirm dialog).
+.delete-btn {
+  margin-inline-start: 6px;
+  vertical-align: middle;
+}

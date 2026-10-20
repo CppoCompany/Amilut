@@ -326,4 +326,62 @@ describe('ImportFilesPanel', () => {
       expect(openButton().disabled).toBe(false);
     });
   });
+
+  describe('deleting a file', () => {
+    const FILE_URL = `/api/import-files/files/${INVOICE.id}?orderId=1000`;
+
+    beforeEach(() => flushList([INVOICE, PACKING_LIST]));
+
+    function deleteButtons(): HTMLButtonElement[] {
+      return Array.from(fixture.nativeElement.querySelectorAll('.documents-table .delete-btn'));
+    }
+    function dialogButton(label: string): HTMLButtonElement {
+      return Array.from(
+        fixture.nativeElement.querySelectorAll('app-confirm-dialog button') as NodeListOf<HTMLButtonElement>,
+      ).find((b) => b.textContent?.trim() === label)!;
+    }
+    function rowNames(): string[] {
+      return Array.from(
+        fixture.nativeElement.querySelectorAll('.documents-table tbody tr td:first-child') as NodeListOf<HTMLElement>,
+      ).map((td) => td.textContent!.trim());
+    }
+
+    it('asks for confirmation, then deletes the file and drops its row', () => {
+      deleteButtons()[0].click();
+      fixture.detectChanges();
+      httpMock.expectNone(FILE_URL); // nothing sent before confirming
+
+      dialogButton('מחק').click();
+      fixture.detectChanges();
+
+      const req = httpMock.expectOne(FILE_URL);
+      expect(req.request.method).toBe('DELETE');
+      req.flush(null, { status: 204, statusText: 'No Content' });
+      fixture.detectChanges();
+
+      expect(rowNames()).toEqual([PACKING_LIST.name]);
+      expect(fixture.nativeElement.querySelector('app-confirm-dialog')).toBeNull();
+    });
+
+    it('does nothing when the confirmation is cancelled', () => {
+      deleteButtons()[0].click();
+      fixture.detectChanges();
+      dialogButton('ביטול').click();
+      fixture.detectChanges();
+
+      httpMock.expectNone(FILE_URL);
+      expect(rowNames()).toHaveLength(2);
+    });
+
+    it('keeps the row and reports an error when the delete fails', () => {
+      deleteButtons()[0].click();
+      fixture.detectChanges();
+      dialogButton('מחק').click();
+      httpMock.expectOne(FILE_URL).flush(null, { status: 500, statusText: 'Server Error' });
+      fixture.detectChanges();
+
+      expect(rowNames()).toHaveLength(2);
+      expect(internals.errorMessage()).toBe('מחיקת הקובץ "invoice.pdf" נכשלה');
+    });
+  });
 });
