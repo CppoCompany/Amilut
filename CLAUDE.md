@@ -12,7 +12,7 @@ amilut_tax/
 ├── .claude/       Claude Code config for this project
 │   ├── agents/    Subagent definitions (none yet — see README)
 │   └── skills/    Project-scoped skills: ui-verify (browser check via Chrome DevTools MCP)
-├── .mcp.json      Project MCP servers: chrome-devtools (approve once with /mcp)
+├── .mcp.json      Project MCP servers: chrome-devtools, playwright, figma (approve once with /mcp)
 └── CLAUDE.md      This file
 ```
 
