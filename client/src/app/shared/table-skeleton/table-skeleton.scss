@@ -1,0 +1,45 @@
+:host {
+  display: block;
+  position: relative;
+}
+
+.skeleton-table {
+  display: flex;
+  flex-direction: column;
+}
+
+.skeleton-table__row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 45%, transparent);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.skeleton-table__cell {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+}
+
+.skeleton {
+  display: block;
+  height: 12px;
+}
+
+// The announcement for assistive tech only; the bars above are the visual.
+.data-table__empty {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

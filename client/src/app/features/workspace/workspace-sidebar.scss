@@ -1,0 +1,424 @@
+/* Sidebar chrome of the workspace shell: the collapsible rail/tree, its
+   tooltips and flyouts, and the unread badge. Split out of workspace.scss so
+   each component stylesheet stays inside the build budget. */
+/* ── Sidebar ───────────────────────────────────────────────────────────── */
+.sidebar {
+  width: 248px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border-inline-end: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
+  z-index: 5;
+  transition: width 200ms var(--ease-out-expo);
+}
+
+.sidebar--collapsed {
+  width: 64px;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 48px;
+  flex-shrink: 0;
+  padding: 0 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 60%, transparent);
+}
+
+.sidebar--collapsed .sidebar-header {
+  justify-content: center;
+  padding: 0;
+}
+
+.sidebar-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-fg-muted);
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease,
+    transform 120ms var(--ease-out-quart);
+
+  &:hover {
+    background: var(--color-surface-3);
+    color: var(--color-fg);
+  }
+
+  &:active {
+    transform: scale(0.94);
+  }
+}
+
+.sidebar-header__title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-fg-muted);
+  white-space: nowrap;
+}
+
+.sidebar-menu {
+  list-style: none;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+  overflow-y: auto;
+}
+
+/* Expanded tree */
+.tree-node {
+  display: flex;
+  flex-direction: column;
+}
+
+.tree-node-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-fg);
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-align: start;
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+
+  &:hover {
+    background: var(--color-surface-3);
+  }
+
+  &.active {
+    color: var(--color-brand);
+  }
+}
+
+.tree-node-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+
+  i {
+    width: 18px;
+    text-align: center;
+    color: var(--color-fg-muted);
+    font-size: 0.9rem;
+  }
+
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.tree-node-toggle.active .tree-node-label i {
+  color: var(--color-accent);
+}
+
+/* One chevron, rotated: in RTL "left" points into the content, "down" = open. */
+.tree-node-chevron {
+  font-size: 0.68rem;
+  color: var(--color-fg-subtle);
+  transition: transform 160ms var(--ease-out-quart);
+}
+
+.tree-node-chevron--open {
+  transform: rotate(-90deg);
+}
+
+.tree-node-children {
+  display: none;
+  position: relative;
+  list-style: none;
+  margin: 2px 0 4px;
+  padding-inline-start: 18px;
+
+  // 1px guide line under the parent's icon column.
+  &::before {
+    content: '';
+    position: absolute;
+    inset-inline-start: 19px;
+    top: 4px;
+    bottom: 4px;
+    width: 1px;
+    background: color-mix(in srgb, var(--color-border) 90%, transparent);
+  }
+
+  &.open {
+    display: block;
+  }
+}
+
+.tree-child-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: var(--radius-md);
+  color: var(--color-fg);
+  font-size: 0.9rem;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+
+  i {
+    width: 18px;
+    text-align: center;
+    color: var(--color-fg-muted);
+    font-size: 0.85rem;
+  }
+
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &:hover {
+    background: var(--color-surface-3);
+  }
+
+  &.active {
+    background: var(--color-accent-soft);
+    color: var(--color-brand);
+    font-weight: 600;
+
+    i {
+      color: var(--color-accent);
+    }
+  }
+}
+
+/* Collapsed rail */
+.sidebar-menu--icons {
+  overflow: visible; /* tooltips/flyouts pop out past the rail's edge */
+  gap: 4px;
+}
+
+.icon-nav-group {
+  position: relative;
+}
+
+.icon-nav-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 44px;
+  margin: 0 auto;
+  border-radius: var(--radius-md);
+  color: var(--color-fg-muted);
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease,
+    transform 120ms var(--ease-out-quart);
+
+  i {
+    font-size: 1.05rem;
+  }
+
+  &:hover,
+  &:focus-visible {
+    background: var(--color-surface-3);
+    color: var(--color-fg);
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+
+  &.active {
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+  }
+}
+
+/* Tooltip — standalone leaves. Pops out to the icon's left, i.e. toward the
+   content, since the rail sits at the right edge. */
+.icon-nav-tooltip {
+  position: absolute;
+  right: calc(100% + 10px);
+  top: 50%;
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--color-fg);
+  color: var(--color-fg-inverse);
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: var(--shadow-md);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(-50%) translateX(4px);
+  transform-origin: right center;
+  transition:
+    opacity 120ms ease,
+    transform 160ms var(--ease-out-quart),
+    visibility 0s linear 120ms;
+  z-index: 20;
+}
+
+/* Flyout — groups only, listing their children. */
+.icon-nav-flyout {
+  position: absolute;
+  right: calc(100% + 8px);
+  top: 0;
+  min-width: 210px;
+  padding: 6px;
+  background: var(--color-surface);
+  border: 1px solid color-mix(in srgb, var(--color-border) 80%, transparent);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-popover);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateX(4px) scale(0.98);
+  transform-origin: top right;
+  transition:
+    opacity 120ms ease,
+    transform 220ms var(--ease-spring),
+    visibility 0s linear 120ms;
+  z-index: 20;
+
+  // Invisible bridge over the 8px gap so the pointer can travel from the
+  // icon to the flyout without the hover dropping.
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: -8px;
+    width: 8px;
+  }
+}
+
+.icon-nav-group:hover .icon-nav-tooltip,
+.icon-nav-group:focus-within .icon-nav-tooltip,
+.icon-nav-group:hover .icon-nav-flyout,
+.icon-nav-group:focus-within .icon-nav-flyout {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(-50%) translateX(0);
+  transition-delay: 0s;
+}
+
+.icon-nav-group:hover .icon-nav-flyout,
+.icon-nav-group:focus-within .icon-nav-flyout {
+  transform: translateX(0) scale(1);
+  pointer-events: auto;
+}
+
+.icon-nav-flyout__title {
+  padding: 6px 10px 8px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--color-fg-subtle);
+}
+
+.icon-nav-flyout__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: var(--radius-md);
+  color: var(--color-fg);
+  font-size: 0.9rem;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+
+  i {
+    width: 16px;
+    text-align: center;
+    color: var(--color-fg-muted);
+    font-size: 0.82rem;
+  }
+
+  &:hover,
+  &:focus-visible {
+    background: var(--color-surface-3);
+  }
+
+  &.active {
+    background: var(--color-accent-soft);
+    color: var(--color-brand);
+    font-weight: 600;
+
+    i {
+      color: var(--color-accent);
+    }
+  }
+}
+
+/* Unread-notification badge on "איזור האישי" — same look as the header
+   bell's badge. In the expanded tree it sits at the row's far (left) end;
+   on the collapsed rail it overlaps the icon's corner. */
+.nav-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  margin-inline-start: auto;
+  border-radius: 999px;
+  background: var(--color-danger);
+  color: var(--color-fg-inverse);
+  font-size: 0.68rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.nav-badge--icon {
+  position: absolute;
+  top: 5px;
+  inset-inline-end: 5px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  margin: 0;
+  font-size: 0.62rem;
+  box-shadow: 0 0 0 2px var(--color-surface);
+}
+
+/* ── Reduced motion ────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .sidebar {
+    transition: none;
+  }
+
+  .icon-nav-tooltip,
+  .icon-nav-flyout {
+    transition-property: opacity, visibility;
+  }
+}

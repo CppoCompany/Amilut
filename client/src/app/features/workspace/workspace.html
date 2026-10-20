@@ -1,23 +1,60 @@
 <!-- Top Header -->
-<header class="top-header">
-  <div class="header-right">
-    <i class="fa-solid fa-anchor"></i>
-    <span>עמילות מכס & שילוח</span>
+<header class="app-header">
+  <div class="app-header__side">
+    <button type="button" class="brand" title="איזור האישי" (click)="goHome()">
+      <span class="brand__mark"><i class="fa-solid fa-anchor" aria-hidden="true"></i></span>
+      <span class="brand__name">עמילות מכס & שילוח</span>
+    </button>
   </div>
-  <div class="header-left">
+
+  <button
+    type="button"
+    class="cmdk-trigger"
+    aria-keyshortcuts="Control+K"
+    title="מעבר מהיר למסך (Ctrl+K)"
+    (click)="openPalette()"
+  >
+    <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+    <span class="cmdk-trigger__label">מעבר מהיר למסך…</span>
+    <span class="cmdk-trigger__keys" aria-hidden="true">
+      <kbd class="kbd">Ctrl</kbd>
+      <kbd class="kbd">K</kbd>
+    </span>
+  </button>
+
+  <div class="app-header__side app-header__side--end">
     <app-notification-bell />
-    <div class="user-info">
-      <span>שלום, {{ auth.user()?.name }}</span>
-      <i class="fa-solid fa-circle-user fa-lg"></i>
+
+    <div class="user-menu" #userMenu>
       <button
         type="button"
-        class="logout-button"
-        title="התנתק"
-        aria-label="התנתק"
-        (click)="auth.logout()"
+        class="user-menu__trigger"
+        aria-haspopup="menu"
+        [attr.aria-expanded]="userMenuOpen()"
+        (click)="toggleUserMenu()"
       >
-        <i class="fa-solid fa-right-from-bracket"></i>
+        <span class="avatar" aria-hidden="true">{{ initials() }}</span>
+        <span class="user-menu__name">{{ auth.user()?.name }}</span>
+        <i class="fa-solid fa-chevron-down user-menu__chevron" aria-hidden="true"></i>
       </button>
+
+      @if (userMenuOpen()) {
+        <div class="menu" role="menu" aria-label="חשבון">
+          <div class="menu__header">
+            <div class="menu__name">שלום, {{ auth.user()?.name }}</div>
+            <div class="menu__meta">{{ auth.user()?.email }}</div>
+          </div>
+          <button
+            type="button"
+            role="menuitem"
+            class="menu__item menu__item--danger"
+            (click)="auth.logout()"
+          >
+            <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
+            התנתק
+          </button>
+        </div>
+      }
     </div>
   </div>
 </header>
@@ -36,7 +73,12 @@
         [attr.aria-expanded]="sidebarExpanded()"
         (click)="toggleSidebar()"
       >
-        <i class="fa-solid" [class.fa-bars]="!sidebarExpanded()" [class.fa-xmark]="sidebarExpanded()"></i>
+        <i
+          class="fa-solid"
+          [class.fa-bars]="!sidebarExpanded()"
+          [class.fa-xmark]="sidebarExpanded()"
+          aria-hidden="true"
+        ></i>
       </button>
       @if (sidebarExpanded()) {
         <span class="sidebar-header__title">תפריט ראשי</span>
@@ -44,7 +86,6 @@
     </div>
 
     @if (sidebarExpanded()) {
-      <!-- Expanded: unchanged from before the icon-only mode existed. -->
       <ul class="sidebar-menu">
         @for (entry of nav.tree(); track entry.id) {
           @if (isGroup(entry) && !entry.hidden) {
@@ -57,13 +98,13 @@
                 (click)="nav.toggleNode(entry.id)"
               >
                 <span class="tree-node-label">
-                  <i [class]="entry.icon"></i>
+                  <i [class]="entry.icon" aria-hidden="true"></i>
                   <span>{{ entry.label }}</span>
                 </span>
                 <i
-                  class="fa-solid"
-                  [class.fa-chevron-down]="nav.isNodeExpanded(entry.id)"
-                  [class.fa-chevron-left]="!nav.isNodeExpanded(entry.id)"
+                  class="fa-solid fa-chevron-left tree-node-chevron"
+                  [class.tree-node-chevron--open]="nav.isNodeExpanded(entry.id)"
+                  aria-hidden="true"
                 ></i>
               </button>
               <ul class="tree-node-children" [class.open]="nav.isNodeExpanded(entry.id)">
@@ -75,7 +116,7 @@
                       [class.active]="nav.isChildActive(child.id)"
                       (click)="$event.preventDefault(); nav.selectChild(child)"
                     >
-                      <i [class]="child.icon"></i>
+                      <i [class]="child.icon" aria-hidden="true"></i>
                       <span>{{ child.label }}</span>
                     </a>
                   </li>
@@ -91,7 +132,7 @@
                 [attr.aria-label]="navLabel(entry)"
                 (click)="$event.preventDefault(); nav.selectChild(entry)"
               >
-                <i [class]="entry.icon"></i>
+                <i [class]="entry.icon" aria-hidden="true"></i>
                 <span>{{ entry.label }}</span>
                 @if (badgeCount(entry) > 0) {
                   <span class="nav-badge" aria-hidden="true">{{ badgeCount(entry) }}</span>
@@ -118,9 +159,10 @@
                 [attr.aria-label]="entry.label"
                 (click)="$event.preventDefault()"
               >
-                <i [class]="entry.icon"></i>
+                <i [class]="entry.icon" aria-hidden="true"></i>
               </a>
               <div class="icon-nav-flyout">
+                <div class="icon-nav-flyout__title">{{ entry.label }}</div>
                 @for (child of entry.children; track child.id) {
                   <a
                     href="#"
@@ -128,7 +170,7 @@
                     [class.active]="nav.isChildActive(child.id)"
                     (click)="$event.preventDefault(); nav.selectChild(child)"
                   >
-                    <span class="icon-nav-flyout__bullet"></span>
+                    <i [class]="child.icon" aria-hidden="true"></i>
                     {{ child.label }}
                   </a>
                 }
@@ -144,7 +186,7 @@
                 [title]="entry.label"
                 (click)="$event.preventDefault(); nav.selectChild(entry)"
               >
-                <i [class]="entry.icon"></i>
+                <i [class]="entry.icon" aria-hidden="true"></i>
                 @if (badgeCount(entry) > 0) {
                   <span class="nav-badge nav-badge--icon" aria-hidden="true">{{ badgeCount(entry) }}</span>
                 }
@@ -210,3 +252,6 @@
     </div>
   </main>
 </div>
+
+<app-command-palette />
+<app-toaster />

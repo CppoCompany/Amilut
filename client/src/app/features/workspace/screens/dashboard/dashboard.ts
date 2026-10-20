@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   DestroyRef,
   effect,
   inject,
@@ -24,6 +25,8 @@ import type {
   NotificationDto,
 } from '../../../../api/models';
 import { NotificationsApi } from '../../../../api/notifications-api';
+import { TableSkeleton } from '../../../../shared/table-skeleton/table-skeleton';
+import { ToastService } from '../../../../shared/toast/toast.service';
 import { isTreeChildGroup, TreeChild } from '../../navigation.model';
 import { NavigationService } from '../../navigation.service';
 import { NotificationsStateService } from '../../notifications-state.service';
@@ -50,6 +53,7 @@ export const DASHBOARD_ACTION_ROW_IDS = {
 /** "איזור האישי" — landing screen: quick actions, the "הודעות" widget and five compact "latest 5" cards. */
 @Component({
   selector: 'app-dashboard-screen',
+  imports: [TableSkeleton],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -59,7 +63,16 @@ export class DashboardScreen {
   private readonly nav = inject(NavigationService);
   private readonly notificationsApi = inject(NotificationsApi);
   private readonly notificationsState = inject(NotificationsStateService);
+  private readonly toast = inject(ToastService);
   private readonly destroyRef = inject(DestroyRef);
+
+  /** "יום שלישי, 20 באוקטובר 2026" — the dashboard is a snapshot of now. */
+  protected readonly today = new Intl.DateTimeFormat('he-IL', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(new Date());
 
   protected readonly data = signal<DashboardResponseDto | null>(null);
   protected readonly loading = signal(false);
@@ -72,6 +85,8 @@ export class DashboardScreen {
   protected readonly messages = signal<NotificationDto[]>([]);
   protected readonly messagesLoading = signal(false);
   protected readonly messagesError = signal<string | null>(null);
+  /** How many were unread when fetched — the "N חדשות" chip in the card header. */
+  protected readonly newMessageCount = computed(() => this.messages().filter((m) => !m.isRead).length);
 
   protected readonly orderStatusLabels = ORDER_STATUS_LABELS;
   protected readonly shippingTypeLabels = MBL_SHIPPING_TYPE_LABELS;
@@ -204,6 +219,7 @@ export class DashboardScreen {
   }
 
   private load(): void {
+    const recovering = this.errorMessage() !== null;
     this.loading.set(true);
     this.errorMessage.set(null);
     this.dashboardApi
@@ -213,7 +229,10 @@ export class DashboardScreen {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
-        next: (response) => this.data.set(response),
+        next: (response) => {
+          this.data.set(response);
+          if (recovering) this.toast.success('לוח הבקרה עודכן');
+        },
         error: () => {
           this.data.set(null);
           this.errorMessage.set('טעינת לוח הבקרה נכשלה');
@@ -227,6 +246,7 @@ export class DashboardScreen {
    * the badge (and the effect above) honest.
    */
   private loadMessages(): void {
+    const recovering = this.messagesError() !== null;
     this.messagesLoading.set(true);
     this.messagesError.set(null);
     this.notificationsApi
@@ -238,6 +258,7 @@ export class DashboardScreen {
       .subscribe({
         next: (messages) => {
           this.messages.set(messages);
+          if (recovering) this.toast.success('ההודעות עודכנו');
           if (!messages.some((m) => !m.isRead)) return;
           const upToId = Math.max(...messages.map((m) => m.id));
           this.notificationsState

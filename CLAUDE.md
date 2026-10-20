@@ -16,7 +16,8 @@ amilut_tax/
 └── CLAUDE.md      This file
 ```
 
-- **client** — Angular CLI 21.1, TypeScript 5.9, standalone components, SCSS.
+- **client** — Angular CLI 21.1, TypeScript 5.9, standalone components, SCSS,
+  Tailwind CSS v4 (utilities only, see below).
   Dev server on `http://localhost:4200`; proxies `/api/*` to the server.
 - **server** — NestJS 11, TypeScript 5.7. Listens on `http://localhost:3000`
   with a global `/api` route prefix.
@@ -82,6 +83,29 @@ new `SQL-Migration/NNN_<name>.sql` file with `IF NOT EXISTS` guards, then update
 
 App connection for the server: role `Admin` / password `Admin`, database
 `Amilut`.
+
+### Client styling: tokens, Tailwind, component SCSS
+
+- `client/src/tailwind.css` is the Tailwind v4 entry (listed first in
+  `angular.json` `styles`; PostCSS plugin in `client/.postcssrc.json`). It
+  imports only the theme and utilities layers — **no preflight** — so screens
+  that still use plain SCSS keep their look. All design tokens live in its
+  `@theme static` block (`--color-*`, `--radius-*`, `--shadow-*`, `--ease-*`).
+- `client/src/styles.scss` holds the shared component classes (`.btn`,
+  `.data-table`, `.status-pill`, `.form-section`, …). Its legacy variables
+  (`--primary-blue`, `--border-color`, …) alias the Tailwind tokens, so every
+  screen follows the palette without edits.
+- Utilities sit in the `utilities` cascade layer, so an unlayered rule in a
+  component SCSS or in `styles.scss` always beats a utility on the same
+  element: give each property one owner. Component SCSS keeps states,
+  pseudo-elements, `@starting-style` entrances and keyframes.
+- The workspace shell (`features/workspace/`) owns the header, sidebar,
+  Ctrl+K command palette and toast stack (`shared/toast/ToastService`:
+  `success()` / `error()` / `info()` from any component). Loading states use
+  `shared/table-skeleton`. Icons are Font Awesome 6 (CDN link in `index.html`).
+- Changing `angular.json` or `.postcssrc.json` requires restarting `ng serve`.
+- Production budgets: `anyComponentStyle` errors above 8 kB — split a large
+  component stylesheet with `styleUrls` rather than raising the budget.
 
 ### API contract: server → client enums and types
 

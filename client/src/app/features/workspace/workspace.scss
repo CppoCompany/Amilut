@@ -1,5 +1,7 @@
 /* The workspace fills the viewport as a vertical flex column: the fixed-height
-   header on top, the sidebar + content row filling the rest (mock's <body> layout). */
+   header on top, the sidebar + content row filling the rest. All shell chrome
+   (header, sidebar rail/tree, content area) is styled here; tokens come from
+   src/tailwind.css. The document is RTL, so the sidebar sits at the right. */
 :host {
   display: flex;
   flex-direction: column;
@@ -7,256 +9,349 @@
   overflow: hidden;
 }
 
-/* ── Collapsible sidebar (icon-only by default) ──────────────────────────────
-   `.sidebar`/`.sidebar-header`/`.sidebar-menu` base look lives in the global
-   styles.scss — these rules only add the collapsed/expanded toggle behavior
-   on top, scoped to this component. */
-.sidebar {
-  transition: width 0.2s ease-in-out;
+/* ── Header ────────────────────────────────────────────────────────────── */
+.app-header {
+  height: 56px;
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: 1fr minmax(0, auto) 1fr;
+  align-items: center;
+  gap: 16px;
+  padding: 0 16px 0 20px;
+  background: var(--color-surface);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
+  z-index: 10;
 }
 
-.sidebar--collapsed {
-  width: 72px;
+.app-header__side {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 
-.sidebar--collapsed .sidebar-header {
-  justify-content: center;
-  padding: 16px 0;
+.app-header__side--end {
+  justify-content: flex-end;
+  gap: 4px;
 }
 
-.sidebar-toggle {
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 8px 4px 4px;
+  margin-inline-start: -8px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-fg);
+  cursor: pointer;
+  transition: background-color 120ms ease;
+
+  &:hover {
+    background: var(--color-surface-2);
+  }
+}
+
+.brand__mark {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 32px;
   height: 32px;
-  flex-shrink: 0;
-  border: none;
   border-radius: var(--radius-md);
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-  transition: var(--transition);
-
-  &:hover,
-  &:focus-visible {
-    background-color: rgba(255, 255, 255, 0.15);
-    outline: none;
-  }
+  background: var(--color-brand);
+  color: var(--color-fg-inverse);
+  font-size: 0.95rem;
 }
 
-/* A subtle "pressed" fill while collapsed, echoing a hamburger toggle that
-   stays visibly "on" until the menu is opened back up. */
-.sidebar--collapsed .sidebar-toggle {
-  background-color: rgba(255, 255, 255, 0.18);
-}
-
-.sidebar-header__title {
+.brand__name {
+  font-size: 0.98rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   white-space: nowrap;
 }
 
-/* The collapsed rail must not clip — tooltips pop out to its left, past the
-   sidebar's own edge, so this stays `visible` rather than the expanded
-   menu's scrollable `overflow-y: auto`. */
-.sidebar-menu--icons {
-  overflow: visible;
-  padding: 12px 0;
+/* Search-looking launcher for the Ctrl+K palette. */
+.cmdk-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  width: min(420px, 100%);
+  height: 36px;
+  padding: 0 8px 0 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+  color: var(--color-fg-muted);
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition:
+    border-color 150ms ease,
+    background-color 150ms ease,
+    box-shadow 150ms ease,
+    transform 120ms var(--ease-out-quart);
+
+  i {
+    color: var(--color-fg-subtle);
+    font-size: 0.85rem;
+  }
+
+  &:hover {
+    border-color: var(--color-border-strong);
+    background: var(--color-surface);
+  }
+
+  &:active {
+    transform: scale(0.99);
+  }
 }
 
-.icon-nav-group {
+.cmdk-trigger__label {
+  flex: 1;
+  min-width: 0;
+  text-align: start;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cmdk-trigger__keys {
+  display: inline-flex;
+  gap: 3px;
+  direction: ltr; /* "Ctrl K" reads left-to-right even inside RTL text */
+}
+
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border: 1px solid var(--color-border);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: var(--color-surface);
+  color: var(--color-fg-muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+/* User menu */
+.user-menu {
   position: relative;
 }
 
-.icon-nav-item {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 50px;
-  color: var(--text-muted);
-  text-decoration: none;
-  cursor: pointer;
-  border-right: 4px solid transparent;
-  transition: var(--transition);
-
-  i {
-    font-size: 1.1rem;
-  }
-
-  &:hover,
-  &:focus-visible {
-    background-color: var(--bg-color);
-    color: var(--secondary-blue);
-    outline: none;
-  }
-
-  &.active {
-    background-color: var(--light-blue-bg);
-    color: var(--secondary-blue);
-    border-right-color: var(--secondary-blue);
-  }
-}
-
-/* Simple tooltip — standalone leaves (no children to list). Pops out to the
-   icon's left, since the sidebar sits at the RTL layout's right edge. */
-.icon-nav-tooltip {
-  position: absolute;
-  right: calc(100% + 10px);
-  top: 50%;
-  transform: translateY(-50%) translateX(6px);
-  background: var(--primary-blue);
-  color: white;
-  font-size: 0.8rem;
-  font-weight: 600;
-  white-space: nowrap;
-  padding: 6px 12px;
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transition:
-    opacity 0.15s ease,
-    transform 0.15s ease;
-  z-index: 20;
-
-  &::after {
-    content: '';
-    position: absolute;
-    right: -4px;
-    top: 50%;
-    transform: translateY(-50%);
-    border-width: 5px 0 5px 5px;
-    border-style: solid;
-    border-color: transparent transparent transparent var(--primary-blue);
-  }
-}
-
-/* Flyout submenu — groups only, listing their children (the exact same
-   `nav.selectChild`-driven rows the expanded tree renders, just reached via
-   hover instead of expand/collapse). */
-.icon-nav-flyout {
-  position: absolute;
-  right: calc(100% + 8px);
-  top: 0;
-  min-width: 190px;
-  background: var(--card-bg);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
-  padding: 6px 0;
-  opacity: 0;
-  visibility: hidden;
-  transform: translateX(6px);
-  transition:
-    opacity 0.15s ease,
-    transform 0.15s ease;
-  z-index: 20;
-}
-
-.icon-nav-group:hover .icon-nav-tooltip,
-.icon-nav-group:focus-within .icon-nav-tooltip,
-.icon-nav-group:hover .icon-nav-flyout,
-.icon-nav-group:focus-within .icon-nav-flyout {
-  opacity: 1;
-  visibility: visible;
-  transform: translateX(0);
-}
-
-.icon-nav-tooltip,
-.icon-nav-flyout {
-  pointer-events: none;
-}
-
-.icon-nav-group:hover .icon-nav-flyout,
-.icon-nav-group:focus-within .icon-nav-flyout {
-  pointer-events: auto;
-}
-
-.icon-nav-flyout__item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 18px;
-  color: var(--text-dark);
-  font-size: 0.88rem;
-  text-decoration: none;
-  cursor: pointer;
-  transition: var(--transition);
-
-  &:hover,
-  &:focus-visible {
-    background-color: var(--bg-color);
-    color: var(--secondary-blue);
-    outline: none;
-  }
-
-  &.active {
-    color: var(--secondary-blue);
-    font-weight: 600;
-  }
-}
-
-.icon-nav-flyout__bullet {
-  width: 5px;
-  height: 5px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  background: currentColor;
-  opacity: 0.6;
-}
-
-/* Header logout icon button. Base `.user-info` layout lives in the global styles.scss. */
-.logout-button {
+.user-menu__trigger {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  margin-inline-start: 4px;
-  padding: 0;
+  gap: 8px;
+  height: 36px;
+  padding: 0 8px 0 6px;
   border: none;
   border-radius: var(--radius-md);
   background: transparent;
-  color: var(--text-muted);
-  font-size: 1rem;
+  color: var(--color-fg);
+  font-size: 0.9rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: var(--transition);
+  transition: background-color 120ms ease;
 
   &:hover,
-  &:focus-visible {
-    background-color: var(--border-color);
-    color: var(--primary-blue);
-    outline: none;
+  &[aria-expanded='true'] {
+    background: var(--color-surface-3);
   }
 }
 
-/* Unread-notification badge on "איזור האישי" — same look as the header
-   bell's badge. In the expanded tree it sits at the row's far (left) end;
-   on the collapsed rail it overlaps the icon's corner. */
-.nav-badge {
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  margin-inline-start: auto;
-  border-radius: 999px;
-  background: #ef4444;
-  color: white;
-  font-size: 0.7rem;
-  font-weight: 700;
-  line-height: 1;
+.avatar {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--color-accent-soft);
+  color: var(--color-brand);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
-.nav-badge--icon {
+.user-menu__name {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-menu__chevron {
+  font-size: 0.62rem;
+  color: var(--color-fg-subtle);
+}
+
+/* Dropdown — anchored to the trigger's end (left) edge, scales in from there. */
+.menu {
   position: absolute;
-  top: 8px;
-  right: calc(50% + 2px);
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
-  font-size: 0.65rem;
+  top: calc(100% + 6px);
+  inset-inline-end: 0;
+  min-width: 230px;
+  padding: 6px;
+  background: var(--color-surface);
+  border: 1px solid color-mix(in srgb, var(--color-border) 80%, transparent);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-popover);
+  z-index: 30;
+  transform-origin: top left;
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  transition:
+    opacity 120ms ease,
+    transform 220ms var(--ease-spring);
+}
+
+@starting-style {
+  .menu {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.97);
+  }
+}
+
+.menu__header {
+  padding: 8px 10px 10px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 60%, transparent);
+}
+
+.menu__name {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.menu__meta {
+  margin-top: 2px;
+  font-size: 0.78rem;
+  color: var(--color-fg-muted);
+  unicode-bidi: plaintext;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.menu__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-fg);
+  font-size: 0.9rem;
+  text-align: start;
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+
+  i {
+    width: 16px;
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--color-fg-muted);
+  }
+
+  &:hover {
+    background: var(--color-surface-3);
+  }
+}
+
+.menu__item--danger:hover {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+
+  i {
+    color: inherit;
+  }
+}
+
+/* ── Main row ──────────────────────────────────────────────────────────── */
+.main-container {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.content-area {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 28px;
+  overflow-y: auto;
+}
+
+/* The one authored motion moment of the shell: a new screen settles into
+   place. Short, ease-out, from an already-visible state. */
+.page-tab-panel > * {
+  animation: screen-in 220ms var(--ease-out-expo);
+}
+
+@keyframes screen-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+/* ── Narrow viewports ──────────────────────────────────────────────────── */
+@media (max-width: 760px) {
+  .app-header {
+    grid-template-columns: auto 1fr auto;
+    gap: 8px;
+    padding: 0 12px;
+  }
+
+  .brand__name,
+  .cmdk-trigger__label,
+  .cmdk-trigger__keys,
+  .user-menu__name {
+    display: none;
+  }
+
+  .cmdk-trigger {
+    width: 36px;
+    justify-content: center;
+    padding: 0;
+    margin-inline-start: auto;
+  }
+
+  .content-area {
+    padding: 16px;
+  }
+}
+
+/* ── Reduced motion ────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .page-tab-panel > * {
+    animation: screen-fade 160ms ease;
+  }
+
+  @keyframes screen-fade {
+    from {
+      opacity: 0;
+    }
+  }
+
+  .menu {
+    transition-property: opacity;
+  }
+
+  @starting-style {
+    .menu {
+      transform: none;
+    }
+  }
 }

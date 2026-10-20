@@ -8,16 +8,16 @@
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
-  padding: 10px 32px;
-  background: var(--card-bg);
-  border-bottom: 1px solid var(--border-color);
-  box-shadow: var(--shadow-sm);
+  min-height: 40px;
+  padding: 6px 28px;
+  background: var(--color-surface);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 60%, transparent);
 }
 
 .breadcrumb-trail {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   list-style: none;
   flex-wrap: wrap;
   min-width: 0;
@@ -27,51 +27,79 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 0.88rem;
-  color: var(--text-muted);
+  font-size: 0.84rem;
+  color: var(--color-fg-muted);
   white-space: nowrap;
 
   i {
-    font-size: 0.82rem;
+    font-size: 0.78rem;
+  }
+}
+
+.breadcrumb-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px;
+  margin: -3px -6px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+
+  &:hover {
+    background: var(--color-surface-3);
+    color: var(--color-fg);
   }
 }
 
 .breadcrumb-item--current {
-  color: var(--primary-blue);
-  font-weight: 700;
+  color: var(--color-fg);
+  font-weight: 600;
+
+  i {
+    color: var(--color-accent);
+  }
 }
 
 .breadcrumb-sep {
   display: flex;
   align-items: center;
-  color: var(--border-color);
-  font-size: 0.7rem;
+  color: var(--color-fg-subtle);
+  font-size: 0.6rem;
 }
 
+/* The selected Order / Shipping Case, as a chip on the bar's end side. */
 .breadcrumb-selection {
   display: flex;
   align-items: center;
   gap: 2px;
   flex-shrink: 0;
-  background: var(--light-blue-bg);
-  border: 1px solid var(--secondary-blue);
+  padding: 2px 3px 2px 6px;
+  background: var(--color-accent-soft);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 25%, transparent);
   border-radius: 999px;
-  padding: 4px 6px 4px 4px;
 }
 
 .breadcrumb-selection__label {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: transparent;
-  border: none;
-  font-family: inherit;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--secondary-blue);
-  cursor: pointer;
-  padding: 2px 4px;
   max-width: 320px;
+  padding: 3px 8px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-brand);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 120ms ease;
 
   span {
     overflow: hidden;
@@ -80,8 +108,13 @@
   }
 
   i {
-    font-size: 0.8rem;
     flex-shrink: 0;
+    font-size: 0.75rem;
+    color: var(--color-accent);
+  }
+
+  &:hover {
+    background: color-mix(in srgb, var(--color-accent) 12%, transparent);
   }
 }
 
@@ -89,24 +122,31 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
-  background: transparent;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
   border: none;
   border-radius: 50%;
-  color: var(--secondary-blue);
+  background: transparent;
+  color: var(--color-accent);
+  font-size: 0.75rem;
   cursor: pointer;
-  transition: var(--transition);
-  flex-shrink: 0;
+  transition:
+    background-color 120ms ease,
+    transform 120ms var(--ease-out-quart);
 
   &:hover {
-    background: rgba(27, 99, 199, 0.15);
+    background: color-mix(in srgb, var(--color-accent) 16%, transparent);
+  }
+
+  &:active {
+    transform: scale(0.92);
   }
 }
 
-@media (max-width: 720px) {
+@media (max-width: 760px) {
   .breadcrumb-bar {
-    padding: 10px 16px;
+    padding: 6px 16px;
   }
 
   .breadcrumb-selection__label {

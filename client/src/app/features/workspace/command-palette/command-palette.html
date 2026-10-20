@@ -1,0 +1,59 @@
+<dialog
+  #dialog
+  class="cmdk"
+  aria-label="מעבר מהיר למסך"
+  (close)="onClosed()"
+  (click)="onDialogClick($event)"
+>
+  <div class="cmdk__search">
+    <i class="fa-solid fa-magnifying-glass cmdk__search-icon" aria-hidden="true"></i>
+    <input
+      #input
+      type="text"
+      id="cmdk-query"
+      name="cmdk-query"
+      class="cmdk__input"
+      placeholder="לאיזה מסך לעבור?"
+      autocomplete="off"
+      spellcheck="false"
+      role="combobox"
+      aria-expanded="true"
+      aria-controls="cmdk-list"
+      aria-autocomplete="list"
+      [attr.aria-activedescendant]="results().length ? 'cmdk-item-' + activeIndex() : null"
+      [value]="query()"
+      (input)="onQueryInput($event)"
+      (keydown)="onInputKeydown($event)"
+    />
+    <kbd class="kbd">Esc</kbd>
+  </div>
+
+  <ul id="cmdk-list" class="cmdk__list" role="listbox" aria-label="מסכים">
+    @for (item of results(); track item.id; let i = $index) {
+      <li
+        [id]="'cmdk-item-' + i"
+        role="option"
+        class="cmdk__item"
+        [class.cmdk__item--active]="i === activeIndex()"
+        [attr.aria-selected]="i === activeIndex()"
+        (mousemove)="activeIndex.set(i)"
+        (click)="select(item)"
+      >
+        <span class="cmdk__icon"><i [class]="item.icon" aria-hidden="true"></i></span>
+        <span class="cmdk__label">{{ item.label }}</span>
+        @if (item.group) {
+          <span class="cmdk__group">{{ item.group }}</span>
+        }
+        <i class="fa-solid fa-arrow-turn-down cmdk__enter" aria-hidden="true"></i>
+      </li>
+    } @empty {
+      <li class="cmdk__empty">לא נמצא מסך שמתאים ל"{{ query() }}"</li>
+    }
+  </ul>
+
+  <div class="cmdk__footer">
+    <span><kbd class="kbd">↑</kbd><kbd class="kbd">↓</kbd> ניווט</span>
+    <span><kbd class="kbd">Enter</kbd> פתיחה</span>
+    <span><kbd class="kbd">Esc</kbd> סגירה</span>
+  </div>
+</dialog>

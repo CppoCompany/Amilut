@@ -1,31 +1,54 @@
 <button
   type="button"
   class="bell-button"
+  [class.bell-button--open]="open()"
   [attr.aria-label]="unreadCount() > 0 ? 'התראות (' + unreadCount() + ' שלא נקראו)' : 'התראות'"
+  aria-haspopup="dialog"
+  [attr.aria-expanded]="open()"
   (click)="toggle()"
 >
-  <i class="fa-solid fa-bell"></i>
+  <i class="fa-solid fa-bell" aria-hidden="true"></i>
   @if (unreadCount() > 0) {
-    <span class="bell-badge">{{ unreadCount() }}</span>
+    <span class="bell-badge" aria-hidden="true">{{ unreadCount() > 99 ? '99+' : unreadCount() }}</span>
   }
 </button>
 
 @if (open()) {
-  <div class="bell-dropdown">
-    <div class="bell-dropdown-header">התראות</div>
-    @if (loading()) {
-      <p class="bell-empty">טוען...</p>
+  <div class="bell-dropdown" role="dialog" aria-label="התראות">
+    <div class="bell-dropdown-header">
+      <span>התראות</span>
+      @if (unreadCount() > 0) {
+        <span class="bell-dropdown-count">{{ unreadCount() }} חדשות</span>
+      }
+    </div>
+    @if (loading() && notifications().length === 0) {
+      <p class="bell-empty" role="status">טוען...</p>
     } @else if (notifications().length === 0) {
-      <p class="bell-empty">אין התראות</p>
+      <p class="bell-empty">
+        <i class="fa-solid fa-bell-slash" aria-hidden="true"></i>
+        אין התראות
+      </p>
     } @else {
       <ul class="bell-list">
         @for (notification of notifications(); track notification.id) {
-          <li
-            class="bell-item"
-            [class.bell-item--unread]="!notification.isRead"
-            (click)="markRead(notification)"
-          >
-            {{ notification.message }}
+          <li>
+            <button
+              type="button"
+              class="bell-item"
+              [class.bell-item--unread]="!notification.isRead"
+              (click)="markRead(notification)"
+            >
+              <span class="bell-item__dot" aria-hidden="true"></span>
+              <span class="bell-item__body">
+                <span class="bell-item__message">{{ notification.message }}</span>
+                <span class="bell-item__meta">
+                  {{ relativeTime(notification.createdAt) }}
+                  @if (notification.actorName) {
+                    · {{ notification.actorName }}
+                  }
+                </span>
+              </span>
+            </button>
           </li>
         }
       </ul>

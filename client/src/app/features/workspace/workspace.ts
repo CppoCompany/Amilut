@@ -1,10 +1,20 @@
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import {
+  Component,
+  computed,
+  DestroyRef,
+  ElementRef,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 import { combineLatest } from 'rxjs';
 
 import { AuthService } from '../../core/auth/auth.service';
+import { Toaster } from '../../shared/toast/toaster';
 import { Breadcrumb } from './breadcrumb/breadcrumb';
+import { CommandPalette } from './command-palette/command-palette';
 import { isTreeChildGroup, TreeChild } from './navigation.model';
 import { NavigationService } from './navigation.service';
 import { NotificationBell } from './notification-bell/notification-bell';
@@ -25,6 +35,19 @@ import { OrderScreen } from './screens/order/order';
 import { PlaceholderScreen } from './screens/placeholder/placeholder';
 import { ShipmentCaseWizardScreen } from './screens/shipment-case-wizard/shipment-case-wizard';
 
+/** Sidebar row id of "איזור האישי" — the brand mark and the breadcrumb root both lead here. */
+const DASHBOARD_ROW_ID = 'ws-dashboard';
+
+/** "דנה לוי" → "דל"; a single word gives its first letter; nothing gives "?". */
+function initialsOf(name: string | null | undefined): string {
+  const parts = (name ?? '').trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  return parts
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('');
+}
+
 /**
  * Workspace shell: top header, sidebar tree, and the content area whose screen
  * is chosen by {@link NavigationService}. The sidebar is driven by the service's
@@ -35,12 +58,17 @@ import { ShipmentCaseWizardScreen } from './screens/shipment-case-wizard/shipmen
  * `nav.applyUrl(...)`, so the active screen is always derived from the URL
  * (Back/Forward, refresh and deep links included). The router reuses this one
  * instance across slug changes, so the sidebar and header never remount.
+ *
+ * Also hosts the app-wide overlays: the Ctrl+K command palette and the toast
+ * stack.
  */
 @Component({
   selector: 'app-workspace',
   imports: [
     Breadcrumb,
     NotificationBell,
+    CommandPalette,
+    Toaster,
     DashboardScreen,
     OrderScreen,
     FilingScreen,
@@ -58,18 +86,29 @@ import { ShipmentCaseWizardScreen } from './screens/shipment-case-wizard/shipmen
     PlaceholderScreen,
   ],
   templateUrl: './workspace.html',
-  styleUrl: './workspace.scss',
+  styleUrls: ['./workspace.scss', './workspace-sidebar.scss'],
+  host: {
+    '(document:click)': 'onDocumentClick($event)',
+    '(document:keydown.escape)': 'closeUserMenu()',
+    // Ctrl+K hands the screen to the command palette; nothing else stays open.
+    '(document:keydown.control.k)': 'closeUserMenu()',
+    '(document:keydown.meta.k)': 'closeUserMenu()',
+  },
 })
 export class Workspace {
   protected readonly nav = inject(NavigationService);
   protected readonly auth = inject(AuthService);
   protected readonly notifications = inject(NotificationsStateService);
   private readonly route = inject(ActivatedRoute);
+  private readonly palette = viewChild.required(CommandPalette);
+  private readonly userMenu = viewChild<ElementRef<HTMLElement>>('userMenu');
   /** Lets the template tell a plain leaf row from an expandable sub-group. */
   protected readonly isGroup = isTreeChildGroup;
 
   /** Collapsed (icon-only) by default; toggled by the sidebar's own expand/close button. */
   protected readonly sidebarExpanded = signal(false);
+  protected readonly userMenuOpen = signal(false);
+  protected readonly initials = computed(() => initialsOf(this.auth.user()?.name));
 
   constructor() {
     // Both streams replay synchronously on subscribe, so the first URL is
@@ -96,5 +135,27 @@ export class Workspace {
 
   protected toggleSidebar(): void {
     this.sidebarExpanded.update((expanded) => !expanded);
+  }
+
+  protected goHome(): void {
+    this.nav.selectChildById(DASHBOARD_ROW_ID);
+  }
+
+  protected openPalette(): void {
+    this.palette().open();
+  }
+
+  protected toggleUserMenu(): void {
+    this.userMenuOpen.update((open) => !open);
+  }
+
+  protected closeUserMenu(): void {
+    this.userMenuOpen.set(false);
+  }
+
+  protected onDocumentClick(event: MouseEvent): void {
+    if (!this.userMenuOpen()) return;
+    const menu = this.userMenu()?.nativeElement;
+    if (menu && !menu.contains(event.target as Node)) this.closeUserMenu();
   }
 }

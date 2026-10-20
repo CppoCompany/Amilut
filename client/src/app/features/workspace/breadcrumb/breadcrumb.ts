@@ -55,4 +55,9 @@ export class Breadcrumb {
   protected clearSelection(): void {
     this.selection.clear();
   }
+
+  /** "ראשי" → the landing screen ("איזור האישי"). */
+  protected goHome(): void {
+    this.nav.selectChildById('ws-dashboard');
+  }
 }

@@ -1,99 +1,201 @@
-// Component-scoped additions to the shared card/grid styles (see src/styles.scss).
+// Component-scoped additions to the shared card/table styles (see src/styles.scss).
 
 :host {
   gap: 20px;
 }
 
-// ── Quick actions ────────────────────────────────────────────────────────────
-.dashboard-actions {
+// ── Page header: title + date on the start side, the three actions on the end ─
+.dashboard-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px 16px;
   flex-shrink: 0;
+
+  .page-title {
+    margin-bottom: 2px;
+  }
+}
+
+.dashboard-header__date {
+  font-size: 0.88rem;
+  color: var(--color-fg-muted);
 }
 
 .dashboard-actions__buttons {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 8px;
+}
 
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
+// ── Inline error banner with its retry ───────────────────────────────────────
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px 8px 12px;
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+  flex-shrink: 0;
+
+  &--error {
+    background: var(--color-danger-soft);
+    border: 1px solid color-mix(in srgb, var(--color-danger) 22%, transparent);
+    color: var(--color-danger);
   }
+
+  .btn-ghost {
+    color: inherit;
+
+    &:hover:not(:disabled) {
+      background: color-mix(in srgb, currentColor 10%, transparent);
+    }
+  }
+}
+
+.banner__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.dashboard-card__error {
+  margin: 10px 14px 0;
 }
 
 // ── Cards grid: two columns on desktop, one on narrow screens ────────────────
 .dashboard-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 20px;
+  gap: 16px;
   flex-shrink: 0;
-  margin-bottom: 24px;
+  padding-bottom: 24px;
 
   @media (max-width: 1100px) {
     grid-template-columns: minmax(0, 1fr);
   }
 }
 
+// Elevation declared once: a hairline border, no shadow.
 .dashboard-card {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  padding: 18px 20px;
+  background: var(--color-surface);
+  border: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
 
-  .section-header {
-    margin-bottom: 14px;
-  }
+.dashboard-card--wide {
+  grid-column: 1 / -1;
+}
 
-  // The data table is compact inside a card: tighter cells, lighter shadow.
-  .data-table-wrapper {
-    box-shadow: none;
-    border: 1px solid var(--border-color);
-  }
+.dashboard-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px 10px 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 60%, transparent);
+}
 
-  .data-table th,
-  .data-table td {
-    padding: 9px 12px;
-    font-size: 0.88rem;
-  }
+.dashboard-card__heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
 
-  // Rows open their entity on click/Enter — show where keyboard focus is.
-  .data-table__row--clickable:focus-visible {
-    outline: 2px solid var(--secondary-blue);
-    outline-offset: -2px;
-  }
+.dashboard-card__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+  background: var(--color-surface-3);
+  color: var(--color-brand);
+  font-size: 0.8rem;
 }
 
 .dashboard-card__title {
   margin: 0;
-  font-size: 1.05rem;
+  font-size: 0.95rem;
   font-weight: 700;
-  color: var(--text-dark);
+  color: var(--color-fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-// "צפה בהכל" — a small text link on the card's far (left, in RTL) side.
+.dashboard-card__count {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  font-size: 0.74rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+// "צפה בהכל" — a small text link on the card's end (left, in RTL) side.
 .dashboard-card__link {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 8px;
+  height: 28px;
+  padding: 0 8px;
+  flex-shrink: 0;
   border: none;
   border-radius: var(--radius-md);
   background: transparent;
-  color: var(--secondary-blue);
-  font-family: inherit;
-  font-size: 0.85rem;
+  color: var(--color-accent);
+  font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
-  transition: var(--transition);
-
-  &:hover,
-  &:focus-visible {
-    background-color: var(--light-blue-bg);
-    outline: none;
-  }
+  transition:
+    background-color 120ms ease,
+    transform 120ms var(--ease-out-quart);
 
   i {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
+    transition: transform 160ms var(--ease-out-quart);
+  }
+
+  &:hover {
+    background: var(--color-accent-soft);
+
+    i {
+      transform: translateX(-2px);
+    }
+  }
+
+  &:active {
+    transform: scale(0.97);
+  }
+}
+
+.dashboard-card__body {
+  min-width: 0;
+  overflow-x: auto;
+}
+
+// Compact cells inside a card.
+.dashboard-card {
+  .data-table th,
+  .data-table td {
+    padding: 8px 14px;
+    font-size: 0.86rem;
+  }
+
+  .data-table thead th {
+    font-size: 0.76rem;
+  }
+
+  .data-table__empty {
+    padding: 26px 14px;
   }
 }
 
@@ -101,42 +203,30 @@
 // Shows every notification (up to the server's 50), so it scrolls instead of
 // growing past the other cards.
 .dashboard-messages {
-  max-height: 280px;
+  max-height: 260px;
   overflow-y: auto;
 }
 
-// New on this visit (it was unread when the list was fetched).
+.dashboard-message__text {
+  white-space: normal;
+}
+
+// New on this visit (it was unread when the list was fetched): a solid dot
+// before the message. Read rows keep a transparent dot so text stays aligned.
+.dashboard-message__dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-inline-end: 8px;
+  border-radius: 50%;
+  background: transparent;
+  vertical-align: middle;
+}
+
 .dashboard-message--unread td {
-  font-weight: 700;
+  font-weight: 600;
 }
 
-.dashboard-message--unread td:first-child {
-  box-shadow: inset -3px 0 0 var(--secondary-blue);
-}
-
-.dashboard-card__error {
-  margin-bottom: 10px;
-}
-
-// ── Error banner ─────────────────────────────────────────────────────────────
-.form-message {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin: 0;
-  padding: 0.6rem 0.9rem;
-  border-radius: 6px;
-  font-size: 0.95rem;
-  flex-shrink: 0;
-
-  &--error {
-    background: color-mix(in srgb, var(--danger, #ef4444) 12%, white);
-    color: var(--danger, #ef4444);
-  }
-}
-
-.dashboard-retry {
-  padding: 6px 14px;
-  font-size: 0.85rem;
+.dashboard-message--unread .dashboard-message__dot {
+  background: var(--color-accent);
 }

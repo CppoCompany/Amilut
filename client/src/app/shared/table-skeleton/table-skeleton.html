@@ -1,0 +1,12 @@
+<div class="skeleton-table" aria-hidden="true">
+  @for (row of rowIndexes(); track row) {
+    <div class="skeleton-table__row">
+      @for (column of columnIndexes(); track column) {
+        <span class="skeleton-table__cell">
+          <span class="skeleton" [style.width.%]="widthFor(column, row)"></span>
+        </span>
+      }
+    </div>
+  }
+</div>
+<p class="data-table__empty" role="status">{{ label() }}</p>

@@ -1,8 +1,10 @@
 <nav class="breadcrumb-bar" aria-label="breadcrumb">
   <ol class="breadcrumb-trail">
     <li class="breadcrumb-item">
-      <i class="fa-solid fa-house" aria-hidden="true"></i>
-      <span>ראשי</span>
+      <button type="button" class="breadcrumb-link" (click)="goHome()">
+        <i class="fa-solid fa-house" aria-hidden="true"></i>
+        <span>ראשי</span>
+      </button>
     </li>
 
     @if (nav.activeGroupLabel(); as groupLabel) {

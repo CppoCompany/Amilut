@@ -11,87 +11,183 @@
   width: 36px;
   height: 36px;
   border: none;
-  background: none;
-  color: var(--text-muted);
-  font-size: 1.1rem;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-fg-muted);
+  font-size: 1rem;
   cursor: pointer;
-  border-radius: 50%;
-  transition: var(--transition);
-}
+  transition:
+    background-color 120ms ease,
+    color 120ms ease,
+    transform 120ms var(--ease-out-quart);
 
-.bell-button:hover {
-  background: var(--light-blue-bg);
-  color: var(--secondary-blue);
+  &:hover,
+  &.bell-button--open {
+    background: var(--color-surface-3);
+    color: var(--color-fg);
+  }
+
+  &:active {
+    transform: scale(0.94);
+  }
 }
 
 .bell-badge {
   position: absolute;
-  top: 2px;
-  left: 2px;
+  top: 4px;
+  inset-inline-end: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   min-width: 16px;
   height: 16px;
   padding: 0 4px;
   border-radius: 999px;
-  background: #ef4444;
-  color: white;
-  font-size: 0.65rem;
+  background: var(--color-danger);
+  color: var(--color-fg-inverse);
+  font-size: 0.62rem;
   font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  font-variant-numeric: tabular-nums;
   line-height: 1;
+  box-shadow: 0 0 0 2px var(--color-surface);
 }
 
+/* Anchored to the bell's end (left) edge so it never runs off the viewport;
+   scales in from that corner. */
 .bell-dropdown {
   position: absolute;
   top: calc(100% + 8px);
-  inset-inline-start: 0;
-  width: 320px;
-  max-height: 400px;
+  inset-inline-end: 0;
+  width: min(360px, calc(100vw - 24px));
+  max-height: 420px;
   overflow-y: auto;
-  background: var(--card-bg);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
-  z-index: 20;
+  background: var(--color-surface);
+  border: 1px solid color-mix(in srgb, var(--color-border) 80%, transparent);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-popover);
+  z-index: 30;
+  transform-origin: top left;
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  transition:
+    opacity 120ms ease,
+    transform 220ms var(--ease-spring);
+}
+
+@starting-style {
+  .bell-dropdown {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.97);
+  }
 }
 
 .bell-dropdown-header {
-  padding: 12px 16px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--color-surface);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 60%, transparent);
+  font-size: 0.9rem;
   font-weight: 700;
-  color: var(--primary-blue);
-  border-bottom: 1px solid var(--border-color);
+  color: var(--color-fg);
+}
+
+.bell-dropdown-count {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  font-size: 0.74rem;
+  font-weight: 600;
 }
 
 .bell-empty {
-  padding: 16px;
-  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 28px 16px;
+  color: var(--color-fg-muted);
   font-size: 0.9rem;
   text-align: center;
+
+  i {
+    font-size: 1.2rem;
+    color: var(--color-fg-subtle);
+  }
 }
 
 .bell-list {
   list-style: none;
+  padding: 4px;
 }
 
 .bell-item {
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-fg);
+  text-align: start;
   cursor: pointer;
-  font-size: 0.88rem;
-  color: var(--text-dark);
-  transition: var(--transition);
+  transition: background-color 120ms ease;
+
+  &:hover {
+    background: var(--color-surface-2);
+  }
 }
 
-.bell-item:last-child {
-  border-bottom: none;
+.bell-item__dot {
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  margin-top: 7px;
+  border-radius: 50%;
+  background: transparent;
 }
 
-.bell-item:hover {
-  background: var(--bg-color);
+.bell-item--unread .bell-item__dot {
+  background: var(--color-accent);
 }
 
-.bell-item--unread {
+.bell-item--unread .bell-item__message {
   font-weight: 600;
-  background: var(--light-blue-bg);
+}
+
+.bell-item__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.bell-item__message {
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.bell-item__meta {
+  font-size: 0.76rem;
+  color: var(--color-fg-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bell-dropdown {
+    transition: opacity 120ms ease;
+  }
+
+  @starting-style {
+    .bell-dropdown {
+      transform: none;
+    }
+  }
 }

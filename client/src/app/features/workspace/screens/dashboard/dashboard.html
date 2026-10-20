@@ -1,62 +1,72 @@
-<div class="page-title">איזור האישי</div>
-
-<!-- Quick actions -->
-<section class="form-section dashboard-actions">
-  <h2 class="section-title">פעולות</h2>
+<div class="dashboard-header">
+  <div class="dashboard-header__text">
+    <h1 class="page-title">איזור האישי</h1>
+    <p class="dashboard-header__date">{{ today }}</p>
+  </div>
   <div class="dashboard-actions__buttons">
     <button type="button" class="btn btn-primary" (click)="newOrder()">
-      <i class="fa-solid fa-file-invoice" aria-hidden="true"></i>
+      <i class="fa-solid fa-plus" aria-hidden="true"></i>
       הזמנה חדשה
     </button>
-    <button type="button" class="btn btn-primary" (click)="newImportProcess()">
+    <button type="button" class="btn btn-secondary" (click)="newImportProcess()">
       <i class="fa-solid fa-truck-fast" aria-hidden="true"></i>
       תהליך יבוא חדש
     </button>
-    <button type="button" class="btn btn-primary" (click)="newCcf()">
+    <button type="button" class="btn btn-secondary" (click)="newCcf()">
       <i class="fa-solid fa-stamp" aria-hidden="true"></i>
       תיק עמילות חדש
     </button>
   </div>
-</section>
+</div>
 
 @if (errorMessage(); as message) {
-  <p class="form-message form-message--error" role="alert">
-    {{ message }}
-    <button type="button" class="btn btn-secondary dashboard-retry" (click)="reload()">
+  <div class="banner banner--error" role="alert">
+    <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+    <span class="banner__text">{{ message }}</span>
+    <button type="button" class="btn btn-ghost btn-sm dashboard-retry" (click)="reload()">
+      <i class="fa-solid fa-rotate-right" aria-hidden="true"></i>
       נסה שוב
     </button>
-  </p>
+  </div>
 }
 
 <div class="dashboard-grid">
   <!-- הודעות -->
-  <section class="form-section dashboard-card" data-card="messages">
-    <div class="section-header">
-      <div class="title-row">
-        <i class="fa-solid fa-envelope" aria-hidden="true"></i>
+  <section class="dashboard-card dashboard-card--wide" data-card="messages">
+    <header class="dashboard-card__header">
+      <div class="dashboard-card__heading">
+        <span class="dashboard-card__icon"><i class="fa-solid fa-envelope" aria-hidden="true"></i></span>
         <h2 class="dashboard-card__title">הודעות</h2>
+        @if (newMessageCount() > 0) {
+          <span class="dashboard-card__count">{{ newMessageCount() }} חדשות</span>
+        }
       </div>
-    </div>
+    </header>
     @if (messagesError(); as message) {
-      <p class="form-message form-message--error dashboard-card__error" role="alert">
-        {{ message }}
-        <button type="button" class="btn btn-secondary dashboard-retry" (click)="reloadMessages()">
+      <div class="banner banner--error dashboard-card__error" role="alert">
+        <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+        <span class="banner__text">{{ message }}</span>
+        <button type="button" class="btn btn-ghost btn-sm dashboard-retry" (click)="reloadMessages()">
+          <i class="fa-solid fa-rotate-right" aria-hidden="true"></i>
           נסה שוב
         </button>
-      </p>
+      </div>
     }
-    <div class="data-table-wrapper dashboard-messages">
+    <div class="dashboard-card__body dashboard-messages">
       @if (messagesLoading() && messages().length === 0) {
-        <p class="data-table__empty">טוען...</p>
+        <app-table-skeleton [columns]="3" [rows]="2" />
       } @else if (messages().length === 0) {
-        <p class="data-table__empty">אין הודעות</p>
+        <p class="data-table__empty">
+          <i class="fa-solid fa-inbox" aria-hidden="true"></i>
+          אין הודעות
+        </p>
       } @else {
         <table class="data-table">
           <thead>
             <tr>
               <th>הודעה</th>
               <th>בוצע ע"י</th>
-              <th>תאריך</th>
+              <th class="data-table__numeric">תאריך</th>
             </tr>
           </thead>
           <tbody>
@@ -69,7 +79,9 @@
                 (click)="openMessage(message)"
                 (keydown.enter)="openMessage(message)"
               >
-                <td>{{ message.message }}</td>
+                <td class="dashboard-message__text">
+                  <span class="dashboard-message__dot" aria-hidden="true"></span>{{ message.message }}
+                </td>
                 <td>{{ message.actorName ?? '—' }}</td>
                 <td class="data-table__numeric">{{ formatDateTime(message.createdAt) }}</td>
               </tr>
@@ -81,31 +93,34 @@
   </section>
 
   <!-- ההזמנות שלי -->
-  <section class="form-section dashboard-card" data-card="myOrders">
-    <div class="section-header">
-      <div class="title-row">
-        <i class="fa-solid fa-list" aria-hidden="true"></i>
+  <section class="dashboard-card" data-card="myOrders">
+    <header class="dashboard-card__header">
+      <div class="dashboard-card__heading">
+        <span class="dashboard-card__icon"><i class="fa-solid fa-list" aria-hidden="true"></i></span>
         <h2 class="dashboard-card__title">ההזמנות שלי</h2>
       </div>
       <button type="button" class="dashboard-card__link" (click)="openList(listRows.myOrders)">
         צפה בהכל
         <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
       </button>
-    </div>
-    <div class="data-table-wrapper">
+    </header>
+    <div class="dashboard-card__body">
       @if (loading() && !data()) {
-        <p class="data-table__empty">טוען...</p>
+        <app-table-skeleton [columns]="5" />
       } @else if (!data() || data()!.myOrders.length === 0) {
-        <p class="data-table__empty">אין נתונים להצגה</p>
+        <p class="data-table__empty">
+          <i class="fa-solid fa-file-invoice" aria-hidden="true"></i>
+          אין נתונים להצגה
+        </p>
       } @else {
         <table class="data-table">
           <thead>
             <tr>
-              <th>מספר הזמנה</th>
+              <th class="data-table__numeric">מספר הזמנה</th>
               <th>לקוח</th>
               <th>פקיד מטפל</th>
-              <th>סטטוס</th>
-              <th>תאריך פתיחה</th>
+              <th class="data-table__status">סטטוס</th>
+              <th class="data-table__numeric">תאריך פתיחה</th>
             </tr>
           </thead>
           <tbody>
@@ -120,7 +135,7 @@
                 <td class="data-table__numeric">{{ order.id }}</td>
                 <td>{{ order.customerName ?? '—' }}</td>
                 <td>{{ order.handlerName ?? '—' }}</td>
-                <td>
+                <td class="data-table__status">
                   <span [class]="'status-pill status-pill--' + order.status">
                     {{ orderStatusLabels[order.status] }}
                   </span>
@@ -135,36 +150,35 @@
   </section>
 
   <!-- תיקים בהתרה -->
-  <section class="form-section dashboard-card" data-card="casesInRelease">
-    <div class="section-header">
-      <div class="title-row">
-        <i class="fa-solid fa-file-circle-check" aria-hidden="true"></i>
+  <section class="dashboard-card" data-card="casesInRelease">
+    <header class="dashboard-card__header">
+      <div class="dashboard-card__heading">
+        <span class="dashboard-card__icon"><i class="fa-solid fa-file-circle-check" aria-hidden="true"></i></span>
         <h2 class="dashboard-card__title">תיקים בהתרה</h2>
       </div>
-      <button
-        type="button"
-        class="dashboard-card__link"
-        (click)="openList(listRows.casesInRelease)"
-      >
+      <button type="button" class="dashboard-card__link" (click)="openList(listRows.casesInRelease)">
         צפה בהכל
         <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
       </button>
-    </div>
-    <div class="data-table-wrapper">
+    </header>
+    <div class="dashboard-card__body">
       @if (loading() && !data()) {
-        <p class="data-table__empty">טוען...</p>
+        <app-table-skeleton [columns]="6" />
       } @else if (!data() || data()!.casesInRelease.length === 0) {
-        <p class="data-table__empty">אין נתונים להצגה</p>
+        <p class="data-table__empty">
+          <i class="fa-solid fa-file-circle-check" aria-hidden="true"></i>
+          אין נתונים להצגה
+        </p>
       } @else {
         <table class="data-table">
           <thead>
             <tr>
-              <th>מספר תיק</th>
+              <th class="data-table__numeric">מספר תיק</th>
               <th>מספר MBL</th>
               <th>לקוחות</th>
               <th>מוביל</th>
-              <th>סטטוס</th>
-              <th>תאריך פתיחה</th>
+              <th class="data-table__status">סטטוס</th>
+              <th class="data-table__numeric">תאריך פתיחה</th>
             </tr>
           </thead>
           <tbody>
@@ -174,7 +188,7 @@
                 <td>{{ mblCase.mblNumber ?? '—' }}</td>
                 <td>{{ joinOrEmDash(mblCase.customerNames) }}</td>
                 <td>{{ mblCase.carrierName ?? '—' }}</td>
-                <td>
+                <td class="data-table__status">
                   <span [class]="'status-pill status-pill--' + mblCase.status">
                     {{ mblStatusLabel(mblCase.status) }}
                   </span>
@@ -189,10 +203,10 @@
   </section>
 
   <!-- תיקי עמילות שלא עברו סיווג -->
-  <section class="form-section dashboard-card" data-card="ccfsPendingClassification">
-    <div class="section-header">
-      <div class="title-row">
-        <i class="fa-solid fa-tags" aria-hidden="true"></i>
+  <section class="dashboard-card" data-card="ccfsPendingClassification">
+    <header class="dashboard-card__header">
+      <div class="dashboard-card__heading">
+        <span class="dashboard-card__icon"><i class="fa-solid fa-tags" aria-hidden="true"></i></span>
         <h2 class="dashboard-card__title">תיקי עמילות שלא עברו סיווג</h2>
       </div>
       <button
@@ -203,12 +217,15 @@
         צפה בהכל
         <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
       </button>
-    </div>
-    <div class="data-table-wrapper">
+    </header>
+    <div class="dashboard-card__body">
       @if (loading() && !data()) {
-        <p class="data-table__empty">טוען...</p>
+        <app-table-skeleton [columns]="5" />
       } @else if (!data() || data()!.ccfsPendingClassification.length === 0) {
-        <p class="data-table__empty">אין נתונים להצגה</p>
+        <p class="data-table__empty">
+          <i class="fa-solid fa-tags" aria-hidden="true"></i>
+          אין נתונים להצגה
+        </p>
       } @else {
         <table class="data-table">
           <thead>
@@ -216,8 +233,8 @@
               <th>מספר תיק</th>
               <th>מספר MBL</th>
               <th>לקוחות</th>
-              <th>שורות מסווגות</th>
-              <th>תאריך פתיחה</th>
+              <th class="data-table__numeric">שורות מסווגות</th>
+              <th class="data-table__numeric">תאריך פתיחה</th>
             </tr>
           </thead>
           <tbody>
@@ -243,22 +260,25 @@
   </section>
 
   <!-- תיקי עמילות -->
-  <section class="form-section dashboard-card" data-card="ccfs">
-    <div class="section-header">
-      <div class="title-row">
-        <i class="fa-solid fa-folder-open" aria-hidden="true"></i>
+  <section class="dashboard-card" data-card="ccfs">
+    <header class="dashboard-card__header">
+      <div class="dashboard-card__heading">
+        <span class="dashboard-card__icon"><i class="fa-solid fa-folder-open" aria-hidden="true"></i></span>
         <h2 class="dashboard-card__title">תיקי עמילות</h2>
       </div>
       <button type="button" class="dashboard-card__link" (click)="openList(listRows.ccfs)">
         צפה בהכל
         <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
       </button>
-    </div>
-    <div class="data-table-wrapper">
+    </header>
+    <div class="dashboard-card__body">
       @if (loading() && !data()) {
-        <p class="data-table__empty">טוען...</p>
+        <app-table-skeleton [columns]="6" />
       } @else if (!data() || data()!.ccfs.length === 0) {
-        <p class="data-table__empty">אין נתונים להצגה</p>
+        <p class="data-table__empty">
+          <i class="fa-solid fa-folder-open" aria-hidden="true"></i>
+          אין נתונים להצגה
+        </p>
       } @else {
         <table class="data-table">
           <thead>
@@ -266,9 +286,9 @@
               <th>מספר תיק</th>
               <th>מספר MBL</th>
               <th>לקוחות</th>
-              <th>שורות מסווגות</th>
-              <th>סטטוס</th>
-              <th>תאריך פתיחה</th>
+              <th class="data-table__numeric">שורות מסווגות</th>
+              <th class="data-table__status">סטטוס</th>
+              <th class="data-table__numeric">תאריך פתיחה</th>
             </tr>
           </thead>
           <tbody>
@@ -284,7 +304,7 @@
                 <td>{{ ccf.shipmentFileMblNumber ?? '—' }}</td>
                 <td>{{ joinOrEmDash(ccf.customerNames) }}</td>
                 <td class="data-table__numeric">{{ classificationProgress(ccf) }}</td>
-                <td>
+                <td class="data-table__status">
                   <span [class]="'status-pill status-pill--' + ccf.status">
                     {{ ccfStatusLabels[ccf.status] }}
                   </span>
@@ -299,37 +319,36 @@
   </section>
 
   <!-- תהליכי יבוא -->
-  <section class="form-section dashboard-card" data-card="importProcesses">
-    <div class="section-header">
-      <div class="title-row">
-        <i class="fa-solid fa-truck-fast" aria-hidden="true"></i>
+  <section class="dashboard-card" data-card="importProcesses">
+    <header class="dashboard-card__header">
+      <div class="dashboard-card__heading">
+        <span class="dashboard-card__icon"><i class="fa-solid fa-truck-fast" aria-hidden="true"></i></span>
         <h2 class="dashboard-card__title">תהליכי יבוא</h2>
       </div>
-      <button
-        type="button"
-        class="dashboard-card__link"
-        (click)="openList(listRows.importProcesses)"
-      >
+      <button type="button" class="dashboard-card__link" (click)="openList(listRows.importProcesses)">
         צפה בהכל
         <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
       </button>
-    </div>
-    <div class="data-table-wrapper">
+    </header>
+    <div class="dashboard-card__body">
       @if (loading() && !data()) {
-        <p class="data-table__empty">טוען...</p>
+        <app-table-skeleton [columns]="7" />
       } @else if (!data() || data()!.importProcesses.length === 0) {
-        <p class="data-table__empty">אין נתונים להצגה</p>
+        <p class="data-table__empty">
+          <i class="fa-solid fa-truck-fast" aria-hidden="true"></i>
+          אין נתונים להצגה
+        </p>
       } @else {
         <table class="data-table">
           <thead>
             <tr>
-              <th>מספר תיק</th>
+              <th class="data-table__numeric">מספר תיק</th>
               <th>מספר MBL</th>
               <th>סוג משלוח</th>
               <th>לקוחות</th>
-              <th>Files</th>
-              <th>סטטוס</th>
-              <th>תאריך פתיחה</th>
+              <th class="data-table__numeric">Files</th>
+              <th class="data-table__status">סטטוס</th>
+              <th class="data-table__numeric">תאריך פתיחה</th>
             </tr>
           </thead>
           <tbody>
@@ -346,7 +365,7 @@
                 <td>{{ shippingTypeLabels[process.shippingType] }}</td>
                 <td>{{ joinOrEmDash(process.customerNames) }}</td>
                 <td class="data-table__numeric">{{ process.hblCount }}</td>
-                <td>
+                <td class="data-table__status">
                   <span [class]="'status-pill status-pill--' + process.status">
                     {{ mblStatusLabel(process.status) }}
                   </span>

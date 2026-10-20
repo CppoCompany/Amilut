@@ -11,6 +11,8 @@ import { finalize } from 'rxjs';
 
 import type { NotificationDto } from '../../../api/models';
 import { NotificationsApi } from '../../../api/notifications-api';
+import { formatHeRelativeTime } from '../../../shared/format';
+import { ToastService } from '../../../shared/toast/toast.service';
 import { NotificationsStateService } from '../notifications-state.service';
 
 /**
@@ -28,11 +30,15 @@ import { NotificationsStateService } from '../notifications-state.service';
   host: {
     class: 'bell-wrapper',
     '(document:click)': 'onDocumentClick($event)',
+    '(document:keydown.escape)': 'open.set(false)',
+    '(document:keydown.control.k)': 'open.set(false)',
+    '(document:keydown.meta.k)': 'open.set(false)',
   },
 })
 export class NotificationBell {
   private readonly api = inject(NotificationsApi);
   private readonly state = inject(NotificationsStateService);
+  private readonly toast = inject(ToastService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
@@ -40,6 +46,8 @@ export class NotificationBell {
   protected readonly unreadCount = this.state.unreadCount;
   protected readonly notifications = signal<NotificationDto[]>([]);
   protected readonly loading = signal(false);
+
+  protected readonly relativeTime = formatHeRelativeTime;
 
   protected toggle(): void {
     const next = !this.open();
@@ -72,6 +80,7 @@ export class NotificationBell {
           );
           this.state.markedOneRead();
         },
+        error: () => this.toast.error('סימון ההתראה כנקראה נכשל', { description: 'נסה שוב בעוד רגע.' }),
       });
   }
 

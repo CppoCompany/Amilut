@@ -1,0 +1,115 @@
+/* Tailwind v4 entry point (processed by @tailwindcss/postcss via .postcssrc.json).
+
+   Preflight is deliberately NOT imported: styles.scss carries its own minimal
+   reset, and preflight would re-style headings, buttons and tables on screens
+   that have not been migrated to utilities yet. Utilities live in the
+   `utilities` cascade layer, so an unlayered rule in styles.scss or a
+   component stylesheet always wins over a utility on the same element — keep
+   each property owned by one of the two.
+
+   `@theme static` emits every token below as a CSS variable on :root even when
+   no utility uses it, so styles.scss and component SCSS can read them with
+   var(--color-…) / var(--ease-…). */
+@layer theme, base, components, utilities;
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+
+@theme static {
+  --font-sans: 'Assistant', 'Segoe UI', system-ui, sans-serif;
+
+  /* Surfaces: a cool neutral canvas, white working surfaces, one step of
+     tint for sidebars / table headers / read-only fields. */
+  --color-canvas: #f4f6f9;
+  --color-surface: #ffffff;
+  --color-surface-2: #f8fafc;
+  --color-surface-3: #f1f5f9;
+
+  /* Text */
+  --color-fg: #0f172a;
+  --color-fg-muted: #64748b;
+  --color-fg-subtle: #94a3b8;
+  --color-fg-inverse: #ffffff;
+
+  /* Lines — used at /60 or /50 for hairlines, full for inputs. */
+  --color-border: #e2e8f0;
+  --color-border-strong: #cbd5e1;
+
+  /* Brand: deep navy for identity, a brighter blue for actions/selection. */
+  --color-brand: #0a3d82;
+  --color-accent: #1b63c7;
+  --color-accent-hover: #1555ad;
+  --color-accent-soft: #eaf1fb;
+  --color-accent-ring: rgb(27 99 199 / 0.28);
+
+  /* Status */
+  --color-success: #15803d;
+  --color-success-soft: #dcfce7;
+  --color-warning: #b45309;
+  --color-warning-soft: #fef3c7;
+  --color-danger: #b91c1c;
+  --color-danger-soft: #fee2e2;
+  --color-info: #1d4ed8;
+  --color-info-soft: #dbeafe;
+  --color-neutral-soft: #e2e8f0;
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  /* Shadows always carry an offset + soft blur; elevation is declared once
+     per element (border OR shadow, never both heavy). */
+  --shadow-xs: 0 1px 2px rgb(15 23 42 / 0.05);
+  --shadow-sm: 0 1px 3px rgb(15 23 42 / 0.06), 0 1px 2px rgb(15 23 42 / 0.04);
+  --shadow-md: 0 4px 12px -2px rgb(15 23 42 / 0.08), 0 2px 4px rgb(15 23 42 / 0.04);
+  --shadow-lg: 0 12px 32px -8px rgb(15 23 42 / 0.16), 0 4px 8px rgb(15 23 42 / 0.05);
+  --shadow-popover: 0 10px 28px -6px rgb(15 23 42 / 0.18), 0 2px 6px rgb(15 23 42 / 0.06);
+
+  /* Motion. ease-out for anything entering; spring (≈ stiffness 400 /
+     damping 30, ~3% overshoot) for popovers and panels; in-out for things
+     that move while on screen. */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quart: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out-quart: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-spring: linear(
+    0,
+    0.008 1%,
+    0.032 2%,
+    0.12 4%,
+    0.4 8%,
+    0.68 12%,
+    0.86 16%,
+    0.96 20%,
+    1.012 25%,
+    1.03 30%,
+    1.028 36%,
+    1.014 44%,
+    1.003 54%,
+    0.999 66%,
+    1
+  );
+}
+
+/* Browser surfaces the design system is responsible for — selection, caret,
+   scrollbars, focus ring. Layered, so a component can still override. */
+@layer base {
+  ::selection {
+    background: var(--color-accent-soft);
+    color: var(--color-brand);
+  }
+
+  :root {
+    caret-color: var(--color-accent);
+    scrollbar-color: var(--color-border-strong) transparent;
+    scrollbar-width: thin;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  kbd {
+    font-family: var(--font-sans);
+  }
+}
