@@ -1,0 +1,46 @@
+<div class="dialog-backdrop" (click)="onBackdropClick($event)">
+  <div class="dialog-card" role="dialog" aria-modal="true" aria-labelledby="container-details-title">
+    <header class="dialog-card__header">
+      <h2 id="container-details-title" class="dialog-card__title">
+        <i class="fa-solid fa-box" aria-hidden="true"></i>
+        פרטי מכולה {{ container().containerNumber || '' }}
+      </h2>
+      <button type="button" class="dialog-card__close" aria-label="סגור" (click)="onClose()">
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      </button>
+    </header>
+
+    <div class="dialog-card__body">
+      <dl class="details-grid">
+        <dt>מספר מכולה</dt>
+        <dd>{{ container().containerNumber ?? '—' }}</dd>
+        <dt>מספר מוליך (Seal)</dt>
+        <dd>{{ container().containerSealNumber ?? '—' }}</dd>
+        <dt>תיאור המטען</dt>
+        <dd>{{ container().cargoDescription ?? '—' }}</dd>
+        <dt>משקל ברוטו (KG)</dt>
+        <dd>{{ container().grossWeightKg ?? '—' }}</dd>
+        <dt>נפח (CBM)</dt>
+        <dd>{{ container().volumeCbm ?? '—' }}</dd>
+      </dl>
+
+      <h3 class="details-subtitle">Files במכולה זו ({{ container().files.length }})</h3>
+      @if (container().files.length) {
+        <ul class="details-files">
+          @for (hbl of container().files; track hbl.id) {
+            <li>
+              <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+              {{ fileLabel(hbl) }}
+            </li>
+          }
+        </ul>
+      } @else {
+        <p class="hint-text">אין Files במכולה זו</p>
+      }
+    </div>
+
+    <footer class="dialog-card__footer">
+      <button type="button" class="btn btn-secondary" (click)="onClose()">סגירה</button>
+    </footer>
+  </div>
+</div>

@@ -5,7 +5,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 
 import { MblShippingType, MblStatus, SeaMethod } from '../../../../api/enums';
-import type { MblContainerDto, MblDto } from '../../../../api/models';
+import type { HblDto, MblContainerDto, MblDto } from '../../../../api/models';
 import { NavigationService } from '../../navigation.service';
 import { ShipmentCaseWizardScreen } from './shipment-case-wizard';
 
@@ -51,7 +51,9 @@ const MINIMAL_MBL: MblDto = {
 
 type WizardInternals = {
   savedMbl: WritableSignal<MblDto | null>;
+  hbls: WritableSignal<HblDto[]>;
   hblContainerId: WritableSignal<number | null>;
+  editingHblId: WritableSignal<number | null>;
 };
 
 function container(id: number): MblContainerDto {
@@ -62,6 +64,35 @@ function container(id: number): MblContainerDto {
     cargoDescription: null,
     grossWeightKg: null,
     volumeCbm: null,
+  };
+}
+
+/** A saved File with no associated orders (so opening it for edit makes no HTTP call). */
+function hbl(id: number, overrides: Partial<HblDto> = {}): HblDto {
+  return {
+    id,
+    mblId: MINIMAL_MBL.id,
+    containerId: null,
+    customerId: 100 + id,
+    customerName: `לקוח ${id}`,
+    sequenceNumber: id,
+    iblNumber: null,
+    hblNumber: `HBL-00${id}`,
+    shipperName: null,
+    shipperAddress: null,
+    consigneeName: null,
+    consigneeAddress: null,
+    notifyPartyName: null,
+    notifyPartyAddress: null,
+    cargoDescription: null,
+    quantity: null,
+    grossWeightKg: null,
+    volumeCbm: null,
+    remarks: null,
+    orders: [],
+    createdAt: '2026-09-01T09:00:00.000Z',
+    updatedAt: '2026-09-01T09:00:00.000Z',
+    ...overrides,
   };
 }
 
@@ -436,6 +467,210 @@ describe('ShipmentCaseWizardScreen', () => {
       cancel.click();
       fixture.detectChanges();
       expect(fixture.nativeElement.querySelector('app-hbl-orders-picker-dialog')).toBeNull();
+    });
+  });
+
+  describe('File edit page', () => {
+    /** Files step of a saved LCL/LCL Job with two Files already created. */
+    function openFilesStepWithFiles(): WizardInternals {
+      methodCards()[0].click(); // ימי
+      fixture.detectChanges();
+      methodCards()[2].click(); // LCL / LCL
+      fixture.detectChanges();
+      const internals = fixture.componentInstance as unknown as WizardInternals;
+      internals.savedMbl.set({ ...MINIMAL_MBL, seaMethod: SeaMethod.LCL_LCL });
+      internals.hbls.set([hbl(1), hbl(2)]);
+      fixture.detectChanges();
+      return internals;
+    }
+
+    function mainTable(): HTMLTableElement | null {
+      return fixture.nativeElement.querySelector('.wizard-main .data-table');
+    }
+
+    function editButtons(): HTMLButtonElement[] {
+      return Array.from(fixture.nativeElement.querySelectorAll('.wizard-main .data-table .btn-secondary'));
+    }
+
+    it('"ערוך" replaces the File list + add button with the edit page alone', () => {
+      openFilesStepWithFiles();
+      expect(sectionTitle()).toContain('יצירת Files');
+      expect(mainTable()!.querySelectorAll('tbody tr').length).toBe(2);
+
+      editButtons()[0].click();
+      fixture.detectChanges();
+
+      expect(sectionTitle()).toContain('עריכת File');
+      expect(mainTable()).toBeNull();
+      expect(fixture.nativeElement.querySelector('.hbl-edit-subtitle')?.textContent).toContain('File #1 · HBL-001 · לקוח 1');
+      expect(fixture.nativeElement.querySelector('.hbl-form')).not.toBeNull();
+      expect(fixture.nativeElement.textContent).not.toContain('הוספת File נוסף');
+      const submit: HTMLButtonElement = fixture.nativeElement.querySelector('.hbl-form button[type="submit"]');
+      expect(submit.textContent).toContain('עדכן File');
+    });
+
+    it('"ביטול" on the edit page returns to the File list with "+ הוספת File נוסף"', () => {
+      openFilesStepWithFiles();
+      editButtons()[1].click();
+      fixture.detectChanges();
+      expect(mainTable()).toBeNull();
+
+      const cancel: HTMLButtonElement = fixture.nativeElement.querySelector('.hbl-form .btn-secondary');
+      cancel.click();
+      fixture.detectChanges();
+
+      expect(sectionTitle()).toContain('יצירת Files');
+      expect(mainTable()!.querySelectorAll('tbody tr').length).toBe(2);
+      expect(fixture.nativeElement.querySelector('.hbl-form')).toBeNull();
+      const addButton: HTMLButtonElement = fixture.nativeElement.querySelector('.form-actions .btn-primary');
+      expect(addButton.textContent).toContain('הוספת File נוסף');
+    });
+  });
+
+  describe('"מבנה התיק" sidebar', () => {
+    function fileSelect(): HTMLSelectElement {
+      return fixture.nativeElement.querySelector('#treeHbl');
+    }
+
+    function containerRows(): HTMLTableRowElement[] {
+      return Array.from(fixture.nativeElement.querySelectorAll('.wizard-containers__row'));
+    }
+
+    function rowCells(row: HTMLTableRowElement): string[] {
+      return Array.from(row.querySelectorAll('td')).map((td) => td.textContent?.trim() ?? '');
+    }
+
+    function pickFile(id: number): void {
+      const select = fileSelect();
+      select.value = String(id);
+      select.dispatchEvent(new Event('change'));
+      fixture.detectChanges();
+    }
+
+    /** Files step of a saved groupage Job: containers 1 and 2, Files 1+3 in
+     *  container 1, File 2 in container 2. */
+    function openGroupageCase(): WizardInternals {
+      methodCards()[0].click(); // ימי
+      fixture.detectChanges();
+      methodCards()[3].click(); // Groupage FCL
+      fixture.detectChanges();
+      const internals = fixture.componentInstance as unknown as WizardInternals;
+      internals.savedMbl.set({
+        ...MINIMAL_MBL,
+        seaMethod: SeaMethod.GROUPAGE_FCL,
+        containers: [container(1), { ...container(2), containerSealNumber: 'SEAL-2' }],
+      });
+      internals.hbls.set([hbl(1, { containerId: 1 }), hbl(2, { containerId: 2 }), hbl(3, { containerId: 1 })]);
+      fixture.detectChanges();
+      return internals;
+    }
+
+    it('shows "אין Files עדיין" and no dropdown before any File exists', () => {
+      methodCards()[0].click();
+      fixture.detectChanges();
+      methodCards()[0].click(); // FCL / FCL
+      fixture.detectChanges();
+      (fixture.componentInstance as unknown as WizardInternals).savedMbl.set({ ...MINIMAL_MBL });
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.querySelector('.wizard-tree')).not.toBeNull();
+      expect(fileSelect()).toBeNull();
+      expect(fixture.nativeElement.querySelector('.wizard-tree-empty')?.textContent).toContain('אין Files עדיין');
+    });
+
+    function ownRows(): HTMLTableRowElement[] {
+      return containerRows().filter((row) => row.classList.contains('wizard-containers__row--own'));
+    }
+
+    it('lists every File in a dropdown (no nested tree) and all the Job\'s containers, the picked File\'s own one marked', () => {
+      openGroupageCase();
+
+      expect(fixture.nativeElement.querySelector('.wizard-tree-list--nested')).toBeNull();
+      const options = Array.from(fileSelect().options).map((option) => option.textContent?.trim());
+      expect(options).toEqual(['File #1 · HBL-001 · לקוח 1', 'File #2 · HBL-002 · לקוח 2', 'File #3 · HBL-003 · לקוח 3']);
+      expect(fileSelect().value).toBe('1'); // first File picked by default
+
+      expect(containerRows().map(rowCells)).toEqual([
+        ['CONT-1', '—', '2'], // Files 1 + 3 share it
+        ['CONT-2', 'SEAL-2', '1'],
+      ]);
+      expect(ownRows().map((row) => rowCells(row)[0])).toEqual(['CONT-1']);
+
+      pickFile(2);
+      expect(containerRows().length).toBe(2); // still the whole Job
+      expect(ownRows().map((row) => rowCells(row)[0])).toEqual(['CONT-2']);
+    });
+
+    it('a File without a container still lists the Job\'s containers, none marked, with a hint', () => {
+      const internals = openGroupageCase();
+      internals.hbls.update((list) => [...list, hbl(4, { containerId: null })]);
+      fixture.detectChanges();
+      pickFile(4);
+
+      expect(containerRows().length).toBe(2);
+      expect(ownRows().length).toBe(0);
+      expect(fixture.nativeElement.querySelector('.wizard-tree-empty')?.textContent).toContain('טרם שויכה מכולה');
+    });
+
+    it('clicking a container row opens its details popup; "סגירה" closes it', () => {
+      openGroupageCase();
+      pickFile(2);
+      expect(fixture.nativeElement.querySelector('app-container-details-dialog')).toBeNull();
+
+      containerRows()[1].click(); // CONT-2
+      fixture.detectChanges();
+
+      const dialog = fixture.nativeElement.querySelector('app-container-details-dialog');
+      expect(dialog).not.toBeNull();
+      expect(dialog.querySelector('.dialog-card__title').textContent).toContain('CONT-2');
+      expect(dialog.textContent).toContain('SEAL-2');
+      expect(dialog.textContent).toContain('Files במכולה זו (1)');
+      expect(dialog.textContent).toContain('File #2 · HBL-002 · לקוח 2');
+
+      (dialog.querySelector('.dialog-card__footer .btn-secondary') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('app-container-details-dialog')).toBeNull();
+    });
+
+    it('"עריכת File" opens the picked File\'s edit page, and the dropdown follows a File opened from the list', () => {
+      openGroupageCase();
+      pickFile(3);
+
+      const editLink: HTMLButtonElement = fixture.nativeElement.querySelector('.wizard-tree__edit');
+      editLink.click();
+      fixture.detectChanges();
+      expect(sectionTitle()).toContain('עריכת File');
+      expect(fixture.nativeElement.querySelector('.hbl-edit-subtitle')?.textContent).toContain('File #3');
+      expect((fixture.nativeElement.querySelector('.wizard-tree__edit') as HTMLButtonElement).disabled).toBe(true);
+
+      // Back to the list, then edit File 2 from the table: the dropdown jumps to it.
+      (fixture.nativeElement.querySelector('.hbl-form .btn-secondary') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      const rows: HTMLButtonElement[] = Array.from(
+        fixture.nativeElement.querySelectorAll('.wizard-main .data-table .btn-secondary'),
+      );
+      rows[1].click();
+      fixture.detectChanges();
+      expect(fileSelect().value).toBe('2');
+      expect(ownRows().map((row) => rowCells(row)[0])).toEqual(['CONT-2']);
+    });
+
+    it('for a non-groupage Job the grid shows the Job\'s own single container', () => {
+      methodCards()[0].click();
+      fixture.detectChanges();
+      methodCards()[2].click(); // LCL / LCL
+      fixture.detectChanges();
+      const internals = fixture.componentInstance as unknown as WizardInternals;
+      internals.savedMbl.set({
+        ...MINIMAL_MBL,
+        seaMethod: SeaMethod.LCL_LCL,
+        containerNumber: 'MSKU-999',
+        containerSealNumber: 'S-1',
+      });
+      internals.hbls.set([hbl(1), hbl(2)]);
+      fixture.detectChanges();
+
+      expect(rowCells(containerRows()[0])).toEqual(['MSKU-999', 'S-1', '2']);
     });
   });
 });

@@ -80,7 +80,8 @@
     } @else if (seaMethod(); as method) {
       <section class="form-section">
         <h2 class="section-title">
-          {{ SEA_METHOD_LABELS[method] }} — {{ !savedMbl() || editingMbl() ? 'טופס Job' : 'יצירת Files' }}
+          {{ SEA_METHOD_LABELS[method] }} —
+          {{ !savedMbl() || editingMbl() ? 'טופס Job' : editingHblId() !== null ? 'עריכת File' : 'יצירת Files' }}
         </h2>
 
         @if (!savedMbl() || editingMbl()) {
@@ -351,8 +352,11 @@
           </form>
         } @else if (savedMbl(); as mbl) {
           <!-- ── Files (HBL) step. Editing the Job itself is reached via the
-               "Job" link in "התקדמות התיק" / the tree node, not from here. ── -->
-          @if (hbls().length) {
+               "Job" link in "התקדמות התיק" / the sidebar's Job node, not from
+               here. While a File is being edited the form below is the whole
+               page: the list and the "+ הוספת File" button come back on
+               save/cancel. ── -->
+          @if (hbls().length && editingHblId() === null) {
             <h3 class="subsection-title">Files שנוצרו</h3>
             <div class="data-table-wrapper">
               <table class="data-table">
@@ -391,6 +395,12 @@
           }
 
           @if (showHblForm()) {
+            @if (editingHbl(); as hbl) {
+              <p class="hbl-edit-subtitle">
+                <i class="fa-solid fa-pen" aria-hidden="true"></i>
+                {{ hblLabel(hbl) }}
+              </p>
+            }
             <form class="hbl-form" [formGroup]="hblForm" (ngSubmit)="onSaveHbl()" novalidate>
               @if (editingHblId() !== null) {
                 <div class="grid-row">
@@ -710,80 +720,91 @@
     </ol>
 
     @if (savedMbl(); as mbl) {
+      <!-- "מבנה התיק": the Job node, then a dropdown of its Files and a small
+           grid of the chosen File's container(s). A row click opens the
+           container's details in a popup. -->
       <div class="wizard-tree">
         <div class="wizard-tree__title">מבנה התיק</div>
-        <ul class="wizard-tree-list">
-          <li>
+        <button
+          type="button"
+          class="wizard-tree-node wizard-tree-node--mbl"
+          [class.active]="editingMbl()"
+          (click)="startEditMbl()"
+        >
+          <i class="fa-solid fa-file-lines" aria-hidden="true"></i>
+          <span class="wizard-tree-node__label">Job {{ mbl.mblNumber || ('#' + mbl.id) }}</span>
+        </button>
+
+        @if (hbls().length) {
+          <div class="form-group wizard-tree__picker">
+            <label for="treeHbl">File</label>
+            <select id="treeHbl" class="form-control" (change)="onTreeHblChange($event)">
+              @for (hbl of hbls(); track hbl.id) {
+                <option [value]="hbl.id" [selected]="treeHblId() === hbl.id">{{ hblLabel(hbl) }}</option>
+              }
+            </select>
+          </div>
+
+          @if (treeHbl(); as hbl) {
+            <div class="wizard-tree__subtitle">מכולות</div>
+            @if (treeContainers().length) {
+              <!-- All of the Job's containers; the picked File's own one is marked. -->
+              <table class="wizard-containers">
+                <thead>
+                  <tr>
+                    <th>מכולה</th>
+                    <th>Seal</th>
+                    <th class="wizard-containers__count">Files</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (container of treeContainers(); track container.id ?? 'job') {
+                    <tr
+                      class="wizard-containers__row"
+                      [class.wizard-containers__row--own]="isTreeHblContainer(container)"
+                      tabindex="0"
+                      role="button"
+                      [title]="isTreeHblContainer(container) ? 'המכולה של File זה — פרטי מכולה' : 'פרטי מכולה'"
+                      (click)="openContainerDetails(container)"
+                      (keydown.enter)="openContainerDetails(container)"
+                    >
+                      <td>
+                        @if (isTreeHblContainer(container)) {
+                          <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
+                        }
+                        {{ container.containerNumber ?? ('מכולה #' + container.id) }}
+                      </td>
+                      <td>{{ container.containerSealNumber ?? '—' }}</td>
+                      <td class="wizard-containers__count">{{ container.files.length }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+              @if (isGroupage() && hbl.containerId === null) {
+                <p class="wizard-tree-empty">ל-File זה טרם שויכה מכולה</p>
+              }
+            } @else {
+              <p class="wizard-tree-empty">ל-Job אין מכולות</p>
+            }
             <button
               type="button"
-              class="wizard-tree-node wizard-tree-node--mbl"
-              [class.active]="editingMbl()"
-              (click)="startEditMbl()"
+              class="filing-link wizard-tree__edit"
+              [disabled]="editingHblId() === hbl.id"
+              (click)="editTreeHbl()"
             >
-              <i class="fa-solid fa-file-lines" aria-hidden="true"></i>
-              <span class="wizard-tree-node__label">Job {{ mbl.mblNumber || ('#' + mbl.id) }}</span>
+              <i class="fa-solid fa-pen" aria-hidden="true"></i>
+              עריכת File
             </button>
-
-            @if (isGroupage()) {
-              <ul class="wizard-tree-list wizard-tree-list--nested">
-                @for (container of mbl.containers; track container.id) {
-                  <li>
-                    <button
-                      type="button"
-                      class="wizard-tree-node wizard-tree-node--container"
-                      [class.active]="editingHblId() === null && hblContainerId() === container.id"
-                      (click)="selectHblContainer(container.id)"
-                    >
-                      <i class="fa-solid fa-box" aria-hidden="true"></i>
-                      <span class="wizard-tree-node__label">
-                        {{ container.containerNumber || ('מכולה #' + container.id) }}
-                      </span>
-                    </button>
-                    <ul class="wizard-tree-list wizard-tree-list--nested">
-                      @for (hbl of hblsForContainer(container.id); track hbl.id) {
-                        <li>
-                          <button
-                            type="button"
-                            class="wizard-tree-node wizard-tree-node--hbl"
-                            [class.active]="editingHblId() === hbl.id"
-                            (click)="startEditHbl(hbl)"
-                          >
-                            <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
-                            <span class="wizard-tree-node__label">{{ hbl.customerName || ('File #' + hbl.id) }}</span>
-                          </button>
-                        </li>
-                      }
-                      @if (hblsForContainer(container.id).length === 0) {
-                        <li class="wizard-tree-empty">אין Files עדיין</li>
-                      }
-                    </ul>
-                  </li>
-                }
-              </ul>
-            } @else {
-              <ul class="wizard-tree-list wizard-tree-list--nested">
-                @for (hbl of hbls(); track hbl.id) {
-                  <li>
-                    <button
-                      type="button"
-                      class="wizard-tree-node wizard-tree-node--hbl"
-                      [class.active]="editingHblId() === hbl.id"
-                      (click)="startEditHbl(hbl)"
-                    >
-                      <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
-                      <span class="wizard-tree-node__label">{{ hbl.customerName || ('File #' + hbl.id) }}</span>
-                    </button>
-                  </li>
-                }
-                @if (hbls().length === 0) {
-                  <li class="wizard-tree-empty">אין Files עדיין</li>
-                }
-              </ul>
-            }
-          </li>
-        </ul>
+          }
+        } @else {
+          <p class="wizard-tree-empty">אין Files עדיין</p>
+        }
       </div>
     }
   </aside>
+
+  @if (viewedContainer(); as container) {
+    <app-container-details-dialog [container]="container" (closed)="closeContainerDetails()" />
+  }
 </div>
 }

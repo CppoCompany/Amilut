@@ -1,13 +1,10 @@
 // Component-scoped additions to the shared form styles (see src/styles.scss).
-// Two-column layout: `.wizard-main` holds the step-by-step form (unchanged
-// card/border/shadow language as the rest of the app), `.wizard-sidebar` is a
-// sticky panel filling the content area's previously-unused right-hand gap
-// (in RTL, the last flex child sits at the visual left edge, furthest from
-// the app's own nav sidebar) with live shipment progress + the MBL → HBL tree.
+// Two-column layout: `.wizard-main` holds the step-by-step form, `.wizard-sidebar`
+// is a sticky panel at the content area's far edge (in RTL, the last flex child
+// sits at the visual left) with the step links + the "מבנה התיק" File picker.
 
 // `.page-title`'s own margin moves onto this row so the title and the
-// "מעבר לתיק הסליקה" link sit on one line, evenly spaced apart — same trick
-// as `order.scss`'s `.order-header-row`.
+// "מעבר לתיק הסליקה" link sit on one line — same trick as `order.scss`.
 .wizard-header-row {
   display: flex;
   align-items: center;
@@ -20,10 +17,8 @@
   }
 }
 
-// A quiet, link-styled action (not a `.btn`) — "go to its CCF" for an
-// already-linked case is a lightweight shortcut, not a primary action.
-// Identical to `order.scss`'s `.filing-link` (same visual language for "jump
-// to a related screen, quietly").
+// A quiet, link-styled action (not a `.btn`) — identical to `order.scss`'s
+// `.filing-link` ("jump to a related screen, quietly").
 .filing-link {
   display: inline-flex;
   align-items: center;
@@ -48,10 +43,16 @@
     text-decoration: underline;
     outline: none;
   }
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.6;
+    text-decoration: none;
+  }
 }
 
-// "שיוך הזמנות" row of the File form: the chips of already-chosen orders and
-// the "לשיוך להזמנה" link that opens the picker popup, side by side.
+// "שיוך הזמנות" row of the File form: chips of chosen orders + the
+// "לשיוך להזמנה" link that opens the picker popup.
 .orders-assoc {
   display: flex;
   align-items: center;
@@ -63,10 +64,20 @@
   border-radius: var(--radius-md);
 }
 
-.orders-assoc__link:disabled {
-  cursor: default;
-  opacity: 0.6;
-  text-decoration: none;
+// Identity line above the File edit page ("File #3 · HBL-001 · לקוח").
+.hbl-edit-subtitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: -8px 0 16px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-muted);
+
+  i {
+    color: var(--secondary-blue);
+    font-size: 0.85rem;
+  }
 }
 
 .wizard-layout {
@@ -151,7 +162,8 @@
 }
 
 // ── Progress sidebar ───────────────────────────────────────────────────────────
-
+// No max-height/overflow of its own: the File picker keeps it short, so the
+// page is the only thing that scrolls (the old nested tree grew a second bar).
 .wizard-sidebar {
   flex: 0 0 280px;
   display: flex;
@@ -164,8 +176,6 @@
   padding: 20px;
   position: sticky;
   top: 24px;
-  max-height: calc(100vh - 160px);
-  overflow-y: auto;
 }
 
 .wizard-sidebar__header {
@@ -197,9 +207,7 @@
   color: var(--text-muted);
 }
 
-// Each step is a link to that station. Disabled = not reachable from here
-// (future step, or steps 1/2 of a case loaded for edit) — kept visually quiet
-// rather than greyed-out, since "not done" is already muted by `.wizard-step`.
+// Each step is a link to that station; disabled = not reachable from here.
 .wizard-step__link {
   display: flex;
   align-items: center;
@@ -255,13 +263,14 @@
   color: white;
 }
 
+// ── "מבנה התיק" ────────────────────────────────────────────────────────────────
+
 .wizard-tree {
   display: flex;
   flex-direction: column;
   gap: 10px;
   padding-top: 16px;
   border-top: 1px solid var(--border-color);
-  min-height: 0;
 }
 
 .wizard-tree__title {
@@ -270,19 +279,6 @@
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.03em;
-}
-
-.wizard-tree-list {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.wizard-tree-list--nested {
-  margin-top: 4px;
-  padding-right: 16px;
-  border-right: 2px solid var(--border-color);
 }
 
 .wizard-tree-node {
@@ -326,17 +322,94 @@
   }
 }
 
-.wizard-tree-node--hbl i {
-  color: var(--success);
-}
-
 .wizard-tree-node__label {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.wizard-tree__picker {
+  margin: 0;
+
+  label {
+    font-size: 0.78rem;
+  }
+
+  .form-control {
+    font-size: 0.85rem;
+  }
+}
+
+.wizard-tree__subtitle {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+// Compact containers grid: fixed layout so long numbers ellipsize instead of
+// widening the sidebar; each row opens the container's details popup.
+.wizard-containers {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+
+  th,
+  td {
+    padding: 6px 8px;
+    text-align: right;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  th {
+    color: var(--text-muted);
+    font-weight: 700;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  td {
+    color: var(--text-dark);
+    font-weight: 600;
+  }
+}
+
+.wizard-containers__count {
+  width: 44px;
+  text-align: center;
+}
+
+.wizard-containers__row {
+  cursor: pointer;
+  transition: var(--transition);
+
+  &:hover,
+  &:focus-visible {
+    background: var(--light-blue-bg);
+    outline: none;
+  }
+
+  // The picked File's own container.
+  &--own td {
+    color: var(--secondary-blue);
+    font-weight: 700;
+  }
+
+  i {
+    margin-left: 4px;
+    font-size: 0.7rem;
+    color: var(--secondary-blue);
+  }
+}
+
+.wizard-tree__edit {
+  align-self: flex-start;
+  font-size: 0.85rem;
+}
+
 .wizard-tree-empty {
+  margin: 0;
   font-size: 0.78rem;
   color: var(--text-muted);
   padding: 4px 10px;
@@ -346,7 +419,6 @@
   .wizard-sidebar {
     position: static;
     flex: 1 1 100%;
-    max-height: none;
     width: 100%;
   }
 }

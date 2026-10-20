@@ -14,14 +14,25 @@
 -- `SET ROLE "Admin"` first, so every object created here is owned by `Admin`.
 --
 -- Idempotent: the old FK is dropped only while it exists, and the new one is
--- added only while it is missing.
+-- added only while it is missing. Both steps are additionally skipped once
+-- `account_id` is gone — 021 drops the column (and with it the FK this file
+-- adds), so without that guard every re-run would DELETE the table's rows
+-- and then fail on `column "account_id" ... does not exist`.
 -- =============================================================================
-
-ALTER TABLE import_account_files
-    DROP CONSTRAINT IF EXISTS import_account_files_account_id_fkey;
 
 DO $$
 BEGIN
+    -- Already re-pointed again by 021 (column dropped): nothing left to do.
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+         WHERE table_name = 'import_account_files' AND column_name = 'account_id'
+    ) THEN
+        RETURN;
+    END IF;
+
+    ALTER TABLE import_account_files
+        DROP CONSTRAINT IF EXISTS import_account_files_account_id_fkey;
+
     IF NOT EXISTS (
         SELECT 1
           FROM pg_constraint

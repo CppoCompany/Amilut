@@ -13,7 +13,10 @@
 -- Run this file against the `Amilut` database. The runner issues
 -- `SET ROLE "Admin"` first, so every object created here is owned by `Admin`.
 --
--- Idempotent: uses CREATE TABLE IF NOT EXISTS / IF NOT EXISTS on the index.
+-- Idempotent: uses CREATE TABLE IF NOT EXISTS, and the index is created only
+-- while `account_id` still exists — 021 drops that column (which takes the
+-- index with it), and a bare CREATE INDEX IF NOT EXISTS would then fail on
+-- every re-run with `column "account_id" does not exist`.
 -- =============================================================================
 
 -- ---- import_account_files -------------------------------------------------------
@@ -31,4 +34,13 @@ CREATE TABLE IF NOT EXISTS import_account_files (
     created_at  TIMESTAMPTZ  NOT NULL DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS import_account_files_account_id_idx ON import_account_files (account_id);
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+         WHERE table_name = 'import_account_files' AND column_name = 'account_id'
+    ) THEN
+        CREATE INDEX IF NOT EXISTS import_account_files_account_id_idx ON import_account_files (account_id);
+    END IF;
+END
+$$;
