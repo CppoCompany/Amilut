@@ -5,7 +5,6 @@ import {
   computed,
   effect,
   inject,
-  linkedSignal,
   signal,
   untracked,
 } from '@angular/core';
@@ -32,10 +31,6 @@ import { OrdersApi } from '../../../../api/orders-api';
 import { CustomerAutocomplete } from '../../../customers/customer-autocomplete/customer-autocomplete';
 import { NavigationService } from '../../navigation.service';
 import { SelectionStateService } from '../../selection-state.service';
-import {
-  ContainerDetailsDialog,
-  type ContainerSummary,
-} from './container-details-dialog/container-details-dialog';
 import {
   EMPTY_HBL_FORM_VALUE,
   hblToFormValue,
@@ -79,7 +74,7 @@ interface SelectedOrderChip {
  *  existing Job for editing (see `NavigationService.openCaseForEdit`/`editCaseId`). */
 @Component({
   selector: 'app-shipment-case-wizard-screen',
-  imports: [ReactiveFormsModule, CustomerAutocomplete, HblOrdersPickerDialog, ContainerDetailsDialog],
+  imports: [ReactiveFormsModule, CustomerAutocomplete, HblOrdersPickerDialog],
   templateUrl: './shipment-case-wizard.html',
   styleUrl: './shipment-case-wizard.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -151,7 +146,7 @@ export class ShipmentCaseWizardScreen {
   protected readonly saveError = signal<string | null>(null);
   protected readonly savedMbl = signal<MblDto | null>(null);
   /** True while re-showing the Job form to edit an already-saved Job (triggered
-   *  from the sidebar tree's Job node or the "Job" progress link). */
+   *  from the "Job" progress link). */
   protected readonly editingMbl = signal(false);
 
   // ── File (HBL) step ──────────────────────────────────────────────────────────
@@ -258,51 +253,6 @@ export class ShipmentCaseWizardScreen {
     () => this.savedMbl() !== null && this.currentStep() !== 'files',
   );
 
-  // ── "מבנה התיק" sidebar ──────────────────────────────────────────────────────
-  // A dropdown of the Job's Files plus a small grid of the chosen File's
-  // container(s) — replaces the earlier nested Job → container → File tree,
-  // which grew a scrollbar of its own on long cases.
-  /** The File picked in the sidebar dropdown. Follows the File being edited,
-   *  otherwise keeps the user's pick (falling back to the first File). */
-  protected readonly treeHblId = linkedSignal<{ editing: number | null; hbls: HblDto[] }, number | null>({
-    source: () => ({ editing: this.editingHblId(), hbls: this.hbls() }),
-    computation: ({ editing, hbls }, previous) => {
-      const candidate = editing ?? previous?.value ?? null;
-      if (candidate !== null && hbls.some((hbl) => hbl.id === candidate)) return candidate;
-      return hbls[0]?.id ?? null;
-    },
-  });
-  protected readonly treeHbl = computed(() => {
-    const id = this.treeHblId();
-    return id === null ? null : (this.hbls().find((hbl) => hbl.id === id) ?? null);
-  });
-  /** The Job's containers, shown once a File is picked: every `mbl_container`
-   *  row for groupage (the picked File's own one is highlighted — see
-   *  `isTreeHblContainer`), otherwise the Job's single container shared by
-   *  all its Files. */
-  protected readonly treeContainers = computed<ContainerSummary[]>(() => {
-    const mbl = this.savedMbl();
-    if (!mbl || !this.treeHbl()) return [];
-    if (this.isGroupage()) {
-      return mbl.containers.map((container) => ({
-        ...container,
-        files: this.hblsForContainer(container.id),
-      }));
-    }
-    return [
-      {
-        id: null,
-        containerNumber: mbl.containerNumber,
-        containerSealNumber: mbl.containerSealNumber,
-        cargoDescription: mbl.cargoDescription,
-        grossWeightKg: mbl.grossWeightKg,
-        volumeCbm: mbl.volumeCbm,
-        files: this.hbls(),
-      },
-    ];
-  });
-  /** The container whose details popup is open, `null` when closed. */
-  protected readonly viewedContainer = signal<ContainerSummary | null>(null);
 
   constructor() {
     // A double-click on a row in "התיקים שלי" navigates to
@@ -389,7 +339,7 @@ export class ShipmentCaseWizardScreen {
     this.seaMethod.set(null);
   }
 
-  /** Re-opens the saved Job's form (same as the tree's Job node). */
+  /** Re-opens the saved Job's form. */
   protected goToJobStep(): void {
     if (!this.canGoToJobStep()) return;
     this.startEditMbl();
@@ -402,7 +352,7 @@ export class ShipmentCaseWizardScreen {
   }
 
   /** Makes the main pane show the Files step: closes the Job form (unsaved
-   *  edits discarded) and any read-only step 1/2 view. Used by every tree /
+   *  edits discarded) and any read-only step 1/2 view. Used by every
    *  File action so they land where the File form actually renders. */
   private showFilesStep(): void {
     this.viewingLockedStep.set(null);
@@ -524,43 +474,13 @@ export class ShipmentCaseWizardScreen {
     return container.containerNumber ?? `מכולה #${container.id}`;
   }
 
-  /** The Files belonging to one container, in sequence order (groupage only). */
-  protected hblsForContainer(containerId: number): HblDto[] {
-    return this.hbls().filter((hbl) => hbl.containerId === containerId);
-  }
-
-  /** "File #3 · HBL-001 · לקוח" — the File's identity line in the sidebar
-   *  dropdown and above the edit page. */
+  /** "File #3 · HBL-001 · לקוח" — the File's identity line above the
+   *  edit page. */
   protected hblLabel(hbl: HblDto): string {
     const parts = [`File #${hbl.sequenceNumber}`];
     if (hbl.hblNumber) parts.push(hbl.hblNumber);
     if (hbl.customerName) parts.push(hbl.customerName);
     return parts.join(' · ');
-  }
-
-  /** Whether this grid row is the container the picked File ships in. */
-  protected isTreeHblContainer(container: ContainerSummary): boolean {
-    const hbl = this.treeHbl();
-    return hbl !== null && container.id !== null && hbl.containerId === container.id;
-  }
-
-  protected onTreeHblChange(event: Event): void {
-    const value = (event.target as HTMLSelectElement).value;
-    this.treeHblId.set(value === '' ? null : Number(value));
-  }
-
-  /** The sidebar's "עריכת File" link — opens the picked File's edit page. */
-  protected editTreeHbl(): void {
-    const hbl = this.treeHbl();
-    if (hbl) this.startEditHbl(hbl);
-  }
-
-  protected openContainerDetails(container: ContainerSummary): void {
-    this.viewedContainer.set(container);
-  }
-
-  protected closeContainerDetails(): void {
-    this.viewedContainer.set(null);
   }
 
   /** Picks the container for the File being created, from the form's
@@ -584,8 +504,7 @@ export class ShipmentCaseWizardScreen {
     this.showHblForm.set(true);
   }
 
-  /** Opens the edit page for an already-saved File (from the created-File list
-   *  or the sidebar's "עריכת File" link) — `customerId`/`containerId` stay as
+  /** Opens the edit page for an already-saved File (from the created-File list) — `customerId`/`containerId` stay as
    *  they were. Saving or cancelling returns to the File list + "+ הוספת File". */
   protected startEditHbl(hbl: HblDto): void {
     this.showFilesStep();
@@ -721,7 +640,6 @@ export class ShipmentCaseWizardScreen {
     this.saveError.set(null);
     this.saving.set(false);
     this.hbls.set([]);
-    this.viewedContainer.set(null);
     this.resetHblForm();
   }
 

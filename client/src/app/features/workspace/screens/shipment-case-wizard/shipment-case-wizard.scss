@@ -1,7 +1,7 @@
 // Component-scoped additions to the shared form styles (see src/styles.scss).
 // Two-column layout: `.wizard-main` holds the step-by-step form, `.wizard-sidebar`
 // is a sticky panel at the content area's far edge (in RTL, the last flex child
-// sits at the visual left) with the step links + the "מבנה התיק" File picker.
+// sits at the visual left) with the step links.
 
 // `.page-title`'s own margin moves onto this row so the title and the
 // "מעבר לתיק הסליקה" link sit on one line — same trick as `order.scss`.
@@ -162,8 +162,7 @@
 }
 
 // ── Progress sidebar ───────────────────────────────────────────────────────────
-// No max-height/overflow of its own: the File picker keeps it short, so the
-// page is the only thing that scrolls (the old nested tree grew a second bar).
+// No max-height/overflow of its own: the page is the only thing that scrolls.
 .wizard-sidebar {
   flex: 0 0 280px;
   display: flex;
@@ -261,158 +260,6 @@
   background: var(--success);
   border-color: var(--success);
   color: white;
-}
-
-// ── "מבנה התיק" ────────────────────────────────────────────────────────────────
-
-.wizard-tree {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border-color);
-}
-
-.wizard-tree__title {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
-.wizard-tree-node {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  background: transparent;
-  border: none;
-  border-right: 3px solid transparent;
-  border-radius: var(--radius-md);
-  padding: 7px 10px;
-  font-family: inherit;
-  font-size: 0.85rem;
-  color: var(--text-dark);
-  text-align: right;
-  cursor: pointer;
-  transition: var(--transition);
-
-  i {
-    width: 14px;
-    text-align: center;
-    font-size: 0.78rem;
-    color: var(--text-muted);
-    flex-shrink: 0;
-  }
-
-  &:hover {
-    background: var(--bg-color);
-  }
-
-  &.active {
-    background: var(--light-blue-bg);
-    color: var(--secondary-blue);
-    border-right-color: var(--secondary-blue);
-    font-weight: 600;
-
-    i {
-      color: var(--secondary-blue);
-    }
-  }
-}
-
-.wizard-tree-node__label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.wizard-tree__picker {
-  margin: 0;
-
-  label {
-    font-size: 0.78rem;
-  }
-
-  .form-control {
-    font-size: 0.85rem;
-  }
-}
-
-.wizard-tree__subtitle {
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: var(--text-muted);
-}
-
-// Compact containers grid: fixed layout so long numbers ellipsize instead of
-// widening the sidebar; each row opens the container's details popup.
-.wizard-containers {
-  width: 100%;
-  table-layout: fixed;
-  border-collapse: collapse;
-  font-size: 0.8rem;
-
-  th,
-  td {
-    padding: 6px 8px;
-    text-align: right;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  th {
-    color: var(--text-muted);
-    font-weight: 700;
-    border-bottom: 1px solid var(--border-color);
-  }
-
-  td {
-    color: var(--text-dark);
-    font-weight: 600;
-  }
-}
-
-.wizard-containers__count {
-  width: 44px;
-  text-align: center;
-}
-
-.wizard-containers__row {
-  cursor: pointer;
-  transition: var(--transition);
-
-  &:hover,
-  &:focus-visible {
-    background: var(--light-blue-bg);
-    outline: none;
-  }
-
-  // The picked File's own container.
-  &--own td {
-    color: var(--secondary-blue);
-    font-weight: 700;
-  }
-
-  i {
-    margin-left: 4px;
-    font-size: 0.7rem;
-    color: var(--secondary-blue);
-  }
-}
-
-.wizard-tree__edit {
-  align-self: flex-start;
-  font-size: 0.85rem;
-}
-
-.wizard-tree-empty {
-  margin: 0;
-  font-size: 0.78rem;
-  color: var(--text-muted);
-  padding: 4px 10px;
 }
 
 @media (max-width: 960px) {
