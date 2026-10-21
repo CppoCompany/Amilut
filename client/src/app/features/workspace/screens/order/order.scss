@@ -72,31 +72,45 @@
 }
 
 // ── Tabs ─────────────────────────────────────────────────────────────────────
-.order-steps {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--order-space-xs);
-  padding: var(--order-space-xs);
-  background: var(--order-track-bg);
-  border: 1px solid var(--order-border);
-  border-radius: var(--order-radius-lg);
+// PrimeNG stepper as a 4-up segmented track; each step renders our own
+// button (index / icon / label / error dot) through its content template.
+:host ::ng-deep .order-steps {
+  .p-steplist {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--order-space-xs);
+    padding: var(--order-space-xs);
+    background: var(--order-track-bg);
+    border: 1px solid var(--order-border);
+    border-radius: var(--order-radius-lg);
+  }
+
+  .p-stepper-separator {
+    display: none;
+  }
 }
 
 .order-step {
+  display: block;
+  min-width: 0;
+}
+
+.order-step__button {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: var(--order-space-sm);
+  width: 100%;
   min-width: 0;
-  padding: 10px var(--order-space-md);
+  padding: 9px var(--order-space-md);
   border: none;
   border-radius: var(--order-radius-md);
   background: transparent;
   color: var(--order-text-muted);
   font: inherit;
-  font-weight: 600;
-  font-size: 0.92rem;
+  font-weight: 500;
+  font-size: 0.875rem;
   cursor: pointer;
   transition: var(--transition);
 
@@ -110,9 +124,10 @@
   }
 }
 
-.order-step--active {
+.order-step--active .order-step__button {
   background: var(--order-surface);
-  color: var(--order-accent);
+  color: var(--order-text);
+  font-weight: 600;
   box-shadow: var(--shadow-sm);
 }
 
@@ -131,7 +146,7 @@
   .order-step--active & {
     background: var(--order-accent);
     border-color: var(--order-accent);
-    color: #fff;
+    color: var(--color-fg-inverse);
   }
 
   .order-step--done & {
@@ -164,8 +179,8 @@
 }
 
 .order-card__title {
-  font-size: 1.3rem;
-  font-weight: 700;
+  font-size: 1rem;
+  font-weight: 600;
   color: var(--order-heading);
 }
 
@@ -184,14 +199,7 @@
   background: var(--order-surface);
   border: 1px solid var(--order-border);
   border-radius: var(--order-radius-lg);
-  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.06);
-
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--order-space-sm);
-  }
+  box-shadow: 0 -4px 12px rgb(15 33 43 / 0.06);
 }
 
 .order-actions__group {
@@ -199,59 +207,11 @@
   gap: var(--order-space-md);
 }
 
-// A quiet, link-styled action (not a `.btn`) — "go to filing" for an
-// already-saved order is a lightweight shortcut, not a primary action.
-.filing-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-  padding: 4px 2px;
-  border: none;
-  background: none;
-  color: var(--secondary-blue);
-  font: inherit;
-  font-size: 0.92rem;
-  font-weight: 600;
-  white-space: nowrap;
-  cursor: pointer;
-
-  i {
-    font-size: 0.85rem;
-  }
-
-  &:hover,
-  &:focus-visible {
-    text-decoration: underline;
-    outline: none;
-  }
-}
-
-.form-control.is-invalid {
-  border-color: var(--order-error);
-}
-
-.field-error {
-  margin: 0.35rem 0 0;
-  font-size: 0.85rem;
-  color: var(--danger, #ef4444);
-}
-
-.form-message {
-  margin: 0;
-  padding: 0.6rem 0.9rem;
-  border-radius: 6px;
-  font-size: 0.95rem;
-
-  &--success {
-    background: color-mix(in srgb, var(--success, #10b981) 12%, white);
-    color: var(--success, #10b981);
-  }
-
-  &--error {
-    background: color-mix(in srgb, var(--danger, #ef4444) 12%, white);
-    color: var(--danger, #ef4444);
-  }
+// "תנאי תשלום" → its incoterm, a narrow select under the select-button.
+.incoterm-select {
+  width: 40%;
+  min-width: 12rem;
+  margin-top: 8px;
 }
 
 // ── Mobile ───────────────────────────────────────────────────────────────────
@@ -285,7 +245,11 @@
     width: 100%;
   }
 
-  .order-actions__group .btn {
+  .order-actions__group p-button {
     flex: 1;
+
+    ::ng-deep .p-button {
+      width: 100%;
+    }
   }
 }

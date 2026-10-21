@@ -77,7 +77,7 @@
     padding-top: 10px;
     border-top: 1px solid var(--border-color);
 
-    .btn {
+    ::ng-deep .p-button {
       width: 100%;
     }
   }
@@ -109,11 +109,6 @@
     padding-bottom: 6px;
     font-size: 1rem;
   }
-}
-
-.classification-details__actions .btn {
-  padding: 0.4rem 0.9rem;
-  font-size: 0.875rem;
 }
 
 .pending-ccfs {
@@ -153,19 +148,6 @@
     font-weight: 700;
     color: var(--primary-blue);
     line-height: 1.3;
-  }
-
-  &__count {
-    flex-shrink: 0;
-    min-width: 1.6rem;
-    padding: 2px 8px;
-    border-radius: 999px;
-    background: var(--secondary-blue);
-    color: #fff;
-    font-size: 0.8rem;
-    font-weight: 700;
-    text-align: center;
-    font-variant-numeric: tabular-nums;
   }
 
   &__hint {
@@ -271,38 +253,21 @@
     text-align: start;
   }
 
+  // PrimeNG progress bar, slimmed to a 3px strip under the row.
   &__bar {
     grid-column: 1 / -1;
-    height: 3px;
+    display: block;
     margin-top: 4px;
-    border-radius: 999px;
-    background: var(--bg-color);
-    overflow: hidden;
-  }
 
-  &__bar-fill {
-    height: 100%;
-    border-radius: inherit;
-    background: linear-gradient(90deg, var(--secondary-blue), var(--success));
-    transition: width 0.3s ease;
+    ::ng-deep .p-progressbar {
+      height: 3px;
+    }
   }
 }
 
+// PrimeNG messages: spacing only, the look is the theme's.
 .form-message {
   margin: 0 0 0.5rem;
-  padding: 0.45rem 0.7rem;
-  border-radius: 6px;
-  font-size: 0.85rem;
-
-  &--success {
-    background: color-mix(in srgb, var(--success) 12%, white);
-    color: var(--success);
-  }
-
-  &--error {
-    background: color-mix(in srgb, var(--danger, #ef4444) 12%, white);
-    color: var(--danger, #ef4444);
-  }
 }
 
 .products-loading {
@@ -331,12 +296,6 @@
   margin-top: 0;
   border-collapse: separate;
   border-spacing: 0;
-
-  thead {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-  }
 
   th,
   td {
@@ -420,18 +379,14 @@
     }
   }
 
-  // Inline editors: borderless until hovered or focused.
-  .form-control {
+  // Inline PrimeNG editors: borderless until hovered or focused.
+  ::ng-deep :is(.p-select, .p-multiselect, .p-inputtext):not(.p-focus):not(:focus) {
     border-color: transparent;
     background-color: transparent;
+    box-shadow: none;
 
     &:hover {
       border-color: var(--border-color);
-      background-color: var(--input-bg);
-    }
-
-    &:focus {
-      border-color: var(--secondary-blue);
       background-color: var(--input-bg);
     }
   }
@@ -452,43 +407,20 @@
   font-size: 0.85rem;
 }
 
-// "+ הוסף שורה" — a full-width dashed footer of the card.
-.products-add.btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
+// "+ הוסף שורה" — a full-width dashed footer of the card (PrimeNG button).
+:host ::ng-deep .products-add {
   width: 100%;
-  padding: 0.45rem;
   border: 0;
   border-top: 1px dashed var(--border-color);
   border-radius: 0;
   background: var(--readonly-bg);
-  color: var(--secondary-blue);
-  font-size: 0.85rem;
-  font-weight: 600;
-
-  &:hover:not(:disabled) {
-    background: var(--light-blue-bg);
-  }
-
-  &:disabled {
-    color: var(--text-muted);
-    cursor: not-allowed;
-    opacity: 0.6;
-  }
 }
 
-.trade-agreement-select,
-.classification-code-input,
-.country-select,
-.approvals-select .multi-select__toggle,
-.licenses-select .multi-select__toggle {
-  padding: 0.2rem 0.35rem;
+.classification-code-input {
   font-size: 0.8rem;
 }
 
-// Fixed control widths: a <select>'s intrinsic width is its longest option,
+// Fixed control widths: a select's intrinsic width is its longest option,
 // which would otherwise force the column (and the table) wider than the screen.
 .trade-agreement-select {
   width: 6.25rem;

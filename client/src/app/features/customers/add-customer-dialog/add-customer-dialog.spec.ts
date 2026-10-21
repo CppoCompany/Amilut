@@ -1,6 +1,8 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
+import { Dialog } from 'primeng/dialog';
 
 import type { CustomerDto } from '../../../api/models';
 import { AddCustomerDialog } from './add-customer-dialog';
@@ -151,18 +153,13 @@ describe('AddCustomerDialog', () => {
     );
   });
 
-  it('emits cancelled on the cancel button, Escape and backdrop click', () => {
-    (fixture.nativeElement.querySelector('.btn-secondary') as HTMLButtonElement).click();
+  it('emits cancelled once from the cancel button, even when PrimeNG then closes the dialog', () => {
+    (fixture.nativeElement.querySelector('.dialog-cancel') as HTMLButtonElement).click();
     expect(cancelled).toBe(1);
 
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-    expect(cancelled).toBe(2);
-
-    (fixture.nativeElement.querySelector('.dialog-backdrop') as HTMLElement).click();
-    expect(cancelled).toBe(3);
-
-    // Clicks inside the card must not cancel.
-    (fixture.nativeElement.querySelector('.dialog-card') as HTMLElement).click();
-    expect(cancelled).toBe(3);
+    // Escape / the mask / the close icon all end in the dialog's onHide.
+    fixture.debugElement.query(By.directive(Dialog)).componentInstance.close(new Event('click'));
+    expect(cancelled).toBe(1);
   });
+
 });

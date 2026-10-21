@@ -1,19 +1,29 @@
-<dialog
-  #dialog
-  class="cmdk"
-  aria-label="מעבר מהיר למסך"
-  (close)="onClosed()"
-  (click)="onDialogClick($event)"
+<p-dialog
+  [visible]="isOpen()"
+  (visibleChange)="isOpen.set($event)"
+  [modal]="true"
+  [dismissableMask]="true"
+  [closeOnEscape]="true"
+  [showHeader]="false"
+  [draggable]="false"
+  [resizable]="false"
+  position="top"
+  [style]="{ width: 'min(560px, calc(100vw - 32px))', marginTop: '12vh' }"
+  contentStyleClass="cmdk"
+  ariaLabelledBy="cmdk-query"
+  (onShow)="onShown()"
 >
   <div class="cmdk__search">
     <i class="fa-solid fa-magnifying-glass cmdk__search-icon" aria-hidden="true"></i>
     <input
       #input
+      pInputText
       type="text"
       id="cmdk-query"
       name="cmdk-query"
       class="cmdk__input"
       placeholder="לאיזה מסך לעבור?"
+      aria-label="מעבר מהיר למסך"
       autocomplete="off"
       spellcheck="false"
       role="combobox"
@@ -56,4 +66,4 @@
     <span><kbd class="kbd">Enter</kbd> פתיחה</span>
     <span><kbd class="kbd">Esc</kbd> סגירה</span>
   </div>
-</dialog>
+</p-dialog>

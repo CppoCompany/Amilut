@@ -375,7 +375,7 @@ describe('ShipmentCaseWizardScreen', () => {
       internals.savedMbl.set({ ...MINIMAL_MBL, seaMethod, containers: [container(1), container(2)] });
       fixture.detectChanges();
 
-      const addButton: HTMLButtonElement = fixture.nativeElement.querySelector('.form-actions .btn-primary');
+      const addButton: HTMLButtonElement = fixture.nativeElement.querySelector('.add-hbl-btn');
       expect(addButton.textContent).toContain('יצירת File');
       addButton.click();
       fixture.detectChanges();
@@ -386,7 +386,7 @@ describe('ShipmentCaseWizardScreen', () => {
     }
 
     function containerButtons(): HTMLButtonElement[] {
-      return Array.from(fixture.nativeElement.querySelectorAll('.hbl-form .choice-btn'));
+      return Array.from(fixture.nativeElement.querySelectorAll('.hbl-form p-togglebutton'));
     }
 
     function typeHblNumber(value: string): void {
@@ -411,12 +411,12 @@ describe('ShipmentCaseWizardScreen', () => {
       first.click();
       fixture.detectChanges();
       typeHblNumber('HBL-1');
-      expect(first.classList).toContain('active');
+      expect(first.getAttribute('aria-pressed')).toBe('true');
 
       second.click();
       fixture.detectChanges();
 
-      expect(second.classList).toContain('active');
+      expect(second.getAttribute('aria-pressed')).toBe('true');
       expect(hblNumberInput().value).toBe('');
       const internals = fixture.componentInstance as unknown as WizardInternals;
       expect(internals.hblContainerId()).toBe(2);
@@ -439,7 +439,7 @@ describe('ShipmentCaseWizardScreen', () => {
       openNewFileForm(SeaMethod.FCL_FCL);
 
       expect(fixture.nativeElement.querySelector('app-hbl-orders-picker-dialog')).toBeNull();
-      expect(fixture.nativeElement.querySelector('.hbl-form .data-table')).toBeNull();
+      expect(fixture.nativeElement.querySelector('.hbl-form p-table')).toBeNull();
       const link: HTMLButtonElement = fixture.nativeElement.querySelector('.orders-assoc__link');
       expect(link.textContent).toContain('לשיוך להזמנה');
 
@@ -455,7 +455,7 @@ describe('ShipmentCaseWizardScreen', () => {
       expect(dialog.textContent).toContain('לא נמצאו הזמנות ללא שיוך');
 
       // "ביטול" closes it without touching the selection.
-      const cancel: HTMLButtonElement = dialog.querySelector('.dialog-card__footer .btn-secondary');
+      const cancel: HTMLButtonElement = dialog.querySelector('.dialog-cancel');
       cancel.click();
       fixture.detectChanges();
       expect(fixture.nativeElement.querySelector('app-hbl-orders-picker-dialog')).toBeNull();
@@ -477,11 +477,11 @@ describe('ShipmentCaseWizardScreen', () => {
     }
 
     function mainTable(): HTMLTableElement | null {
-      return fixture.nativeElement.querySelector('.wizard-main .data-table');
+      return fixture.nativeElement.querySelector('.wizard-main .hbl-table');
     }
 
     function editButtons(): HTMLButtonElement[] {
-      return Array.from(fixture.nativeElement.querySelectorAll('.wizard-main .data-table .btn-secondary'));
+      return Array.from(fixture.nativeElement.querySelectorAll('.wizard-main .hbl-table .hbl-edit-btn'));
     }
 
     it('"ערוך" replaces the File list + add button with the edit page alone', () => {
@@ -507,14 +507,14 @@ describe('ShipmentCaseWizardScreen', () => {
       fixture.detectChanges();
       expect(mainTable()).toBeNull();
 
-      const cancel: HTMLButtonElement = fixture.nativeElement.querySelector('.hbl-form .btn-secondary');
+      const cancel: HTMLButtonElement = fixture.nativeElement.querySelector('.hbl-form .hbl-cancel');
       cancel.click();
       fixture.detectChanges();
 
       expect(sectionTitle()).toContain('יצירת Files');
       expect(mainTable()!.querySelectorAll('tbody tr').length).toBe(2);
       expect(fixture.nativeElement.querySelector('.hbl-form')).toBeNull();
-      const addButton: HTMLButtonElement = fixture.nativeElement.querySelector('.form-actions .btn-primary');
+      const addButton: HTMLButtonElement = fixture.nativeElement.querySelector('.add-hbl-btn');
       expect(addButton.textContent).toContain('הוספת File נוסף');
     });
   });

@@ -1,83 +1,67 @@
 @if (error(); as message) {
-  <p class="form-message form-message--error data-grid__error" role="alert">{{ message }}</p>
+  <p-message severity="error" styleClass="data-grid__error" role="alert">{{ message }}</p-message>
 }
 
-<div class="data-table-wrapper data-grid__table-wrapper" [class.data-grid--loading]="loading()" [attr.aria-busy]="loading()">
-  <table class="data-table">
-    <thead>
-      <tr>
-        @for (column of columns(); track column.key) {
-          <th
-            [class.data-grid__th--sortable]="column.sortable"
-            [class.data-grid__th--active]="column.sortable && sort() === column.key"
-            [attr.aria-sort]="ariaSort(column)"
-            (click)="onHeaderClick(column)"
-          >
-            <span class="data-grid__th-label">
-              <span>{{ column.header }}</span>
-              @if (column.sortable) {
-                <i
-                  class="fa-solid data-grid__sort-icon"
-                  [class.fa-sort]="sort() !== column.key"
-                  [class.fa-sort-up]="sort() === column.key && dir() === 'asc'"
-                  [class.fa-sort-down]="sort() === column.key && dir() === 'desc'"
-                  aria-hidden="true"
-                ></i>
-              }
-            </span>
+<p-table
+  class="data-grid__table"
+  [value]="$any(rows())"
+  [columns]="$any(columns())"
+  [lazy]="true"
+  [lazyLoadOnInit]="false"
+  [loading]="loading()"
+  [sortField]="sort() ?? undefined"
+  [sortOrder]="sortOrder()"
+  [rowTrackBy]="trackBy"
+  [scrollable]="true"
+  scrollHeight="flex"
+  size="small"
+  (onSort)="onSort($event)"
+>
+  <ng-template #header let-columns>
+    <tr>
+      @for (column of columns; track column.key) {
+        @if (column.sortable) {
+          <th [pSortableColumn]="column.key">
+            {{ column.header }}
+            <p-sortIcon [field]="column.key" />
           </th>
-        }
-      </tr>
-    </thead>
-    <tbody>
-      @if (loading() && rows().length === 0) {
-        <tr>
-          <td class="data-table__empty" [attr.colspan]="columns().length">טוען...</td>
-        </tr>
-      } @else if (rows().length === 0) {
-        <tr>
-          <td class="data-table__empty" [attr.colspan]="columns().length">{{ emptyText() }}</td>
-        </tr>
-      } @else {
-        @for (row of rows(); track trackRow($index, row)) {
-          <tr class="data-table__row--clickable" title="לחץ פעמיים לפתיחה" (dblclick)="rowDblClick.emit(row)">
-            @for (column of columns(); track column.key) {
-              <td [class]="column.cssClass ?? ''">
-                @if (pillOf(column, row); as pill) {
-                  <span [class]="'status-pill status-pill--' + pill">{{ cellText(column, row) }}</span>
-                } @else {
-                  {{ cellText(column, row) }}
-                }
-              </td>
-            }
-          </tr>
+        } @else {
+          <th>{{ column.header }}</th>
         }
       }
-    </tbody>
-  </table>
-</div>
+    </tr>
+  </ng-template>
+  <ng-template #body let-row let-columns="columns">
+    <tr class="data-table__row--clickable" title="לחץ פעמיים לפתיחה" (dblclick)="rowDblClick.emit(row)">
+      @for (column of columns; track column.key) {
+        <td [class]="column.cssClass ?? ''">
+          @if (pillOf(column, row); as pill) {
+            <app-status-tag [status]="pill" [label]="cellText(column, row)" />
+          } @else {
+            {{ cellText(column, row) }}
+          }
+        </td>
+      }
+    </tr>
+  </ng-template>
+  <ng-template #emptymessage let-columns>
+    <tr>
+      <td class="data-table__empty" [attr.colspan]="columns.length">
+        {{ loading() ? 'טוען...' : emptyText() }}
+      </td>
+    </tr>
+  </ng-template>
+</p-table>
 
 <div class="data-grid__pager">
   <span class="data-grid__range">{{ rangeText() }}</span>
-  <div class="data-grid__pager-buttons">
-    <button
-      type="button"
-      class="btn btn-secondary data-grid__pager-btn"
-      [disabled]="!hasPrev() || loading()"
-      (click)="goTo(page() - 1)"
-    >
-      <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
-      הקודם
-    </button>
-    <span class="data-grid__page-label">עמוד {{ page() }} מתוך {{ pageCount() }}</span>
-    <button
-      type="button"
-      class="btn btn-secondary data-grid__pager-btn"
-      [disabled]="!hasNext() || loading()"
-      (click)="goTo(page() + 1)"
-    >
-      הבא
-      <i class="fa-solid fa-chevron-left" aria-hidden="true"></i>
-    </button>
-  </div>
+  <p-paginator
+    [first]="first()"
+    [rows]="pageSize()"
+    [totalRecords]="total()"
+    [pageLinkSize]="5"
+    [showFirstLastIcon]="false"
+    [alwaysShow]="true"
+    (onPageChange)="onPage($event)"
+  />
 </div>

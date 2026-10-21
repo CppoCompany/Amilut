@@ -8,6 +8,7 @@ import {
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
+import { Message } from 'primeng/message';
 import { catchError, distinctUntilChanged, finalize, forkJoin, map, of, switchMap } from 'rxjs';
 
 import { ORDER_IMPORT_DOCUMENT_TYPES, ORDER_REQUIRED_DOCUMENT_TYPES } from '../../../api/enums';
@@ -41,7 +42,7 @@ const NO_STAGED_FILES: StagedFiles = {};
  */
 @Component({
   selector: 'app-related-order-documents',
-  imports: [DocumentStagingList, ConfirmDialog],
+  imports: [Message, DocumentStagingList, ConfirmDialog],
   templateUrl: './related-order-documents.html',
   styleUrl: './related-order-documents.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -5,22 +5,23 @@
     <div class="field">
       <label class="field__label" for="email">שם משתמש (אימייל)</label>
       <input
+        pInputText
         id="email"
-        class="field__input"
         type="email"
         formControlName="email"
         autocomplete="username"
         dir="ltr"
-        [class.field__input--invalid]="showError(email)"
+        [fluid]="true"
+        [invalid]="showError(email)"
       />
       @if (showError(email)) {
-        <p class="field__error">
+        <p-message severity="error" variant="simple" size="small" styleClass="field__error">
           @if (email.hasError('required')) {
             יש להזין אימייל
           } @else if (email.hasError('email')) {
             יש להזין כתובת אימייל תקינה
           }
-        </p>
+        </p-message>
       }
     </div>
 
@@ -29,8 +30,9 @@
         סיסמה <span class="field__hint">(לא נדרשת כרגע)</span>
       </label>
       <input
+        pInputText
         id="password"
-        class="field__input"
+        [fluid]="true"
         type="password"
         formControlName="password"
         autocomplete="current-password"
@@ -38,17 +40,16 @@
       />
     </div>
 
-    <button class="login-card__submit" type="submit" [disabled]="loading()">
-      @if (loading()) {
-        <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
-        מתחבר...
-      } @else {
-        כניסה
-      }
-    </button>
+    <p-button
+      type="submit"
+      styleClass="login-card__submit"
+      [label]="loading() ? 'מתחבר...' : 'כניסה'"
+      [loading]="loading()"
+      [disabled]="loading()"
+    />
 
     @if (error(); as message) {
-      <p class="login-card__error" role="alert">{{ message }}</p>
+      <p-message severity="error" styleClass="login-card__error" role="alert">{{ message }}</p-message>
     }
   </form>
 </main>

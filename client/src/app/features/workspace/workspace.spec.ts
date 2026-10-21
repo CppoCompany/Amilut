@@ -2,7 +2,9 @@ import { Location } from '@angular/common';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { RouterTestingHarness } from '@angular/router/testing';
+import { Tooltip } from 'primeng/tooltip';
 
 import { NavigationService } from './navigation.service';
 import { NotificationsStateService } from './notifications-state.service';
@@ -53,14 +55,26 @@ describe('Workspace shell', () => {
     return Array.from(fixture.nativeElement.querySelectorAll('.icon-nav-item'));
   }
 
-  /** A standalone (non-group) leaf's own icon — identified by its `title`. */
+  /** A standalone (non-group) leaf's own icon — identified by its `data-label`. */
   function leafIconByLabel(label: string): HTMLAnchorElement | null {
-    return iconItems().find((a) => a.getAttribute('title') === label) ?? null;
+    return iconItems().find((a) => a.dataset['label'] === label) ?? null;
   }
 
-  /** A group's own icon — identified by `aria-label` (groups have no `title`/tooltip, only a flyout). */
+  /** A group's own icon — identified by `aria-label` (groups have no tooltip, only a flyout). */
   function groupIconByLabel(label: string): HTMLAnchorElement | null {
-    return iconItems().find((a) => a.getAttribute('aria-label') === label && !a.hasAttribute('title')) ?? null;
+    return (
+      iconItems().find(
+        (a) => a.classList.contains('icon-nav-item--group') && a.getAttribute('aria-label') === label,
+      ) ?? null
+    );
+  }
+
+  /** The PrimeNG tooltip text attached to an element. */
+  function tooltipOf(el: Element): unknown {
+    return fixture.debugElement
+      .queryAll(By.directive(Tooltip))
+      .find((de) => de.nativeElement === el)
+      ?.injector.get(Tooltip).content;
   }
 
   /** One child row inside a group's hover flyout, identified by the group's and the child's labels. */
@@ -86,20 +100,20 @@ describe('Workspace shell', () => {
       expect(fixture.nativeElement.querySelector('.tree-node')).toBeNull();
       expect(fixture.nativeElement.querySelector('.tree-child-item')).toBeNull();
       expect(iconItems().length).toBeGreaterThan(0);
-      expect(toggleButton().querySelector('i')?.classList.contains('fa-bars')).toBe(true);
+      expect(toggleButton().querySelector('.fa-bars')).toBeTruthy();
       expect(fixture.nativeElement.querySelector('.sidebar-header__title')).toBeNull();
     });
 
     it('a standalone leaf icon has a tooltip matching its menu label', () => {
       const icon = leafIconByLabel('סיווג');
       expect(icon).toBeTruthy();
-      expect(icon!.querySelector('.icon-nav-tooltip')?.textContent?.trim()).toBe('סיווג');
+      expect(tooltipOf(icon!)).toBe('סיווג');
     });
 
     it('"תיוק ניירת יבוא" is sidebar-visible — it needs a direct entry point for its Order/CCF picker', () => {
       const icon = leafIconByLabel('תיוק ניירת יבוא');
       expect(icon).toBeTruthy();
-      expect(icon!.querySelector('.icon-nav-tooltip')?.textContent?.trim()).toBe('תיוק ניירת יבוא');
+      expect(tooltipOf(icon!)).toBe('תיוק ניירת יבוא');
 
       toggleButton().click();
       fixture.detectChanges();
@@ -160,7 +174,7 @@ describe('Workspace shell', () => {
       fixture.detectChanges();
 
       expect(sidebar().classList.contains('sidebar--collapsed')).toBe(false);
-      expect(toggleButton().querySelector('i')?.classList.contains('fa-xmark')).toBe(true);
+      expect(toggleButton().querySelector('.fa-xmark')).toBeTruthy();
       expect(fixture.nativeElement.querySelector('.sidebar-header__title')?.textContent?.trim()).toBe(
         'תפריט ראשי',
       );

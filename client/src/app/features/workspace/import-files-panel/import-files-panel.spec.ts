@@ -2,6 +2,8 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { WritableSignal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
+import { Select } from 'primeng/select';
 import { vi } from 'vitest';
 
 import { ImportDocumentType } from '../../../api/enums';
@@ -73,8 +75,18 @@ function uploadButton(): HTMLButtonElement {
   return fixture.nativeElement.querySelector('.upload-area .upload-btn');
 }
 
-function select(): HTMLSelectElement {
-  return fixture.nativeElement.querySelector('select#documentType');
+function pickerElement(): HTMLElement {
+  return fixture.debugElement.query(By.directive(Select)).nativeElement;
+}
+
+function pickerOptions(): { value: string; label: string }[] {
+  return fixture.debugElement.query(By.directive(Select)).componentInstance.options;
+}
+
+/** Picks a document type the way the PrimeNG select reports it: through its ngModelChange. */
+function chooseDocumentType(value: string): void {
+  fixture.debugElement.query(By.directive(Select)).triggerEventHandler('ngModelChange', value);
+  fixture.detectChanges();
 }
 
 /** The `.document-category` section whose title contains `label` (a document-type Hebrew label). */
@@ -150,15 +162,15 @@ describe('ImportFilesPanel', () => {
 
   it('renders the document-type picker above the upload area with a placeholder selected, offering every type including "מסמכים נוספים"', () => {
     flushList([]);
-    const picker = select();
-    expect(picker).toBeTruthy();
-    expect(picker.value).toBe('');
-    expect(picker.options.length).toBe(7); // placeholder + 6 ImportDocumentType members
-    expect(picker.options[1].textContent?.trim()).toBe('חשבון ספק');
-    expect(picker.options[6].textContent?.trim()).toBe('מסמכים נוספים');
+    const picker = pickerOptions();
+    expect(internals.documentType()).toBeNull();
+    expect(pickerElement().textContent?.trim()).toBe('בחר סוג מסמך');
+    expect(picker.length).toBe(6); // every ImportDocumentType member
+    expect(picker[0].label).toBe('חשבון ספק');
+    expect(picker[5].label).toBe('מסמכים נוספים');
     // The picker's group precedes the drop zone in document order.
     const area = fixture.nativeElement.querySelector('.upload-area') as HTMLElement;
-    expect(picker.compareDocumentPosition(area) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(pickerElement().compareDocumentPosition(area) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('offers only the restricted 4-type subset when documentTypes is overridden (CCF screen usage), and groups the list into those 4 categories', () => {
@@ -170,7 +182,7 @@ describe('ImportFilesPanel', () => {
     ]);
     flushList([]);
 
-    expect(select().options.length).toBe(5); // placeholder + 4
+    expect(pickerOptions().length).toBe(4);
     const categoryLabels = Array.from(
       fixture.nativeElement.querySelectorAll('.document-category__title') as NodeListOf<HTMLElement>,
     ).map((el) => el.textContent?.replace(/\(\d+\)/, '').trim());
@@ -187,9 +199,7 @@ describe('ImportFilesPanel', () => {
     internals.uploadMultipleImportFiles([new File(['x'], 'a.pdf')]);
     httpMock.expectNone(LIST_URL);
 
-    select().value = ImportDocumentType.PACKING_LIST;
-    select().dispatchEvent(new Event('change'));
-    fixture.detectChanges();
+    chooseDocumentType(ImportDocumentType.PACKING_LIST);
 
     expect(internals.documentType()).toBe(ImportDocumentType.PACKING_LIST);
     expect(uploadButton().disabled).toBe(false);

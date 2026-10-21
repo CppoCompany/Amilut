@@ -1,7 +1,7 @@
-// Builds on the shared form classes in src/styles.scss (.page-title,
-// .form-section, .section-title, .grid-row, .form-group, .form-control,
-// .form-message, .form-actions, .btn, .icon-btn). Everything specific to this
-// screen reads from the tokens below, so colors/spacing/radii change in one place.
+// Builds on the shared layout classes in src/styles.scss (.page-title,
+// .form-section, .section-title, .grid-row, .form-group, .form-actions); the
+// widgets are PrimeNG. Everything specific to this screen reads from the
+// tokens below, so colors/spacing/radii change in one place.
 
 :host {
   // Layout
@@ -15,7 +15,6 @@
 
   // Radii
   --ccf-radius-lg: var(--radius-lg);
-  --ccf-radius-pill: 999px;
 
   // Colors
   --ccf-text-muted: var(--text-muted);
@@ -23,8 +22,6 @@
   --ccf-heading: var(--primary-blue);
   --ccf-border: var(--border-color);
   --ccf-surface: var(--card-bg);
-  --ccf-info-bg: var(--light-blue-bg);
-  --ccf-info-fg: var(--primary-blue);
 }
 
 // ── Page frame ───────────────────────────────────────────────────────────────
@@ -69,25 +66,9 @@
 
 // Section headings outrank the document names inside them.
 .ccf-card__title {
-  font-size: 1.3rem;
-  font-weight: 700;
-  color: var(--ccf-heading);
-}
-
-// ── Badges ───────────────────────────────────────────────────────────────────
-.ccf-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 10px;
-  border-radius: var(--ccf-radius-pill);
-  font-size: 0.8rem;
+  font-size: 1rem;
   font-weight: 600;
-  white-space: nowrap;
-}
-
-.ccf-badge--info {
-  background: var(--ccf-info-bg);
-  color: var(--ccf-info-fg);
+  color: var(--ccf-heading);
 }
 
 // ── Sticky action bar ────────────────────────────────────────────────────────
@@ -101,14 +82,7 @@
   background: var(--ccf-surface);
   border: 1px solid var(--ccf-border);
   border-radius: var(--ccf-radius-lg);
-  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.06);
-
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--ccf-space-sm);
-  }
+  box-shadow: 0 -4px 12px rgb(15 33 43 / 0.06);
 }
 
 // ── Mobile ───────────────────────────────────────────────────────────────────
@@ -125,9 +99,11 @@
     padding: var(--ccf-space-lg);
   }
 
-  .ccf-actions {
-    .btn {
-      flex: 1;
+  .ccf-actions p-button {
+    flex: 1;
+
+    ::ng-deep .p-button {
+      width: 100%;
     }
   }
 }

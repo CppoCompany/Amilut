@@ -1,5 +1,5 @@
 @if (errorMessage(); as message) {
-  <p class="form-message form-message--error" role="alert">{{ message }}</p>
+  <p-message severity="error" styleClass="form-message form-message--error" role="alert">{{ message }}</p-message>
 }
 
 @if (orderIds().length === 0) {
@@ -18,7 +18,7 @@
           הזמנה {{ order.orderId }}
         </h3>
         @if (order.error) {
-          <p class="related-docs__error" role="alert">טעינת המסמכים של הזמנה זו נכשלה</p>
+          <p-message severity="error" styleClass="related-docs__error" role="alert">טעינת המסמכים של הזמנה זו נכשלה</p-message>
         } @else {
           <app-document-staging-list
             [documentTypes]="documentTypes"

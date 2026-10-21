@@ -1,6 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { Message } from 'primeng/message';
+import { PaginatorState, Paginator } from 'primeng/paginator';
+import { SortEvent } from 'primeng/api';
+import { TableModule } from 'primeng/table';
 
 import type { SortDir } from '../../api/paging';
+import { StatusTag } from '../status-tag/status-tag';
 
 /**
  * One column of a {@link DataGrid}. `key` doubles as the sort key sent to the
@@ -16,7 +21,7 @@ export interface GridColumn<T> {
   cell?: (row: T) => string;
   /** Extra class on every `<td>`, e.g. `data-table__numeric`. */
   cssClass?: string;
-  /** When given, the cell renders a `.status-pill--<value>` around the text (`null` = plain text). */
+  /** When given, the cell renders a status tag for that value (`null` = plain text). */
   pill?: (row: T) => string | null;
 }
 
@@ -26,13 +31,15 @@ export interface GridSort {
 }
 
 /**
- * Reusable server-paged table for the "רשימות" pages: column definitions in,
- * rows/total in, sort + page events out. Sorting and paging are the parent's
- * job (it re-fetches); this component only renders state and emits intents.
- * Row double-click mirrors the existing grids ("לחץ פעמיים לעריכה").
+ * Reusable server-paged table for the "רשימות" pages, on PrimeNG's table
+ * (lazy sort) and paginator: column definitions in, rows/total in, sort +
+ * page events out. Sorting and paging are the parent's job (it re-fetches);
+ * this component only renders state and emits intents. Row double-click
+ * mirrors the other grids ("לחץ פעמיים לפתיחה").
  */
 @Component({
   selector: 'app-data-grid',
+  imports: [TableModule, Paginator, Message, StatusTag],
   templateUrl: './data-grid.html',
   styleUrl: './data-grid.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -51,38 +58,41 @@ export class DataGrid<T> {
   /** Total rows across all pages (drives the pager). */
   readonly total = input(0);
   readonly emptyText = input('אין נתונים להצגה');
-  /** Stable identity for `track`; defaults to the row's index. */
+  /** Stable identity for row tracking; defaults to the row's index. */
   readonly rowKey = input<((row: T) => string | number) | null>(null);
 
   readonly sortChange = output<GridSort>();
   readonly pageChange = output<number>();
   readonly rowDblClick = output<T>();
 
-  protected readonly pageCount = computed(() =>
-    Math.max(1, Math.ceil(this.total() / Math.max(1, this.pageSize()))),
-  );
-  protected readonly hasPrev = computed(() => this.page() > 1);
-  protected readonly hasNext = computed(() => this.page() < this.pageCount());
+  protected readonly sortOrder = computed(() => (this.dir() === 'asc' ? 1 : -1));
+  protected readonly first = computed(() => (this.page() - 1) * this.pageSize());
 
   /** "מציג 26–50 מתוך 137", or just the total when the page is empty. */
   protected readonly rangeText = computed(() => {
     const total = this.total();
     if (total === 0 || this.rows().length === 0) return `סה"כ ${total}`;
-    const first = (this.page() - 1) * this.pageSize() + 1;
+    const first = this.first() + 1;
     const last = Math.min(total, first + this.rows().length - 1);
     return `מציג ${first}–${last} מתוך ${total}`;
   });
 
-  protected onHeaderClick(column: GridColumn<T>): void {
-    if (!column.sortable) return;
-    const dir: SortDir = this.sort() === column.key && this.dir() === 'asc' ? 'desc' : 'asc';
-    this.sortChange.emit({ sort: column.key, dir });
+  protected readonly trackBy = (index: number, row: T): string | number => {
+    const key = this.rowKey();
+    return key ? key(row) : index;
+  };
+
+  /** PrimeNG re-emits when the parent echoes the sort back; only real changes go out. */
+  onSort(event: SortEvent): void {
+    if (!event.field) return;
+    const dir: SortDir = event.order === -1 ? 'desc' : 'asc';
+    if (event.field === this.sort() && dir === this.dir()) return;
+    this.sortChange.emit({ sort: event.field, dir });
   }
 
-  protected ariaSort(column: GridColumn<T>): 'ascending' | 'descending' | 'none' | null {
-    if (!column.sortable) return null;
-    if (this.sort() !== column.key) return 'none';
-    return this.dir() === 'asc' ? 'ascending' : 'descending';
+  onPage(state: PaginatorState): void {
+    const page = (state.page ?? 0) + 1;
+    if (page !== this.page()) this.pageChange.emit(page);
   }
 
   protected cellText(column: GridColumn<T>, row: T): string {
@@ -93,15 +103,5 @@ export class DataGrid<T> {
 
   protected pillOf(column: GridColumn<T>, row: T): string | null {
     return column.pill ? column.pill(row) : null;
-  }
-
-  protected trackRow(index: number, row: T): string | number {
-    const key = this.rowKey();
-    return key ? key(row) : index;
-  }
-
-  protected goTo(page: number): void {
-    if (page < 1 || page > this.pageCount() || page === this.page()) return;
-    this.pageChange.emit(page);
   }
 }

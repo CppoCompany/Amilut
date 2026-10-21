@@ -4,30 +4,37 @@
     <p class="dashboard-header__date">{{ today }}</p>
   </div>
   <div class="dashboard-actions__buttons">
-    <button type="button" class="btn btn-primary" (click)="newOrder()">
-      <i class="fa-solid fa-plus" aria-hidden="true"></i>
-      הזמנה חדשה
-    </button>
-    <button type="button" class="btn btn-secondary" (click)="newImportProcess()">
-      <i class="fa-solid fa-truck-fast" aria-hidden="true"></i>
-      תהליך יבוא חדש
-    </button>
-    <button type="button" class="btn btn-secondary" (click)="newCcf()">
-      <i class="fa-solid fa-stamp" aria-hidden="true"></i>
-      תיק עמילות חדש
-    </button>
+    <p-button label="הזמנה חדשה" icon="fa-solid fa-plus" (onClick)="newOrder()" />
+    <p-button
+      label="תהליך יבוא חדש"
+      icon="fa-solid fa-truck-fast"
+      severity="secondary"
+      [outlined]="true"
+      (onClick)="newImportProcess()"
+    />
+    <p-button
+      label="תיק עמילות חדש"
+      icon="fa-solid fa-stamp"
+      severity="secondary"
+      [outlined]="true"
+      (onClick)="newCcf()"
+    />
   </div>
 </div>
 
 @if (errorMessage(); as message) {
-  <div class="banner banner--error" role="alert">
-    <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+  <p-message severity="error" styleClass="dashboard-banner" role="alert">
     <span class="banner__text">{{ message }}</span>
-    <button type="button" class="btn btn-ghost btn-sm dashboard-retry" (click)="reload()">
-      <i class="fa-solid fa-rotate-right" aria-hidden="true"></i>
-      נסה שוב
-    </button>
-  </div>
+    <p-button
+      label="נסה שוב"
+      icon="fa-solid fa-rotate-right"
+      [text]="true"
+      size="small"
+      severity="secondary"
+      styleClass="dashboard-retry"
+      (onClick)="reload()"
+    />
+  </p-message>
 }
 
 <div class="dashboard-grid">
@@ -38,19 +45,23 @@
         <span class="dashboard-card__icon"><i class="fa-solid fa-envelope" aria-hidden="true"></i></span>
         <h2 class="dashboard-card__title">הודעות</h2>
         @if (newMessageCount() > 0) {
-          <span class="dashboard-card__count">{{ newMessageCount() }} חדשות</span>
+          <p-tag [value]="newMessageCount() + ' חדשות'" severity="danger" styleClass="dashboard-card__count" />
         }
       </div>
     </header>
     @if (messagesError(); as message) {
-      <div class="banner banner--error dashboard-card__error" role="alert">
-        <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+      <p-message severity="error" styleClass="dashboard-banner dashboard-card__error" role="alert">
         <span class="banner__text">{{ message }}</span>
-        <button type="button" class="btn btn-ghost btn-sm dashboard-retry" (click)="reloadMessages()">
-          <i class="fa-solid fa-rotate-right" aria-hidden="true"></i>
-          נסה שוב
-        </button>
-      </div>
+        <p-button
+          label="נסה שוב"
+          icon="fa-solid fa-rotate-right"
+          [text]="true"
+          size="small"
+          severity="secondary"
+          styleClass="dashboard-retry"
+          (onClick)="reloadMessages()"
+        />
+      </p-message>
     }
     <div class="dashboard-card__body dashboard-messages">
       @if (messagesLoading() && messages().length === 0) {
@@ -61,17 +72,16 @@
           אין הודעות
         </p>
       } @else {
-        <table class="data-table">
-          <thead>
+        <p-table [value]="messages()" size="small" styleClass="dashboard-table" dataKey="id">
+          <ng-template #header>
             <tr>
               <th>הודעה</th>
               <th>בוצע ע"י</th>
               <th class="data-table__numeric">תאריך</th>
             </tr>
-          </thead>
-          <tbody>
-            @for (message of messages(); track message.id) {
-              <tr
+          </ng-template>
+          <ng-template #body let-message [rowOf]="messages()">
+            <tr
                 [class.dashboard-message--unread]="!message.isRead"
                 [class.data-table__row--clickable]="message.relatedCcfId !== null"
                 [attr.title]="message.relatedCcfId !== null ? 'לחץ לפתיחת תיק העמילות' : null"
@@ -85,9 +95,8 @@
                 <td>{{ message.actorName ?? '—' }}</td>
                 <td class="data-table__numeric">{{ formatDateTime(message.createdAt) }}</td>
               </tr>
-            }
-          </tbody>
-        </table>
+          </ng-template>
+        </p-table>
       }
     </div>
   </section>
@@ -99,10 +108,16 @@
         <span class="dashboard-card__icon"><i class="fa-solid fa-list" aria-hidden="true"></i></span>
         <h2 class="dashboard-card__title">ההזמנות שלי</h2>
       </div>
-      <button type="button" class="dashboard-card__link" (click)="openList(listRows.myOrders)">
-        צפה בהכל
-        <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
-      </button>
+      <p-button
+        label="צפה בהכל"
+        icon="fa-solid fa-arrow-left"
+        iconPos="right"
+        [text]="true"
+        size="small"
+        severity="secondary"
+        styleClass="dashboard-card__link"
+        (onClick)="openList(listRows.myOrders)"
+      />
     </header>
     <div class="dashboard-card__body">
       @if (loading() && !data()) {
@@ -113,8 +128,8 @@
           אין נתונים להצגה
         </p>
       } @else {
-        <table class="data-table">
-          <thead>
+        <p-table [value]="data()!.myOrders" size="small" styleClass="dashboard-table" dataKey="id">
+          <ng-template #header>
             <tr>
               <th class="data-table__numeric">מספר הזמנה</th>
               <th>לקוח</th>
@@ -122,10 +137,9 @@
               <th class="data-table__status">סטטוס</th>
               <th class="data-table__numeric">תאריך פתיחה</th>
             </tr>
-          </thead>
-          <tbody>
-            @for (order of data()!.myOrders; track order.id) {
-              <tr
+          </ng-template>
+          <ng-template #body let-order [rowOf]="data()!.myOrders">
+            <tr
                 class="data-table__row--clickable"
                 title="לחץ לפתיחת ההזמנה"
                 tabindex="0"
@@ -136,15 +150,12 @@
                 <td>{{ order.customerName ?? '—' }}</td>
                 <td>{{ order.handlerName ?? '—' }}</td>
                 <td class="data-table__status">
-                  <span [class]="'status-pill status-pill--' + order.status">
-                    {{ orderStatusLabels[order.status] }}
-                  </span>
+                  <app-status-tag [status]="order.status" [label]="orderStatusLabels[order.status]" />
                 </td>
                 <td class="data-table__numeric">{{ formatDate(order.createdAt) }}</td>
               </tr>
-            }
-          </tbody>
-        </table>
+          </ng-template>
+        </p-table>
       }
     </div>
   </section>
@@ -156,10 +167,16 @@
         <span class="dashboard-card__icon"><i class="fa-solid fa-file-circle-check" aria-hidden="true"></i></span>
         <h2 class="dashboard-card__title">תיקים בהתרה</h2>
       </div>
-      <button type="button" class="dashboard-card__link" (click)="openList(listRows.casesInRelease)">
-        צפה בהכל
-        <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
-      </button>
+      <p-button
+        label="צפה בהכל"
+        icon="fa-solid fa-arrow-left"
+        iconPos="right"
+        [text]="true"
+        size="small"
+        severity="secondary"
+        styleClass="dashboard-card__link"
+        (onClick)="openList(listRows.casesInRelease)"
+      />
     </header>
     <div class="dashboard-card__body">
       @if (loading() && !data()) {
@@ -170,8 +187,8 @@
           אין נתונים להצגה
         </p>
       } @else {
-        <table class="data-table">
-          <thead>
+        <p-table [value]="data()!.casesInRelease" size="small" styleClass="dashboard-table" dataKey="id">
+          <ng-template #header>
             <tr>
               <th class="data-table__numeric">מספר תיק</th>
               <th>מספר MBL</th>
@@ -180,24 +197,20 @@
               <th class="data-table__status">סטטוס</th>
               <th class="data-table__numeric">תאריך פתיחה</th>
             </tr>
-          </thead>
-          <tbody>
-            @for (mblCase of data()!.casesInRelease; track mblCase.id) {
-              <tr>
+          </ng-template>
+          <ng-template #body let-mblCase [rowOf]="data()!.casesInRelease">
+            <tr>
                 <td class="data-table__numeric">{{ mblCase.id }}</td>
                 <td>{{ mblCase.mblNumber ?? '—' }}</td>
                 <td>{{ joinOrEmDash(mblCase.customerNames) }}</td>
                 <td>{{ mblCase.carrierName ?? '—' }}</td>
                 <td class="data-table__status">
-                  <span [class]="'status-pill status-pill--' + mblCase.status">
-                    {{ mblStatusLabel(mblCase.status) }}
-                  </span>
+                  <app-status-tag [status]="mblCase.status" [label]="mblStatusLabel(mblCase.status)" />
                 </td>
                 <td class="data-table__numeric">{{ formatDate(mblCase.createdAt) }}</td>
               </tr>
-            }
-          </tbody>
-        </table>
+          </ng-template>
+        </p-table>
       }
     </div>
   </section>
@@ -209,14 +222,16 @@
         <span class="dashboard-card__icon"><i class="fa-solid fa-tags" aria-hidden="true"></i></span>
         <h2 class="dashboard-card__title">תיקי עמילות שלא עברו סיווג</h2>
       </div>
-      <button
-        type="button"
-        class="dashboard-card__link"
-        (click)="openList(listRows.ccfsPendingClassification)"
-      >
-        צפה בהכל
-        <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
-      </button>
+      <p-button
+        label="צפה בהכל"
+        icon="fa-solid fa-arrow-left"
+        iconPos="right"
+        [text]="true"
+        size="small"
+        severity="secondary"
+        styleClass="dashboard-card__link"
+        (onClick)="openList(listRows.ccfsPendingClassification)"
+      />
     </header>
     <div class="dashboard-card__body">
       @if (loading() && !data()) {
@@ -227,8 +242,8 @@
           אין נתונים להצגה
         </p>
       } @else {
-        <table class="data-table">
-          <thead>
+        <p-table [value]="data()!.ccfsPendingClassification" size="small" styleClass="dashboard-table" dataKey="id">
+          <ng-template #header>
             <tr>
               <th>מספר תיק</th>
               <th>מספר MBL</th>
@@ -236,10 +251,9 @@
               <th class="data-table__numeric">שורות מסווגות</th>
               <th class="data-table__numeric">תאריך פתיחה</th>
             </tr>
-          </thead>
-          <tbody>
-            @for (ccf of data()!.ccfsPendingClassification; track ccf.id) {
-              <tr
+          </ng-template>
+          <ng-template #body let-ccf [rowOf]="data()!.ccfsPendingClassification">
+            <tr
                 class="data-table__row--clickable"
                 title="לחץ למעבר לסיווג"
                 tabindex="0"
@@ -252,9 +266,8 @@
                 <td class="data-table__numeric">{{ classificationProgress(ccf) }}</td>
                 <td class="data-table__numeric">{{ formatDate(ccf.createdAt) }}</td>
               </tr>
-            }
-          </tbody>
-        </table>
+          </ng-template>
+        </p-table>
       }
     </div>
   </section>
@@ -266,10 +279,16 @@
         <span class="dashboard-card__icon"><i class="fa-solid fa-folder-open" aria-hidden="true"></i></span>
         <h2 class="dashboard-card__title">תיקי עמילות</h2>
       </div>
-      <button type="button" class="dashboard-card__link" (click)="openList(listRows.ccfs)">
-        צפה בהכל
-        <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
-      </button>
+      <p-button
+        label="צפה בהכל"
+        icon="fa-solid fa-arrow-left"
+        iconPos="right"
+        [text]="true"
+        size="small"
+        severity="secondary"
+        styleClass="dashboard-card__link"
+        (onClick)="openList(listRows.ccfs)"
+      />
     </header>
     <div class="dashboard-card__body">
       @if (loading() && !data()) {
@@ -280,8 +299,8 @@
           אין נתונים להצגה
         </p>
       } @else {
-        <table class="data-table">
-          <thead>
+        <p-table [value]="data()!.ccfs" size="small" styleClass="dashboard-table" dataKey="id">
+          <ng-template #header>
             <tr>
               <th>מספר תיק</th>
               <th>מספר MBL</th>
@@ -290,10 +309,9 @@
               <th class="data-table__status">סטטוס</th>
               <th class="data-table__numeric">תאריך פתיחה</th>
             </tr>
-          </thead>
-          <tbody>
-            @for (ccf of data()!.ccfs; track ccf.id) {
-              <tr
+          </ng-template>
+          <ng-template #body let-ccf [rowOf]="data()!.ccfs">
+            <tr
                 class="data-table__row--clickable"
                 title="לחץ לפתיחת תיק העמילות"
                 tabindex="0"
@@ -305,15 +323,12 @@
                 <td>{{ joinOrEmDash(ccf.customerNames) }}</td>
                 <td class="data-table__numeric">{{ classificationProgress(ccf) }}</td>
                 <td class="data-table__status">
-                  <span [class]="'status-pill status-pill--' + ccf.status">
-                    {{ ccfStatusLabels[ccf.status] }}
-                  </span>
+                  <app-status-tag [status]="ccf.status" [label]="ccfStatusLabels[ccf.status]" />
                 </td>
                 <td class="data-table__numeric">{{ formatDate(ccf.createdAt) }}</td>
               </tr>
-            }
-          </tbody>
-        </table>
+          </ng-template>
+        </p-table>
       }
     </div>
   </section>
@@ -325,10 +340,16 @@
         <span class="dashboard-card__icon"><i class="fa-solid fa-truck-fast" aria-hidden="true"></i></span>
         <h2 class="dashboard-card__title">תהליכי יבוא</h2>
       </div>
-      <button type="button" class="dashboard-card__link" (click)="openList(listRows.importProcesses)">
-        צפה בהכל
-        <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
-      </button>
+      <p-button
+        label="צפה בהכל"
+        icon="fa-solid fa-arrow-left"
+        iconPos="right"
+        [text]="true"
+        size="small"
+        severity="secondary"
+        styleClass="dashboard-card__link"
+        (onClick)="openList(listRows.importProcesses)"
+      />
     </header>
     <div class="dashboard-card__body">
       @if (loading() && !data()) {
@@ -339,8 +360,8 @@
           אין נתונים להצגה
         </p>
       } @else {
-        <table class="data-table">
-          <thead>
+        <p-table [value]="data()!.importProcesses" size="small" styleClass="dashboard-table" dataKey="id">
+          <ng-template #header>
             <tr>
               <th class="data-table__numeric">מספר תיק</th>
               <th>מספר MBL</th>
@@ -350,10 +371,9 @@
               <th class="data-table__status">סטטוס</th>
               <th class="data-table__numeric">תאריך פתיחה</th>
             </tr>
-          </thead>
-          <tbody>
-            @for (process of data()!.importProcesses; track process.id) {
-              <tr
+          </ng-template>
+          <ng-template #body let-process [rowOf]="data()!.importProcesses">
+            <tr
                 class="data-table__row--clickable"
                 title="לחץ לפתיחת תיק השילוח"
                 tabindex="0"
@@ -366,15 +386,12 @@
                 <td>{{ joinOrEmDash(process.customerNames) }}</td>
                 <td class="data-table__numeric">{{ process.hblCount }}</td>
                 <td class="data-table__status">
-                  <span [class]="'status-pill status-pill--' + process.status">
-                    {{ mblStatusLabel(process.status) }}
-                  </span>
+                  <app-status-tag [status]="process.status" [label]="mblStatusLabel(process.status)" />
                 </td>
                 <td class="data-table__numeric">{{ formatDate(process.createdAt) }}</td>
               </tr>
-            }
-          </tbody>
-        </table>
+          </ng-template>
+        </p-table>
       }
     </div>
   </section>

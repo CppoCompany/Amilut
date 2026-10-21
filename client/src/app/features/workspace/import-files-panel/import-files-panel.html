@@ -1,16 +1,16 @@
 <div class="form-group document-type-group">
   <label for="documentType" class="required">סוג מסמך</label>
-  <select
-    id="documentType"
-    class="form-control"
-    [value]="documentType() ?? ''"
-    (change)="onDocumentTypeChange($event)"
-  >
-    <option value="">בחר סוג מסמך</option>
-    @for (option of documentTypes(); track option) {
-      <option [value]="option">{{ documentTypeLabels[option] }}</option>
-    }
-  </select>
+  <p-select
+    inputId="documentType"
+    [options]="documentTypeOptions()"
+    optionLabel="label"
+    optionValue="value"
+    [ngModel]="documentType()"
+    (ngModelChange)="onDocumentTypeChange($event)"
+    placeholder="בחר סוג מסמך"
+    [showClear]="true"
+    appendTo="body"
+  />
   @if (context() !== null && documentType() === null) {
     <p class="hint-text">יש לבחור סוג מסמך לפני העלאת קבצים</p>
   }
@@ -20,8 +20,8 @@
   <div class="upload-instructions">
     <div class="upload-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
     <div class="upload-text">
-      <div style="font-weight: 700; color: var(--primary-blue)">גרור לכאן קבצים</div>
-      <div style="color: var(--text-muted); font-size: 0.9rem">תמיכה בקבצי PDF, XLSX, תמונות</div>
+      <div class="upload-text__title">גרור לכאן קבצים</div>
+      <div class="upload-text__hint">תמיכה בקבצי PDF, XLSX, תמונות</div>
     </div>
   </div>
   <input
@@ -33,21 +33,21 @@
     aria-label="בחירת קבצים להעלאה"
     (change)="onFilesSelected($event)"
   />
-  <button
-    type="button"
-    class="upload-btn"
+  <p-button
+    [label]="uploading() ? 'מעלה קבצים…' : 'העלה קבצים'"
+    icon="fa-solid fa-arrow-up-from-bracket"
+    [loading]="uploading()"
+    styleClass="upload-btn"
     [disabled]="uploading() || context() === null || documentType() === null"
-    (click)="openFilePicker()"
-  >
-    {{ uploading() ? 'מעלה קבצים…' : 'העלה קבצים' }}
-  </button>
+    (onClick)="openFilePicker()"
+  />
 </div>
 
 @if (successMessage(); as message) {
-  <p class="form-message form-message--success" role="status">{{ message }}</p>
+  <p-message severity="success" styleClass="form-message form-message--success" role="status">{{ message }}</p-message>
 }
 @if (errorMessage(); as message) {
-  <p class="form-message form-message--error" role="alert">{{ message }}</p>
+  <p-message severity="error" styleClass="form-message form-message--error" role="alert">{{ message }}</p-message>
 }
 
 @if (context() === null) {
@@ -63,50 +63,50 @@
           <span class="document-category__count">({{ category.docs.length }})</span>
         </h3>
         @if (category.docs.length > 0) {
-          <table class="documents-table">
-            <thead>
+          <p-table [value]="category.docs" styleClass="documents-table" size="small" dataKey="id">
+            <ng-template #header>
               <tr>
                 <th>שם קובץ</th>
                 <th>תאריך</th>
                 <th>גודל</th>
                 <th>פעולות</th>
               </tr>
-            </thead>
-            <tbody>
-              @for (doc of category.docs; track doc.id) {
-                <tr>
-                  <td>{{ doc.name }}</td>
-                  <td>{{ doc.date }}</td>
-                  <td>{{ doc.size }}</td>
-                  <td>
-                    <button
-                      type="button"
-                      class="upload-btn open-btn"
-                      [disabled]="openingId() !== null"
-                      [attr.aria-label]="'פתח את ' + doc.name"
-                      (click)="openDocument(doc)"
-                    >
-                      {{ openingId() === doc.id ? 'פותח…' : 'פתח' }}
-                    </button>
-                    <button
-                      type="button"
-                      class="icon-btn icon-btn--danger delete-btn"
-                      title="מחיקת הקובץ"
-                      [disabled]="deletingId() !== null"
-                      [attr.aria-label]="'מחק את ' + doc.name"
-                      (click)="requestDelete(doc)"
-                    >
-                      @if (deletingId() === doc.id) {
-                        <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
-                      } @else {
-                        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
-                      }
-                    </button>
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
+            </ng-template>
+            <ng-template #body let-doc [rowOf]="category.docs">
+              <tr>
+                <td>{{ doc.name }}</td>
+                <td class="data-table__numeric">{{ doc.date }}</td>
+                <td class="data-table__numeric">{{ doc.size }}</td>
+                <td class="data-table__actions">
+                  <p-button
+                    [label]="openingId() === doc.id ? 'פותח…' : 'פתח'"
+                    severity="secondary"
+                    [outlined]="true"
+                    size="small"
+                    styleClass="open-btn"
+                    [loading]="openingId() === doc.id"
+                    [disabled]="openingId() !== null"
+                    [ariaLabel]="'פתח את ' + doc.name"
+                    (onClick)="openDocument(doc)"
+                  />
+                  <p-button
+                    icon="fa-solid fa-xmark"
+                    severity="danger"
+                    [text]="true"
+                    [rounded]="true"
+                    size="small"
+                    styleClass="delete-btn"
+                    pTooltip="מחיקת הקובץ"
+                    tooltipPosition="top"
+                    [loading]="deletingId() === doc.id"
+                    [disabled]="deletingId() !== null"
+                    [ariaLabel]="'מחק את ' + doc.name"
+                    (onClick)="requestDelete(doc)"
+                  />
+                </td>
+              </tr>
+            </ng-template>
+          </p-table>
         } @else {
           <p class="document-category__empty">לא הועלו מסמכים מסוג זה</p>
         }

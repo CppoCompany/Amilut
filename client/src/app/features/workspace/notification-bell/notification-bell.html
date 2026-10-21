@@ -1,19 +1,22 @@
-<button
-  type="button"
-  class="bell-button"
-  [class.bell-button--open]="open()"
-  [attr.aria-label]="unreadCount() > 0 ? 'התראות (' + unreadCount() + ' שלא נקראו)' : 'התראות'"
-  aria-haspopup="dialog"
-  [attr.aria-expanded]="open()"
-  (click)="toggle()"
+<p-overlaybadge
+  [value]="unreadCount() > 99 ? '99+' : unreadCount()"
+  severity="danger"
+  badgeSize="small"
+  [badgeDisabled]="unreadCount() === 0"
+  styleClass="bell-badge-host"
 >
-  <i class="fa-solid fa-bell" aria-hidden="true"></i>
-  @if (unreadCount() > 0) {
-    <span class="bell-badge" aria-hidden="true">{{ unreadCount() > 99 ? '99+' : unreadCount() }}</span>
-  }
-</button>
+  <p-button
+    icon="fa-solid fa-bell"
+    [text]="true"
+    severity="secondary"
+    styleClass="bell-button"
+    [ariaLabel]="unreadCount() > 0 ? 'התראות (' + unreadCount() + ' שלא נקראו)' : 'התראות'"
+    [attr.aria-expanded]="open()"
+    (onClick)="toggle($event)"
+  />
+</p-overlaybadge>
 
-@if (open()) {
+<p-popover styleClass="bell-popover" ariaLabel="התראות" (onShow)="onShow()" (onHide)="onHide()">
   <div class="bell-dropdown" role="dialog" aria-label="התראות">
     <div class="bell-dropdown-header">
       <span>התראות</span>
@@ -54,4 +57,4 @@
       </ul>
     }
   </div>
-}
+</p-popover>

@@ -211,13 +211,13 @@ describe('DashboardScreen', () => {
 
     const orders = card('myOrders');
     expect(orders.querySelector('tbody tr')?.textContent).toContain('1001');
-    expect(orders.querySelector('.status-pill--waiting_at_port')?.textContent?.trim()).toBe(
+    expect(orders.querySelector('.status-tag--waiting_at_port')?.textContent?.trim()).toBe(
       'ממתינה בנמל',
     );
 
     const release = card('casesInRelease');
     expect(release.querySelector('tbody tr')?.textContent).toContain('ACME, Globex');
-    expect(release.querySelector('.status-pill--in_release')?.textContent?.trim()).toBe('בהתרה');
+    expect(release.querySelector('.status-tag--in_release')?.textContent?.trim()).toBe('בהתרה');
 
     const pending = card('ccfsPendingClassification');
     const pendingCells = Array.from(pending.querySelectorAll<HTMLElement>('tbody td')).map((td) =>
@@ -230,12 +230,12 @@ describe('DashboardScreen', () => {
       td.textContent?.trim(),
     );
     expect(ccfCells.slice(0, 4)).toEqual(['CCF1008', '—', '—', '—']);
-    expect(ccfs.querySelector('.status-pill--closed')?.textContent?.trim()).toBe('סגור');
+    expect(ccfs.querySelector('.status-tag--closed')?.textContent?.trim()).toBe('סגור');
 
     const processes = card('importProcesses');
     expect(processes.querySelector('tbody tr')?.textContent).toContain('MBL-7');
     expect(processes.querySelector('tbody tr')?.textContent).toContain('ימי');
-    expect(processes.querySelector('.status-pill--released')?.textContent?.trim()).toBe('שוחרר');
+    expect(processes.querySelector('.status-tag--released')?.textContent?.trim()).toBe('שוחרר');
   });
 
   it('shows an error with a retry button when the request fails, and retries on click', () => {

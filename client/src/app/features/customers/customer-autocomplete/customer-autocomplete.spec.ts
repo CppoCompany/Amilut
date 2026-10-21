@@ -35,14 +35,10 @@ describe('CustomerAutocomplete', () => {
   let http: HttpTestingController;
   let input: HTMLInputElement;
 
+  /** Types into PrimeNG's input, which debounces and enforces the minimum length. */
   const type = (value: string): void => {
     input.value = value;
     input.dispatchEvent(new Event('input', { bubbles: true }));
-    fixture.detectChanges();
-  };
-
-  const keydown = (key: string): void => {
-    input.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
     fixture.detectChanges();
   };
 
@@ -53,11 +49,6 @@ describe('CustomerAutocomplete', () => {
 
   const searchRequest = (q: string) =>
     http.expectOne((r) => r.url === '/api/customers' && r.params.get('q') === q);
-
-  const items = (): HTMLElement[] =>
-    Array.from(fixture.nativeElement.querySelectorAll('.autocomplete-item'));
-
-  const list = (): HTMLElement => fixture.nativeElement.querySelector('.autocomplete-list');
 
   beforeEach(async () => {
     vi.useFakeTimers();
@@ -82,150 +73,105 @@ describe('CustomerAutocomplete', () => {
   it('should create with the default placeholder', () => {
     expect(component).toBeTruthy();
     expect(input.placeholder).toBe('הקלד שם לקוח לחיפוש...');
-    expect(input.getAttribute('autocomplete')).toBe('off');
   });
 
   it('does not call the API below 3 characters', () => {
-    type('a');
     type('ab');
     settle();
     http.expectNone((r) => r.url === '/api/customers');
-    expect(list().classList.contains('active')).toBe(false);
   });
 
   it('sends one debounced request for "abc"', () => {
     type('a');
     type('ab');
     type('abc');
+    vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS - 1);
     http.expectNone((r) => r.url === '/api/customers');
 
-    settle();
-    const req = searchRequest('abc');
-    expect(req.request.params.get('limit')).toBe('20');
-    req.flush([ACME, BETA]);
+    vi.advanceTimersByTime(1);
+    searchRequest('abc').flush([ACME, BETA]);
     fixture.detectChanges();
-
-    expect(list().classList.contains('active')).toBe(true);
-    const names = items().map((el) => el.querySelector('.autocomplete-item__name')?.textContent);
-    expect(names).toEqual([ACME.name, BETA.name]);
-    expect(items()[0].textContent).toContain(ACME.phone);
-    expect(items()[0].textContent).toContain(ACME.email);
+    expect(component.results()).toEqual([ACME, BETA]);
   });
 
   it('trims the query and ignores whitespace-only padding', () => {
-    type('  acme  ');
+    type('  abc  ');
     settle();
-    searchRequest('acme').flush([]);
+    searchRequest('abc').flush([]);
   });
 
-  it('selecting an item sets the model, fills the input and closes the list', () => {
-    type('acme');
+  it('selecting an item sets the model and the text, and clears the results', () => {
+    type('acm');
     settle();
-    searchRequest('acme').flush([ACME]);
-    fixture.detectChanges();
+    searchRequest('acm').flush([ACME]);
 
-    items()[0].click();
+    component.select(ACME);
     fixture.detectChanges();
 
     expect(component.customer()).toEqual(ACME);
-    expect(input.value).toBe(ACME.name);
-    expect(list().classList.contains('active')).toBe(false);
+    expect(component.text()).toBe(ACME.name);
+    expect(component.results()).toEqual([]);
   });
 
-  it('shows the "add new customer" row when the search has zero results', () => {
-    type('nobody');
+  it('offers the "add new customer" row when the search has zero results', () => {
+    type('zzz');
     settle();
-    searchRequest('nobody').flush([]);
-    fixture.detectChanges();
+    expect(component.showAddRow()).toBe(false); // still loading
 
-    const addRow = fixture.nativeElement.querySelector('.autocomplete-item--add') as HTMLElement;
-    expect(addRow).toBeTruthy();
-    expect(addRow.textContent).toContain('לא נמצא לקוח בשם „nobody” — הוסף לקוח חדש');
-    expect(addRow.querySelector('i.fa-plus')).toBeTruthy();
-    expect(list().classList.contains('active')).toBe(true);
+    searchRequest('zzz').flush([]);
+    expect(component.showAddRow()).toBe(true);
+    expect(component.lastQuery()).toBe('zzz');
   });
 
-  it('clicking the add row opens the dialog prefilled with the query', () => {
-    type('nobody');
+  it('the add row opens the dialog prefilled with the typed text', () => {
+    type('New Co');
     settle();
-    searchRequest('nobody').flush([]);
+    searchRequest('New Co').flush([]);
+
+    component.openDialog();
     fixture.detectChanges();
 
-    (fixture.nativeElement.querySelector('.autocomplete-item--add') as HTMLElement).click();
-    fixture.detectChanges();
-
-    const dialog = fixture.nativeElement.querySelector('app-add-customer-dialog');
-    expect(dialog).toBeTruthy();
-    expect((dialog.querySelector('#add-customer-name') as HTMLInputElement).value).toBe('nobody');
-    expect(list().classList.contains('active')).toBe(false);
-  });
-
-  it('keyboard: ArrowDown moves the active row and Enter selects it', () => {
-    type('acme');
-    settle();
-    searchRequest('acme').flush([ACME, BETA]);
-    fixture.detectChanges();
-
-    keydown('ArrowDown');
-    expect(items()[1].classList.contains('autocomplete-item--active')).toBe(true);
-
-    keydown('Enter');
-    expect(component.customer()).toEqual(BETA);
-  });
-
-  it('keyboard: Escape closes the list', () => {
-    type('acme');
-    settle();
-    searchRequest('acme').flush([ACME]);
-    fixture.detectChanges();
-    expect(list().classList.contains('active')).toBe(true);
-
-    keydown('Escape');
-    expect(list().classList.contains('active')).toBe(false);
+    const name = fixture.nativeElement.querySelector('#add-customer-name') as HTMLInputElement;
+    expect(name).toBeTruthy();
+    expect(name.value).toBe('New Co');
   });
 
   it('editing the text after a selection resets the model to null', () => {
-    fixture.componentRef.setInput('customer', ACME);
+    component.select(ACME);
     fixture.detectChanges();
-    expect(input.value).toBe(ACME.name);
 
-    type(ACME.name + 'x');
+    component.onValueChange('Acme Imp');
     expect(component.customer()).toBeNull();
-    expect(input.value).toBe(ACME.name + 'x');
-
-    settle();
-    searchRequest(ACME.name + 'x').flush([]);
+    expect(component.text()).toBe('Acme Imp');
   });
 
-  it('follows a programmatic model reset with an empty input', () => {
-    fixture.componentRef.setInput('customer', ACME);
+  it('follows a programmatic model reset with an empty text', () => {
+    component.customer.set(ACME);
     fixture.detectChanges();
-    expect(input.value).toBe(ACME.name);
+    expect(component.text()).toBe(ACME.name);
 
-    fixture.componentRef.setInput('customer', null);
+    component.customer.set(null);
     fixture.detectChanges();
-    expect(input.value).toBe('');
+    expect(component.text()).toBe('');
   });
 
-  it('shows an error row and no results when the request fails', () => {
-    type('acme');
+  it('flags an error and no results when the request fails', () => {
+    type('abc');
     settle();
-    searchRequest('acme').flush('boom', { status: 500, statusText: 'Server Error' });
-    fixture.detectChanges();
+    searchRequest('abc').flush('boom', { status: 500, statusText: 'Server Error' });
 
-    expect(fixture.nativeElement.querySelector('.autocomplete-item--error')).toBeTruthy();
-    expect(fixture.nativeElement.querySelector('.autocomplete-item--add')).toBeNull();
-    expect(component.customer()).toBeNull();
+    expect(component.error()).toBe(true);
+    expect(component.results()).toEqual([]);
+    expect(component.showAddRow()).toBe(false);
   });
 
   it('cancels an in-flight request when the text drops below 3 characters', () => {
-    type('acme');
+    type('abc');
     settle();
-    const req = searchRequest('acme');
-    expect(req.cancelled).toBe(false);
+    const req = searchRequest('abc');
 
-    type('ac');
+    type('ab');
     expect(req.cancelled).toBe(true);
-    expect(list().classList.contains('active')).toBe(false);
+    expect(component.loading()).toBe(false);
   });
 });

@@ -9,6 +9,9 @@ import {
   viewChild,
 } from '@angular/core';
 
+import { Dialog } from 'primeng/dialog';
+import { InputText } from 'primeng/inputtext';
+
 import { isTreeChildGroup, TreeChild, TreeEntry } from '../navigation.model';
 import { NavigationService } from '../navigation.service';
 
@@ -59,12 +62,13 @@ function score(item: PaletteItem, query: string): number | null {
 
 /**
  * Ctrl+K / Cmd+K launcher: type a few letters of any screen and press Enter.
- * A native `<dialog>` (modal, focus-trapped, Escape closes it) with no
- * open/close animation — it is keyboard-driven and used many times a day,
- * so it must feel instant.
+ * A PrimeNG modal dialog (focus-trapped, Escape and the mask close it) with
+ * the open/close motion switched off — it is keyboard-driven and used many
+ * times a day, so it must feel instant.
  */
 @Component({
   selector: 'app-command-palette',
+  imports: [Dialog, InputText],
   templateUrl: './command-palette.html',
   styleUrl: './command-palette.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -74,8 +78,7 @@ function score(item: PaletteItem, query: string): number | null {
 })
 export class CommandPalette {
   private readonly nav = inject(NavigationService);
-  private readonly dialog = viewChild.required<ElementRef<HTMLDialogElement>>('dialog');
-  private readonly input = viewChild.required<ElementRef<HTMLInputElement>>('input');
+  private readonly input = viewChild<ElementRef<HTMLInputElement>>('input');
 
   protected readonly query = signal('');
   protected readonly activeIndex = signal(0);
@@ -104,23 +107,19 @@ export class CommandPalette {
   }
 
   open(): void {
-    const dialog = this.dialog().nativeElement;
-    if (dialog.open) return;
+    if (this.isOpen()) return;
     this.query.set('');
     this.activeIndex.set(0);
     this.isOpen.set(true);
-    if (typeof dialog.showModal === 'function') dialog.showModal();
-    this.input().nativeElement.focus();
   }
 
   close(): void {
-    const dialog = this.dialog().nativeElement;
-    if (dialog.open && typeof dialog.close === 'function') dialog.close();
     this.isOpen.set(false);
   }
 
-  protected onClosed(): void {
-    this.isOpen.set(false);
+  /** The dialog finished opening — put the caret in the search box. */
+  protected onShown(): void {
+    this.input()?.nativeElement.focus();
   }
 
   protected onDocumentKeydown(event: KeyboardEvent): void {
@@ -162,11 +161,6 @@ export class CommandPalette {
         break;
       }
     }
-  }
-
-  /** A click on the dialog element itself (not its content) is a click on the backdrop. */
-  protected onDialogClick(event: MouseEvent): void {
-    if (event.target === this.dialog().nativeElement) this.close();
   }
 
   protected select(item: PaletteItem): void {

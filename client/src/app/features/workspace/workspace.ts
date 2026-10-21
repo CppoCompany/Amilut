@@ -1,18 +1,17 @@
-import {
-  Component,
-  computed,
-  DestroyRef,
-  ElementRef,
-  inject,
-  signal,
-  viewChild,
-} from '@angular/core';
+import { Component, computed, DestroyRef, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
+import { MenuItem, MessageService } from 'primeng/api';
+import { Avatar } from 'primeng/avatar';
+import { Badge } from 'primeng/badge';
+import { Button } from 'primeng/button';
+import { Menu } from 'primeng/menu';
+import { Toast } from 'primeng/toast';
+import { Tooltip } from 'primeng/tooltip';
 import { combineLatest } from 'rxjs';
 
 import { AuthService } from '../../core/auth/auth.service';
-import { Toaster } from '../../shared/toast/toaster';
+import { AppMessageService } from '../../shared/toast/toast.service';
 import { Breadcrumb } from './breadcrumb/breadcrumb';
 import { CommandPalette } from './command-palette/command-palette';
 import { isTreeChildGroup, TreeChild } from './navigation.model';
@@ -59,16 +58,21 @@ function initialsOf(name: string | null | undefined): string {
  * (Back/Forward, refresh and deep links included). The router reuses this one
  * instance across slug changes, so the sidebar and header never remount.
  *
- * Also hosts the app-wide overlays: the Ctrl+K command palette and the toast
- * stack.
+ * Also hosts the app-wide overlays: the Ctrl+K command palette and the
+ * PrimeNG toast stack fed by `ToastService`.
  */
 @Component({
   selector: 'app-workspace',
   imports: [
+    Avatar,
+    Badge,
+    Button,
+    Menu,
+    Toast,
+    Tooltip,
     Breadcrumb,
     NotificationBell,
     CommandPalette,
-    Toaster,
     DashboardScreen,
     OrderScreen,
     FilingScreen,
@@ -85,11 +89,11 @@ function initialsOf(name: string | null | undefined): string {
     ImportProcessesListScreen,
     PlaceholderScreen,
   ],
+  // <p-toast> injects MessageService; point it at the app-wide queue ToastService writes to.
+  providers: [{ provide: MessageService, useExisting: AppMessageService }],
   templateUrl: './workspace.html',
   styleUrls: ['./workspace.scss', './workspace-sidebar.scss'],
   host: {
-    '(document:click)': 'onDocumentClick($event)',
-    '(document:keydown.escape)': 'closeUserMenu()',
     // Ctrl+K hands the screen to the command palette; nothing else stays open.
     '(document:keydown.control.k)': 'closeUserMenu()',
     '(document:keydown.meta.k)': 'closeUserMenu()',
@@ -101,13 +105,20 @@ export class Workspace {
   protected readonly notifications = inject(NotificationsStateService);
   private readonly route = inject(ActivatedRoute);
   private readonly palette = viewChild.required(CommandPalette);
-  private readonly userMenu = viewChild<ElementRef<HTMLElement>>('userMenu');
+  private readonly userMenu = viewChild.required<Menu>('userMenu');
   /** Lets the template tell a plain leaf row from an expandable sub-group. */
   protected readonly isGroup = isTreeChildGroup;
 
   /** Collapsed (icon-only) by default; toggled by the sidebar's own expand/close button. */
   protected readonly sidebarExpanded = signal(false);
-  protected readonly userMenuOpen = signal(false);
+  protected readonly userMenuItems: MenuItem[] = [
+    {
+      label: 'התנתק',
+      icon: 'fa-solid fa-right-from-bracket',
+      styleClass: 'menu__item--danger',
+      command: () => this.auth.logout(),
+    },
+  ];
   protected readonly initials = computed(() => initialsOf(this.auth.user()?.name));
 
   constructor() {
@@ -145,17 +156,7 @@ export class Workspace {
     this.palette().open();
   }
 
-  protected toggleUserMenu(): void {
-    this.userMenuOpen.update((open) => !open);
-  }
-
   protected closeUserMenu(): void {
-    this.userMenuOpen.set(false);
-  }
-
-  protected onDocumentClick(event: MouseEvent): void {
-    if (!this.userMenuOpen()) return;
-    const menu = this.userMenu()?.nativeElement;
-    if (menu && !menu.contains(event.target as Node)) this.closeUserMenu();
+    this.userMenu().hide();
   }
 }

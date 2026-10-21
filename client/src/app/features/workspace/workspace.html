@@ -1,18 +1,19 @@
 <!-- Top Header -->
 <header class="app-header">
   <div class="app-header__side">
-    <button type="button" class="brand" title="איזור האישי" (click)="goHome()">
+    <p-button [text]="true" severity="secondary" styleClass="brand" ariaLabel="איזור האישי" (onClick)="goHome()">
       <span class="brand__mark"><i class="fa-solid fa-anchor" aria-hidden="true"></i></span>
       <span class="brand__name">עמילות מכס & שילוח</span>
-    </button>
+    </p-button>
   </div>
 
-  <button
-    type="button"
-    class="cmdk-trigger"
-    aria-keyshortcuts="Control+K"
-    title="מעבר מהיר למסך (Ctrl+K)"
-    (click)="openPalette()"
+  <p-button
+    severity="secondary"
+    [outlined]="true"
+    styleClass="cmdk-trigger"
+    ariaLabel="מעבר מהיר למסך (Ctrl+K)"
+    [attr.aria-keyshortcuts]="'Control+K'"
+    (onClick)="openPalette()"
   >
     <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
     <span class="cmdk-trigger__label">מעבר מהיר למסך…</span>
@@ -20,42 +21,32 @@
       <kbd class="kbd">Ctrl</kbd>
       <kbd class="kbd">K</kbd>
     </span>
-  </button>
+  </p-button>
 
   <div class="app-header__side app-header__side--end">
     <app-notification-bell />
 
-    <div class="user-menu" #userMenu>
-      <button
-        type="button"
-        class="user-menu__trigger"
-        aria-haspopup="menu"
-        [attr.aria-expanded]="userMenuOpen()"
-        (click)="toggleUserMenu()"
-      >
-        <span class="avatar" aria-hidden="true">{{ initials() }}</span>
-        <span class="user-menu__name">{{ auth.user()?.name }}</span>
-        <i class="fa-solid fa-chevron-down user-menu__chevron" aria-hidden="true"></i>
-      </button>
+    <p-button
+      [text]="true"
+      severity="secondary"
+      styleClass="user-menu__trigger"
+      ariaLabel="חשבון"
+      [attr.aria-haspopup]="'menu'"
+      (onClick)="userMenu.toggle($event)"
+    >
+      <p-avatar [label]="initials()" shape="circle" styleClass="avatar" aria-hidden="true" />
+      <span class="user-menu__name">{{ auth.user()?.name }}</span>
+      <i class="fa-solid fa-chevron-down user-menu__chevron" aria-hidden="true"></i>
+    </p-button>
 
-      @if (userMenuOpen()) {
-        <div class="menu" role="menu" aria-label="חשבון">
-          <div class="menu__header">
-            <div class="menu__name">שלום, {{ auth.user()?.name }}</div>
-            <div class="menu__meta">{{ auth.user()?.email }}</div>
-          </div>
-          <button
-            type="button"
-            role="menuitem"
-            class="menu__item menu__item--danger"
-            (click)="auth.logout()"
-          >
-            <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
-            התנתק
-          </button>
+    <p-menu #userMenu [model]="userMenuItems" [popup]="true" appendTo="body" styleClass="user-menu" ariaLabel="חשבון">
+      <ng-template #start>
+        <div class="menu__header">
+          <div class="menu__name">שלום, {{ auth.user()?.name }}</div>
+          <div class="menu__meta">{{ auth.user()?.email }}</div>
         </div>
-      }
-    </div>
+      </ng-template>
+    </p-menu>
   </div>
 </header>
 
@@ -66,20 +57,15 @@
   <!-- Right Sidebar -->
   <aside class="sidebar" [class.sidebar--collapsed]="!sidebarExpanded()">
     <div class="sidebar-header">
-      <button
-        type="button"
-        class="sidebar-toggle"
-        [attr.aria-label]="sidebarExpanded() ? 'סגור תפריט' : 'פתח תפריט'"
+      <p-button
+        [text]="true"
+        severity="secondary"
+        styleClass="sidebar-toggle"
+        [icon]="sidebarExpanded() ? 'fa-solid fa-xmark' : 'fa-solid fa-bars'"
+        [ariaLabel]="sidebarExpanded() ? 'סגור תפריט' : 'פתח תפריט'"
         [attr.aria-expanded]="sidebarExpanded()"
-        (click)="toggleSidebar()"
-      >
-        <i
-          class="fa-solid"
-          [class.fa-bars]="!sidebarExpanded()"
-          [class.fa-xmark]="sidebarExpanded()"
-          aria-hidden="true"
-        ></i>
-      </button>
+        (onClick)="toggleSidebar()"
+      />
       @if (sidebarExpanded()) {
         <span class="sidebar-header__title">תפריט ראשי</span>
       }
@@ -135,7 +121,7 @@
                 <i [class]="entry.icon" aria-hidden="true"></i>
                 <span>{{ entry.label }}</span>
                 @if (badgeCount(entry) > 0) {
-                  <span class="nav-badge" aria-hidden="true">{{ badgeCount(entry) }}</span>
+                  <p-badge [value]="badgeCount(entry)" severity="danger" styleClass="nav-badge" aria-hidden="true" />
                 }
               </a>
             </li>
@@ -154,7 +140,7 @@
             <li class="icon-nav-group">
               <a
                 href="#"
-                class="icon-nav-item"
+                class="icon-nav-item icon-nav-item--group"
                 [class.active]="nav.isNodeExpanded(entry.id)"
                 [attr.aria-label]="entry.label"
                 (click)="$event.preventDefault()"
@@ -183,14 +169,22 @@
                 class="icon-nav-item"
                 [class.active]="nav.isChildActive(entry.id)"
                 [attr.aria-label]="navLabel(entry)"
-                [title]="entry.label"
+                [attr.data-label]="entry.label"
+                [pTooltip]="entry.label"
+                tooltipPosition="left"
+                [showDelay]="150"
                 (click)="$event.preventDefault(); nav.selectChild(entry)"
               >
                 <i [class]="entry.icon" aria-hidden="true"></i>
                 @if (badgeCount(entry) > 0) {
-                  <span class="nav-badge nav-badge--icon" aria-hidden="true">{{ badgeCount(entry) }}</span>
+                  <p-badge
+                    [value]="badgeCount(entry)"
+                    severity="danger"
+                    size="small"
+                    styleClass="nav-badge nav-badge--icon"
+                    aria-hidden="true"
+                  />
                 }
-                <span class="icon-nav-tooltip">{{ entry.label }}</span>
               </a>
             </li>
           }
@@ -254,4 +248,4 @@
 </div>
 
 <app-command-palette />
-<app-toaster />
+<p-toast position="bottom-left" />

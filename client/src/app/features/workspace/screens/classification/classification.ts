@@ -9,7 +9,16 @@ import {
   untracked,
 } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
-import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { FormsModule, NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { Badge } from 'primeng/badge';
+import { Button } from 'primeng/button';
+import { InputText } from 'primeng/inputtext';
+import { Message } from 'primeng/message';
+import { ProgressBar } from 'primeng/progressbar';
+import { Select } from 'primeng/select';
+import { TableModule } from 'primeng/table';
+import { Textarea } from 'primeng/textarea';
+import { Tooltip } from 'primeng/tooltip';
 import { catchError, EMPTY, finalize, map, of, switchMap } from 'rxjs';
 
 import { CountriesApi } from '../../../../api/countries-api';
@@ -34,6 +43,7 @@ import type {
   LineItemClassificationUpdateDto,
 } from '../../../../api/models';
 import { MultiSelect, MultiSelectOption } from '../../../../shared/multi-select/multi-select';
+import { TypedRow } from '../../../../shared/typed-row/typed-row';
 import { FilingContextService } from '../../filing-context.service';
 import { NavigationService } from '../../navigation.service';
 
@@ -62,7 +72,22 @@ interface Product {
  */
 @Component({
   selector: 'app-classification-screen',
-  imports: [ReactiveFormsModule, DecimalPipe, MultiSelect],
+  imports: [
+    ReactiveFormsModule,
+    FormsModule,
+    DecimalPipe,
+    Badge,
+    Button,
+    InputText,
+    Message,
+    ProgressBar,
+    Select,
+    TableModule,
+    Textarea,
+    Tooltip,
+    MultiSelect,
+    TypedRow,
+  ],
   templateUrl: './classification.html',
   styleUrl: './classification.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -85,8 +110,11 @@ export class ClassificationScreen {
   protected readonly licenseOptions: readonly MultiSelectOption[] = CLASSIFICATION_LICENSES.map(
     (value) => ({ value, label: CLASSIFICATION_LICENSE_LABELS[value] }),
   );
-  protected readonly tradeAgreementOptions = TRADE_AGREEMENTS;
-  protected readonly tradeAgreementLabels = TRADE_AGREEMENT_LABELS;
+  /** The "הסכם סחר" select's choices, Hebrew-labelled. */
+  protected readonly tradeAgreementSelectOptions = TRADE_AGREEMENTS.map((value) => ({
+    value,
+    label: TRADE_AGREEMENT_LABELS[value],
+  }));
 
   protected readonly form = this.fb.group({
     goodsDescription: this.fb.control(''),
@@ -156,9 +184,8 @@ export class ClassificationScreen {
     this.products.update((rows) => [...rows, emptyProduct()]);
   }
 
-  protected onTradeAgreementChange(index: number, event: Event): void {
-    const value = (event.target as HTMLSelectElement).value;
-    const tradeAgreement = isTradeAgreement(value) ? value : null;
+  protected onTradeAgreementChange(index: number, value: string | null | undefined): void {
+    const tradeAgreement = value && isTradeAgreement(value) ? value : null;
     this.patchRow(index, { tradeAgreement });
   }
 
@@ -177,9 +204,8 @@ export class ClassificationScreen {
   }
 
   /** Stores the country picked in a row's dropdown (empty option → `null`). */
-  protected onCountryChange(index: number, event: Event): void {
-    const value = (event.target as HTMLSelectElement).value;
-    this.patchRow(index, { countryId: value === '' ? null : Number(value) });
+  protected onCountryChange(index: number, countryId: number | null | undefined): void {
+    this.patchRow(index, { countryId: countryId ?? null });
   }
 
   /**

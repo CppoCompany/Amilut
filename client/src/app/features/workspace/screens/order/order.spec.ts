@@ -346,7 +346,7 @@ describe('OrderScreen', () => {
         'יש להזין תאריך הפלגה / טיסה (יציאה)',
         'יש להזין תאריך הגעה משוער (ETA)',
       ]);
-      expect(fixture.nativeElement.querySelectorAll('.form-control.is-invalid').length).toBe(3);
+      expect(fixture.nativeElement.querySelectorAll('p-datepicker.p-invalid').length).toBe(3);
       expect(fixture.nativeElement.querySelector('.order-step--error')).toBeTruthy();
 
       fillSchedule();

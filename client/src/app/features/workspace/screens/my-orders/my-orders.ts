@@ -1,13 +1,21 @@
-import { ScrollingModule } from '@angular/cdk/scrolling';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
+import { Button } from 'primeng/button';
+import { DatePicker } from 'primeng/datepicker';
+import { InputText } from 'primeng/inputtext';
+import { Message } from 'primeng/message';
+import { Select } from 'primeng/select';
+import { TableModule } from 'primeng/table';
+import { Tooltip } from 'primeng/tooltip';
 import { combineLatest, debounceTime, finalize, skip } from 'rxjs';
 
 import { ORDER_STATUS_LABELS, ORDER_STATUSES, OrderStatus } from '../../../../api/enums';
 import type { OrderDto } from '../../../../api/models';
 import { ListOrdersParams, OrdersApi } from '../../../../api/orders-api';
 import { ConfirmDialog } from '../../../../shared/confirm-dialog/confirm-dialog';
+import { StatusTag } from '../../../../shared/status-tag/status-tag';
+import { TypedRow } from '../../../../shared/typed-row/typed-row';
 import { SEARCH_DEBOUNCE_MS } from '../../../customers/customer-autocomplete/customer-autocomplete';
 import { NavigationService } from '../../navigation.service';
 
@@ -17,9 +25,20 @@ const MAX_ROWS = 200;
 /** "ההזמנות שלי" — filterable grid over all orders, virtual-scrolled. */
 @Component({
   selector: 'app-my-orders-screen',
-  imports: [FormsModule, ScrollingModule, ConfirmDialog],
+  imports: [
+    FormsModule,
+    Button,
+    DatePicker,
+    InputText,
+    Message,
+    Select,
+    TableModule,
+    Tooltip,
+    ConfirmDialog,
+    StatusTag,
+    TypedRow,
+  ],
   templateUrl: './my-orders.html',
-  styleUrl: './my-orders.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MyOrdersScreen {
@@ -31,8 +50,12 @@ export class MyOrdersScreen {
   protected readonly filterHandlerName = signal('');
   protected readonly filterStatus = signal<OrderStatus | ''>('');
   protected readonly filterCreatedDate = signal('');
-  protected readonly statuses = ORDER_STATUSES;
   protected readonly statusLabels = ORDER_STATUS_LABELS;
+  /** Status filter choices: "הכל" (empty = no filter), then every status. */
+  protected readonly statusOptions: { value: OrderStatus | ''; label: string }[] = [
+    { value: '', label: 'הכל' },
+    ...ORDER_STATUSES.map((status) => ({ value: status, label: ORDER_STATUS_LABELS[status] })),
+  ];
 
   // ── Grid state ──────────────────────────────────────────────────────────────
   protected readonly orders = signal<OrderDto[]>([]);

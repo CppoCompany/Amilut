@@ -1,6 +1,8 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
+import { Select } from 'primeng/select';
 
 import {
   Destination,
@@ -116,11 +118,11 @@ describe('FilingScreen', () => {
     expect(fixture.nativeElement.querySelector('app-filing-context-picker')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('app-import-files-panel')).toBeTruthy();
 
-    const select = fixture.nativeElement.querySelector(
-      '.filing-context-picker select',
-    ) as HTMLSelectElement;
-    select.value = '1000';
-    select.dispatchEvent(new Event('change'));
+    // Pick order 1000 the way the picker's PrimeNG select reports it.
+    fixture.debugElement
+      .query(By.css('app-filing-context-picker'))
+      .query(By.directive(Select))
+      .triggerEventHandler('ngModelChange', 1000);
     fixture.detectChanges();
 
     httpMock.expectOne((req) => req.url === '/api/import-files').flush([]);

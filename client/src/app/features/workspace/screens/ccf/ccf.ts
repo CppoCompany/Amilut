@@ -10,6 +10,10 @@ import {
   untracked,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Button } from 'primeng/button';
+import { InputText } from 'primeng/inputtext';
+import { Message } from 'primeng/message';
+import { Tag } from 'primeng/tag';
 import { Observable, catchError, finalize, forkJoin, map, of, switchMap } from 'rxjs';
 
 import { CcfApi } from '../../../../api/ccf-api';
@@ -74,7 +78,16 @@ function errorSuffix(error: unknown): string {
  *  existing shipping case, wired to `POST/GET /api/ccf`. */
 @Component({
   selector: 'app-ccf-screen',
-  imports: [DocumentStagingList, ImportFilesPanel, RelatedOrderDocuments, SearchSelect],
+  imports: [
+    Button,
+    InputText,
+    Message,
+    Tag,
+    DocumentStagingList,
+    ImportFilesPanel,
+    RelatedOrderDocuments,
+    SearchSelect,
+  ],
   templateUrl: './ccf.html',
   styleUrl: './ccf.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

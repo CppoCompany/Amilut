@@ -17,40 +17,6 @@
   }
 }
 
-// A quiet, link-styled action (not a `.btn`) — identical to `order.scss`'s
-// `.filing-link` ("jump to a related screen, quietly").
-.filing-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-  padding: 4px 2px;
-  border: none;
-  background: none;
-  color: var(--secondary-blue);
-  font: inherit;
-  font-size: 0.92rem;
-  font-weight: 600;
-  white-space: nowrap;
-  cursor: pointer;
-
-  i {
-    font-size: 0.85rem;
-  }
-
-  &:hover,
-  &:focus-visible {
-    text-decoration: underline;
-    outline: none;
-  }
-
-  &:disabled {
-    cursor: default;
-    opacity: 0.6;
-    text-decoration: none;
-  }
-}
-
 // "שיוך הזמנות" row of the File form: chips of chosen orders + the
 // "לשיוך להזמנה" link that opens the picker popup.
 .orders-assoc {
@@ -127,7 +93,7 @@
 
   &:hover:not(:disabled) {
     border-color: var(--secondary-blue);
-    box-shadow: 0 2px 8px rgba(27, 99, 199, 0.12);
+    box-shadow: 0 2px 8px rgb(15 33 43 / 0.08);
     transform: translateY(-1px);
   }
 
@@ -142,7 +108,7 @@
     opacity: 1;
     border-color: var(--secondary-blue);
     background: var(--light-blue-bg);
-    box-shadow: 0 0 0 2px rgba(27, 99, 199, 0.18);
+    box-shadow: 0 0 0 2px var(--color-accent-ring);
   }
 }
 

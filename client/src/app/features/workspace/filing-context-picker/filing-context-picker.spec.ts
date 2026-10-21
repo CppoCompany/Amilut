@@ -1,6 +1,9 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { DebugElement } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
+import { Select } from 'primeng/select';
 
 import {
   CcfStatus,
@@ -87,12 +90,30 @@ describe('FilingContextPicker', () => {
     httpMock.expectOne((req) => req.url === CCFS_URL).flush(ccfs);
   }
 
-  function kindButtons(): HTMLButtonElement[] {
-    return Array.from(fixture.nativeElement.querySelectorAll('.kind-toggle-btn'));
+  function kindButtons(): HTMLElement[] {
+    return Array.from(fixture.nativeElement.querySelectorAll('p-selectbutton p-togglebutton'));
   }
 
-  function activeSelect(): HTMLSelectElement {
-    return fixture.nativeElement.querySelector('select');
+  function activeSelect(): DebugElement {
+    return fixture.debugElement.query(By.directive(Select));
+  }
+
+  /** Option ids offered by the visible PrimeNG select. */
+  function optionIds(): number[] {
+    return (activeSelect().componentInstance as Select).options!.map((o: { id: number }) => o.id);
+  }
+
+  function placeholderText(): string {
+    return activeSelect().nativeElement.textContent.trim();
+  }
+
+  /** Picks an option the way the select reports it: through its ngModelChange. */
+  async function pick(id: number): Promise<void> {
+    activeSelect().triggerEventHandler('ngModelChange', id);
+    fixture.detectChanges();
+    // ngModel hands the new value to the PrimeNG select asynchronously.
+    await fixture.whenStable();
+    fixture.detectChanges();
   }
 
   afterEach(() => httpMock.verify());
@@ -103,8 +124,8 @@ describe('FilingContextPicker', () => {
     flushCcfs();
     fixture.detectChanges();
 
-    const options = Array.from(activeSelect().options).map((o) => o.textContent?.trim());
-    expect(options).toEqual(['בחר הזמנה', 'הזמנה 1000 · ACME Ltd.', 'הזמנה 1001 · ACME Ltd.']);
+    expect(placeholderText()).toBe('בחר הזמנה');
+    expect(optionIds()).toEqual([1000, 1001]);
   });
 
   it('selecting an order writes it into FilingContextService', async () => {
@@ -113,11 +134,10 @@ describe('FilingContextPicker', () => {
     flushCcfs();
     fixture.detectChanges();
 
-    activeSelect().value = '1000';
-    activeSelect().dispatchEvent(new Event('change'));
-    fixture.detectChanges();
+    await pick(1000);
 
     expect(filingContext.context()).toEqual({ kind: 'order', id: 1000 });
+    expect(placeholderText()).toBe('הזמנה 1000 · ACME Ltd.');
   });
 
   it('toggling to CCF switches the list and clears the current selection', async () => {
@@ -127,19 +147,19 @@ describe('FilingContextPicker', () => {
     fixture.detectChanges();
     filingContext.context.set({ kind: 'order', id: 1000 });
     fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
 
     const [orderBtn, ccfBtn] = kindButtons();
-    expect(orderBtn.classList.contains('active')).toBe(true);
+    expect(orderBtn.getAttribute('aria-pressed')).toBe('true');
     ccfBtn.click();
     fixture.detectChanges();
 
     expect(filingContext.context()).toBeNull(); // different id space — nothing carries over
-    const options = Array.from(activeSelect().options).map((o) => o.textContent?.trim());
-    expect(options).toEqual(['בחר תיק עמילות', 'תיק עמילות 7 · CCF1007']);
+    expect(placeholderText()).toBe('בחר תיק עמילות');
+    expect(optionIds()).toEqual([7]);
 
-    activeSelect().value = '7';
-    activeSelect().dispatchEvent(new Event('change'));
-    fixture.detectChanges();
+    await pick(7);
     expect(filingContext.context()).toEqual({ kind: 'ccf', id: 7 });
   });
 

@@ -1,11 +1,104 @@
-/* Global styles. Shared UI classes (.form-section, .tab-btn, .data-table, …)
-   live here so they apply across all workspace screen components.
+/* Global styles. Design tokens (the `:root` block below), the browser
+   surfaces the design system owns, and the app's layout classes
+   (.form-section, .grid-row, .info-bar, …) live here.
 
-   Design tokens are declared once in src/tailwind.css (`@theme static`) and
-   read here as var(--color-…). The legacy `--primary-blue`-style names below
-   alias those tokens so every screen that still uses them picks up the
-   palette without being touched. Shell chrome (header, sidebar, content
-   area) is owned by features/workspace/workspace.scss. */
+   Widgets — buttons, inputs, selects, tables, tags, dialogs, menus, toasts —
+   are PrimeNG components themed by src/app/theme/amilut-preset.ts, which
+   carries the same palette. Shell chrome (header, sidebar, content area) is
+   owned by features/workspace/workspace.scss.
+
+   House rules: ink for actions, hue only for status; hairlines over boxes —
+   one bordered surface per region, never a card inside a card; figures in
+   mono so columns align. */
+
+:root {
+  --font-sans: 'IBM Plex Sans Hebrew', 'Segoe UI', system-ui, sans-serif;
+  /* Figures only — ids, dates, amounts, counts — so columns align. */
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+
+  /* Surfaces: a cool, faintly blue-grey canvas, white working surfaces,
+     one step of tint for table headers / read-only fields / the sidebar. */
+  --color-canvas: #f2f5f7;
+  --color-surface: #ffffff;
+  --color-surface-2: #f7f9fa;
+  --color-surface-3: #edf1f4;
+
+  /* Text — deep blue-slate ink; muted passes AA on every surface above. */
+  --color-fg: #16212b;
+  --color-fg-muted: #586673;
+  --color-fg-subtle: #94a1ac;
+  --color-fg-inverse: #ffffff;
+
+  /* Lines — used at /60 or /50 for hairlines, full for inputs. */
+  --color-border: #dfe5ea;
+  --color-border-strong: #c9d2d9;
+
+  /* Brand: petrol teal — steady and trustworthy, not "tech" blue. The deep
+     end (brand) is the header band and headings; the mid tone (accent) is
+     every action, focus ring and selection. Status keeps its own hues. */
+  --color-brand: #12333d;
+  --color-brand-2: #1a4552;
+  --color-accent: #1d6474;
+  --color-accent-hover: #174f5c;
+  --color-accent-strong: #2a8393;
+  --color-accent-soft: #e8f4f6;
+  --color-accent-ring: rgb(42 131 147 / 0.24);
+
+  /* A warm secondary accent, used sparingly (highlights, one dashboard card). */
+  --color-gold: #a86b12;
+  --color-gold-soft: rgb(217 145 38 / 0.13);
+
+  /* Status — low-saturation tint (≈10% of the hue) behind a deep text tone. */
+  --color-success: #047857;
+  --color-success-soft: rgb(16 185 129 / 0.11);
+  --color-warning: #a16207;
+  --color-warning-soft: rgb(234 179 8 / 0.14);
+  --color-danger: #b42318;
+  --color-danger-soft: rgb(239 68 68 / 0.1);
+  --color-info: #1d4ed8;
+  --color-info-soft: rgb(59 130 246 / 0.1);
+  --color-neutral-soft: rgb(88 102 115 / 0.12);
+  --color-orange: #c2410c;
+  --color-orange-soft: rgb(249 115 22 / 0.12);
+
+  /* Crisp radii: controls 6px, panels 8px — nothing rounder than 10px. */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
+
+  /* Shadows always carry an offset + soft blur; elevation is declared once
+     per element (border OR shadow, never both heavy). */
+  --shadow-xs: 0 1px 1px rgb(15 33 43 / 0.04);
+  --shadow-sm: 0 1px 2px rgb(15 33 43 / 0.06);
+  --shadow-md: 0 4px 10px -2px rgb(15 33 43 / 0.08), 0 1px 2px rgb(15 33 43 / 0.04);
+  --shadow-lg: 0 16px 36px -10px rgb(15 33 43 / 0.18), 0 2px 6px rgb(15 33 43 / 0.05);
+  --shadow-popover: 0 12px 28px -8px rgb(15 33 43 / 0.2), 0 0 0 1px rgb(15 33 43 / 0.04);
+
+  /* Motion. ease-out for anything entering; spring (≈ stiffness 400 /
+     damping 30, ~3% overshoot) for popovers and panels; in-out for things
+     that move while on screen. */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quart: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out-quart: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-spring: linear(
+    0,
+    0.008 1%,
+    0.032 2%,
+    0.12 4%,
+    0.4 8%,
+    0.68 12%,
+    0.86 16%,
+    0.96 20%,
+    1.012 25%,
+    1.03 30%,
+    1.028 36%,
+    1.014 44%,
+    1.003 54%,
+    0.999 66%,
+    1
+  );
+}
 
 :root {
   --primary-blue: var(--color-brand);
@@ -22,6 +115,7 @@
   --danger: var(--color-danger);
 
   --font-main: var(--font-sans);
+  --hairline: 1px solid color-mix(in srgb, var(--color-border) 75%, transparent);
 
   /* Named properties only — never `all`, so layout-affecting properties
      (width, padding) are not animated by accident. */
@@ -42,12 +136,13 @@ html {
 
 body {
   font-family: var(--font-main);
-  font-size: 15px;
-  line-height: 1.45;
+  font-size: 14px;
+  line-height: 1.5;
   background-color: var(--bg-color);
   color: var(--text-dark);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  font-feature-settings: 'tnum' 1;
 }
 
 button,
@@ -78,60 +173,41 @@ a:focus:not(:focus-visible),
   border: 0;
 }
 
-/* Info strip (shipment / order screens) */
-.info-bar {
-  display: grid;
-  grid-template-columns: repeat(8, minmax(120px, 1fr));
-  gap: 10px;
-  background: var(--card-bg);
-  border: 1px solid color-mix(in srgb, var(--border-color) 70%, transparent);
-  border-radius: var(--radius-lg);
-  padding: 12px 14px;
-  margin-bottom: 18px;
-  align-items: center;
-  overflow-x: auto;
-  flex-shrink: 0;
+::selection {
+  background: rgb(42 131 147 / 0.2);
+  color: var(--color-fg);
 }
 
-.info-card {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  background: var(--readonly-bg);
-  border: 1px solid color-mix(in srgb, var(--border-color) 70%, transparent);
-  border-radius: var(--radius-md);
-  padding: 10px 12px;
-  transition: var(--transition);
-  min-width: 140px;
+:root {
+  caret-color: var(--color-accent);
+  scrollbar-color: var(--color-border-strong) transparent;
+  scrollbar-width: thin;
 }
 
-.info-card:hover {
-  border-color: var(--border-color);
+:focus-visible {
+  outline: 2px solid var(--color-accent-strong);
+  outline-offset: 2px;
 }
 
-.info-label {
-  font-size: 0.78rem;
-  color: var(--text-muted);
-  font-weight: 600;
+kbd {
+  font-family: var(--font-sans);
 }
 
-.info-value {
-  font-size: 0.92rem;
-  color: var(--text-dark);
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+/* Figures: ids, dates, amounts. Opt-in anywhere outside a table. */
+.num {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  letter-spacing: -0.01em;
+  unicode-bidi: plaintext;
 }
 
 .page-title {
-  font-size: 1.5rem;
-  line-height: 1.2;
-  letter-spacing: -0.01em;
-  color: var(--text-dark);
-  margin-bottom: 20px;
-  font-weight: 700;
+  font-size: 1.375rem;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+  color: var(--color-brand);
+  margin-bottom: 16px;
+  font-weight: 600;
   text-wrap: balance;
 }
 
@@ -162,16 +238,16 @@ a:focus:not(:focus-visible),
 .order-form {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
   max-width: 1200px;
 }
 
-/* Cards declare elevation once: a hairline border, no shadow. */
+/* The one surface per region: hairline border, no shadow. */
 .form-section {
   background: var(--card-bg);
   border-radius: var(--radius-lg);
-  padding: 22px 24px;
-  border: 1px solid color-mix(in srgb, var(--border-color) 70%, transparent);
+  padding: 20px 24px;
+  border: var(--hairline);
 }
 
 /* Added alongside `.form-section` (not replacing it) on the two grid screens,
@@ -190,22 +266,26 @@ a:focus:not(:focus-visible),
   flex-direction: column;
 }
 
+/* Section heading inside a surface: sized near body text, set apart by
+   weight and a hairline rather than by size. */
 .section-title {
-  font-size: 1.05rem;
-  color: var(--text-dark);
-  margin-bottom: 18px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid color-mix(in srgb, var(--border-color) 70%, transparent);
-  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--color-brand);
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: var(--hairline);
+  font-weight: 600;
+  letter-spacing: -0.005em;
 }
 
 /* Labels a sub-group inside a tab that combines what used to be several
    separate tabs (e.g. the shipment screen's "זיהוי מסמך ומוביל" tab). */
 .subsection-title {
-  font-size: 0.95rem;
-  font-weight: 700;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
   color: var(--text-muted);
-  margin: 24px 0 12px;
+  margin: 28px 0 12px;
 }
 
 .subsection-title:first-of-type {
@@ -214,9 +294,9 @@ a:focus:not(:focus-visible),
 
 .grid-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 18px;
-  margin-bottom: 18px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px 20px;
+  margin-bottom: 16px;
 }
 
 .grid-row:last-child {
@@ -227,85 +307,126 @@ a:focus:not(:focus-visible),
 .form-group {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
   position: relative;
 }
 
 .form-group label {
-  font-size: 0.85rem;
-  font-weight: 600;
+  font-size: 0.8rem;
+  font-weight: 500;
   color: var(--text-muted);
 }
 
 .form-group label.required::after {
   content: '*';
   color: var(--danger);
-  margin-inline-start: 4px;
+  margin-inline-start: 3px;
 }
 
-.form-control {
-  padding: 9px 12px;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  font-family: inherit;
-  font-size: 0.95rem;
-  transition:
-    border-color 150ms ease,
-    box-shadow 150ms ease,
-    background-color 150ms ease;
-  background-color: var(--input-bg);
-  width: 100%;
-}
-
-.form-control::placeholder {
-  color: var(--color-fg-subtle);
-}
-
-.form-control:hover:not(:focus):not([readonly]):not(:disabled) {
-  border-color: var(--color-border-strong);
-}
-
-.form-control:focus {
-  outline: none;
-  border-color: var(--secondary-blue);
-  box-shadow: 0 0 0 3px var(--color-accent-ring);
-}
-
-.form-control[readonly] {
-  background-color: var(--readonly-bg);
-  color: var(--text-muted);
-  cursor: not-allowed;
-  border-style: dashed;
-}
-
+/* Read-only detail grid: label/value pairs ruled by hairlines, no boxes. */
 .details-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  column-gap: 32px;
 }
 
 .detail-item {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 12px 14px;
-  border: 1px solid color-mix(in srgb, var(--border-color) 70%, transparent);
-  border-radius: var(--radius-md);
-  background: var(--readonly-bg);
+  gap: 2px;
+  padding: 10px 0;
+  border-bottom: var(--hairline);
 }
 
 .detail-label {
-  font-size: 0.82rem;
-  font-weight: 600;
+  font-size: 0.75rem;
+  font-weight: 500;
   color: var(--text-muted);
 }
 
 .detail-value {
-  font-size: 0.98rem;
+  font-size: 0.92rem;
   color: var(--text-dark);
-  font-weight: 600;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
   word-break: break-word;
+}
+
+/* PrimeNG fields fill their form group (the group is a flex column). */
+.form-group > :is(
+    .p-inputtext,
+    .p-textarea,
+    .p-select,
+    .p-multiselect,
+    .p-autocomplete,
+    .p-inputnumber,
+    .p-password,
+    p-datepicker,
+    p-autocomplete,
+    p-inputnumber,
+    p-select,
+    p-multiselect,
+    app-search-select,
+    app-multi-select
+  ),
+.form-group p-datepicker > .p-datepicker,
+.form-group p-autocomplete > .p-autocomplete,
+.form-group p-inputnumber > .p-inputnumber {
+  width: 100%;
+}
+
+/* Screen-level error above a grid or form (PrimeNG `p-message`). */
+.screen-error {
+  margin-bottom: 12px;
+}
+
+/* A flex-filling PrimeNG table (scrollHeight="flex") inside the shared wrapper. */
+.data-table-wrapper > p-table {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Inline field error under a control (PrimeNG `p-message` variant="simple"). */
+.field-error {
+  margin-top: 2px;
+}
+
+/* Form inside a PrimeNG dialog: stacked fields, paired rows, actions at the
+   bottom. Title sits in the dialog's header template. */
+.dialog-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+
+  i {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+}
+
+.dialog-form__body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.dialog-form__row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.dialog-form__footer {
+  display: flex;
+  justify-content: flex-start;
+  gap: 8px;
+  margin-top: 20px;
+  padding-top: 14px;
+  border-top: var(--hairline);
 }
 
 /* Filter bar (grid screens: "ההזמנות שלי", "התיקים שלי") */
@@ -313,8 +434,8 @@ a:focus:not(:focus-visible),
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: 14px;
-  margin-bottom: 16px;
+  gap: 12px;
+  margin-bottom: 14px;
 }
 
 .filter-bar .form-group {
@@ -327,59 +448,13 @@ a:focus:not(:focus-visible),
 }
 
 /* Data grid */
+/* The bordered surface around a PrimeNG table (or its empty/loading line). */
 .data-table-wrapper {
   overflow-x: auto;
-  overflow-y: hidden; /* clips to the rounded corners; inner viewport/list scrolls itself */
+  overflow-y: hidden; /* clips to the rounded corners; the table scrolls itself */
   border-radius: var(--radius-lg);
-  border: 1px solid color-mix(in srgb, var(--border-color) 70%, transparent);
+  border: var(--hairline);
   background: var(--card-bg);
-}
-
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.9rem;
-}
-
-.data-table th,
-.data-table td {
-  padding: 11px 14px;
-  text-align: right;
-  white-space: nowrap;
-  vertical-align: middle;
-}
-
-.data-table thead th {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  background: var(--readonly-bg);
-  color: var(--text-muted);
-  font-size: 0.8rem;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  border-bottom: 1px solid color-mix(in srgb, var(--border-color) 80%, transparent);
-}
-
-/* Hairline between rows; hover tints the row. Selected is declared after
-   hover (and with higher specificity) so it always wins. */
-.data-table tbody tr {
-  border-bottom: 1px solid color-mix(in srgb, var(--border-color) 55%, transparent);
-  transition: background-color 120ms ease;
-}
-
-.data-table tbody tr:last-child {
-  border-bottom: none;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .data-table tbody tr:hover {
-    background: color-mix(in srgb, var(--light-blue-bg) 55%, transparent);
-  }
-}
-
-.data-table tbody tr.data-table__row--selected {
-  background: var(--light-blue-bg);
 }
 
 .data-table__row--clickable {
@@ -387,14 +462,17 @@ a:focus:not(:focus-visible),
 }
 
 .data-table__row--clickable:focus-visible {
-  outline: 2px solid var(--secondary-blue);
+  outline: 2px solid var(--color-accent-strong);
   outline-offset: -2px;
 }
 
-/* Numeric/id/date columns — tabular figures so digits line up vertically
+/* Numeric/id/date columns — mono figures so digits line up vertically
    when scanning a column of rows. */
 .data-table__numeric {
-  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  letter-spacing: -0.01em;
+  color: var(--text-dark);
 }
 
 /* Status column: badges sit centred under a centred header. */
@@ -402,63 +480,39 @@ a:focus:not(:focus-visible),
   text-align: center;
 }
 
-/* Status pills: a tinted chip with a solid dot. Colors follow the order
-   pipeline: neutral (just started) → amber (waiting on someone) → blue (in
-   motion) → green (done). */
-.status-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 2px 9px 2px 8px;
-  border-radius: 999px;
-  font-size: 0.78rem;
-  font-weight: 600;
-  line-height: 1.5;
+/* Row actions (PrimeNG icon buttons): present for touch and keyboard,
+   revealed on hover for a pointer so the grid stays quiet while scanning. */
+.data-table__actions {
+  width: 1%;
   white-space: nowrap;
-  background: var(--color-neutral-soft);
-  color: var(--text-muted);
+  text-align: left;
 }
 
-.status-pill::before {
-  content: '';
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-  flex-shrink: 0;
+@media (hover: hover) and (pointer: fine) {
+  .data-table__actions > * {
+    opacity: 0;
+    transition: opacity 120ms ease;
+  }
+
+  .p-datatable-tbody > tr:hover .data-table__actions > *,
+  .p-datatable-tbody > tr:focus-within .data-table__actions > *,
+  .data-table__actions > :has(:disabled) {
+    opacity: 1;
+  }
 }
 
-.status-pill--preparing,
-.status-pill--closed {
-  background: var(--color-neutral-soft);
-  color: var(--text-muted);
-}
-
-.status-pill--ready_for_pickup,
-.status-pill--in_release {
-  background: var(--color-warning-soft);
-  color: var(--color-warning);
-}
-
-.status-pill--picked_up,
-.status-pill--open {
-  background: var(--color-info-soft);
-  color: var(--color-info);
-}
-
-.status-pill--waiting_at_port {
-  background: #ffedd5;
-  color: #9a3412;
-}
-
-.status-pill--departed,
-.status-pill--released {
-  background: var(--color-success-soft);
-  color: var(--color-success);
-}
-
-.data-table__row--selected {
+/* A selected row: tint plus an ink bar on the leading (right) edge, so it
+   reads without relying on the tint. Beats PrimeNG's own row background. */
+.p-datatable-tbody > tr.data-table__row--selected {
   background: var(--light-blue-bg);
+  box-shadow: inset -2px 0 0 var(--color-accent);
+}
+
+/* Status tags are PrimeNG `p-tag`s (see shared/status-tag); "waiting at
+   port" gets its own orange, between amber "waiting" and blue "moving". */
+.p-tag.status-tag--waiting_at_port {
+  background: var(--color-orange-soft);
+  color: var(--color-orange);
 }
 
 .data-table__empty {
@@ -466,21 +520,16 @@ a:focus:not(:focus-visible),
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
   text-align: center;
   color: var(--text-muted);
-  font-size: 0.9rem;
-  padding: 28px 14px;
+  font-size: 0.875rem;
+  padding: 32px 14px;
 }
 
 .data-table__empty i {
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   color: var(--color-fg-subtle);
-}
-
-.data-table-viewport {
-  flex: 1;
-  min-height: 0;
 }
 
 .section-header {
@@ -498,35 +547,16 @@ a:focus:not(:focus-visible),
 }
 
 .section-header .title-row i {
-  font-size: 1.05rem;
-  color: var(--primary-blue);
+  font-size: 0.95rem;
+  color: var(--text-muted);
 }
 
-.section-header .section-action-btn {
-  background: var(--secondary-blue);
-  color: white;
-  padding: 8px 14px;
-  border-radius: var(--radius-md);
-  border: none;
-  font-weight: 600;
-  cursor: pointer;
-  transition: var(--transition);
-}
-
-.section-header .section-action-btn:hover {
-  background: var(--color-accent-hover);
-}
-
-.section-header .section-action-btn:active {
-  transform: scale(0.98);
-}
-
-/* Filing page specific styles */
+/* Filing drop zone (its button is a PrimeNG button). */
 .upload-area {
-  border: 1.5px dashed var(--color-border-strong);
+  border: 1px dashed var(--color-border-strong);
   border-radius: var(--radius-lg);
   background: var(--readonly-bg);
-  padding: 28px;
+  padding: 20px 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -535,8 +565,8 @@ a:focus:not(:focus-visible),
 }
 
 .upload-area:hover {
-  border-color: var(--secondary-blue);
-  background: color-mix(in srgb, var(--light-blue-bg) 50%, var(--card-bg));
+  border-color: var(--color-fg-subtle);
+  background: var(--card-bg);
 }
 
 .upload-instructions {
@@ -546,395 +576,71 @@ a:focus:not(:focus-visible),
 }
 
 .upload-instructions .upload-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: var(--radius-lg);
-  background: var(--light-blue-bg);
-  color: var(--primary-blue);
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  border: var(--hairline);
+  background: var(--card-bg);
+  color: var(--text-muted);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.25rem;
+  font-size: 1.05rem;
 }
 
 .upload-instructions .upload-text {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
-.upload-btn {
-  background: var(--secondary-blue);
-  color: white;
-  padding: 10px 16px;
-  border-radius: var(--radius-md);
-  border: none;
+.upload-text__title {
   font-weight: 600;
-  cursor: pointer;
-  transition: var(--transition);
 }
 
-.upload-btn:hover {
-  background: var(--color-accent-hover);
-}
-
-.upload-btn:active {
-  transform: scale(0.98);
-}
-
-.documents-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 12px;
-}
-
-.documents-table th,
-.documents-table td {
-  border-bottom: 1px solid color-mix(in srgb, var(--border-color) 60%, transparent);
-  padding: 10px 12px;
-  text-align: right;
-  vertical-align: middle;
-  font-size: 0.92rem;
-}
-
-.documents-table th {
-  background: var(--readonly-bg);
+.upload-text__hint {
   color: var(--text-muted);
-  font-size: 0.8rem;
-  font-weight: 600;
-}
-
-/* Autocomplete */
-.autocomplete-wrapper {
-  position: relative;
-}
-
-.autocomplete-list {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  background: var(--card-bg);
-  border: 1px solid color-mix(in srgb, var(--border-color) 80%, transparent);
-  border-radius: var(--radius-md);
-  margin-top: 4px;
-  max-height: 200px;
-  overflow-y: auto;
-  box-shadow: var(--shadow-popover);
-  z-index: 100;
-  display: none;
-}
-
-.autocomplete-list.active {
-  display: block;
-}
-
-.autocomplete-item {
-  padding: 9px 12px;
-  cursor: pointer;
-  transition: var(--transition);
-  font-size: 0.92rem;
-}
-
-.autocomplete-item:hover {
-  background-color: var(--readonly-bg);
-  color: var(--secondary-blue);
-}
-
-/* Tabs System */
-.tabs-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  background-color: var(--color-surface-3);
-  padding: 4px;
-  border-radius: var(--radius-md);
-  width: fit-content;
-}
-
-.tabs-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  width: fit-content;
-}
-
-.sub-tabs-container {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 8px;
-  width: fit-content;
-}
-
-.tab-btn {
-  background: transparent;
-  border: none;
-  padding: 7px 14px;
-  border-radius: var(--radius-sm);
-  font-family: inherit;
-  font-weight: 600;
-  font-size: 0.88rem;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: var(--transition);
-}
-
-.tab-btn:hover {
-  color: var(--text-dark);
-}
-
-.tab-btn:active {
-  transform: scale(0.98);
-}
-
-.tab-btn.active {
-  background-color: var(--card-bg);
-  color: var(--text-dark);
-  box-shadow: var(--shadow-sm);
+  font-size: 0.85rem;
 }
 
 /* Choice group — single-select value pickers (order status, shipment type,
-   payment terms, incoterm, destination, document type, dangerous goods).
-   Deliberately styled differently from .tabs-container/.tab-btn (real
-   navigational tabs, e.g. the shipment screen's 9-section strip): picking a
-   value and switching what's on screen are different actions, so they
-   shouldn't look like the same widget. */
+   payment terms, destination, freight terms, container) as a PrimeNG
+   select-button. The order steps use a stepper instead: picking a value and
+   switching what's on screen are different actions, so they look different. */
 .choice-group {
-  display: flex;
+  display: inline-flex;
   flex-wrap: wrap;
-  gap: 8px;
+  max-width: 100%;
 }
 
 .choice-group--nested {
   margin-top: 8px;
 }
 
-.choice-btn {
-  background: var(--card-bg);
-  border: 1px solid var(--border-color);
-  padding: 6px 14px;
-  border-radius: 999px;
-  font-family: inherit;
-  font-weight: 600;
-  font-size: 0.88rem;
-  color: var(--text-dark);
-  cursor: pointer;
-  transition: var(--transition);
-}
-
-.choice-btn:hover {
-  border-color: var(--secondary-blue);
-}
-
-.choice-btn:active {
-  transform: scale(0.97);
-}
-
-.choice-btn.active {
-  background-color: var(--secondary-blue);
-  border-color: var(--secondary-blue);
-  color: white;
-}
-
 .hint-text {
   margin: 6px 0 0;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   color: var(--text-muted);
 }
 
-/* Chip list — e.g. the orders/customers summary on a shipping case */
+/* Chip list (PrimeNG chips) — e.g. the orders summary on a shipping File */
 .chip-list {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
 }
 
-.chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 3px 11px;
-  border-radius: 999px;
-  background: var(--light-blue-bg);
-  color: var(--primary-blue);
-  font-size: 0.85rem;
-  font-weight: 600;
-}
-
 .chip-list--empty {
   color: var(--text-muted);
-  font-size: 0.9rem;
+  font-size: 0.875rem;
 }
 
 /* Action Buttons */
 .form-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
-  margin-top: 24px;
-}
-
-.tab-nav-actions {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 24px;
-}
-
-/* Buttons: one vocabulary everywhere. Press feedback is a 2% scale on
-   :active; hover changes color only; focus shows the shared ring. */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   gap: 8px;
-  min-height: 38px;
-  padding: 8px 16px;
-  border-radius: var(--radius-md);
-  font-family: inherit;
-  font-weight: 600;
-  font-size: 0.92rem;
-  line-height: 1.2;
-  cursor: pointer;
-  border: 1px solid transparent;
-  transition:
-    background-color 150ms ease,
-    border-color 150ms ease,
-    color 150ms ease,
-    box-shadow 150ms ease,
-    transform 160ms var(--ease-out-quart);
-}
-
-.btn:active:not(:disabled) {
-  transform: scale(0.98);
-}
-
-.btn:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-.btn i {
-  font-size: 0.9em;
-}
-
-.btn-primary {
-  background-color: var(--secondary-blue);
-  color: white;
-  box-shadow: var(--shadow-xs);
-}
-
-.btn-primary:hover:not(:disabled) {
-  background-color: var(--color-accent-hover);
-}
-
-.btn-secondary {
-  background-color: var(--card-bg);
-  color: var(--text-dark);
-  border-color: var(--border-color);
-  box-shadow: var(--shadow-xs);
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background-color: var(--readonly-bg);
-  border-color: var(--color-border-strong);
-}
-
-.btn-ghost {
-  background-color: transparent;
-  color: var(--text-dark);
-}
-
-.btn-ghost:hover:not(:disabled) {
-  background-color: var(--color-surface-3);
-}
-
-.btn-danger {
-  background-color: var(--danger);
-  color: white;
-}
-
-.btn-danger:hover:not(:disabled) {
-  background-color: #991b1b;
-}
-
-.btn-sm {
-  min-height: 32px;
-  padding: 5px 12px;
-  font-size: 0.85rem;
-}
-
-/* Small icon-only buttons, e.g. the delete/trash action per grid row. */
-.icon-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: none;
-  background: transparent;
-  border-radius: var(--radius-md);
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: var(--transition);
-}
-
-.icon-btn:hover:not(:disabled) {
-  background: var(--color-surface-3);
-  color: var(--text-dark);
-}
-
-.icon-btn:active:not(:disabled) {
-  transform: scale(0.95);
-}
-
-.icon-btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-.icon-btn--danger:hover:not(:disabled) {
-  background: var(--color-danger-soft);
-  color: var(--danger);
-}
-
-.icon-btn--primary:hover:not(:disabled) {
-  background: var(--light-blue-bg);
-  color: var(--secondary-blue);
-}
-
-/* Skeleton bars for loading states (see shared/table-skeleton). */
-.skeleton {
-  position: relative;
-  overflow: hidden;
-  background: var(--color-surface-3);
-  border-radius: 4px;
-}
-
-.skeleton::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  transform: translateX(100%);
-  background: linear-gradient(
-    90deg,
-    transparent,
-    color-mix(in srgb, var(--card-bg) 70%, transparent),
-    transparent
-  );
-  animation: skeleton-shimmer 1.4s ease-in-out infinite;
-}
-
-@keyframes skeleton-shimmer {
-  to {
-    transform: translateX(-100%);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .skeleton::after {
-    animation: none;
-  }
+  margin-top: 20px;
 }
 
 /* Classification: small centered goods-description input */
@@ -957,6 +663,6 @@ a:focus:not(:focus-visible),
 }
 
 .detail-subtitle {
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   color: var(--text-muted);
 }

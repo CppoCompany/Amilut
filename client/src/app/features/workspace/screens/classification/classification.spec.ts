@@ -1,6 +1,9 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { DebugElement } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
+import { Select } from 'primeng/select';
 
 import {
   CcfStatus,
@@ -9,6 +12,7 @@ import {
   TradeAgreement,
 } from '../../../../api/enums';
 import type { CountryDto, DashboardCcfRowDto, InvoiceLineItemDto } from '../../../../api/models';
+import { MultiSelect } from '../../../../shared/multi-select/multi-select';
 import { FilingContextService } from '../../filing-context.service';
 import { ClassificationScreen, goodsDescriptionOf } from './classification';
 
@@ -156,33 +160,41 @@ describe('ClassificationScreen', () => {
 
   afterEach(() => httpMock.verify());
 
+  /** Lets ngModel hand values to the PrimeNG controls (it does so asynchronously), then re-renders. */
+  async function settle(): Promise<void> {
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+  }
+
   /** Answers the country lookup the screen requests on construction. */
   function flushCountries(countries: CountryDto[] = COUNTRIES): void {
     httpMock.expectOne(COUNTRIES_URL).flush(countries);
     fixture.detectChanges();
   }
 
-  function flushLineItems(items: InvoiceLineItemDto[]): void {
+  async function flushLineItems(items: InvoiceLineItemDto[]): Promise<void> {
     httpMock.expectOne(LINE_ITEMS_URL).flush(items);
-    fixture.detectChanges();
+    await settle();
   }
 
   /**
-   * Cell content per row: a `<select>`/`<input>` yields its value, the
-   * approvals multi-select yields its summary text, anything else its text.
+   * Cell content per row: a PrimeNG select yields its model value, an input
+   * its value, a multi-select its summary label, anything else its text.
    */
   function rows(): string[][] {
-    const trs = Array.from(
-      fixture.nativeElement.querySelectorAll(
-        '.documents-table tbody tr',
-      ) as NodeListOf<HTMLElement>,
-    );
-    return trs.map((tr) =>
-      Array.from(tr.querySelectorAll('td')).map((td) => {
-        const control = td.querySelector('select, input:not([type="checkbox"])');
-        if (control) return (control as HTMLSelectElement | HTMLInputElement).value;
-        const summary = td.querySelector('.multi-select__summary');
-        return (summary ?? td).textContent?.trim() ?? '';
+    return fixture.debugElement.queryAll(By.css('.documents-table tbody tr')).map((tr) =>
+      tr.queryAll(By.css('td')).map((td) => {
+        const select = td.query(By.directive(Select));
+        if (select) {
+          const value = (select.componentInstance as Select).modelValue();
+          return value === null || value === undefined ? '' : String(value);
+        }
+        const summary = td.query(By.css('.p-multiselect-label'));
+        if (summary) return (summary.nativeElement as HTMLElement).textContent?.trim() ?? '';
+        const input = td.query(By.css('input'));
+        if (input) return (input.nativeElement as HTMLInputElement).value;
+        return (td.nativeElement as HTMLElement).textContent?.trim() ?? '';
       }),
     );
   }
@@ -195,40 +207,54 @@ describe('ClassificationScreen', () => {
     ).map((th) => th.textContent?.trim() ?? '');
   const goodsDescription = (): HTMLInputElement =>
     fixture.nativeElement.querySelector('#goodsDescription');
-  const tradeSelects = (): HTMLSelectElement[] =>
-    Array.from(fixture.nativeElement.querySelectorAll('.trade-agreement-select'));
+  const tradeSelects = (): DebugElement[] =>
+    fixture.debugElement.queryAll(By.css('p-select.trade-agreement-select'));
   const codeInputs = (): HTMLInputElement[] =>
     Array.from(fixture.nativeElement.querySelectorAll('.classification-code-input'));
-  const approvalToggles = (): HTMLButtonElement[] =>
-    Array.from(fixture.nativeElement.querySelectorAll('.approvals-select .multi-select__toggle'));
-  const countrySelects = (): HTMLSelectElement[] =>
-    Array.from(fixture.nativeElement.querySelectorAll('.country-select'));
+  const multiSelects = (cls: 'approvals-select' | 'licenses-select'): MultiSelect[] =>
+    fixture.debugElement
+      .queryAll(By.css(`app-multi-select.${cls}`))
+      .map((de) => de.componentInstance as MultiSelect);
+  const countrySelects = (): DebugElement[] =>
+    fixture.debugElement.queryAll(By.css('p-select.country-select'));
+  const optionsOf = (select: DebugElement): { value: unknown; label?: string; name?: string }[] =>
+    (select.componentInstance as Select).options as { value: unknown; label?: string; name?: string }[];
   const submitButton = (): HTMLButtonElement =>
     fixture.nativeElement.querySelector('button[type="submit"]');
+  const addRowButton = (): HTMLButtonElement =>
+    fixture.nativeElement.querySelector('.products-add');
 
-  function change(
-    control: HTMLSelectElement | HTMLInputElement,
-    value: string,
-    eventName = 'change',
-  ): void {
-    control.value = value;
-    control.dispatchEvent(new Event(eventName));
-    fixture.detectChanges();
+  /** Picks a value in a PrimeNG select the way it reports one: through its ngModelChange. */
+  async function choose(select: DebugElement, value: unknown): Promise<void> {
+    select.triggerEventHandler('ngModelChange', value);
+    await settle();
   }
 
-  it('shows the loading line while the line items are being fetched', () => {
+  /** Ticks one more option in a row's multi-select. */
+  async function tick(multi: MultiSelect, value: string): Promise<void> {
+    multi.onChange([...multi.selected(), value]);
+    await settle();
+  }
+
+  async function typeInto(input: HTMLInputElement, value: string): Promise<void> {
+    input.value = value;
+    input.dispatchEvent(new Event('input'));
+    await settle();
+  }
+
+  it('shows the loading line while the line items are being fetched', async () => {
     flushCountries();
     expect(fixture.nativeElement.querySelector('.products-loading')?.textContent?.trim()).toBe(
       'טוען פריטים…',
     );
     expect(fixture.nativeElement.querySelector('.products-empty')).toBeNull();
 
-    flushLineItems([]);
+    await flushLineItems([]);
 
     expect(fixture.nativeElement.querySelector('.products-loading')).toBeNull();
   });
 
-  it('renders the line items without a product-name column and moves the names into תיאור טובין', () => {
+  it('renders the line items without a product-name column and moves the names into תיאור טובין', async () => {
     flushCountries();
     const req = httpMock.expectOne(LINE_ITEMS_URL);
     expect(req.request.method).toBe('GET');
@@ -266,9 +292,9 @@ describe('ClassificationScreen', () => {
     expect(fixture.nativeElement.querySelector('.form-message--error')).toBeNull();
   });
 
-  it('pre-fills the columns from a saved classification', () => {
+  it('pre-fills the columns from a saved classification', async () => {
     flushCountries();
-    flushLineItems([
+    await flushLineItems([
       lineItem({
         classification: {
           tradeAgreement: TradeAgreement.EU,
@@ -298,9 +324,9 @@ describe('ClassificationScreen', () => {
     ]);
   });
 
-  it('shows the empty-state row when the case has no line items', () => {
+  it('shows the empty-state row when the case has no line items', async () => {
     flushCountries();
-    flushLineItems([]);
+    await flushLineItems([]);
 
     const empty = fixture.nativeElement.querySelector('.products-empty td') as HTMLTableCellElement;
     expect(empty).toBeTruthy();
@@ -311,7 +337,7 @@ describe('ClassificationScreen', () => {
     expect(goodsDescription().value).toBe('');
   });
 
-  it('shows the error line when loading fails', () => {
+  it('shows the error line when loading fails', async () => {
     flushCountries();
     httpMock
       .expectOne(LINE_ITEMS_URL)
@@ -325,167 +351,112 @@ describe('ClassificationScreen', () => {
     expect(fixture.nativeElement.querySelector('.products-empty')).toBeTruthy();
   });
 
-  it('addRow appends an empty row that renders blank cells', () => {
+  it('addRow appends an empty row that renders blank cells', async () => {
     flushCountries();
-    flushLineItems([]);
+    await flushLineItems([]);
 
-    (fixture.nativeElement.querySelector('.btn-secondary') as HTMLButtonElement).click();
-    fixture.detectChanges();
+    addRowButton().click();
+    await settle();
 
     expect(rows()).toEqual([['', '', '', '', '', '', 'ללא', 'ללא', '']]);
   });
 
-  it('offers every trade agreement in Hebrew and keeps a choice on its own row', () => {
+  it('offers every trade agreement in Hebrew and keeps a choice on its own row', async () => {
     flushCountries();
-    flushLineItems([lineItem(), lineItem({ lineIndex: 1, item: 'B' })]);
+    await flushLineItems([lineItem(), lineItem({ lineIndex: 1, item: 'B' })]);
 
-    const [first, second] = tradeSelects();
-    const options = Array.from(first.options).map((o) => [o.value, o.textContent?.trim()]);
-    expect(options[0]).toEqual(['', 'בחר הסכם']);
-    expect(options).toHaveLength(20);
+    const [first] = tradeSelects();
+    const options = optionsOf(first).map((o) => [o.value, o.label]);
+    expect(first.nativeElement.textContent.trim()).toBe('בחר הסכם');
+    expect(options).toHaveLength(19);
     expect(options).toContainEqual([TradeAgreement.USA, 'ארה"ב']);
     expect(options).toContainEqual([TradeAgreement.ARGENTINA_MERCOSUR, 'ארגנטינה -- מרקוסור']);
 
-    change(first, TradeAgreement.USA);
-    expect(tradeSelects()[0].value).toBe(TradeAgreement.USA);
-    expect(tradeSelects()[1].value).toBe('');
-    expect(second.value).toBe('');
+    await choose(first, TradeAgreement.USA);
+    expect(rows()[0][4]).toBe(TradeAgreement.USA);
+    expect(rows()[1][4]).toBe('');
   });
 
-  it('offers the sixteen approvals as a multi-select and summarises the ticked ones', () => {
+  it('offers the sixteen approvals as a multi-select and summarises the ticked ones', async () => {
     flushCountries();
-    flushLineItems([lineItem(), lineItem({ lineIndex: 1, item: 'B' })]);
+    await flushLineItems([lineItem(), lineItem({ lineIndex: 1, item: 'B' })]);
 
-    const [first] = approvalToggles();
-    expect(first.getAttribute('aria-label')).toBe('אישורים לשורה 1');
-    first.click();
-    fixture.detectChanges();
-
-    const boxes = Array.from(
-      fixture.nativeElement.querySelectorAll(
-        '.multi-select__menu input',
-      ) as NodeListOf<HTMLInputElement>,
-    );
-    expect(boxes).toHaveLength(16);
-    const labels = Array.from(
-      fixture.nativeElement.querySelectorAll(
-        '.multi-select__menu label',
-      ) as NodeListOf<HTMLElement>,
-    ).map((l) => l.textContent?.trim());
+    const [first] = multiSelects('approvals-select');
+    expect(first.ariaLabel()).toBe('אישורים לשורה 1');
+    const labels = first.options().map((o) => o.label);
+    expect(labels).toHaveLength(16);
     expect(labels[0]).toBe('אישור הגנת הצומח');
     expect(labels).toContain('ת"ר/הצהרה');
     expect(labels).toContain('אישור משרד הביטחון - היחידה לרישוי יבוא אמל"ח');
     expect(labels[15]).toBe('אישור מעבדה מוסמכת לרכב');
 
-    boxes.find((b) => b.value === ClassificationApproval.COSMETICS)!.click();
-    fixture.detectChanges();
-    expect(approvalToggles()[0].textContent?.trim()).toBe('אישור תמרוקים');
+    await tick(first, ClassificationApproval.COSMETICS);
+    expect(rows()[0][6]).toBe('אישור תמרוקים');
 
-    boxes.find((b) => b.value === ClassificationApproval.FOOD_SERVICE)!.click();
-    fixture.detectChanges();
-    expect(approvalToggles()[0].textContent?.trim()).toBe('2 נבחרו');
-    expect(approvalToggles()[1].textContent?.trim()).toBe('ללא');
+    await tick(multiSelects('approvals-select')[0], ClassificationApproval.FOOD_SERVICE);
+    expect(rows()[0][6]).toBe('2 נבחרו');
+    expect(rows()[1][6]).toBe('ללא');
   });
 
-  it('offers the ten licenses as a multi-select and keeps the ticked ones on their own row', () => {
+
+  it('offers the ten licenses as a multi-select and keeps the ticked ones on their own row', async () => {
     flushCountries();
-    flushLineItems([lineItem(), lineItem({ lineIndex: 1, item: 'B' })]);
+    await flushLineItems([lineItem(), lineItem({ lineIndex: 1, item: 'B' })]);
 
-    const toggles = Array.from(
-      fixture.nativeElement.querySelectorAll(
-        '.licenses-select .multi-select__toggle',
-      ) as NodeListOf<HTMLButtonElement>,
-    );
-    expect(toggles[0].getAttribute('aria-label')).toBe('רישיונות לשורה 1');
-    toggles[0].click();
-    fixture.detectChanges();
-
-    const boxes = Array.from(
-      fixture.nativeElement.querySelectorAll(
-        '.multi-select__menu input',
-      ) as NodeListOf<HTMLInputElement>,
-    );
-    expect(boxes).toHaveLength(10);
-    const labels = Array.from(
-      fixture.nativeElement.querySelectorAll(
-        '.multi-select__menu label',
-      ) as NodeListOf<HTMLElement>,
-    ).map((l) => l.textContent?.trim());
+    const [first] = multiSelects('licenses-select');
+    expect(first.ariaLabel()).toBe('רישיונות לשורה 1');
+    const labels = first.options().map((o) => o.label);
+    expect(labels).toHaveLength(10);
     expect(labels[0]).toBe('רישיון מינהל התעשיות (משרד הכלכלה)');
     expect(labels).toContain('רישיון תחבורה – (משרד התחבורה - אגף צמ"א)');
     expect(labels[9]).toBe('רישיון משרד הבריאות – (משרד הבריאות - אגף הרוקחות)');
 
-    boxes.find((b) => b.value === ClassificationLicense.MINAMATA_COMMISSIONER)!.click();
-    fixture.detectChanges();
+    await tick(first, ClassificationLicense.MINAMATA_COMMISSIONER);
     expect(rows()[0][7]).toBe('רישיון הממונה לפי תקנות מינמטה (0608) (המשרד להגנת הסביבה)');
     expect(rows()[1][7]).toBe('ללא');
   });
 
-  it('renders the countries dropdown from the lookup endpoint and keeps a choice on its own row', () => {
+
+  it('renders the countries dropdown from the lookup endpoint and keeps a choice on its own row', async () => {
     flushCountries();
-    flushLineItems([lineItem(), lineItem({ lineIndex: 1, item: 'B' })]);
+    await flushLineItems([lineItem(), lineItem({ lineIndex: 1, item: 'B' })]);
 
-    const [first, second] = countrySelects();
-    expect(Array.from(first.options).map((o) => [o.value, o.textContent?.trim()])).toEqual([
-      ['', 'בחר מדינה'],
-      ['106', 'ישראל'],
-      ['162', 'נורווגיה'],
-    ]);
+    const [first] = countrySelects();
+    expect(first.nativeElement.textContent.trim()).toBe('בחר מדינה');
+    expect(optionsOf(first).map((c) => c.name)).toEqual(['ישראל', 'נורווגיה']);
 
-    change(first, '162');
-    expect(countrySelects()[0].value).toBe('162');
-    expect(countrySelects()[1].value).toBe('');
-    expect(second.value).toBe('');
+    await choose(first, 162);
+    expect(rows()[0][8]).toBe('162');
+    expect(rows()[1][8]).toBe('');
   });
 
-  it('shows an error line and an options-less dropdown when the country lookup fails', () => {
+
+  it('shows an error line and an options-less dropdown when the country lookup fails', async () => {
     httpMock
       .expectOne(COUNTRIES_URL)
       .flush({ message: 'boom' }, { status: 500, statusText: 'Internal Server Error' });
-    flushLineItems([lineItem()]);
+    await flushLineItems([lineItem()]);
 
     const errors = Array.from(
       fixture.nativeElement.querySelectorAll('.form-message--error') as NodeListOf<HTMLElement>,
     ).map((el) => el.textContent?.trim());
     expect(errors).toEqual(['טעינת רשימת המדינות נכשלה']);
-    expect(Array.from(countrySelects()[0].options).map((o) => o.value)).toEqual(['']);
+    expect(optionsOf(countrySelects()[0])).toEqual([]);
   });
 
-  it('PUTs the classification of every invoice-backed row on שמור סיווג and shows the refreshed rows', () => {
+  it('PUTs the classification of every invoice-backed row on שמור סיווג and shows the refreshed rows', async () => {
     flushCountries();
-    flushLineItems([lineItem(), lineItem({ lineIndex: 1, item: 'B', description: 'Cable' })]);
+    await flushLineItems([lineItem(), lineItem({ lineIndex: 1, item: 'B', description: 'Cable' })]);
 
-    change(tradeSelects()[0], TradeAgreement.CANADA);
-    change(codeInputs()[0], ' 8539.50.00 ', 'input');
-    approvalToggles()[0].click();
-    fixture.detectChanges();
-    (
-      Array.from(
-        fixture.nativeElement.querySelectorAll(
-          '.multi-select__menu input',
-        ) as NodeListOf<HTMLInputElement>,
-      ).find((b) => b.value === ClassificationApproval.MEDICAL_DEVICES) as HTMLInputElement
-    ).click();
-    fixture.detectChanges();
-    (
-      fixture.nativeElement.querySelector(
-        '.licenses-select .multi-select__toggle',
-      ) as HTMLButtonElement
-    ).click();
-    fixture.detectChanges();
-    (
-      Array.from(
-        fixture.nativeElement.querySelectorAll(
-          '.multi-select__menu input',
-        ) as NodeListOf<HTMLInputElement>,
-      ).find((b) => b.value === ClassificationLicense.AGRICULTURE_FOREIGN_TRADE) as HTMLInputElement
-    ).click();
-    fixture.detectChanges();
-    change(countrySelects()[0], '106');
+    await choose(tradeSelects()[0], TradeAgreement.CANADA);
+    await typeInto(codeInputs()[0], ' 8539.50.00 ');
+    await tick(multiSelects('approvals-select')[0], ClassificationApproval.MEDICAL_DEVICES);
+    await tick(multiSelects('licenses-select')[0], ClassificationLicense.AGRICULTURE_FOREIGN_TRADE);
+    await choose(countrySelects()[0], 106);
 
     // A hand-added row has nowhere to be stored and must not be sent.
-    (fixture.nativeElement.querySelector('.btn-secondary') as HTMLButtonElement).click();
-    fixture.detectChanges();
+    addRowButton().click();
+    await settle();
 
     submitButton().click();
     fixture.detectChanges();
@@ -530,7 +501,7 @@ describe('ClassificationScreen', () => {
       lineItem({ lineIndex: 1, item: 'B', description: 'Cable' }),
     ]);
     httpMock.expectOne(PENDING_CCFS_URL).flush([]);
-    fixture.detectChanges();
+    await settle();
 
     expect(fixture.nativeElement.querySelector('.form-message--success')?.textContent?.trim()).toBe(
       'הסיווג נשמר (2 שורות)',
@@ -553,10 +524,10 @@ describe('ClassificationScreen', () => {
     ]);
   });
 
-  it('shows an error line when saving fails and keeps the edited rows', () => {
+  it('shows an error line when saving fails and keeps the edited rows', async () => {
     flushCountries();
-    flushLineItems([lineItem()]);
-    change(codeInputs()[0], '1234', 'input');
+    await flushLineItems([lineItem()]);
+    await typeInto(codeInputs()[0], '1234');
 
     submitButton().click();
     fixture.detectChanges();

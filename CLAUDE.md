@@ -17,7 +17,7 @@ amilut_tax/
 ```
 
 - **client** — Angular CLI 21.1, TypeScript 5.9, standalone components, SCSS,
-  Tailwind CSS v4 (utilities only, see below).
+  PrimeNG 21 (all widgets, see below).
   Dev server on `http://localhost:4200`; proxies `/api/*` to the server.
 - **server** — NestJS 11, TypeScript 5.7. Listens on `http://localhost:3000`
   with a global `/api` route prefix.
@@ -84,26 +84,45 @@ new `SQL-Migration/NNN_<name>.sql` file with `IF NOT EXISTS` guards, then update
 App connection for the server: role `Admin` / password `Admin`, database
 `Amilut`.
 
-### Client styling: tokens, Tailwind, component SCSS
+### Client UI: PrimeNG, tokens, component SCSS
 
-- `client/src/tailwind.css` is the Tailwind v4 entry (listed first in
-  `angular.json` `styles`; PostCSS plugin in `client/.postcssrc.json`). It
-  imports only the theme and utilities layers — **no preflight** — so screens
-  that still use plain SCSS keep their look. All design tokens live in its
-  `@theme static` block (`--color-*`, `--radius-*`, `--shadow-*`, `--ease-*`).
-- `client/src/styles.scss` holds the shared component classes (`.btn`,
-  `.data-table`, `.status-pill`, `.form-section`, …). Its legacy variables
-  (`--primary-blue`, `--border-color`, …) alias the Tailwind tokens, so every
-  screen follows the palette without edits.
-- Utilities sit in the `utilities` cascade layer, so an unlayered rule in a
-  component SCSS or in `styles.scss` always beats a utility on the same
-  element: give each property one owner. Component SCSS keeps states,
-  pseudo-elements, `@starting-style` entrances and keyframes.
+- **Every widget is PrimeNG 21** (stay on 21.x — 22 needs Angular 22): buttons
+  (`p-button`), inputs (`pInputText`, `pTextarea`, `p-datepicker` with
+  `dataType="string"` + `dateFormat="yy-mm-dd"`), `p-select`, `p-multiselect`,
+  `p-autocomplete`, `p-selectbutton` (value pickers), `p-checkbox`, `p-table`,
+  `p-paginator`, `p-tag`, `p-message`, `p-dialog`, `p-menu`, `p-popover`,
+  `p-breadcrumb`, `p-stepper`, `p-toast`, `p-skeleton`. Don't add hand-rolled
+  widgets or `.btn`-style classes; reach for the PrimeNG component.
+- Theme: `client/src/app/theme/amilut-preset.ts` (Aura retuned: petrol-teal
+  primary scale, cool blue-grey neutrals, crisp radii) and
+  `hebrew-translation.ts`, registered with `providePrimeNG` in
+  `app.config.ts`. Change the look there first. Color roles: `--color-brand`
+  (deep petrol — header band, headings), `--color-accent` (actions, focus,
+  selection), status hues only for status; `--color-gold` is a sparing
+  secondary accent.
+- `client/src/styles.scss` holds the design tokens (`:root` — `--color-*`,
+  `--radius-*`, `--shadow-*`, `--ease-*`, with legacy aliases like
+  `--primary-blue`) and the app's layout classes (`.form-section`,
+  `.grid-row`, `.form-group`, `.filter-bar`, `.dialog-form__*`,
+  `.data-table-wrapper` / `.data-table__*` cell helpers). Keep tokens and the
+  preset in sync.
+- Shared wrappers in `shared/`: `app-status-tag` (status → `p-tag`
+  severity), `app-data-grid` (server-paged `p-table`), `app-search-select`,
+  `app-multi-select`, `app-confirm-dialog`, `app-table-skeleton`. Use
+  `[rowOf]="rows"` (`shared/typed-row`) on a `p-table` body template to type
+  its row variable under strict templates.
+- `styleClass` lands on the host for most PrimeNG components but on the inner
+  `<button>` for `p-button`; style PrimeNG internals from component SCSS with
+  `:host ::ng-deep …`. `ngModel` writes to PrimeNG controls asynchronously, so
+  specs `await fixture.whenStable()` before reading them; inside a reactive
+  form add `[ngModelOptions]="{ standalone: true }"`.
 - The workspace shell (`features/workspace/`) owns the header, sidebar,
-  Ctrl+K command palette and toast stack (`shared/toast/ToastService`:
-  `success()` / `error()` / `info()` from any component). Loading states use
-  `shared/table-skeleton`. Icons are Font Awesome 6 (CDN link in `index.html`).
-- Changing `angular.json` or `.postcssrc.json` requires restarting `ng serve`.
+  Ctrl+K command palette and the `<p-toast>` (`shared/toast/ToastService`:
+  `success()` / `error()` / `info()` from any component). Icons are Font
+  Awesome 6 (CDN link in `index.html`); PrimeNG `icon` inputs take FA classes.
+- Unit tests run with `client/src/test-setup.ts` (jsdom `matchMedia` shim for
+  PrimeNG), wired via `angular.json` → `test.options.setupFiles`.
+- Changing `angular.json` requires restarting `ng serve`.
 - Production budgets: `anyComponentStyle` errors above 8 kB — split a large
   component stylesheet with `styleUrls` rather than raising the budget.
 

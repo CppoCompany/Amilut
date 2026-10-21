@@ -1,15 +1,15 @@
 :host {
-  --accent: oklch(51.01% 0.274 263.83);
-  --accent-strong: oklch(45% 0.274 263.83);
-  --text-900: oklch(19.37% 0.006 300.98);
-  --text-700: oklch(36.98% 0.014 302.71);
-  --text-400: oklch(70.9% 0.015 304.04);
-  --border: oklch(90% 0.005 300);
-  --error: oklch(58% 0.22 25);
-  --surface: #fff;
-  --page-bg: oklch(97% 0.005 300);
+  --accent: var(--color-accent);
+  --accent-strong: var(--color-accent-hover);
+  --text-900: var(--color-fg);
+  --text-700: var(--color-fg-muted);
+  --text-400: var(--color-fg-subtle);
+  --border: var(--color-border);
+  --error: var(--color-danger);
+  --surface: var(--color-surface);
+  --page-bg: var(--color-brand);
 
-  font-family: 'Assistant', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+  font-family: var(--font-sans), 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
     Helvetica, Arial, sans-serif;
   box-sizing: border-box;
 }
@@ -26,7 +26,10 @@
   align-items: center;
   justify-content: center;
   padding: 1rem;
-  background: var(--page-bg);
+  // Brand backdrop: the deep petrol of the app header, with a soft teal glow.
+  background:
+    radial-gradient(60rem 40rem at 85% -10%, rgb(42 131 147 / 0.45), transparent 60%),
+    linear-gradient(160deg, var(--color-brand-2), var(--page-bg));
 }
 
 .login-card {
@@ -37,43 +40,25 @@
   gap: 1.25rem;
   padding: 2rem;
   background: var(--surface);
-  border-radius: 0.875rem;
+  border-radius: var(--radius-lg);
+  border-top: 3px solid var(--color-accent-strong);
   box-shadow:
-    0 1px 2px rgb(0 0 0 / 6%),
-    0 12px 32px rgb(0 0 0 / 8%);
+    0 1px 2px rgb(0 0 0 / 10%),
+    0 24px 48px -12px rgb(0 0 0 / 35%);
 
   &__title {
     margin: 0;
     text-align: center;
     font-size: 1.75rem;
     font-weight: 600;
-    color: var(--text-900);
+    color: var(--color-brand);
   }
 
-  &__submit {
+  // Submit is a PrimeNG button stretched to the card width.
+  ::ng-deep &__submit {
+    width: 100%;
     margin-top: 0.25rem;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1rem;
-    border: 0;
-    border-radius: 0.5rem;
-    background: var(--accent);
-    color: #fff;
-    font-size: 1rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background 0.2s ease;
-
-    &:hover:not(:disabled) {
-      background: var(--accent-strong);
-    }
-
-    &:disabled {
-      background: var(--text-400);
-      cursor: not-allowed;
-    }
+    padding-block: 0.625rem;
   }
 
   &__error {
@@ -98,32 +83,6 @@
   &__hint {
     font-weight: 400;
     color: var(--text-400);
-  }
-
-  &__input {
-    width: 100%;
-    padding: 0.625rem 0.75rem;
-    border: 1px solid var(--border);
-    border-radius: 0.5rem;
-    font-size: 1rem;
-    color: var(--text-900);
-    transition:
-      border-color 0.2s ease,
-      box-shadow 0.2s ease;
-
-    &:focus {
-      outline: none;
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
-    }
-
-    &--invalid {
-      border-color: var(--error);
-
-      &:focus {
-        box-shadow: 0 0 0 3px color-mix(in srgb, var(--error) 20%, transparent);
-      }
-    }
   }
 
   &__error {

@@ -11,16 +11,27 @@
 
 /* ── Header ────────────────────────────────────────────────────────────── */
 .app-header {
-  height: 56px;
+  height: 52px;
   flex-shrink: 0;
   display: grid;
   grid-template-columns: 1fr minmax(0, auto) 1fr;
   align-items: center;
   gap: 16px;
   padding: 0 16px 0 20px;
-  background: var(--color-surface);
-  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
+  // The one solid brand surface in the app: a deep petrol band.
+  background: linear-gradient(90deg, var(--color-brand-2), var(--color-brand));
+  color: var(--color-fg-inverse);
   z-index: 10;
+
+  // Every text/icon button in the band reads light-on-dark.
+  ::ng-deep .p-button-text {
+    color: rgb(255 255 255 / 0.86);
+
+    &:not(:disabled):hover {
+      background: rgb(255 255 255 / 0.1);
+      color: #fff;
+    }
+  }
 }
 
 .app-header__side {
@@ -35,76 +46,62 @@
   gap: 4px;
 }
 
-.brand {
-  display: inline-flex;
-  align-items: center;
+// Header buttons are PrimeNG (`styleClass` lands on PrimeNG's own <button>,
+// hence ::ng-deep); the projected content inside them is ours.
+:host ::ng-deep .brand {
   gap: 10px;
   padding: 4px 8px 4px 4px;
   margin-inline-start: -8px;
-  border: none;
-  border-radius: var(--radius-md);
-  background: transparent;
-  color: var(--color-fg);
-  cursor: pointer;
-  transition: background-color 120ms ease;
-
-  &:hover {
-    background: var(--color-surface-2);
-  }
 }
 
 .brand__mark {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   border-radius: var(--radius-md);
-  background: var(--color-brand);
+  background: linear-gradient(135deg, #3fa6b6, var(--color-accent-strong));
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.18);
   color: var(--color-fg-inverse);
-  font-size: 0.95rem;
+  font-size: 0.8rem;
 }
 
 .brand__name {
-  font-size: 0.98rem;
-  font-weight: 700;
+  font-size: 0.92rem;
+  font-weight: 600;
   letter-spacing: -0.01em;
   white-space: nowrap;
 }
 
 /* Search-looking launcher for the Ctrl+K palette. */
-.cmdk-trigger {
-  display: inline-flex;
-  align-items: center;
+:host ::ng-deep .cmdk-trigger {
   gap: 10px;
   width: min(420px, 100%);
-  height: 36px;
+  height: 32px;
   padding: 0 8px 0 10px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-2);
-  color: var(--color-fg-muted);
-  font-size: 0.88rem;
-  cursor: pointer;
-  transition:
-    border-color 150ms ease,
-    background-color 150ms ease,
-    box-shadow 150ms ease,
-    transform 120ms var(--ease-out-quart);
+  border-color: rgb(255 255 255 / 0.16);
+  background: rgb(255 255 255 / 0.07);
+  color: rgb(255 255 255 / 0.72);
+  font-size: 0.85rem;
+  font-weight: 400;
 
   i {
-    color: var(--color-fg-subtle);
-    font-size: 0.85rem;
+    color: rgb(255 255 255 / 0.55);
+    font-size: 0.8rem;
   }
 
-  &:hover {
-    border-color: var(--color-border-strong);
-    background: var(--color-surface);
+  &:not(:disabled):hover {
+    border-color: rgb(255 255 255 / 0.28);
+    background: rgb(255 255 255 / 0.12);
+    color: #fff;
   }
+}
 
-  &:active {
-    transform: scale(0.99);
-  }
+p-button:has(.cmdk-trigger) {
+  display: flex;
+  justify-content: center;
+  min-width: 0;
 }
 
 .cmdk-trigger__label {
@@ -129,54 +126,33 @@
   min-width: 20px;
   height: 20px;
   padding: 0 5px;
-  border: 1px solid var(--color-border);
+  border: 1px solid rgb(255 255 255 / 0.2);
   border-bottom-width: 2px;
-  border-radius: 5px;
-  background: var(--color-surface);
-  color: var(--color-fg-muted);
+  border-radius: 4px;
+  background: rgb(255 255 255 / 0.08);
+  color: rgb(255 255 255 / 0.75);
   font-size: 0.7rem;
   font-weight: 600;
   line-height: 1;
 }
 
-/* User menu */
-.user-menu {
-  position: relative;
-}
-
-.user-menu__trigger {
-  display: inline-flex;
-  align-items: center;
+/* User menu: trigger here, the PrimeNG menu itself is appended to body. */
+:host ::ng-deep .user-menu__trigger {
   gap: 8px;
   height: 36px;
   padding: 0 8px 0 6px;
-  border: none;
-  border-radius: var(--radius-md);
-  background: transparent;
-  color: var(--color-fg);
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 120ms ease;
-
-  &:hover,
-  &[aria-expanded='true'] {
-    background: var(--color-surface-3);
-  }
+  font-size: 0.875rem;
+  font-weight: 500;
 }
 
-.avatar {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+:host ::ng-deep .avatar {
   width: 28px;
   height: 28px;
-  border-radius: 50%;
   background: var(--color-accent-soft);
+  box-shadow: 0 0 0 2px rgb(255 255 255 / 0.22);
   color: var(--color-brand);
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
+  font-size: 0.7rem;
+  font-weight: 600;
 }
 
 .user-menu__name {
@@ -188,44 +164,18 @@
 
 .user-menu__chevron {
   font-size: 0.62rem;
-  color: var(--color-fg-subtle);
-}
-
-/* Dropdown — anchored to the trigger's end (left) edge, scales in from there. */
-.menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  inset-inline-end: 0;
-  min-width: 230px;
-  padding: 6px;
-  background: var(--color-surface);
-  border: 1px solid color-mix(in srgb, var(--color-border) 80%, transparent);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-popover);
-  z-index: 30;
-  transform-origin: top left;
-  opacity: 1;
-  transform: translateY(0) scale(1);
-  transition:
-    opacity 120ms ease,
-    transform 220ms var(--ease-spring);
-}
-
-@starting-style {
-  .menu {
-    opacity: 0;
-    transform: translateY(-4px) scale(0.97);
-  }
+  opacity: 0.6;
 }
 
 .menu__header {
+  min-width: 220px;
   padding: 8px 10px 10px;
   margin-bottom: 4px;
-  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 60%, transparent);
+  border-bottom: var(--hairline);
 }
 
 .menu__name {
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   font-weight: 600;
 }
 
@@ -238,40 +188,12 @@
   text-overflow: ellipsis;
 }
 
-.menu__item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 8px 10px;
-  border: none;
-  border-radius: var(--radius-md);
-  background: transparent;
-  color: var(--color-fg);
-  font-size: 0.9rem;
-  text-align: start;
-  cursor: pointer;
-  transition:
-    background-color 120ms ease,
-    color 120ms ease;
-
-  i {
-    width: 16px;
-    text-align: center;
-    font-size: 0.85rem;
-    color: var(--color-fg-muted);
-  }
-
-  &:hover {
-    background: var(--color-surface-3);
-  }
-}
-
-.menu__item--danger:hover {
+::ng-deep .user-menu .menu__item--danger:hover .p-menu-item-content,
+::ng-deep .user-menu .menu__item--danger.p-focus .p-menu-item-content {
   background: var(--color-danger-soft);
   color: var(--color-danger);
 
-  i {
+  .p-menu-item-icon {
     color: inherit;
   }
 }
@@ -289,7 +211,7 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  padding: 24px 28px;
+  padding: 20px 28px 28px;
   overflow-y: auto;
 }
 
@@ -321,7 +243,7 @@
     display: none;
   }
 
-  .cmdk-trigger {
+  :host ::ng-deep .cmdk-trigger {
     width: 36px;
     justify-content: center;
     padding: 0;
@@ -342,16 +264,6 @@
   @keyframes screen-fade {
     from {
       opacity: 0;
-    }
-  }
-
-  .menu {
-    transition-property: opacity;
-  }
-
-  @starting-style {
-    .menu {
-      transform: none;
     }
   }
 }

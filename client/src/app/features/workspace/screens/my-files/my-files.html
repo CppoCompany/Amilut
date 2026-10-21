@@ -2,7 +2,7 @@
   <h2 class="section-title">התיקים שלי</h2>
 
   <div class="filter-bar">
-    <div class="form-group autocomplete-wrapper">
+    <div class="form-group">
       <label for="filterCustomer">לקוח</label>
       <app-customer-autocomplete
         inputId="filterCustomer"
@@ -14,9 +14,9 @@
     <div class="form-group">
       <label for="filterCarrierName">מוביל</label>
       <input
+        pInputText
         id="filterCarrierName"
         type="text"
-        class="form-control"
         placeholder="לדוגמה Maersk"
         [(ngModel)]="filterCarrierName"
       />
@@ -25,10 +25,10 @@
     <div class="form-group">
       <label for="filterCaseNumber">מספר תיק</label>
       <input
+        pInputText
         id="filterCaseNumber"
         type="text"
         inputmode="numeric"
-        class="form-control"
         placeholder="לדוגמה 1"
         [(ngModel)]="filterCaseNumber"
       />
@@ -37,15 +37,20 @@
     <div class="form-group filter-bar__actions">
       <label>&nbsp;</label>
       <div class="filter-bar__buttons">
-        <button type="button" class="btn btn-secondary" [disabled]="loading()" (click)="clearFilters()">
-          נקה
-        </button>
+        <p-button
+          label="נקה"
+          icon="fa-solid fa-eraser"
+          severity="secondary"
+          [outlined]="true"
+          [disabled]="loading()"
+          (onClick)="clearFilters()"
+        />
       </div>
     </div>
   </div>
 
   @if (errorMessage(); as message) {
-    <p class="form-message form-message--error" role="alert">{{ message }}</p>
+    <p-message severity="error" styleClass="screen-error" role="alert">{{ message }}</p-message>
   }
 
   <div class="data-table-wrapper">
@@ -54,57 +59,58 @@
     } @else if (cases().length === 0) {
       <p class="data-table__empty">לא נמצאו תיקים</p>
     } @else {
-      <cdk-virtual-scroll-viewport itemSize="49" class="data-table-viewport">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>מספר תיק</th>
-              <th>שיטת משלוח</th>
-              <th>מספר MBL</th>
-              <th>מספרי הזמנות</th>
-              <th>לקוחות</th>
-              <th>Files</th>
-              <th>מוביל</th>
-              <th>סטטוס</th>
-              <th>תאריך פתיחה</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              *cdkVirtualFor="let mblCase of cases(); trackBy: trackById"
-              class="data-table__row--clickable"
-              title="לחץ פעמיים לעריכה"
-              (dblclick)="onEditCase(mblCase)"
-            >
-              <td class="data-table__numeric">{{ mblCase.id }}</td>
-              <td>{{ methodLabel(mblCase) }}</td>
-              <td>{{ mblCase.mblNumber ?? '—' }}</td>
-              <td class="data-table__numeric">{{ joinOrEmDash(mblCase.orderIds) }}</td>
-              <td>{{ joinOrEmDash(mblCase.customerNames) }}</td>
-              <td class="data-table__numeric">{{ mblCase.hblCount }}</td>
-              <td>{{ mblCase.carrierName ?? '—' }}</td>
-              <td>
-                <span [class]="'status-pill status-pill--' + mblCase.status">
-                  {{ statusLabels[mblCase.status] }}
-                </span>
-              </td>
-              <td class="data-table__numeric">{{ formatDate(mblCase.createdAt) }}</td>
-              <td>
-                <button
-                  type="button"
-                  class="icon-btn icon-btn--danger"
-                  [attr.aria-label]="'מחק תיק ' + mblCase.id"
-                  [disabled]="isDeleting(mblCase.id)"
-                  (click)="onDeleteCase(mblCase, $event)"
-                >
-                  <i class="fa-solid fa-trash" aria-hidden="true"></i>
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </cdk-virtual-scroll-viewport>
+      <p-table
+        [value]="cases()"
+        dataKey="id"
+        [rowTrackBy]="trackById"
+        [scrollable]="true"
+        scrollHeight="flex"
+        [virtualScroll]="true"
+        [virtualScrollItemSize]="45"
+        size="small"
+      >
+        <ng-template #header>
+          <tr>
+            <th>מספר תיק</th>
+            <th>שיטת משלוח</th>
+            <th>מספר MBL</th>
+            <th>מספרי הזמנות</th>
+            <th>לקוחות</th>
+            <th>Files</th>
+            <th>מוביל</th>
+            <th>סטטוס</th>
+            <th>תאריך פתיחה</th>
+            <th><span class="sr-only">פעולות</span></th>
+          </tr>
+        </ng-template>
+        <ng-template #body let-mblCase [rowOf]="cases()">
+          <tr class="data-table__row--clickable" title="לחץ פעמיים לעריכה" (dblclick)="onEditCase(mblCase)">
+            <td class="data-table__numeric">{{ mblCase.id }}</td>
+            <td>{{ methodLabel(mblCase) }}</td>
+            <td>{{ mblCase.mblNumber ?? '—' }}</td>
+            <td class="data-table__numeric">{{ joinOrEmDash(mblCase.orderIds) }}</td>
+            <td>{{ joinOrEmDash(mblCase.customerNames) }}</td>
+            <td class="data-table__numeric">{{ mblCase.hblCount }}</td>
+            <td>{{ mblCase.carrierName ?? '—' }}</td>
+            <td>
+              <app-status-tag [status]="mblCase.status" [label]="statusLabels[mblCase.status]" />
+            </td>
+            <td class="data-table__numeric">{{ formatDate(mblCase.createdAt) }}</td>
+            <td class="data-table__actions">
+              <p-button
+                icon="fa-solid fa-trash"
+                [text]="true"
+                [rounded]="true"
+                severity="danger"
+                size="small"
+                [ariaLabel]="'מחק תיק ' + mblCase.id"
+                [disabled]="isDeleting(mblCase.id)"
+                (onClick)="onDeleteCase(mblCase, $event)"
+              />
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
     }
   </div>
 
