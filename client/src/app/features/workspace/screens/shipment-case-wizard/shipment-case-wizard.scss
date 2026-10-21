@@ -1,7 +1,21 @@
 // Component-scoped additions to the shared form styles (see src/styles.scss).
-// Two-column layout: `.wizard-main` holds the step-by-step form, `.wizard-sidebar`
-// is a sticky panel at the content area's far edge (in RTL, the last flex child
-// sits at the visual left) with the step links.
+// Two-column layout: `.wizard-main` holds the step-by-step form (same column
+// width as the order / CCF screens), `.wizard-sidebar` is a sticky panel right
+// after it (in RTL, the last flex child sits at the visual left) with the step
+// links. Header, loading state and layout share one cap so nothing drifts to
+// the far edge of a wide monitor.
+
+:host {
+  --wizard-sidebar-width: 280px;
+  --wizard-gap: 24px;
+  --wizard-max-width: calc(
+    var(--form-page-max-width) + var(--wizard-gap) + var(--wizard-sidebar-width)
+  );
+}
+
+:host > .form-section {
+  max-width: var(--form-page-max-width);
+}
 
 // `.page-title`'s own margin moves onto this row so the title and the
 // "מעבר לתיק הסליקה" link sit on one line — same trick as `order.scss`.
@@ -10,6 +24,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  max-width: var(--wizard-max-width);
   margin-bottom: 24px;
 
   .page-title {
@@ -50,7 +65,8 @@
   display: flex;
   align-items: flex-start;
   flex-wrap: wrap;
-  gap: 24px;
+  gap: var(--wizard-gap);
+  max-width: var(--wizard-max-width);
 }
 
 .wizard-main {
@@ -58,7 +74,7 @@
   flex-direction: column;
   gap: 24px;
   flex: 1 1 640px;
-  max-width: 1000px;
+  max-width: var(--form-page-max-width);
   min-width: 0;
 }
 
@@ -130,7 +146,7 @@
 // ── Progress sidebar ───────────────────────────────────────────────────────────
 // No max-height/overflow of its own: the page is the only thing that scrolls.
 .wizard-sidebar {
-  flex: 0 0 280px;
+  flex: 0 0 var(--wizard-sidebar-width);
   display: flex;
   flex-direction: column;
   gap: 18px;

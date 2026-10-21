@@ -963,6 +963,123 @@
         ]
       }
     },
+    "/api/import-files/line-items/notes": {
+      "get": {
+        "operationId": "ImportFilesController_listLineItemNotes",
+        "parameters": [
+          {
+            "name": "orderId",
+            "required": false,
+            "in": "query",
+            "description": "orders.id",
+            "schema": {
+              "example": 1024,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "ccfId",
+            "required": false,
+            "in": "query",
+            "description": "customs_clearance_files.id",
+            "schema": {
+              "example": 7,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LineItemNoteDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Neither/both of orderId/ccfId given."
+          },
+          "404": {
+            "description": "No order or customs clearance file with this id."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "import-files"
+        ]
+      },
+      "post": {
+        "operationId": "ImportFilesController_addLineItemNote",
+        "parameters": [
+          {
+            "name": "orderId",
+            "required": false,
+            "in": "query",
+            "description": "orders.id",
+            "schema": {
+              "example": 1024,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "ccfId",
+            "required": false,
+            "in": "query",
+            "description": "customs_clearance_files.id",
+            "schema": {
+              "example": 7,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLineItemNoteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LineItemNoteDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Empty note, a line index outside its file, or neither/both of orderId/ccfId given."
+          },
+          "404": {
+            "description": "Unknown order/CCF, or a fileId that is not a file of it."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "import-files"
+        ]
+      }
+    },
     "/api/mbl": {
       "get": {
         "operationId": "MblController_findAll",
@@ -3339,6 +3456,70 @@
         },
         "required": [
           "items"
+        ]
+      },
+      "LineItemNoteDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 3
+          },
+          "fileId": {
+            "type": "integer",
+            "example": 42,
+            "description": "The `import_account_files` row the line belongs to."
+          },
+          "lineIndex": {
+            "type": "integer",
+            "example": 0,
+            "description": "Position of the line inside that file's `lineItems`."
+          },
+          "body": {
+            "type": "string",
+            "example": "לבדוק מול הספק את חומר הגלם"
+          },
+          "createdByName": {
+            "type": "string",
+            "nullable": true,
+            "example": "Dana Levi"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-20T08:30:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "fileId",
+          "lineIndex",
+          "body",
+          "createdByName",
+          "createdAt"
+        ]
+      },
+      "CreateLineItemNoteDto": {
+        "type": "object",
+        "properties": {
+          "fileId": {
+            "type": "integer",
+            "example": 42
+          },
+          "lineIndex": {
+            "type": "integer",
+            "example": 0
+          },
+          "body": {
+            "type": "string",
+            "example": "לבדוק מול הספק את חומר הגלם",
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "fileId",
+          "lineIndex",
+          "body"
         ]
       },
       "SeaMethod": {

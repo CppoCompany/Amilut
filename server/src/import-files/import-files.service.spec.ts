@@ -22,6 +22,7 @@ import {
   deleteFilesByNameSql,
   ImportFilesService,
   INSERT_IMPORT_ACCOUNT_FILE_SQL,
+  INSERT_LINE_ITEM_NOTE_SQL,
   SELECT_CCF_EXISTS_SQL,
   SELECT_EXISTING_COUNTRY_IDS_SQL,
   SELECT_ORDER_EXISTS_SQL,
@@ -30,6 +31,7 @@ import {
   selectFileByIdSql,
   selectLatestFilesSql,
   selectLatestSupplierInvoiceRowsSql,
+  selectLineItemNotesSql,
   updateFileDataSql,
 } from './import-files.service';
 import { EMPTY_LINE_ITEM_CLASSIFICATION } from './line-item-classification';
@@ -728,6 +730,116 @@ describe('ImportFilesService', () => {
         constructor: NotFoundException,
         message: 'Customs clearance file 404 not found',
       });
+    });
+  });
+
+  describe('line item notes', () => {
+    const NOTE_ROW = {
+      id: 3,
+      file_id: 42,
+      line_index: 1,
+      body: 'לבדוק מול הספק',
+      created_by_name: 'Dana Levi',
+      created_at: new Date('2026-09-20T08:30:00.000Z'),
+    };
+    const NOTE_DTO = {
+      id: 3,
+      fileId: 42,
+      lineIndex: 1,
+      body: 'לבדוק מול הספק',
+      createdByName: 'Dana Levi',
+      createdAt: '2026-09-20T08:30:00.000Z',
+    };
+
+    /** `db.queryOne` finds the CCF, its file 42 (two lines) and returns the inserted note. */
+    function ccfWithFile() {
+      db.queryOne.mockImplementation((sql: string, params: unknown[]) => {
+        if (sql === SELECT_CCF_EXISTS_SQL) {
+          return Promise.resolve(params[0] === 7 ? { id: 7 } : null);
+        }
+        if (sql === selectFileByIdSql(ccfContext(7))) {
+          return Promise.resolve(
+            params[0] === 42
+              ? { id: 42, data: { lineItems: [LINE_ITEM, LINE_ITEM] } }
+              : null,
+          );
+        }
+        if (sql === INSERT_LINE_ITEM_NOTE_SQL) {
+          return Promise.resolve(NOTE_ROW);
+        }
+        return Promise.reject(new Error(`Unexpected SQL: ${sql}`));
+      });
+    }
+
+    it('lists the notes of the context, mapped to DTOs', async () => {
+      ccfWithFile();
+      db.query.mockResolvedValue([NOTE_ROW]);
+
+      await expect(service.listLineItemNotes(ccfContext(7))).resolves.toEqual([
+        NOTE_DTO,
+      ]);
+      expect(db.query).toHaveBeenCalledWith(
+        selectLineItemNotesSql(ccfContext(7)),
+        [7],
+      );
+      expect(selectLineItemNotesSql(ccfContext(7))).toContain(
+        'WHERE f.ccf_id = $1',
+      );
+    });
+
+    it('rejects listing for an unknown context', async () => {
+      ccfWithFile();
+
+      await expect(
+        service.listLineItemNotes(ccfContext(8)),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(db.query).not.toHaveBeenCalled();
+    });
+
+    it('inserts a note attributed to the user and returns it', async () => {
+      ccfWithFile();
+
+      await expect(
+        service.addLineItemNote(
+          ccfContext(7),
+          { fileId: 42, lineIndex: 1, body: 'לבדוק מול הספק' },
+          5,
+        ),
+      ).resolves.toEqual(NOTE_DTO);
+      expect(db.queryOne).toHaveBeenCalledWith(INSERT_LINE_ITEM_NOTE_SQL, [
+        42,
+        1,
+        'לבדוק מול הספק',
+        5,
+      ]);
+    });
+
+    it('rejects a file that is not one of the context', async () => {
+      ccfWithFile();
+
+      await expect(
+        service.addLineItemNote(
+          ccfContext(7),
+          { fileId: 99, lineIndex: 0, body: 'x' },
+          5,
+        ),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('rejects a line index outside the file', async () => {
+      ccfWithFile();
+
+      await expect(
+        service.addLineItemNote(
+          ccfContext(7),
+          { fileId: 42, lineIndex: 2, body: 'x' },
+          5,
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(db.queryOne).not.toHaveBeenCalledWith(
+        INSERT_LINE_ITEM_NOTE_SQL,
+        expect.anything(),
+      );
     });
   });
 

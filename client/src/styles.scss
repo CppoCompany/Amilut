@@ -67,6 +67,12 @@
   --radius-lg: 8px;
   --radius-xl: 10px;
 
+  /* Form screens (order, shipment file, customs file) share one column width:
+     wide enough for four 240px `.grid-row` columns inside a `.form-section`
+     (4 × 240 + 3 × 20 gap + 2 × 24 padding ≈ 1070px), capped so fields never
+     stretch across a wide monitor. Anchored to the inline-start edge. */
+  --form-page-max-width: 1200px;
+
   /* Shadows always carry an offset + soft blur; elevation is declared once
      per element (border OR shadow, never both heavy). */
   --shadow-xs: 0 1px 1px rgb(15 33 43 / 0.04);
@@ -239,7 +245,7 @@ kbd {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  max-width: 1200px;
+  max-width: var(--form-page-max-width);
 }
 
 /* The one surface per region: hairline border, no shadow. */

@@ -22,6 +22,10 @@ import { ImportFilesContextQuery } from './dto/import-files-context.query';
 import { InvoiceLineItemDto } from './dto/invoice-line-item.dto';
 import { LineItemClassificationUpdateDto } from './dto/line-item-classification.dto';
 import {
+  CreateLineItemNoteDto,
+  LineItemNoteDto,
+} from './dto/line-item-note.dto';
+import {
   CLASSIFICATION_SORT_COLUMNS,
   PagedClassificationsQuery,
 } from './dto/paged-classifications.query';
@@ -194,6 +198,26 @@ export function deleteFilesByNameSql(context: ImportFilesContext): string {
   return `DELETE FROM import_account_files
    WHERE ${col} = $1 AND data->>'name' = $2`;
 }
+
+/** Every note on the lines of the context's files, oldest first, with its author's name. */
+export function selectLineItemNotesSql(context: ImportFilesContext): string {
+  const col = contextColumn(context);
+  return `SELECT n.id, n.file_id, n.line_index, n.body, u.name AS created_by_name, n.created_at
+     FROM line_item_notes n
+     JOIN import_account_files f ON f.id = n.file_id
+     LEFT JOIN users u ON u.id = n.created_by
+    WHERE f.${col} = $1
+    ORDER BY n.created_at, n.id`;
+}
+
+export const INSERT_LINE_ITEM_NOTE_SQL = `WITH n AS (
+       INSERT INTO line_item_notes (file_id, line_index, body, created_by)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id, file_id, line_index, body, created_by, created_at
+     )
+   SELECT n.id, n.file_id, n.line_index, n.body, u.name AS created_by_name, n.created_at
+     FROM n
+     LEFT JOIN users u ON u.id = n.created_by`;
 
 /** Which of the given country ids exist. */
 export const SELECT_EXISTING_COUNTRY_IDS_SQL =
@@ -481,6 +505,61 @@ export class ImportFilesService {
   }
 
   /**
+   * Every note written on the classification screen against the lines of
+   * the order/CCF's files, oldest first — the client groups them per line.
+   *
+   * @throws NotFoundException — the order/CCF does not exist.
+   */
+  async listLineItemNotes(
+    context: ImportFilesContext,
+  ): Promise<LineItemNoteDto[]> {
+    await this.assertContextExists(context);
+    const rows = await this.db.query<LineItemNoteRow>(
+      selectLineItemNotesSql(context),
+      [context.id],
+    );
+    return rows.map(toLineItemNote);
+  }
+
+  /**
+   * Adds a note to one supplier-invoice line, attributed to `userId`.
+   *
+   * @throws BadRequestException — a line index outside the file's items.
+   * @throws NotFoundException — unknown order/CCF, or a `fileId` that is not
+   *   a file of that order/CCF.
+   */
+  async addLineItemNote(
+    context: ImportFilesContext,
+    note: CreateLineItemNoteDto,
+    userId: number,
+  ): Promise<LineItemNoteDto> {
+    await this.assertContextExists(context);
+    const row = await this.db.queryOne<{
+      id: number;
+      data: Partial<ImportAccountFileData>;
+    }>(selectFileByIdSql(context), [note.fileId, context.id]);
+    if (!row) {
+      throw fileNotFound(context, note.fileId);
+    }
+    const lineItems = Array.isArray(row.data.lineItems)
+      ? row.data.lineItems
+      : [];
+    if (note.lineIndex >= lineItems.length) {
+      throw new BadRequestException(
+        `File ${note.fileId} has no line item at index ${note.lineIndex}`,
+      );
+    }
+    const inserted = await this.db.queryOne<LineItemNoteRow>(
+      INSERT_LINE_ITEM_NOTE_SQL,
+      [note.fileId, note.lineIndex, note.body, userId],
+    );
+    if (!inserted) {
+      throw new BadRequestException('The note was not recorded');
+    }
+    return toLineItemNote(inserted);
+  }
+
+  /**
    * One page of classified supplier-invoice lines across every order/CCF —
    * the data source of "הסיווגים שלי". Unscoped by default: free-text search
    * covers item code, description, classification code and file name;
@@ -763,6 +842,29 @@ function toClassificationRow(row: ClassifiedLineRow): ClassificationRowDto {
     total: numberOrNull(row.total_amount),
     classification: normaliseLineItemClassification(row.classification),
     countryName: row.country_name ?? null,
+    createdAt: (row.created_at instanceof Date
+      ? row.created_at
+      : new Date(row.created_at)
+    ).toISOString(),
+  };
+}
+
+interface LineItemNoteRow {
+  id: number;
+  file_id: number;
+  line_index: number;
+  body: string;
+  created_by_name: string | null;
+  created_at: Date | string;
+}
+
+function toLineItemNote(row: LineItemNoteRow): LineItemNoteDto {
+  return {
+    id: row.id,
+    fileId: row.file_id,
+    lineIndex: row.line_index,
+    body: row.body,
+    createdByName: row.created_by_name ?? null,
     createdAt: (row.created_at instanceof Date
       ? row.created_at
       : new Date(row.created_at)

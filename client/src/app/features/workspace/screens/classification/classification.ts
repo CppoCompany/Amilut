@@ -41,18 +41,20 @@ import type {
   DashboardCcfRowDto,
   InvoiceLineItemDto,
   LineItemClassificationUpdateDto,
+  LineItemNoteDto,
 } from '../../../../api/models';
 import { MultiSelect, MultiSelectOption } from '../../../../shared/multi-select/multi-select';
 import { TypedRow } from '../../../../shared/typed-row/typed-row';
 import { FilingContextService } from '../../filing-context.service';
 import { NavigationService } from '../../navigation.service';
+import { LineItemNotesDialog } from './line-item-notes-dialog/line-item-notes-dialog';
 
 interface Product {
   /** Where the line is stored (`import_account_files` row + position); `null` for rows added by hand. */
   fileId: number | null;
   lineIndex: number | null;
   sku: string;
-  /** Product name from the invoice — shown in the "תיאור טובין" field, not as a column. */
+  /** Product name from the invoice — shown in the "תיאור טובין" field above the table, not as a column. */
   name: string;
   qty: number | null;
   unitPrice: number | null;
@@ -65,10 +67,14 @@ interface Product {
   countryId: number | null;
 }
 
+/** A products-table row that is backed by a stored invoice line, so notes can be attached to it. */
+type StoredProduct = Product & { fileId: number; lineIndex: number };
+
 /**
  * "סיווג" — goods classification view: a list of the CCFs not fully
  * classified yet on one side, and for the picked one an editable products
- * table saved back to its invoice lines on the other.
+ * table saved back to its invoice lines on the other. Each stored row has a
+ * notes popup whose notes are saved immediately.
  */
 @Component({
   selector: 'app-classification-screen',
@@ -87,6 +93,7 @@ interface Product {
     Tooltip,
     MultiSelect,
     TypedRow,
+    LineItemNotesDialog,
   ],
   templateUrl: './classification.html',
   styleUrl: './classification.scss',
@@ -118,7 +125,6 @@ export class ClassificationScreen {
 
   protected readonly form = this.fb.group({
     goodsDescription: this.fb.control(''),
-    notes: this.fb.control(''),
   });
 
   /** Rows of the products table — the case's extracted supplier-invoice line items, plus any rows added by hand. */
@@ -135,12 +141,22 @@ export class ClassificationScreen {
   protected readonly pendingLoading = signal(false);
   protected readonly pendingError = signal<string | null>(null);
 
+  /** Every note of the picked context's lines, keyed by {@link noteKey}, oldest first. */
+  protected readonly notesByLine = signal<ReadonlyMap<string, readonly LineItemNoteDto[]>>(
+    new Map(),
+  );
+  protected readonly notesError = signal<string | null>(null);
+  /** The row whose notes popup is open, or `null`. */
+  protected readonly notesRow = signal<StoredProduct | null>(null);
+  private readonly noNotes: readonly LineItemNoteDto[] = [];
+
   protected readonly saving = signal(false);
   protected readonly saveMessage = signal<string | null>(null);
   protected readonly saveError = signal<string | null>(null);
 
   constructor() {
     this.loadLineItemsOnContextChange();
+    this.loadNotesOnContextChange();
     this.loadCountries();
     this.loadPendingCcfs();
 
@@ -178,6 +194,31 @@ export class ClassificationScreen {
   /** Share of the CCF's lines already classified, 0–100, for the list item's progress bar. */
   protected classificationPercent(ccf: DashboardCcfRowDto): number {
     return ccf.lineCount === 0 ? 0 : Math.round((ccf.classifiedLineCount / ccf.lineCount) * 100);
+  }
+
+  /** The notes stored against a row's line; always empty for rows added by hand. */
+  protected notesOf(product: Product): readonly LineItemNoteDto[] {
+    if (product.fileId === null || product.lineIndex === null) return this.noNotes;
+    return this.notesByLine().get(noteKey(product.fileId, product.lineIndex)) ?? this.noNotes;
+  }
+
+  protected openNotes(product: Product): void {
+    if (product.fileId === null || product.lineIndex === null) return;
+    this.notesRow.set({ ...product, fileId: product.fileId, lineIndex: product.lineIndex });
+  }
+
+  protected closeNotes(): void {
+    this.notesRow.set(null);
+  }
+
+  /** Appends a note the popup just saved to its line's list. */
+  protected onNoteAdded(note: LineItemNoteDto): void {
+    const key = noteKey(note.fileId, note.lineIndex);
+    this.notesByLine.update((current) => {
+      const next = new Map(current);
+      next.set(key, [...(current.get(key) ?? []), note]);
+      return next;
+    });
   }
 
   protected addRow(): void {
@@ -286,6 +327,30 @@ export class ClassificationScreen {
       });
   }
 
+  /**
+   * Loads every note of the picked Order/CCF's lines — again whenever
+   * another one is picked. A failure only leaves the rows without notes.
+   */
+  private loadNotesOnContextChange(): void {
+    toObservable(this.context)
+      .pipe(
+        switchMap((context) => {
+          this.notesByLine.set(new Map());
+          this.notesRow.set(null);
+          this.notesError.set(null);
+          if (context === null) return EMPTY;
+          return this.importFilesApi.listLineItemNotes(context).pipe(
+            catchError(() => {
+              this.notesError.set('טעינת הערות השורות נכשלה');
+              return of<LineItemNoteDto[]>([]);
+            }),
+          );
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((notes) => this.notesByLine.set(groupNotesByLine(notes)));
+  }
+
   /** Loads the country lookup once; a failure only leaves the dropdown without options. */
   private loadCountries(): void {
     this.countriesError.set(null);
@@ -335,6 +400,22 @@ export class ClassificationScreen {
         this.form.controls.goodsDescription.setValue(goodsDescriptionOf(products));
       });
   }
+}
+
+function noteKey(fileId: number, lineIndex: number): string {
+  return `${fileId}:${lineIndex}`;
+}
+
+/** Groups notes per line, keeping the server's order (oldest first) inside each group. */
+export function groupNotesByLine(
+  notes: readonly LineItemNoteDto[],
+): Map<string, LineItemNoteDto[]> {
+  const byLine = new Map<string, LineItemNoteDto[]>();
+  for (const note of notes) {
+    const key = noteKey(note.fileId, note.lineIndex);
+    byLine.set(key, [...(byLine.get(key) ?? []), note]);
+  }
+  return byLine;
 }
 
 function sameContext(a: FilingContext | null, b: FilingContext | null): boolean {

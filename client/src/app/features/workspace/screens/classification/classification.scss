@@ -30,63 +30,6 @@
   max-width: none;
 }
 
-// Details card (goods description, notes, save) beside the products area. The
-// page is RTL, so the first column (the details) renders on the right.
-.classification-layout {
-  display: grid;
-  grid-template-columns: 13.5rem minmax(0, 1fr);
-  gap: 16px;
-  align-items: start;
-
-  @media (max-width: 1200px) {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-.classification-details {
-  position: sticky;
-  top: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 12px;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  background: var(--readonly-bg);
-
-  @media (max-width: 1200px) {
-    position: static;
-  }
-
-  .form-group {
-    gap: 4px;
-  }
-
-  label {
-    font-size: 0.85rem;
-  }
-
-  textarea {
-    resize: vertical;
-    padding: 0.4rem 0.55rem;
-    font-size: 0.875rem;
-  }
-
-  &__actions.form-actions {
-    margin-top: 0;
-    padding-top: 10px;
-    border-top: 1px solid var(--border-color);
-
-    ::ng-deep .p-button {
-      width: 100%;
-    }
-  }
-
-  .form-message {
-    margin: 0;
-  }
-}
-
 // The pending-files list beside the products table, inside the tab. The page
 // is RTL, so the list's column (the second one) renders on the left; it comes
 // first in the DOM so it still stacks above the table on narrow screens.
@@ -405,6 +348,37 @@
   white-space: normal;
   background: none;
   font-size: 0.85rem;
+}
+
+// "תיאור טובין" — full width above the products table.
+.goods-form-group {
+  gap: 4px;
+  margin-bottom: 12px;
+
+  label {
+    font-size: 0.85rem;
+  }
+
+  textarea {
+    resize: vertical;
+    padding: 0.4rem 0.55rem;
+    font-size: 0.875rem;
+  }
+}
+
+// Save row under the products card.
+.products-actions.form-actions {
+  margin-top: 12px;
+}
+
+:host ::ng-deep .products-save-message {
+  margin: 12px 0 0;
+}
+
+// Narrow trailing column holding each row's notes button.
+.products-table .col-notes {
+  width: 3rem;
+  text-align: center;
 }
 
 // "+ הוסף שורה" — a full-width dashed footer of the card (PrimeNG button).

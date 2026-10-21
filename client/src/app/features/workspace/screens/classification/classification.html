@@ -1,35 +1,258 @@
 <section class="form-section classification-section" id="classificationTabPanel">
   <h2 class="section-title">סיווג</h2>
   <form class="order-form classification-form" [formGroup]="form" (ngSubmit)="onSubmit()">
-    <!-- RTL: the details card (first column) sits on the right, the products area to its left. -->
-    <div class="classification-layout">
-      <div class="classification-details">
+    <!-- RTL: the file list is placed on the left of the products table (see .products-layout). -->
+    <div class="products-layout">
+      <aside class="pending-ccfs" aria-labelledby="pendingCcfsTitle">
+        <header class="pending-ccfs__header">
+          <h3 class="section-title pending-ccfs__title" id="pendingCcfsTitle">
+            תיקי עמילות שלא עברו סיווג
+          </h3>
+          @if (pendingCcfs().length) {
+            <p-badge
+              [value]="pendingCcfs().length"
+              severity="secondary"
+              styleClass="pending-ccfs__count"
+              pTooltip="תיקים ממתינים"
+            />
+          }
+        </header>
+        @if (pendingError(); as message) {
+          <p-message severity="error" styleClass="form-message form-message--error" role="alert">{{ message }}</p-message>
+        }
+        @if (pendingLoading() && pendingCcfs().length === 0) {
+          <p class="pending-ccfs__hint">טוען תיקים…</p>
+        } @else if (!pendingError() && pendingCcfs().length === 0) {
+          <p class="pending-ccfs__hint">אין תיקי עמילות שממתינים לסיווג</p>
+        }
+        <ul class="pending-ccfs__list">
+          @for (ccf of pendingCcfs(); track ccf.id) {
+            <li>
+              <button
+                type="button"
+                class="pending-ccfs__item"
+                [class.active]="isSelectedCcf(ccf.id)"
+                [attr.aria-pressed]="isSelectedCcf(ccf.id)"
+                (click)="selectCcf(ccf.id)"
+              >
+                <span class="pending-ccfs__number">{{ ccf.fileNumber }}</span>
+                <span class="pending-ccfs__progress" title="שורות מסווגות">{{
+                  classificationProgress(ccf)
+                }}</span>
+                @if (ccf.shipmentFileMblNumber) {
+                  <span class="pending-ccfs__meta" dir="ltr">{{
+                    ccf.shipmentFileMblNumber
+                  }}</span>
+                }
+                @if (ccf.customerNames.length) {
+                  <span class="pending-ccfs__meta">{{ ccf.customerNames.join(', ') }}</span>
+                }
+                @if (ccf.lineCount > 0) {
+                  <p-progressbar
+                    class="pending-ccfs__bar"
+                    [value]="classificationPercent(ccf)"
+                    [showValue]="false"
+                    aria-hidden="true"
+                  />
+                }
+              </button>
+            </li>
+          }
+        </ul>
+      </aside>
+
+      <div class="products-panel">
+        <h3 class="section-title">מוצרים</h3>
         <div class="form-group goods-form-group">
           <label for="goodsDescription" class="required">תיאור טובין</label>
-          <div class="goods-input-wrapper">
-            <textarea
-              id="goodsDescription"
-              pTextarea class="goods-input--small"
-              rows="2"
-              formControlName="goodsDescription"
-              required
-            ></textarea>
-          </div>
+          <textarea
+            id="goodsDescription"
+            pTextarea
+            rows="2"
+            formControlName="goodsDescription"
+            required
+          ></textarea>
         </div>
-
-        <div class="form-group">
-          <label for="notes">הערות</label>
-          <textarea id="notes" pTextarea rows="3" formControlName="notes"></textarea>
+        @if (loading()) {
+          <p class="products-loading">טוען פריטים…</p>
+        }
+        @if (errorMessage(); as message) {
+          <p-message severity="error" styleClass="form-message form-message--error" role="alert">{{ message }}</p-message>
+        }
+        @if (countriesError(); as message) {
+          <p-message severity="error" styleClass="form-message form-message--error" role="alert">{{ message }}</p-message>
+        }
+        <div class="products-card">
+          <div class="products-table-wrap">
+            <p-table
+              [value]="products()"
+              styleClass="documents-table products-table"
+              size="small"
+              [scrollable]="true"
+            >
+              <ng-template #header>
+                <tr class="products-table__groups">
+                  <th colspan="4">פרטי חשבון ספק</th>
+                  <th colspan="5" class="col-group-start">סיווג</th>
+                  <th class="col-group-start col-notes"></th>
+                </tr>
+                <tr>
+                  <th>מק"ט</th>
+                  <th class="num">כמות</th>
+                  <th class="num">מחיר ליחידה</th>
+                  <th class="num">מחיר כללי</th>
+                  <th class="col-group-start">הסכם סחר</th>
+                  <th>קוד סיווג</th>
+                  <th>אישורים</th>
+                  <th>רישיונות</th>
+                  <th>מדינות</th>
+                  <th class="col-group-start col-notes">
+                    <span class="sr-only">הערות</span>
+                    <i class="fa-regular fa-note-sticky" aria-hidden="true" pTooltip="הערות"></i>
+                  </th>
+                </tr>
+              </ng-template>
+              <ng-template #body let-product let-i="rowIndex" [rowOf]="products()">
+                <tr
+                  [class.is-classified]="product.classificationCode.trim() !== ''"
+                  [class.is-manual]="product.fileId === null"
+                >
+                  <td class="sku" dir="ltr">{{ product.sku }}</td>
+                  <td class="num">{{ product.qty ?? '' }}</td>
+                  <td class="num">
+                    {{ product.unitPrice !== null ? (product.unitPrice | number: '1.2-2') : '' }}
+                  </td>
+                  <td class="num">
+                    {{ product.totalPrice !== null ? (product.totalPrice | number: '1.2-2') : '' }}
+                  </td>
+                  <td class="col-group-start">
+                    <p-select
+                      class="trade-agreement-select"
+                      [options]="tradeAgreementSelectOptions"
+                      optionLabel="label"
+                      optionValue="value"
+                      placeholder="בחר הסכם"
+                      [showClear]="true"
+                      [filter]="true"
+                      filterBy="label"
+                      [ariaLabel]="'הסכם סחר לשורה ' + (i + 1)"
+                      [ngModel]="product.tradeAgreement"
+                      [ngModelOptions]="{ standalone: true }"
+                      (ngModelChange)="onTradeAgreementChange(i, $event)"
+                      appendTo="body"
+                      size="small"
+                      [fluid]="true"
+                    />
+                  </td>
+                  <td>
+                    <input
+                      pInputText
+                      pSize="small"
+                      class="classification-code-input"
+                      dir="ltr"
+                      maxlength="100"
+                      [attr.aria-label]="'קוד סיווג לשורה ' + (i + 1)"
+                      [value]="product.classificationCode"
+                      (input)="onClassificationCodeChange(i, $event)"
+                    />
+                  </td>
+                  <td>
+                    <app-multi-select
+                      class="approvals-select"
+                      [options]="approvalOptions"
+                      [selected]="product.approvals"
+                      [ariaLabel]="'אישורים לשורה ' + (i + 1)"
+                      placeholder="ללא"
+                      (selectedChange)="onApprovalsChange(i, $event)"
+                    />
+                  </td>
+                  <td>
+                    <app-multi-select
+                      class="licenses-select"
+                      [options]="licenseOptions"
+                      [selected]="product.licenses"
+                      [ariaLabel]="'רישיונות לשורה ' + (i + 1)"
+                      placeholder="ללא"
+                      (selectedChange)="onLicensesChange(i, $event)"
+                    />
+                  </td>
+                  <td>
+                    <p-select
+                      class="country-select"
+                      [options]="countries()"
+                      optionLabel="name"
+                      optionValue="id"
+                      placeholder="בחר מדינה"
+                      [showClear]="true"
+                      [filter]="true"
+                      filterBy="name"
+                      [ariaLabel]="'מדינה לשורה ' + (i + 1)"
+                      [ngModel]="product.countryId"
+                      [ngModelOptions]="{ standalone: true }"
+                      (ngModelChange)="onCountryChange(i, $event)"
+                      appendTo="body"
+                      size="small"
+                      [fluid]="true"
+                    />
+                  </td>
+                  <td class="col-group-start col-notes">
+                    @let rowNotes = notesOf(product);
+                    <p-button
+                      [icon]="rowNotes.length ? 'fa-solid fa-note-sticky' : 'fa-regular fa-note-sticky'"
+                      [rounded]="true"
+                      [text]="true"
+                      size="small"
+                      [severity]="rowNotes.length ? 'primary' : 'secondary'"
+                      [badge]="rowNotes.length ? '' + rowNotes.length : undefined"
+                      badgeSeverity="contrast"
+                      styleClass="row-notes-button"
+                      [ariaLabel]="'הערות לשורה ' + (i + 1)"
+                      [pTooltip]="product.fileId === null ? 'ניתן להוסיף הערות רק לשורות מחשבון ספק' : 'הערות'"
+                      tooltipPosition="top"
+                      [disabled]="product.fileId === null || product.lineIndex === null"
+                      (onClick)="openNotes(product)"
+                    />
+                  </td>
+                </tr>
+              </ng-template>
+              <ng-template #emptymessage>
+                @if (!loading()) {
+                  <tr class="products-empty">
+                    <td colspan="10">
+                      @if (context() === null) {
+                        בחר תיק עמילות מהרשימה כדי להציג את פריטי חשבון הספק שלו
+                      } @else {
+                        לא נמצאו פריטים מחשבון ספק — העלה חשבון ספק במסך תיוק ניירת יבוא
+                      }
+                    </td>
+                  </tr>
+                }
+              </ng-template>
+            </p-table>
+          </div>
+          <p-button
+            label="הוסף שורה"
+            icon="fa-solid fa-plus"
+            severity="secondary"
+            [outlined]="true"
+            size="small"
+            styleClass="products-add"
+            [disabled]="context() === null"
+            (onClick)="addRow()"
+          />
         </div>
 
         @if (saveMessage(); as message) {
-          <p-message severity="success" styleClass="form-message form-message--success" role="status">{{ message }}</p-message>
+          <p-message severity="success" styleClass="form-message form-message--success products-save-message" role="status">{{ message }}</p-message>
         }
         @if (saveError(); as message) {
-          <p-message severity="error" styleClass="form-message form-message--error" role="alert">{{ message }}</p-message>
+          <p-message severity="error" styleClass="form-message form-message--error products-save-message" role="alert">{{ message }}</p-message>
+        }
+        @if (notesError(); as message) {
+          <p-message severity="error" styleClass="form-message form-message--error products-save-message" role="alert">{{ message }}</p-message>
         }
 
-        <div class="form-actions classification-details__actions">
+        <div class="form-actions products-actions">
           <p-button
             type="submit"
             [label]="saving() ? 'שומר…' : 'שמור סיווג'"
@@ -39,216 +262,20 @@
           />
         </div>
       </div>
-
-      <!-- RTL: the file list is placed on the left of the products table (see .products-layout). -->
-      <div class="products-layout">
-        <aside class="pending-ccfs" aria-labelledby="pendingCcfsTitle">
-          <header class="pending-ccfs__header">
-            <h3 class="section-title pending-ccfs__title" id="pendingCcfsTitle">
-              תיקי עמילות שלא עברו סיווג
-            </h3>
-            @if (pendingCcfs().length) {
-              <p-badge
-                [value]="pendingCcfs().length"
-                severity="secondary"
-                styleClass="pending-ccfs__count"
-                pTooltip="תיקים ממתינים"
-              />
-            }
-          </header>
-          @if (pendingError(); as message) {
-            <p-message severity="error" styleClass="form-message form-message--error" role="alert">{{ message }}</p-message>
-          }
-          @if (pendingLoading() && pendingCcfs().length === 0) {
-            <p class="pending-ccfs__hint">טוען תיקים…</p>
-          } @else if (!pendingError() && pendingCcfs().length === 0) {
-            <p class="pending-ccfs__hint">אין תיקי עמילות שממתינים לסיווג</p>
-          }
-          <ul class="pending-ccfs__list">
-            @for (ccf of pendingCcfs(); track ccf.id) {
-              <li>
-                <button
-                  type="button"
-                  class="pending-ccfs__item"
-                  [class.active]="isSelectedCcf(ccf.id)"
-                  [attr.aria-pressed]="isSelectedCcf(ccf.id)"
-                  (click)="selectCcf(ccf.id)"
-                >
-                  <span class="pending-ccfs__number">{{ ccf.fileNumber }}</span>
-                  <span class="pending-ccfs__progress" title="שורות מסווגות">{{
-                    classificationProgress(ccf)
-                  }}</span>
-                  @if (ccf.shipmentFileMblNumber) {
-                    <span class="pending-ccfs__meta" dir="ltr">{{
-                      ccf.shipmentFileMblNumber
-                    }}</span>
-                  }
-                  @if (ccf.customerNames.length) {
-                    <span class="pending-ccfs__meta">{{ ccf.customerNames.join(', ') }}</span>
-                  }
-                  @if (ccf.lineCount > 0) {
-                    <p-progressbar
-                      class="pending-ccfs__bar"
-                      [value]="classificationPercent(ccf)"
-                      [showValue]="false"
-                      aria-hidden="true"
-                    />
-                  }
-                </button>
-              </li>
-            }
-          </ul>
-        </aside>
-
-        <div class="products-panel">
-          <h3 class="section-title">מוצרים</h3>
-          @if (loading()) {
-            <p class="products-loading">טוען פריטים…</p>
-          }
-          @if (errorMessage(); as message) {
-            <p-message severity="error" styleClass="form-message form-message--error" role="alert">{{ message }}</p-message>
-          }
-          @if (countriesError(); as message) {
-            <p-message severity="error" styleClass="form-message form-message--error" role="alert">{{ message }}</p-message>
-          }
-          <div class="products-card">
-            <div class="products-table-wrap">
-              <p-table
-                [value]="products()"
-                styleClass="documents-table products-table"
-                size="small"
-                [scrollable]="true"
-              >
-                <ng-template #header>
-                  <tr class="products-table__groups">
-                    <th colspan="4">פרטי חשבון ספק</th>
-                    <th colspan="5" class="col-group-start">סיווג</th>
-                  </tr>
-                  <tr>
-                    <th>מק"ט</th>
-                    <th class="num">כמות</th>
-                    <th class="num">מחיר ליחידה</th>
-                    <th class="num">מחיר כללי</th>
-                    <th class="col-group-start">הסכם סחר</th>
-                    <th>קוד סיווג</th>
-                    <th>אישורים</th>
-                    <th>רישיונות</th>
-                    <th>מדינות</th>
-                  </tr>
-                </ng-template>
-                <ng-template #body let-product let-i="rowIndex" [rowOf]="products()">
-                  <tr
-                    [class.is-classified]="product.classificationCode.trim() !== ''"
-                    [class.is-manual]="product.fileId === null"
-                  >
-                    <td class="sku" dir="ltr">{{ product.sku }}</td>
-                    <td class="num">{{ product.qty ?? '' }}</td>
-                    <td class="num">
-                      {{ product.unitPrice !== null ? (product.unitPrice | number: '1.2-2') : '' }}
-                    </td>
-                    <td class="num">
-                      {{ product.totalPrice !== null ? (product.totalPrice | number: '1.2-2') : '' }}
-                    </td>
-                    <td class="col-group-start">
-                      <p-select
-                        class="trade-agreement-select"
-                        [options]="tradeAgreementSelectOptions"
-                        optionLabel="label"
-                        optionValue="value"
-                        placeholder="בחר הסכם"
-                        [showClear]="true"
-                        [filter]="true"
-                        filterBy="label"
-                        [ariaLabel]="'הסכם סחר לשורה ' + (i + 1)"
-                        [ngModel]="product.tradeAgreement"
-                        [ngModelOptions]="{ standalone: true }"
-                        (ngModelChange)="onTradeAgreementChange(i, $event)"
-                        appendTo="body"
-                        size="small"
-                        [fluid]="true"
-                      />
-                    </td>
-                    <td>
-                      <input
-                        pInputText
-                        pSize="small"
-                        class="classification-code-input"
-                        dir="ltr"
-                        maxlength="100"
-                        [attr.aria-label]="'קוד סיווג לשורה ' + (i + 1)"
-                        [value]="product.classificationCode"
-                        (input)="onClassificationCodeChange(i, $event)"
-                      />
-                    </td>
-                    <td>
-                      <app-multi-select
-                        class="approvals-select"
-                        [options]="approvalOptions"
-                        [selected]="product.approvals"
-                        [ariaLabel]="'אישורים לשורה ' + (i + 1)"
-                        placeholder="ללא"
-                        (selectedChange)="onApprovalsChange(i, $event)"
-                      />
-                    </td>
-                    <td>
-                      <app-multi-select
-                        class="licenses-select"
-                        [options]="licenseOptions"
-                        [selected]="product.licenses"
-                        [ariaLabel]="'רישיונות לשורה ' + (i + 1)"
-                        placeholder="ללא"
-                        (selectedChange)="onLicensesChange(i, $event)"
-                      />
-                    </td>
-                    <td>
-                      <p-select
-                        class="country-select"
-                        [options]="countries()"
-                        optionLabel="name"
-                        optionValue="id"
-                        placeholder="בחר מדינה"
-                        [showClear]="true"
-                        [filter]="true"
-                        filterBy="name"
-                        [ariaLabel]="'מדינה לשורה ' + (i + 1)"
-                        [ngModel]="product.countryId"
-                        [ngModelOptions]="{ standalone: true }"
-                        (ngModelChange)="onCountryChange(i, $event)"
-                        appendTo="body"
-                        size="small"
-                        [fluid]="true"
-                      />
-                    </td>
-                  </tr>
-                </ng-template>
-                <ng-template #emptymessage>
-                  @if (!loading()) {
-                    <tr class="products-empty">
-                      <td colspan="9">
-                        @if (context() === null) {
-                          בחר תיק עמילות מהרשימה כדי להציג את פריטי חשבון הספק שלו
-                        } @else {
-                          לא נמצאו פריטים מחשבון ספק — העלה חשבון ספק במסך תיוק ניירת יבוא
-                        }
-                      </td>
-                    </tr>
-                  }
-                </ng-template>
-              </p-table>
-            </div>
-            <p-button
-              label="הוסף שורה"
-              icon="fa-solid fa-plus"
-              severity="secondary"
-              [outlined]="true"
-              size="small"
-              styleClass="products-add"
-              [disabled]="context() === null"
-              (onClick)="addRow()"
-            />
-          </div>
-        </div>
-      </div>
     </div>
   </form>
+
+  @if (notesRow(); as row) {
+    @if (context(); as ctx) {
+      <app-line-item-notes-dialog
+        [context]="ctx"
+        [fileId]="row.fileId"
+        [lineIndex]="row.lineIndex"
+        [sku]="row.sku"
+        [notes]="notesOf(row)"
+        (added)="onNoteAdded($event)"
+        (closed)="closeNotes()"
+      />
+    }
+  }
 </section>

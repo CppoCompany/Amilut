@@ -11,10 +11,16 @@ import {
   ClassificationLicense,
   TradeAgreement,
 } from '../../../../api/enums';
-import type { CountryDto, DashboardCcfRowDto, InvoiceLineItemDto } from '../../../../api/models';
+import type {
+  CountryDto,
+  DashboardCcfRowDto,
+  InvoiceLineItemDto,
+  LineItemNoteDto,
+} from '../../../../api/models';
 import { MultiSelect } from '../../../../shared/multi-select/multi-select';
 import { FilingContextService } from '../../filing-context.service';
-import { ClassificationScreen, goodsDescriptionOf } from './classification';
+import { ClassificationScreen, goodsDescriptionOf, groupNotesByLine } from './classification';
+import { LineItemNotesDialog } from './line-item-notes-dialog/line-item-notes-dialog';
 
 const ORDER_ID = 1000;
 const LINE_ITEMS_URL = `/api/import-files/line-items?orderId=${ORDER_ID}`;
@@ -78,6 +84,8 @@ describe('goodsDescriptionOf', () => {
   });
 });
 
+const NOTES_PATH = '/api/import-files/line-items/notes';
+
 let fixture: ComponentFixture<ClassificationScreen>;
 let httpMock: HttpTestingController;
 let filingContext: FilingContextService;
@@ -109,10 +117,39 @@ async function setup(
   fixture.detectChanges();
 }
 
+/** The row-notes load runs beside every line-item load; tests that don't care about notes leave it pending. */
+function verifyHttp(): void {
+  httpMock.match((req) => req.url === NOTES_PATH && req.method === 'GET');
+  httpMock.verify();
+}
+
+function note(overrides: Partial<LineItemNoteDto> = {}): LineItemNoteDto {
+  return {
+    id: 1,
+    fileId: 42,
+    lineIndex: 0,
+    body: 'לבדוק מול הספק',
+    createdByName: 'Dana Levi',
+    createdAt: '2026-09-20T08:30:00.000Z',
+    ...overrides,
+  };
+}
+
+describe('groupNotesByLine', () => {
+  it('groups notes per file line, keeping their order', () => {
+    const a = note({ id: 1 });
+    const b = note({ id: 2, lineIndex: 1 });
+    const c = note({ id: 3 });
+    const grouped = groupNotesByLine([a, b, c]);
+    expect(grouped.get('42:0')).toEqual([a, c]);
+    expect(grouped.get('42:1')).toEqual([b]);
+  });
+});
+
 describe('ClassificationScreen before a case is picked', () => {
   beforeEach(() => setup(null));
 
-  afterEach(() => httpMock.verify());
+  afterEach(() => verifyHttp());
 
   it('requests no line items and shows a hint — not an error — on entry', () => {
     httpMock.expectOne(COUNTRIES_URL).flush(COUNTRIES);
@@ -158,7 +195,7 @@ describe('ClassificationScreen before a case is picked', () => {
 describe('ClassificationScreen', () => {
   beforeEach(() => setup(ORDER_ID));
 
-  afterEach(() => httpMock.verify());
+  afterEach(() => verifyHttp());
 
   /** Lets ngModel hand values to the PrimeNG controls (it does so asynchronously), then re-renders. */
   async function settle(): Promise<void> {
@@ -181,10 +218,11 @@ describe('ClassificationScreen', () => {
   /**
    * Cell content per row: a PrimeNG select yields its model value, an input
    * its value, a multi-select its summary label, anything else its text.
+   * The notes column is left out — the notes tests cover it.
    */
   function rows(): string[][] {
     return fixture.debugElement.queryAll(By.css('.documents-table tbody tr')).map((tr) =>
-      tr.queryAll(By.css('td')).map((td) => {
+      tr.queryAll(By.css('td:not(.col-notes)')).map((td) => {
         const select = td.query(By.directive(Select));
         if (select) {
           const value = (select.componentInstance as Select).modelValue();
@@ -202,7 +240,7 @@ describe('ClassificationScreen', () => {
   const headers = (): string[] =>
     Array.from(
       fixture.nativeElement.querySelectorAll(
-        '.documents-table thead tr:last-child th',
+        '.documents-table thead tr:last-child th:not(.col-notes)',
       ) as NodeListOf<HTMLElement>,
     ).map((th) => th.textContent?.trim() ?? '');
   const goodsDescription = (): HTMLInputElement =>
@@ -330,7 +368,7 @@ describe('ClassificationScreen', () => {
 
     const empty = fixture.nativeElement.querySelector('.products-empty td') as HTMLTableCellElement;
     expect(empty).toBeTruthy();
-    expect(empty.colSpan).toBe(9);
+    expect(empty.colSpan).toBe(10);
     expect(empty.textContent?.trim()).toBe(
       'לא נמצאו פריטים מחשבון ספק — העלה חשבון ספק במסך תיוק ניירת יבוא',
     );
@@ -562,7 +600,7 @@ describe('ClassificationScreen pending-CCF list', () => {
     ]),
   );
 
-  afterEach(() => httpMock.verify());
+  afterEach(() => verifyHttp());
 
   const items = (): HTMLButtonElement[] =>
     Array.from(fixture.nativeElement.querySelectorAll('.pending-ccfs__item'));
@@ -618,7 +656,7 @@ describe('ClassificationScreen pending-CCF list', () => {
 describe('ClassificationScreen pending-CCF list failure', () => {
   beforeEach(() => setup(null, 'error'));
 
-  afterEach(() => httpMock.verify());
+  afterEach(() => verifyHttp());
 
   it('shows an error line instead of the list', () => {
     httpMock.expectOne(COUNTRIES_URL).flush(COUNTRIES);
@@ -630,5 +668,90 @@ describe('ClassificationScreen pending-CCF list failure', () => {
         ?.textContent?.trim(),
     ).toBe('טעינת רשימת התיקים נכשלה');
     expect(fixture.nativeElement.querySelector('.pending-ccfs__item')).toBeNull();
+  });
+});
+
+describe('ClassificationScreen row notes', () => {
+  const NOTES_URL = `${NOTES_PATH}?orderId=${ORDER_ID}`;
+
+  beforeEach(async () => {
+    await setup(ORDER_ID);
+    httpMock.expectOne(COUNTRIES_URL).flush(COUNTRIES);
+    httpMock
+      .expectOne(LINE_ITEMS_URL)
+      .flush([lineItem(), lineItem({ lineIndex: 1, item: 'ABC-1', description: 'Cable' })]);
+    const req = httpMock.expectOne(NOTES_URL);
+    expect(req.request.method).toBe('GET');
+    req.flush([note({ id: 1 }), note({ id: 2, body: 'שנייה' })]);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+  });
+
+  afterEach(() => verifyHttp());
+
+  const noteButtons = (): HTMLButtonElement[] =>
+    Array.from(fixture.nativeElement.querySelectorAll('td.col-notes button'));
+  const dialog = (): LineItemNotesDialog | null =>
+    (fixture.debugElement.query(By.directive(LineItemNotesDialog))?.componentInstance as
+      | LineItemNotesDialog
+      | undefined) ?? null;
+
+  it('shows a notes button on every row, with the count of stored notes', () => {
+    const buttons = noteButtons();
+    expect(buttons.length).toBe(2);
+    expect(buttons[0].textContent?.trim()).toBe('2');
+    expect(buttons[1].textContent?.trim()).toBe('');
+  });
+
+  it('opens the popup with the row\'s existing notes and closes it again', async () => {
+    noteButtons()[0].click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const opened = dialog();
+    expect(opened).not.toBeNull();
+    expect(opened?.notes().map((n) => n.body)).toEqual(['לבדוק מול הספק', 'שנייה']);
+    expect(opened?.fileId()).toBe(42);
+    expect(opened?.lineIndex()).toBe(0);
+
+    opened?.closed.emit();
+    fixture.detectChanges();
+    expect(dialog()).toBeNull();
+  });
+
+  it('POSTs a new note and adds it to the row', async () => {
+    noteButtons()[1].click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const textarea = document.querySelector('#line-item-note-input') as HTMLTextAreaElement;
+    textarea.value = '  חדש  ';
+    textarea.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    (document.querySelector('.p-dialog form') as HTMLFormElement).dispatchEvent(
+      new Event('submit'),
+    );
+
+    const req = httpMock.expectOne(NOTES_URL);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ fileId: 42, lineIndex: 1, body: 'חדש' });
+    req.flush(note({ id: 9, lineIndex: 1, body: 'חדש' }));
+    fixture.detectChanges();
+
+    expect(dialog()?.notes().map((n) => n.body)).toEqual(['חדש']);
+    expect(noteButtons()[1].textContent?.trim()).toBe('1');
+  });
+
+  it('disables the notes button on rows added by hand', async () => {
+    (fixture.nativeElement.querySelector('.products-add') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(noteButtons()[2].disabled).toBe(true);
   });
 });

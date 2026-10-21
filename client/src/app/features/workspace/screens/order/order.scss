@@ -4,7 +4,7 @@
 
 :host {
   // Layout
-  --order-max-width: 960px;
+  --order-max-width: var(--form-page-max-width);
   --order-card-gap: 24px;
 
   // Spacing

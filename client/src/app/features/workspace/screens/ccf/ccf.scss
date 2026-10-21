@@ -5,7 +5,7 @@
 
 :host {
   // Layout
-  --ccf-max-width: 960px;
+  --ccf-max-width: var(--form-page-max-width);
   --ccf-card-gap: 24px;
 
   // Spacing scale
