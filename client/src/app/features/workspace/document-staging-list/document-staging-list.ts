@@ -24,6 +24,8 @@ export type StagedFiles = Partial<Record<ImportDocumentType, File[]>>;
 /** Font Awesome icon per document row. */
 const DOCUMENT_ICONS: Partial<Record<ImportDocumentType, string>> = {
   [ImportDocumentType.BILL_OF_LADING]: 'fa-ship',
+  [ImportDocumentType.MASTER_BILL_OF_LADING]: 'fa-anchor',
+  [ImportDocumentType.CERTIFICATE_OF_ORIGIN]: 'fa-certificate',
   [ImportDocumentType.SUPPLIER_INVOICE]: 'fa-file-invoice-dollar',
   [ImportDocumentType.PACKING_LIST]: 'fa-boxes-stacked',
   [ImportDocumentType.OTHER]: 'fa-folder-open',

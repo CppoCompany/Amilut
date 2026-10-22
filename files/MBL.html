@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Master Bill of Lading - NGB-LCL-2026-7731</title>
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            margin: 20px;
+            color: #111;
+            background-color: #fff;
+        }
+        .bl-container {
+            border: 2px solid #000;
+            padding: 20px;
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        .header-title {
+            text-align: center;
+            font-size: 22px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 2px solid #000;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            border-bottom: 1px solid #000;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+        }
+        .field-box {
+            font-size: 13px;
+            line-height: 1.4;
+        }
+        .field-title {
+            font-weight: bold;
+            font-size: 11px;
+            text-transform: uppercase;
+            color: #444;
+            display: block;
+            margin-bottom: 3px;
+        }
+        .table-goods {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 12px;
+        }
+        .table-goods th, .table-goods td {
+            border: 1px solid #000;
+            padding: 8px;
+            text-align: left;
+            vertical-align: top;
+        }
+        .table-goods th {
+            background-color: #f2f2f2;
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+        .totals-box {
+            margin-top: 15px;
+            border-top: 2px solid #000;
+            padding-top: 10px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            font-size: 12px;
+            font-weight: bold;
+        }
+        @media print {
+            body { margin: 0; }
+            .bl-container { border: 2px solid #000; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="bl-container">
+    <div class="header-title">Master Bill of Lading (MBL)</div>
+    
+    <div class="grid-2">
+        <div class="field-box">
+            <span class="field-title">MBL NO.</span>
+            <strong>NGB-LCL-2026-7731</strong>
+        </div>
+        <div class="field-box">
+            <span class="field-title">BOOKING NO.</span>
+            <strong>BKG-CFS-8820</strong>
+        </div>
+    </div>
+
+    <div class="grid-2">
+        <div class="field-box">
+            <span class="field-title">SHIPPER (Co-Loader Origin)</span>
+            <strong>Asia Logistics Consolidation Co., Ltd.</strong><br>
+            Port Zone B, Shanghai, China<br>
+            Tel: +86-21-68881234
+        </div>
+        <div class="field-box">
+            <span class="field-title">CONSIGNEE (Co-Loader Destination)</span>
+            <strong>Global Freight Services Israel Ltd.</strong><br>
+            HaShoftim St 12, Haifa, Israel<br>
+            Tel: +972-4-8664422
+        </div>
+    </div>
+
+    <div class="grid-2">
+        <div class="field-box">
+            <span class="field-title">VESSEL / VOYAGE</span>
+            OOCL HONG KONG / 088E
+        </div>
+        <div class="field-box">
+            <span class="field-title">PORT OF LOADING</span>
+            Shanghai, China
+        </div>
+    </div>
+
+    <div class="grid-2">
+        <div class="field-box">
+            <span class="field-title">PORT OF DISCHARGE</span>
+            Haifa Port, Israel
+        </div>
+        <div class="field-box">
+            <span class="field-title">FINAL DESTINATION</span>
+            Haifa CFS Terminal
+        </div>
+    </div>
+
+    <table class="table-goods">
+        <thead>
+            <tr>
+                <th>Container No. / Seal No.</th>
+                <th>Marks & Numbers</th>
+                <th>No. of Pkgs & Description of Goods</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>
+                    <strong>BMOU4512398</strong><br>
+                    Seal: SL-332211
+                </td>
+                <td>
+                    LCL CONSOL<br>
+                    CFS TO CFS
+                </td>
+                <td>
+                    <strong>1 x 40' High Cube Container</strong><br>
+                    SAID TO CONTAIN: 3 LCL CONSIGNMENTS<br>
+                    • 8 WOODEN CRATES (MACHINERY)<br>
+                    • 12 CARTONS (ELECTRONIC COMPONENTS)<br>
+                    • 6 PALLETS (CERAMIC TILES)
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="totals-box">
+        <div>TOTAL PKGS:<br>26 PACKAGES</div>
+        <div>GROSS WEIGHT:<br>8,950.00 KGS</div>
+        <div>MEASUREMENT:<br>32.40 CBM</div>
+        <div>FREIGHT STATUS:<br>FREIGHT PREPAID</div>
+    </div>
+</div>
+
+</body>
+</html>

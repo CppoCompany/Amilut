@@ -45,6 +45,27 @@
   border-radius: var(--radius-md);
 }
 
+// What "לשיוך להזמנה" found in the order's paperwork, right under the chips.
+.prefill-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 12px;
+
+  i {
+    color: var(--secondary-blue);
+  }
+}
+
+.hbl-first-hint {
+  margin: -8px 0 16px;
+}
+
+// Files step with the form closed: "המשך ל-Job" next to "+ הוספת File".
+.files-step-actions {
+  gap: 12px;
+}
+
 // Identity line above the File edit page ("File #3 · HBL-001 · לקוח").
 .hbl-edit-subtitle {
   display: flex;

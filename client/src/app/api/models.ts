@@ -29,6 +29,10 @@ export type UpdateHblDto = components['schemas']['UpdateHblDto'];
 export type HblOrderSummaryDto = components['schemas']['HblOrderSummaryDto'];
 
 export type UploadedImportFileDto = components['schemas']['UploadedImportFileDto'];
+export type BillOfLadingExtractDto = components['schemas']['BillOfLadingExtractDto'];
+export type MblDocumentExtractDto = components['schemas']['MblDocumentExtractDto'];
+export type MblContainerExtractDto = components['schemas']['MblContainerExtractDto'];
+export type HblDocumentExtractDto = components['schemas']['HblDocumentExtractDto'];
 export type InvoiceLineItemDto = components['schemas']['InvoiceLineItemDto'];
 export type LineItemClassificationDto = components['schemas']['LineItemClassificationDto'];
 export type LineItemClassificationUpdateDto =

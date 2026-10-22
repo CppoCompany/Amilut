@@ -167,8 +167,16 @@ export const CCF_IMPORT_DOCUMENT_TYPES: readonly ImportDocumentType[] = [
   ImportDocumentType.OTHER,
 ];
 
-/** The order form's "מסמכים" tab offers the same four kinds as the CCF screen. */
-export const ORDER_IMPORT_DOCUMENT_TYPES: readonly ImportDocumentType[] = CCF_IMPORT_DOCUMENT_TYPES;
+/** The order form's "מסמכים" tab: the CCF screen's four kinds plus the
+ *  Master B/L — the shipping-case wizard reads an order's MBL (→ Job) and
+ *  HBL (→ File) uploads to prefill its forms, so both must be filable here. */
+export const ORDER_IMPORT_DOCUMENT_TYPES: readonly ImportDocumentType[] = [
+  ImportDocumentType.BILL_OF_LADING,
+  ImportDocumentType.MASTER_BILL_OF_LADING,
+  ImportDocumentType.SUPPLIER_INVOICE,
+  ImportDocumentType.PACKING_LIST,
+  ImportDocumentType.OTHER,
+];
 
 /** Must each have at least one file before the order form's "סיום" goes through. */
 export const ORDER_REQUIRED_DOCUMENT_TYPES: ReadonlySet<ImportDocumentType> = new Set([
