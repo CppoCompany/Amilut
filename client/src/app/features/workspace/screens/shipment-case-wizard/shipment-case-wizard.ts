@@ -9,7 +9,15 @@ import {
   untracked,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { FormsModule, NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { Button } from 'primeng/button';
+import { Chip } from 'primeng/chip';
+import { DatePicker } from 'primeng/datepicker';
+import { InputText } from 'primeng/inputtext';
+import { Message } from 'primeng/message';
+import { Select } from 'primeng/select';
+import { SelectButton } from 'primeng/selectbutton';
+import { TableModule } from 'primeng/table';
 import { finalize, forkJoin, switchMap } from 'rxjs';
 
 import {
@@ -28,6 +36,7 @@ import type { CustomerDto, HblDto, MblDto, OrderDto } from '../../../../api/mode
 import { HblApi } from '../../../../api/hbl-api';
 import { MblApi } from '../../../../api/mbl-api';
 import { OrdersApi } from '../../../../api/orders-api';
+import { TypedRow } from '../../../../shared/typed-row/typed-row';
 import { CustomerAutocomplete } from '../../../customers/customer-autocomplete/customer-autocomplete';
 import { NavigationService } from '../../navigation.service';
 import { SelectionStateService } from '../../selection-state.service';
@@ -74,7 +83,21 @@ interface SelectedOrderChip {
  *  existing Job for editing (see `NavigationService.openCaseForEdit`/`editCaseId`). */
 @Component({
   selector: 'app-shipment-case-wizard-screen',
-  imports: [ReactiveFormsModule, CustomerAutocomplete, HblOrdersPickerDialog],
+  imports: [
+    ReactiveFormsModule,
+    FormsModule,
+    Button,
+    Chip,
+    DatePicker,
+    InputText,
+    Message,
+    Select,
+    SelectButton,
+    TableModule,
+    CustomerAutocomplete,
+    HblOrdersPickerDialog,
+    TypedRow,
+  ],
   templateUrl: './shipment-case-wizard.html',
   styleUrl: './shipment-case-wizard.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -99,10 +122,15 @@ export class ShipmentCaseWizardScreen {
     SeaMethod.LCL_LCL,
     SeaMethod.GROUPAGE_FCL,
   ];
-  protected readonly paymentTermsOptions = PAYMENT_TERMS;
-  protected readonly paymentTermsLabels = PAYMENT_TERMS_LABELS;
-  protected readonly mblStatusOptions = MBL_STATUSES;
-  protected readonly mblStatusLabels = MBL_STATUS_LABELS;
+  /** Value/label pairs for the PrimeNG freight-terms select-button and the status select. */
+  protected readonly paymentTermsSelectOptions = PAYMENT_TERMS.map((value) => ({
+    value,
+    label: PAYMENT_TERMS_LABELS[value],
+  }));
+  protected readonly mblStatusSelectOptions = MBL_STATUSES.map((value) => ({
+    value,
+    label: MBL_STATUS_LABELS[value],
+  }));
 
   protected readonly shippingType = signal<MblShippingType | null>(null);
   protected readonly seaMethod = signal<SeaMethod | null>(null);
@@ -163,6 +191,13 @@ export class ShipmentCaseWizardScreen {
   protected readonly needsHblCustomerPicker = computed(() => this.seaMethod() !== SeaMethod.FCL_LCL);
   protected readonly hblCustomer = signal<CustomerDto | null>(null);
   protected readonly hblContainerId = signal<number | null>(null);
+  /** The saved Job's containers as choices for a new File (groupage only). */
+  protected readonly hblContainerOptions = computed(() =>
+    (this.savedMbl()?.containers ?? []).map((container) => ({
+      value: container.id,
+      label: container.containerNumber || `מכולה #${container.id}`,
+    })),
+  );
 
   /** Non-null while editing an already-saved File (picked from the created-File
    *  list or the sidebar's "עריכת File" link) instead of creating a new one. The
@@ -407,9 +442,8 @@ export class ShipmentCaseWizardScreen {
     this.editingMbl.set(true);
   }
 
-  protected onMblStatusChange(event: Event): void {
-    const value = (event.target as HTMLSelectElement).value;
-    if ((MBL_STATUSES as readonly string[]).includes(value)) {
+  protected onMblStatusChange(value: string | null | undefined): void {
+    if (value && (MBL_STATUSES as readonly string[]).includes(value)) {
       this.mblStatus.set(value as MblStatus);
     }
   }

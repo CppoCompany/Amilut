@@ -10,10 +10,17 @@ import {
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
+import { FormsModule } from '@angular/forms';
+import { Button } from 'primeng/button';
+import { Checkbox } from 'primeng/checkbox';
+import { Dialog } from 'primeng/dialog';
+import { Message } from 'primeng/message';
+import { TableModule } from 'primeng/table';
 import { combineLatest, debounceTime, finalize, skip } from 'rxjs';
 
 import type { CustomerDto, OrderDto, SupplierDto } from '../../../../../api/models';
 import { ListOrdersParams, OrdersApi } from '../../../../../api/orders-api';
+import { TypedRow } from '../../../../../shared/typed-row/typed-row';
 import {
   CustomerAutocomplete,
   SEARCH_DEBOUNCE_MS,
@@ -33,13 +40,20 @@ const MAX_ROWS = 200;
  */
 @Component({
   selector: 'app-hbl-orders-picker-dialog',
-  imports: [CustomerAutocomplete, SupplierAutocomplete],
+  imports: [
+    FormsModule,
+    Button,
+    Checkbox,
+    Dialog,
+    Message,
+    TableModule,
+    CustomerAutocomplete,
+    SupplierAutocomplete,
+    TypedRow,
+  ],
   templateUrl: './hbl-orders-picker-dialog.html',
   styleUrl: './hbl-orders-picker-dialog.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: {
-    '(document:keydown.escape)': 'onCancel()',
-  },
 })
 export class HblOrdersPickerDialog {
   private readonly ordersApi = inject(OrdersApi);
@@ -50,6 +64,9 @@ export class HblOrdersPickerDialog {
 
   readonly confirmed = output<OrderDto[]>();
   readonly cancelled = output<void>();
+
+  /** Set once `confirmed` or `cancelled` went out — the dialog never emits twice. */
+  private closed = false;
 
   protected readonly filterCustomer = signal<CustomerDto | null>(null);
   protected readonly filterSupplier = signal<SupplierDto | null>(null);
@@ -112,18 +129,15 @@ export class HblOrdersPickerDialog {
   }
 
   protected onConfirm(): void {
+    this.closed = true;
     this.confirmed.emit([...this.selected().values()]);
   }
 
   protected onCancel(): void {
+    // PrimeNG also fires onHide while the parent tears the dialog down after a confirm.
+    if (this.closed) return;
+    this.closed = true;
     this.cancelled.emit();
-  }
-
-  /** Only clicks on the backdrop itself (not inside the card) cancel. */
-  protected onBackdropClick(event: MouseEvent): void {
-    if (event.target === event.currentTarget) {
-      this.onCancel();
-    }
   }
 
   private fetch(): void {

@@ -1,56 +1,64 @@
 <div class="form-group filing-context-picker">
-  <label class="required">הקשר</label>
-  <div class="kind-toggle">
-    <button
-      type="button"
-      class="kind-toggle-btn"
-      [class.active]="kind() === 'order'"
-      (click)="onKindChange('order')"
-    >
-      הזמנה
-    </button>
-    <button
-      type="button"
-      class="kind-toggle-btn"
-      [class.active]="kind() === 'ccf'"
-      (click)="onKindChange('ccf')"
-    >
-      תיק עמילות
-    </button>
-  </div>
+  <label class="required" id="filing-context-label">הקשר</label>
+  <p-selectbutton
+    [options]="kindOptions"
+    optionLabel="label"
+    optionValue="value"
+    [allowEmpty]="false"
+    [ngModel]="kind()"
+    (ngModelChange)="onKindChange($event)"
+    class="kind-toggle"
+    ariaLabelledBy="filing-context-label"
+  />
 
   @if (kind() === 'order') {
-    <select class="form-control" (change)="onOrderChange($event)">
-      <option value="" [selected]="context() === null">
-        {{ loadingOrders() ? 'טוען הזמנות…' : 'בחר הזמנה' }}
-      </option>
-      @for (order of orders(); track order.id) {
-        <option [value]="order.id" [selected]="context()?.kind === 'order' && context()?.id === order.id">
-          {{ orderLabel(order) }}
-        </option>
-      }
-    </select>
+    <p-select
+      [options]="orders()"
+      [optionLabel]="'id'"
+      optionValue="id"
+      [ngModel]="context()?.kind === 'order' ? context()?.id : null"
+      (ngModelChange)="onOrderChange($event)"
+      [placeholder]="loadingOrders() ? 'טוען הזמנות…' : 'בחר הזמנה'"
+      [loading]="loadingOrders()"
+      [filter]="true"
+      [filterFields]="['id', 'customerName']"
+      [showClear]="true"
+      appendTo="body"
+      [fluid]="true"
+      styleClass="context-select"
+    >
+      <ng-template #selectedItem let-order>{{ orderLabel(order) }}</ng-template>
+      <ng-template #item let-order>{{ orderLabel(order) }}</ng-template>
+    </p-select>
     @if (!loadingOrders() && orders().length === 0) {
       <p class="hint-text">אין עדיין הזמנות</p>
     }
   } @else {
-    <select class="form-control" (change)="onCcfChange($event)">
-      <option value="" [selected]="context() === null">
-        {{ loadingCcfs() ? 'טוען תיקי עמילות…' : 'בחר תיק עמילות' }}
-      </option>
-      @for (ccf of ccfs(); track ccf.id) {
-        <option [value]="ccf.id" [selected]="context()?.kind === 'ccf' && context()?.id === ccf.id">
-          {{ ccfLabel(ccf) }}
-        </option>
-      }
-    </select>
+    <p-select
+      [options]="ccfs()"
+      [optionLabel]="'id'"
+      optionValue="id"
+      [ngModel]="context()?.kind === 'ccf' ? context()?.id : null"
+      (ngModelChange)="onCcfChange($event)"
+      [placeholder]="loadingCcfs() ? 'טוען תיקי עמילות…' : 'בחר תיק עמילות'"
+      [loading]="loadingCcfs()"
+      [filter]="true"
+      [filterFields]="['id', 'fileNumber']"
+      [showClear]="true"
+      appendTo="body"
+      [fluid]="true"
+      styleClass="context-select"
+    >
+      <ng-template #selectedItem let-ccf>{{ ccfLabel(ccf) }}</ng-template>
+      <ng-template #item let-ccf>{{ ccfLabel(ccf) }}</ng-template>
+    </p-select>
     @if (!loadingCcfs() && ccfs().length === 0) {
       <p class="hint-text">אין עדיין תיקי עמילות — צור תיק במסך יצירת תיק עמילות</p>
     }
   }
 
   @if (errorMessage(); as message) {
-    <p class="form-message form-message--error" role="alert">{{ message }}</p>
+    <p-message severity="error" styleClass="form-message form-message--error" role="alert">{{ message }}</p-message>
   } @else if (context() === null) {
     <p class="hint-text">יש לבחור הזמנה או תיק עמילות כדי להציג את הנתונים שלה</p>
   }

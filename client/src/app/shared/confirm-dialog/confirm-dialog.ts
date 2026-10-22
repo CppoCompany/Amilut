@@ -1,21 +1,20 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { Button } from 'primeng/button';
+import { Dialog } from 'primeng/dialog';
 
 /**
- * Generic "are you sure?" modal — replaces native `confirm()` with a styled
- * dialog matching the app's existing modal shell. Purely presentational:
+ * Generic "are you sure?" modal on PrimeNG's dialog. Purely presentational:
  * emits `confirmed`/`cancelled` and never touches any data itself.
  *
  * Usage: `<app-confirm-dialog (confirmed)="..." (cancelled)="..." />`, shown
  * via `@if` on a signal the caller owns (see MyOrdersScreen for an example).
+ * Escape, the close icon and a click on the mask all cancel.
  */
 @Component({
   selector: 'app-confirm-dialog',
+  imports: [Dialog, Button],
   templateUrl: './confirm-dialog.html',
-  styleUrl: './confirm-dialog.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: {
-    '(document:keydown.escape)': 'onCancel()',
-  },
 })
 export class ConfirmDialog {
   readonly message = input('האם אתה בטוח שברצונך למחוק?');
@@ -31,12 +30,5 @@ export class ConfirmDialog {
 
   protected onCancel(): void {
     this.cancelled.emit();
-  }
-
-  /** Only clicks on the backdrop itself (not inside the card) cancel. */
-  protected onBackdropClick(event: MouseEvent): void {
-    if (event.target === event.currentTarget) {
-      this.onCancel();
-    }
   }
 }

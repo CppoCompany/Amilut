@@ -10,7 +10,15 @@ import {
   untracked,
 } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
-import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { FormsModule, NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { AutoComplete } from 'primeng/autocomplete';
+import { Button } from 'primeng/button';
+import { DatePicker } from 'primeng/datepicker';
+import { InputText } from 'primeng/inputtext';
+import { Message } from 'primeng/message';
+import { Select } from 'primeng/select';
+import { SelectButton } from 'primeng/selectbutton';
+import { Step, StepList, Stepper } from 'primeng/stepper';
 import { catchError, finalize, forkJoin, map, Observable, of, switchMap, tap } from 'rxjs';
 
 import {
@@ -57,7 +65,6 @@ import {
 import { BLOB_URL_TTL_MS } from '../../import-files-panel/import-files-panel';
 import { NavigationService } from '../../navigation.service';
 import { SelectionStateService } from '../../selection-state.service';
-import { Autocomplete } from './autocomplete';
 import {
   chronologicalScheduleValidator,
   EMPTY_ORDER_FORM_VALUE,
@@ -118,6 +125,20 @@ const STEP_ICONS: Record<OrderStep, string> = {
   [OrderStep.DOCUMENTS]: 'fa-file-lines',
 };
 
+/** Value/label pairs for a PrimeNG select or select-button. */
+function labelled<T extends string>(
+  values: readonly T[],
+  labels: Record<T, string>,
+): { value: T; label: string }[] {
+  return values.map((value) => ({ value, label: labels[value] }));
+}
+
+/** Case-insensitive substring matches of `query` in `source` (none for a blank query). */
+function matching(source: readonly string[], query: string): string[] {
+  const q = query.trim().toLowerCase();
+  return q ? source.filter((item) => item.toLowerCase().includes(q)) : [];
+}
+
 function stepIndex(step: OrderStep): number {
   return ORDER_STEPS.indexOf(step);
 }
@@ -135,6 +156,17 @@ function stepIndex(step: OrderStep): number {
   selector: 'app-order-screen',
   imports: [
     ReactiveFormsModule,
+    FormsModule,
+    AutoComplete,
+    Button,
+    DatePicker,
+    InputText,
+    Message,
+    Select,
+    SelectButton,
+    Step,
+    StepList,
+    Stepper,
     CustomerAutocomplete,
     SupplierAutocomplete,
     DocumentStagingList,
@@ -186,6 +218,8 @@ export class OrderScreen {
   );
 
   // ── Tabs ───────────────────────────────────────────────────────────────────
+  /** PrimeNG's stepper is keyed by number: the current step's position in `steps`. */
+  protected readonly currentStepIndex = computed(() => stepIndex(this.currentStep()));
   protected readonly steps = ORDER_STEPS;
   protected readonly stepLabels = ORDER_STEP_LABELS;
   protected readonly stepIcons = STEP_ICONS;
@@ -260,6 +294,17 @@ export class OrderScreen {
   protected readonly destination = linkedSignal(() => this.destinationOptions()[0]);
   protected readonly destinationLabels = DESTINATION_LABELS;
 
+  // Value/label pairs for the PrimeNG select-buttons and the incoterm select.
+  protected readonly statusOptions = labelled(ORDER_STATUSES, ORDER_STATUS_LABELS);
+  protected readonly shipmentTypeOptions = labelled(SHIPMENT_TYPES, SHIPMENT_TYPE_LABELS);
+  protected readonly paymentTermsSelectOptions = labelled(PAYMENT_TERMS, PAYMENT_TERMS_LABELS);
+  protected readonly incotermSelectOptions = computed(() =>
+    labelled(this.incotermOptions(), INCOTERM_LABELS),
+  );
+  protected readonly destinationSelectOptions = computed(() =>
+    labelled(this.destinationOptions(), DESTINATION_LABELS),
+  );
+
   // ── Transport-field visibility ─────────────────────────────────────────────
   protected readonly seaVisible = computed(() => this.shipmentType() === ShipmentType.SEA);
   protected readonly airVisible = computed(() => this.shipmentType() === ShipmentType.AIR);
@@ -279,15 +324,9 @@ export class OrderScreen {
     { validators: chronologicalScheduleValidator },
   );
 
-  // Client-side suggestion lists for the free-text carrier fields.
-  protected readonly shippingLine = new Autocomplete(
-    SHIPPING_LINES,
-    toSignal(this.form.controls.shippingLine.valueChanges, { initialValue: '' }),
-  );
-  protected readonly airline = new Autocomplete(
-    AIRLINES,
-    toSignal(this.form.controls.airline.valueChanges, { initialValue: '' }),
-  );
+  // Client-side suggestion lists for the free-text carrier fields (PrimeNG autocomplete).
+  protected readonly shippingLineSuggestions = signal<string[]>([]);
+  protected readonly airlineSuggestions = signal<string[]>([]);
 
   // ── Schedule: Ready Date < Pickup Date < Shipment Date ─────────────────────
   // Read reactively so `[min]`/the error messages below update live as the
@@ -418,14 +457,19 @@ export class OrderScreen {
     });
   }
 
-  protected pickShippingLine(value: string): void {
-    this.form.controls.shippingLine.setValue(value);
-    this.shippingLine.close();
+  protected searchShippingLines(query: string): void {
+    this.shippingLineSuggestions.set(matching(SHIPPING_LINES, query));
   }
 
-  protected pickAirline(value: string): void {
-    this.form.controls.airline.setValue(value);
-    this.airline.close();
+  protected searchAirlines(query: string): void {
+    this.airlineSuggestions.set(matching(AIRLINES, query));
+  }
+
+  /** `YYYY-MM-DD` (or blank) → the Date a PrimeNG date picker's `minDate` wants. */
+  protected asDate(iso: string): Date | null {
+    if (!iso) return null;
+    const [year, month, day] = iso.split('-').map(Number);
+    return new Date(year, month - 1, day);
   }
 
   /** Fetches an existing order and populates the form so Save will PATCH it. */
@@ -804,8 +848,6 @@ export class OrderScreen {
    *  it's an explicit navigation, not an accidental click). */
   private resetForm(): void {
     this.form.reset();
-    this.shippingLine.close();
-    this.airline.close();
     this.status.set(OrderStatus.PREPARING);
     this.shipmentType.set(ShipmentType.SEA);
     this.paymentTerms.set(PaymentTerms.PREPAID);

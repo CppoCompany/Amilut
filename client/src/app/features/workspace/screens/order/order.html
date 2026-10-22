@@ -8,48 +8,63 @@
       }
     </h1>
     @if (isEditingExisting()) {
-      <button type="button" class="filing-link" (click)="goToFiling()">
-        <i class="fa-solid fa-file-import" aria-hidden="true"></i>
-        מעבר לתיוק ניירת יבוא
-      </button>
+      <p-button
+        label="מעבר לתיוק ניירת יבוא"
+        icon="fa-solid fa-file-import"
+        severity="secondary"
+        [text]="true"
+        size="small"
+        styleClass="filing-link"
+        (onClick)="goToFiling()"
+      />
     }
   </header>
 
-  <!-- Tabs -->
-  <nav class="order-steps" role="tablist" aria-label="שלבי ההזמנה">
-    @for (step of steps; track step; let i = $index) {
-      <button
-        type="button"
-        role="tab"
-        class="order-step"
-        [class.order-step--active]="currentStep() === step"
-        [class.order-step--done]="isStepDone(step)"
-        [class.order-step--error]="stepsWithErrors().has(step)"
-        [attr.aria-selected]="currentStep() === step"
-        [disabled]="!canOpenStep(step) || loadingOrder()"
-        (click)="goToStep(step)"
-      >
-        <span class="order-step__index" aria-hidden="true">
-          @if (isStepDone(step)) {
-            <i class="fa-solid fa-check"></i>
-          } @else {
-            {{ i + 1 }}
-          }
-        </span>
-        <i class="fa-solid order-step__icon" [class]="stepIcons[step]" aria-hidden="true"></i>
-        <span class="order-step__label">{{ stepLabels[step] }}</span>
-        @if (stepsWithErrors().has(step)) {
-          <span class="order-step__error-dot" aria-label="יש שגיאה בשלב זה"></span>
-        }
-      </button>
-    }
-  </nav>
+  <!-- Steps -->
+  <p-stepper [value]="currentStepIndex()" class="order-steps" aria-label="שלבי ההזמנה">
+    <p-step-list>
+      @for (step of steps; track step; let i = $index) {
+        <p-step
+          [value]="i"
+          [disabled]="!canOpenStep(step) || loadingOrder()"
+          class="order-step"
+          [class.order-step--active]="currentStep() === step"
+          [class.order-step--done]="isStepDone(step)"
+          [class.order-step--error]="stepsWithErrors().has(step)"
+        >
+          <ng-template #content>
+            <button
+              type="button"
+              role="tab"
+              class="order-step__button"
+              [attr.aria-selected]="currentStep() === step"
+              [disabled]="!canOpenStep(step) || loadingOrder()"
+              (click)="goToStep(step)"
+            >
+              <span class="order-step__index" aria-hidden="true">
+                @if (isStepDone(step)) {
+                  <i class="fa-solid fa-check"></i>
+                } @else {
+                  {{ i + 1 }}
+                }
+              </span>
+              <i class="fa-solid order-step__icon" [class]="stepIcons[step]" aria-hidden="true"></i>
+              <span class="order-step__label">{{ stepLabels[step] }}</span>
+              @if (stepsWithErrors().has(step)) {
+                <span class="order-step__error-dot" aria-label="יש שגיאה בשלב זה"></span>
+              }
+            </button>
+          </ng-template>
+        </p-step>
+      }
+    </p-step-list>
+  </p-stepper>
 
   @if (loadingOrder()) {
-    <p class="form-message" role="status">
+    <p-message severity="secondary" styleClass="form-message" role="status">
       <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
       טוען הזמנה לעריכה...
-    </p>
+    </p-message>
   } @else {
     @switch (currentStep()) {
       @case (OrderStep.CUSTOMER) {
@@ -57,25 +72,25 @@
         <section class="form-section order-card">
           <h2 class="section-title order-card__title">פרטי לקוח ופתיחה</h2>
           <div class="grid-row">
-            <div class="form-group autocomplete-wrapper">
+            <div class="form-group">
               <label class="required">לקוח קיים</label>
               <app-customer-autocomplete [(customer)]="selectedCustomer" />
               @if (customerError(); as message) {
-                <p class="field-error" role="alert">{{ message }}</p>
+                <p-message severity="error" variant="simple" size="small" styleClass="field-error" role="alert">{{ message }}</p-message>
               }
             </div>
 
             <div class="form-group">
               <label>תאריך פתיחת הזמנה</label>
-              <input type="text" class="form-control" [value]="creationDate()" readonly />
+              <input type="text" pInputText [value]="creationDate()" readonly />
             </div>
 
             <div class="form-group">
               <label>פקיד מטפל</label>
-              <input type="text" class="form-control" [value]="handlerName()" readonly />
+              <input type="text" pInputText [value]="handlerName()" readonly />
             </div>
 
-            <div class="form-group autocomplete-wrapper">
+            <div class="form-group">
               <label for="supplierName" class="required">שם ספק</label>
               <app-supplier-autocomplete
                 inputId="supplierName"
@@ -83,7 +98,7 @@
                 [invalid]="!!supplierError()"
               />
               @if (supplierError(); as message) {
-                <p class="field-error" role="alert">{{ message }}</p>
+                <p-message severity="error" variant="simple" size="small" styleClass="field-error" role="alert">{{ message }}</p-message>
               }
             </div>
           </div>
@@ -97,46 +112,43 @@
           <div class="grid-row">
             <div class="form-group">
               <label class="required">סטטוס הזמנה</label>
-              <div class="choice-group">
-                @for (option of statuses; track option) {
-                  <button
-                    type="button"
-                    class="choice-btn"
-                    [class.active]="status() === option"
-                    (click)="status.set(option)"
-                  >
-                    {{ statusLabels[option] }}
-                  </button>
-                }
-              </div>
+              <p-selectbutton
+                [options]="statusOptions"
+                optionLabel="label"
+                optionValue="value"
+                [allowEmpty]="false"
+                [ngModel]="status()"
+                [ngModelOptions]="{ standalone: true }"
+                (ngModelChange)="status.set($event)"
+                class="choice-group"
+              />
             </div>
 
             <div class="form-group">
               <label class="required">תנאי תשלום הובלה (Incoterms)</label>
-              <div class="choice-group">
-                @for (option of paymentTermsOptions; track option) {
-                  <button
-                    type="button"
-                    class="choice-btn"
-                    [class.active]="paymentTerms() === option"
-                    (click)="paymentTerms.set(option)"
-                  >
-                    {{ paymentTermsLabels[option] }}
-                  </button>
-                }
-              </div>
+              <p-selectbutton
+                [options]="paymentTermsSelectOptions"
+                optionLabel="label"
+                optionValue="value"
+                [allowEmpty]="false"
+                [ngModel]="paymentTerms()"
+                [ngModelOptions]="{ standalone: true }"
+                (ngModelChange)="paymentTerms.set($event)"
+                class="choice-group"
+              />
 
-              <select
-                id="incoterm"
-                class="form-control"
-                style="margin-top: 8px; width: 40%"
-                [value]="incoterm()"
-                (change)="incoterm.set($any($event.target).value)"
-              >
-                @for (option of incotermOptions(); track option) {
-                  <option [value]="option">{{ incotermLabels[option] }}</option>
-                }
-              </select>
+              <p-select
+                inputId="incoterm"
+                class="incoterm-select"
+                [options]="incotermSelectOptions()"
+                optionLabel="label"
+                optionValue="value"
+                [ngModel]="incoterm()"
+                [ngModelOptions]="{ standalone: true }"
+                (ngModelChange)="incoterm.set($event)"
+                ariaLabel="Incoterm"
+                appendTo="body"
+              />
               <p class="hint-text">האפשרויות תלויות בתנאי התשלום שנבחרו למעלה</p>
             </div>
           </div>
@@ -144,34 +156,30 @@
           <div class="grid-row">
             <div class="form-group">
               <label class="required">סוג משלוח</label>
-              <div class="choice-group">
-                @for (option of shipmentTypes; track option) {
-                  <button
-                    type="button"
-                    class="choice-btn"
-                    [class.active]="shipmentType() === option"
-                    (click)="shipmentType.set(option)"
-                  >
-                    {{ shipmentTypeLabels[option] }}
-                  </button>
-                }
-              </div>
+              <p-selectbutton
+                [options]="shipmentTypeOptions"
+                optionLabel="label"
+                optionValue="value"
+                [allowEmpty]="false"
+                [ngModel]="shipmentType()"
+                [ngModelOptions]="{ standalone: true }"
+                (ngModelChange)="shipmentType.set($event)"
+                class="choice-group"
+              />
             </div>
 
             <div class="form-group">
               <label class="required">יעד</label>
-              <div class="choice-group">
-                @for (option of destinationOptions(); track option) {
-                  <button
-                    type="button"
-                    class="choice-btn"
-                    [class.active]="destination() === option"
-                    (click)="destination.set(option)"
-                  >
-                    {{ destinationLabels[option] }}
-                  </button>
-                }
-              </div>
+              <p-selectbutton
+                [options]="destinationSelectOptions()"
+                optionLabel="label"
+                optionValue="value"
+                [allowEmpty]="false"
+                [ngModel]="destination()"
+                [ngModelOptions]="{ standalone: true }"
+                (ngModelChange)="destination.set($event)"
+                class="choice-group"
+              />
             </div>
           </div>
         </section>
@@ -183,60 +191,72 @@
           <div class="grid-row">
             <div class="form-group">
               <label for="factoryReadyDate" class="required">תאריך מוכנות במפעל</label>
-              <input
-                id="factoryReadyDate"
-                type="date"
-                class="form-control"
-                formControlName="factoryReadyDate"
-                [class.is-invalid]="!!scheduleRequiredErrors().factoryReadyDate"
-              />
+              <p-datepicker
+  inputId="factoryReadyDate"
+  formControlName="factoryReadyDate"
+  dataType="string"
+  dateFormat="yy-mm-dd"
+  [showIcon]="true"
+  [showButtonBar]="true"
+  appendTo="body"
+  [invalid]="!!scheduleRequiredErrors().factoryReadyDate"
+/>
               @if (scheduleRequiredErrors().factoryReadyDate; as message) {
-                <p class="field-error" role="alert">{{ message }}</p>
+                <p-message severity="error" variant="simple" size="small" styleClass="field-error" role="alert">{{ message }}</p-message>
               }
             </div>
             <div class="form-group">
               <label for="factoryPickupDate" class="required">תאריך איסוף מהמפעל</label>
-              <input
-                id="factoryPickupDate"
-                type="date"
-                class="form-control"
-                formControlName="factoryPickupDate"
-                [class.is-invalid]="!!scheduleRequiredErrors().factoryPickupDate"
-                [min]="pickupMinDate()"
-              />
+              <p-datepicker
+  inputId="factoryPickupDate"
+  formControlName="factoryPickupDate"
+  [minDate]="asDate(pickupMinDate())"
+  dataType="string"
+  dateFormat="yy-mm-dd"
+  [showIcon]="true"
+  [showButtonBar]="true"
+  appendTo="body"
+  [invalid]="!!scheduleRequiredErrors().factoryPickupDate"
+/>
               @if (scheduleRequiredErrors().factoryPickupDate; as message) {
-                <p class="field-error" role="alert">{{ message }}</p>
+                <p-message severity="error" variant="simple" size="small" styleClass="field-error" role="alert">{{ message }}</p-message>
               } @else if (pickupDateError(); as message) {
-                <p class="field-error" role="alert">{{ message }}</p>
+                <p-message severity="error" variant="simple" size="small" styleClass="field-error" role="alert">{{ message }}</p-message>
               }
             </div>
             <div class="form-group">
               <label for="departureDate" class="required">תאריך הפלגה / טיסה (יציאה)</label>
-              <input
-                id="departureDate"
-                type="date"
-                class="form-control"
-                formControlName="departureDate"
-                [class.is-invalid]="!!scheduleRequiredErrors().departureDate"
-                [min]="departureMinDate()"
-              />
+              <p-datepicker
+  inputId="departureDate"
+  formControlName="departureDate"
+  [minDate]="asDate(departureMinDate())"
+  dataType="string"
+  dateFormat="yy-mm-dd"
+  [showIcon]="true"
+  [showButtonBar]="true"
+  appendTo="body"
+  [invalid]="!!scheduleRequiredErrors().departureDate"
+/>
               @if (scheduleRequiredErrors().departureDate; as message) {
-                <p class="field-error" role="alert">{{ message }}</p>
+                <p-message severity="error" variant="simple" size="small" styleClass="field-error" role="alert">{{ message }}</p-message>
               } @else if (departureDateError(); as message) {
-                <p class="field-error" role="alert">{{ message }}</p>
+                <p-message severity="error" variant="simple" size="small" styleClass="field-error" role="alert">{{ message }}</p-message>
               }
             </div>
             <div class="form-group">
               <label for="etaDate" class="required">תאריך הגעה משוער (ETA)</label>
-              <input
-                id="etaDate"
-                type="date"
-                class="form-control"
-                formControlName="etaDate"
-                [class.is-invalid]="!!scheduleRequiredErrors().etaDate"
-              />
+              <p-datepicker
+  inputId="etaDate"
+  formControlName="etaDate"
+  dataType="string"
+  dateFormat="yy-mm-dd"
+  [showIcon]="true"
+  [showButtonBar]="true"
+  appendTo="body"
+  [invalid]="!!scheduleRequiredErrors().etaDate"
+/>
               @if (scheduleRequiredErrors().etaDate; as message) {
-                <p class="field-error" role="alert">{{ message }}</p>
+                <p-message severity="error" variant="simple" size="small" styleClass="field-error" role="alert">{{ message }}</p-message>
               }
             </div>
           </div>
@@ -247,29 +267,23 @@
           <h2 class="section-title order-card__title">פרטי הובלה</h2>
           <div class="grid-row">
             @if (seaVisible()) {
-              <div class="form-group autocomplete-wrapper transport-group">
+              <div class="form-group transport-group">
                 <label for="shippingLine">חברת ספנות</label>
-                <input
-                  id="shippingLine"
-                  type="text"
-                  class="form-control"
-                  placeholder="חפש חברת ספנות..."
-                  autocomplete="off"
+                <p-autocomplete
+                  inputId="shippingLine"
                   formControlName="shippingLine"
-                  (input)="shippingLine.onInput()"
+                  [suggestions]="shippingLineSuggestions()"
+                  (completeMethod)="searchShippingLines($event.query)"
+                  placeholder="חפש חברת ספנות..."
+                  [fluid]="true"
+                  appendTo="body"
                 />
-                <div class="autocomplete-list" [class.active]="shippingLine.open()">
-                  @for (match of shippingLine.matches(); track match) {
-                    <div class="autocomplete-item" (click)="pickShippingLine(match)">{{ match }}</div>
-                  }
-                </div>
               </div>
               <div class="form-group transport-group">
                 <label for="voyageNumber">מספר הפלגה (Voyage Number)</label>
                 <input
                   id="voyageNumber"
-                  type="text"
-                  class="form-control"
+                  type="text" pInputText
                   placeholder="הזן מספר הפלגה"
                   formControlName="voyageNumber"
                 />
@@ -277,29 +291,23 @@
             }
 
             @if (airVisible()) {
-              <div class="form-group autocomplete-wrapper transport-group">
+              <div class="form-group transport-group">
                 <label for="airline">חברת תעופה (Airline)</label>
-                <input
-                  id="airline"
-                  type="text"
-                  class="form-control"
-                  placeholder="חפש חברת תעופה..."
-                  autocomplete="off"
+                <p-autocomplete
+                  inputId="airline"
                   formControlName="airline"
-                  (input)="airline.onInput()"
+                  [suggestions]="airlineSuggestions()"
+                  (completeMethod)="searchAirlines($event.query)"
+                  placeholder="חפש חברת תעופה..."
+                  [fluid]="true"
+                  appendTo="body"
                 />
-                <div class="autocomplete-list" [class.active]="airline.open()">
-                  @for (match of airline.matches(); track match) {
-                    <div class="autocomplete-item" (click)="pickAirline(match)">{{ match }}</div>
-                  }
-                </div>
               </div>
               <div class="form-group transport-group">
                 <label for="flightNumber">מספר טיסה (Flight Number)</label>
                 <input
                   id="flightNumber"
-                  type="text"
-                  class="form-control"
+                  type="text" pInputText
                   placeholder="הזן מספר טיסה"
                   formControlName="flightNumber"
                 />
@@ -338,60 +346,58 @@
 
   <!-- Save feedback -->
   @if (successMessage(); as message) {
-    <p class="form-message form-message--success" role="status">{{ message }}</p>
+    <p-message severity="success" styleClass="form-message form-message--success" role="status">{{ message }}</p-message>
   }
   @if (errorMessage(); as message) {
-    <p class="form-message form-message--error" role="alert">{{ message }}</p>
+    <p-message severity="error" styleClass="form-message form-message--error" role="alert">{{ message }}</p-message>
   }
 
   <!-- Sticky action bar -->
   <div class="order-actions">
     <div class="order-actions__group">
-      <button
-        type="button"
-        class="btn btn-secondary"
-        (click)="onCancel()"
+      <p-button
+        label="ביטול"
+        severity="secondary"
+        [outlined]="true"
+        (onClick)="onCancel()"
         [disabled]="saving() || loadingOrder()"
-      >
-        ביטול
-      </button>
-      <button
-        type="button"
-        class="btn btn-secondary"
-        (click)="onSave()"
+      />
+      <p-button
+        [label]="saving() ? 'שומר...' : 'שמירה'"
+        icon="fa-solid fa-floppy-disk"
+        [loading]="saving()"
+        severity="secondary"
+        [outlined]="true"
+        (onClick)="onSave()"
         [disabled]="saving() || loadingOrder()"
-      >
-        @if (saving()) {
-          <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
-          שומר...
-        } @else {
-          <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
-          שמירה
-        }
-      </button>
+      />
     </div>
     <div class="order-actions__group">
       @if (!isFirstStep()) {
-        <button
-          type="button"
-          class="btn btn-secondary"
-          (click)="onPrevious()"
+        <p-button
+          label="הקודם"
+          icon="fa-solid fa-arrow-right"
+          severity="secondary"
+          [outlined]="true"
+          (onClick)="onPrevious()"
           [disabled]="saving() || loadingOrder()"
-        >
-          <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
-          הקודם
-        </button>
+        />
       }
       @if (isLastStep()) {
-        <button type="button" class="btn btn-primary" (click)="onFinish()" [disabled]="saving() || loadingOrder()">
-          <i class="fa-solid fa-flag-checkered" aria-hidden="true"></i>
-          סיום ומעבר לתיוק
-        </button>
+        <p-button
+          label="סיום ומעבר לתיוק"
+          icon="fa-solid fa-flag-checkered"
+          (onClick)="onFinish()"
+          [disabled]="saving() || loadingOrder()"
+        />
       } @else {
-        <button type="button" class="btn btn-primary" (click)="onNext()" [disabled]="saving() || loadingOrder()">
-          הבא
-          <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
-        </button>
+        <p-button
+          label="הבא"
+          icon="fa-solid fa-arrow-left"
+          iconPos="right"
+          [disabled]="saving() || loadingOrder()"
+          (onClick)="onNext()"
+        />
       }
     </div>
   </div>

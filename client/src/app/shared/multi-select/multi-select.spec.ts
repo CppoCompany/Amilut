@@ -1,5 +1,6 @@
 import { Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 
 import { MultiSelect, MultiSelectOption } from './multi-select';
 
@@ -7,10 +8,9 @@ import { MultiSelect, MultiSelectOption } from './multi-select';
   imports: [MultiSelect],
   template: `
     <app-multi-select
+      ariaLabel="סוגים"
       [options]="options"
       [selected]="selected()"
-      placeholder="ללא"
-      ariaLabel="אישורים"
       (selectedChange)="selected.set($event)"
     />
   `,
@@ -33,58 +33,23 @@ describe('MultiSelect', () => {
     fixture.detectChanges();
   });
 
-  const toggle = (): HTMLButtonElement =>
-    fixture.nativeElement.querySelector('.multi-select__toggle');
-  const menu = (): HTMLElement | null => fixture.nativeElement.querySelector('.multi-select__menu');
-  const checkboxes = (): HTMLInputElement[] =>
-    Array.from(fixture.nativeElement.querySelectorAll('.multi-select__menu input'));
+  const widget = (): MultiSelect =>
+    fixture.debugElement.query(By.directive(MultiSelect)).componentInstance;
 
-  it('shows the placeholder and no menu until opened', () => {
-    expect(toggle().textContent?.trim()).toBe('ללא');
-    expect(toggle().getAttribute('aria-label')).toBe('אישורים');
-    expect(toggle().getAttribute('aria-expanded')).toBe('false');
-    expect(menu()).toBeNull();
+  it('renders a PrimeNG multiselect showing the placeholder', () => {
+    const el: HTMLElement = fixture.nativeElement.querySelector('p-multiselect');
+    expect(el).not.toBeNull();
+    expect(el.textContent).toContain('בחר');
   });
 
-  it('opens a checkbox list with every option and emits the selection in option order', () => {
-    toggle().click();
-    fixture.detectChanges();
-
-    expect(toggle().getAttribute('aria-expanded')).toBe('true');
-    expect(checkboxes().map((c) => c.value)).toEqual(['a', 'b', 'c']);
-
-    const [a, , c] = checkboxes();
-    c.click();
-    fixture.detectChanges();
-    a.click();
-    fixture.detectChanges();
-
+  it('emits the selection in option order regardless of click order', () => {
+    widget().onChange(['c', 'a']);
     expect(fixture.componentInstance.selected()).toEqual(['a', 'c']);
-    expect(toggle().textContent?.trim()).toBe('2 נבחרו');
-
-    a.click();
-    fixture.detectChanges();
-    expect(fixture.componentInstance.selected()).toEqual(['c']);
-    expect(toggle().textContent?.trim()).toBe('גימל');
   });
 
-  it('closes on an outside click and on Escape, but not on clicks inside', () => {
-    toggle().click();
-    fixture.detectChanges();
-    expect(menu()).not.toBeNull();
-
-    menu()!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    fixture.detectChanges();
-    expect(menu()).not.toBeNull();
-
-    document.body.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    fixture.detectChanges();
-    expect(menu()).toBeNull();
-
-    toggle().click();
-    fixture.detectChanges();
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-    fixture.detectChanges();
-    expect(menu()).toBeNull();
+  it('emits an empty array when cleared', () => {
+    fixture.componentInstance.selected.set(['b']);
+    widget().onChange(null);
+    expect(fixture.componentInstance.selected()).toEqual([]);
   });
 });

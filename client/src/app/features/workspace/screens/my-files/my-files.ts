@@ -1,13 +1,18 @@
-import { ScrollingModule } from '@angular/cdk/scrolling';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
+import { Button } from 'primeng/button';
+import { InputText } from 'primeng/inputtext';
+import { Message } from 'primeng/message';
+import { TableModule } from 'primeng/table';
 import { combineLatest, debounceTime, finalize, skip } from 'rxjs';
 
 import { MBL_SHIPPING_TYPE_LABELS, MBL_STATUS_LABELS, SEA_METHOD_LABELS } from '../../../../api/enums';
 import { ListMblParams, MblApi } from '../../../../api/mbl-api';
 import type { CustomerDto, MblSummaryDto } from '../../../../api/models';
 import { ConfirmDialog } from '../../../../shared/confirm-dialog/confirm-dialog';
+import { StatusTag } from '../../../../shared/status-tag/status-tag';
+import { TypedRow } from '../../../../shared/typed-row/typed-row';
 import {
   CustomerAutocomplete,
   SEARCH_DEBOUNCE_MS,
@@ -20,9 +25,18 @@ const MAX_ROWS = 200;
 /** "התיקים שלי" — filterable grid over every MBL/HBL shipping case, virtual-scrolled. */
 @Component({
   selector: 'app-my-files-screen',
-  imports: [FormsModule, ScrollingModule, CustomerAutocomplete, ConfirmDialog],
+  imports: [
+    FormsModule,
+    Button,
+    InputText,
+    Message,
+    TableModule,
+    CustomerAutocomplete,
+    ConfirmDialog,
+    StatusTag,
+    TypedRow,
+  ],
   templateUrl: './my-files.html',
-  styleUrl: './my-files.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MyFilesScreen {

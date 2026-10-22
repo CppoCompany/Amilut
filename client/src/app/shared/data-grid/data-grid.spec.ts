@@ -76,22 +76,28 @@ describe('DataGrid', () => {
     Array.from(fixture.nativeElement.querySelectorAll('tbody tr'));
   const cellsOf = (row: HTMLTableRowElement): string[] =>
     Array.from(row.querySelectorAll('td')).map((td) => td.textContent?.trim() ?? '');
-  const pagerButtons = (): HTMLButtonElement[] =>
-    Array.from(fixture.nativeElement.querySelectorAll('.data-grid__pager-btn'));
-  const pageLabel = (): string =>
-    fixture.nativeElement.querySelector('.data-grid__page-label')?.textContent?.trim() ?? '';
+  const prevButton = (): HTMLButtonElement =>
+    fixture.nativeElement.querySelector('.p-paginator-prev');
+  const nextButton = (): HTMLButtonElement =>
+    fixture.nativeElement.querySelector('.p-paginator-next');
+  const pageLinks = (): string[] =>
+    Array.from(fixture.nativeElement.querySelectorAll('.p-paginator-page')).map(
+      (el) => (el as HTMLElement).textContent?.trim() ?? '',
+    );
+  const currentPage = (): string =>
+    fixture.nativeElement.querySelector('.p-paginator-page-selected')?.textContent?.trim() ?? '';
 
   it('renders the column headers and the Hebrew empty state when there are no rows', () => {
     expect(headers().map((th) => th.textContent?.trim())).toEqual(['מזהה', 'שם', 'סטטוס']);
     expect(bodyRows()).toHaveLength(1);
     expect(bodyRows()[0].textContent?.trim()).toBe('אין נתונים להצגה');
-    expect(pageLabel()).toBe('עמוד 1 מתוך 1');
+    expect(fixture.nativeElement.querySelector('.data-grid__range')?.textContent?.trim()).toBe('סה"כ 0');
   });
 
-  it('shows "טוען..." while loading with no rows yet', () => {
+  it('shows the table loading mask while loading', () => {
     host.loading.set(true);
     fixture.detectChanges();
-    expect(bodyRows()[0].textContent?.trim()).toBe('טוען...');
+    expect(fixture.nativeElement.querySelector('.p-datatable-mask')).not.toBeNull();
   });
 
   it('shows the error above the table', () => {
@@ -102,7 +108,7 @@ describe('DataGrid', () => {
     );
   });
 
-  it('renders rows through the cell formatters, with an em dash for empty values and a status pill', () => {
+  it('renders rows through the cell formatters, with an em dash for empty values and a status tag', () => {
     host.rows.set([
       { id: 1, name: 'ACME', status: 'open' },
       { id: 2, name: null, status: 'closed' },
@@ -112,8 +118,9 @@ describe('DataGrid', () => {
 
     expect(cellsOf(bodyRows()[0])).toEqual(['1', 'ACME', 'פתוח']);
     expect(cellsOf(bodyRows()[1])).toEqual(['2', '—', 'סגור']);
-    const pill = bodyRows()[0].querySelector('.status-pill');
-    expect(pill?.classList.contains('status-pill--open')).toBe(true);
+    const tag = bodyRows()[0].querySelector('.p-tag');
+    expect(tag?.classList.contains('status-tag--open')).toBe(true);
+    expect(tag?.classList.contains('p-tag-info')).toBe(true);
     expect(bodyRows()[0].querySelector('td')?.classList.contains('data-table__numeric')).toBe(true);
   });
 
@@ -138,7 +145,7 @@ describe('DataGrid', () => {
     expect(statusHeader.getAttribute('aria-sort')).toBeNull();
   });
 
-  it('pages with הקודם/הבא, disabling them at the edges', () => {
+  it('pages with the paginator, disabling prev/next at the edges', () => {
     host.rows.set([
       { id: 1, name: 'A', status: 'open' },
       { id: 2, name: 'B', status: 'open' },
@@ -146,23 +153,23 @@ describe('DataGrid', () => {
     host.total.set(5); // page size 2 → 3 pages
     fixture.detectChanges();
 
-    const [prev, next] = pagerButtons();
-    expect(pageLabel()).toBe('עמוד 1 מתוך 3');
-    expect(prev.disabled).toBe(true);
-    expect(next.disabled).toBe(false);
+    expect(pageLinks()).toEqual(['1', '2', '3']);
+    expect(currentPage()).toBe('1');
+    expect(prevButton().disabled).toBe(true);
+    expect(nextButton().disabled).toBe(false);
     expect(fixture.nativeElement.querySelector('.data-grid__range')?.textContent?.trim()).toBe(
       'מציג 1–2 מתוך 5',
     );
 
-    next.click();
+    nextButton().click();
     fixture.detectChanges();
     expect(host.page()).toBe(2);
-    expect(pageLabel()).toBe('עמוד 2 מתוך 3');
-    expect(pagerButtons()[0].disabled).toBe(false);
+    expect(currentPage()).toBe('2');
+    expect(prevButton().disabled).toBe(false);
 
     host.page.set(3);
     fixture.detectChanges();
-    expect(pagerButtons()[1].disabled).toBe(true);
+    expect(nextButton().disabled).toBe(true);
   });
 
   it('emits the row on double-click', () => {

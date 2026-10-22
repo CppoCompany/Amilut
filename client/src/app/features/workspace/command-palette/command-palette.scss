@@ -1,24 +1,11 @@
-// No open/close animation on purpose: keyboard-launched, used constantly.
-.cmdk {
-  width: min(600px, calc(100vw - 32px));
+// The dialog box itself is PrimeNG's (themed by the preset); `.cmdk` is its
+// content element, which lives in PrimeNG's DOM — hence ::ng-deep.
+:host ::ng-deep .cmdk {
+  display: flex;
+  flex-direction: column;
   max-height: min(70vh, 560px);
-  margin: 12vh auto 0;
   padding: 0;
-  border: 1px solid color-mix(in srgb, var(--color-border) 80%, transparent);
-  border-radius: var(--radius-xl);
-  background: var(--color-surface);
-  color: var(--color-fg);
-  box-shadow: var(--shadow-lg);
   overflow: hidden;
-
-  &[open] {
-    display: flex;
-    flex-direction: column;
-  }
-
-  &::backdrop {
-    background: rgb(15 23 42 / 0.45);
-  }
 }
 
 .cmdk__search {
@@ -34,10 +21,13 @@
   font-size: 0.95rem;
 }
 
-.cmdk__input {
+.cmdk__search .cmdk__input {
   flex: 1;
   min-width: 0;
+  padding: 0;
   border: none;
+  border-radius: 0;
+  box-shadow: none;
   background: transparent;
   font-size: 1.05rem;
   line-height: 1.4;
@@ -49,6 +39,7 @@
 
   &:focus {
     outline: none;
+    box-shadow: none;
   }
 }
 

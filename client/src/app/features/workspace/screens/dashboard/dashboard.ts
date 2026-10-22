@@ -9,6 +9,10 @@ import {
   untracked,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Button } from 'primeng/button';
+import { Message } from 'primeng/message';
+import { TableModule } from 'primeng/table';
+import { Tag } from 'primeng/tag';
 import { finalize } from 'rxjs';
 
 import { DashboardApi } from '../../../../api/dashboard-api';
@@ -25,7 +29,9 @@ import type {
   NotificationDto,
 } from '../../../../api/models';
 import { NotificationsApi } from '../../../../api/notifications-api';
+import { StatusTag } from '../../../../shared/status-tag/status-tag';
 import { TableSkeleton } from '../../../../shared/table-skeleton/table-skeleton';
+import { TypedRow } from '../../../../shared/typed-row/typed-row';
 import { ToastService } from '../../../../shared/toast/toast.service';
 import { isTreeChildGroup, TreeChild } from '../../navigation.model';
 import { NavigationService } from '../../navigation.service';
@@ -53,7 +59,7 @@ export const DASHBOARD_ACTION_ROW_IDS = {
 /** "איזור האישי" — landing screen: quick actions, the "הודעות" widget and five compact "latest 5" cards. */
 @Component({
   selector: 'app-dashboard-screen',
-  imports: [TableSkeleton],
+  imports: [Button, Message, TableModule, Tag, StatusTag, TableSkeleton, TypedRow],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

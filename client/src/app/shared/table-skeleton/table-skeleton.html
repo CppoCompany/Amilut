@@ -3,7 +3,7 @@
     <div class="skeleton-table__row">
       @for (column of columnIndexes(); track column) {
         <span class="skeleton-table__cell">
-          <span class="skeleton" [style.width.%]="widthFor(column, row)"></span>
+          <p-skeleton [width]="widthFor(column, row) + '%'" height="0.75rem" />
         </span>
       }
     </div>

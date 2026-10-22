@@ -32,6 +32,7 @@ invoke the runner directly.
    - `018_mbl_handler_and_status.sql` — adds `mbl.handler_user_id` (→ `users.id`, who opened the case) and `mbl.status` (`open`/`in_release`/`released`/`closed`, default `open`), with indexes
    - `022_orders_last_step.sql` — adds `orders.last_step` (furthest order-form tab reached: `customer`/`shipment`/`schedule`/`documents`, default `customer`)
    - `023_notifications_actor.sql` — adds `notifications.actor_user_id` (→ `users.id`, who triggered the notification; nullable, `ON DELETE SET NULL`)
+   - `024_create_line_item_notes.sql` — `line_item_notes` table (notes on a classification-screen row: `file_id` → `import_account_files.id` + `line_index`, author, timestamp)
    If the folder or files are missing, stop and tell Barak.
 
 2. **Decide whether the superuser password is needed.** It is needed **only

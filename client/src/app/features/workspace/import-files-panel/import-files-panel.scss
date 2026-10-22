@@ -1,31 +1,9 @@
 // Component-scoped additions to the shared form styles (see src/styles.scss).
 
-.form-message {
-  margin: 0.75rem 0 0;
-  padding: 0.6rem 0.9rem;
-  border-radius: 6px;
-  font-size: 0.95rem;
-
-  &--success {
-    background: color-mix(in srgb, var(--success, #16a34a) 12%, white);
-    color: var(--success, #15803d);
-  }
-
-  &--error {
-    background: color-mix(in srgb, var(--danger, #ef4444) 12%, white);
-    color: var(--danger, #ef4444);
-  }
-}
-
 // "סוג מסמך" picker above the drop zone — narrow like the order screen's selects.
 .document-type-group {
   max-width: 360px;
   margin-bottom: 12px;
-}
-
-.upload-btn[disabled] {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 
 .documents-hint {
@@ -45,9 +23,9 @@
   align-items: baseline;
   gap: 6px;
   margin: 0 0 8px;
-  font-size: 1rem;
-  font-weight: 700;
-  color: var(--primary-blue);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-dark);
 }
 
 .document-category__count {
@@ -65,8 +43,8 @@
   border-radius: var(--radius-md);
 }
 
-// X beside "פתח" — removes the file (after a confirm dialog).
-.delete-btn {
-  margin-inline-start: 6px;
-  vertical-align: middle;
+// PrimeNG messages: spacing only, the look is the theme's.
+.form-message {
+  display: block;
+  margin-top: 0.75rem;
 }

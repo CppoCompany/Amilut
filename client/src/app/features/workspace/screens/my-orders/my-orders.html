@@ -5,9 +5,9 @@
     <div class="form-group">
       <label for="filterHandlerName">פקיד מטפל</label>
       <input
+        pInputText
         id="filterHandlerName"
         type="text"
-        class="form-control"
         placeholder="לדוגמה ברק"
         [(ngModel)]="filterHandlerName"
       />
@@ -15,20 +15,24 @@
 
     <div class="form-group">
       <label for="filterStatus">סטטוס</label>
-      <select id="filterStatus" class="form-control" [(ngModel)]="filterStatus">
-        <option value="">הכל</option>
-        @for (option of statuses; track option) {
-          <option [value]="option">{{ statusLabels[option] }}</option>
-        }
-      </select>
+      <p-select
+        inputId="filterStatus"
+        [options]="statusOptions"
+        optionLabel="label"
+        optionValue="value"
+        [(ngModel)]="filterStatus"
+      />
     </div>
 
     <div class="form-group">
       <label for="filterCreatedDate">תאריך פתיחה</label>
-      <input
-        id="filterCreatedDate"
-        type="date"
-        class="form-control"
+      <p-datepicker
+        inputId="filterCreatedDate"
+        dataType="string"
+        dateFormat="yy-mm-dd"
+        [showIcon]="true"
+        [showButtonBar]="true"
+        appendTo="body"
         [(ngModel)]="filterCreatedDate"
       />
     </div>
@@ -36,15 +40,20 @@
     <div class="form-group filter-bar__actions">
       <label>&nbsp;</label>
       <div class="filter-bar__buttons">
-        <button type="button" class="btn btn-secondary" [disabled]="loading()" (click)="clearFilters()">
-          נקה
-        </button>
+        <p-button
+          label="נקה"
+          icon="fa-solid fa-eraser"
+          severity="secondary"
+          [outlined]="true"
+          [disabled]="loading()"
+          (onClick)="clearFilters()"
+        />
       </div>
     </div>
   </div>
 
   @if (errorMessage(); as message) {
-    <p class="form-message form-message--error" role="alert">{{ message }}</p>
+    <p-message severity="error" styleClass="screen-error" role="alert">{{ message }}</p-message>
   }
 
   <div class="data-table-wrapper">
@@ -53,58 +62,61 @@
     } @else if (orders().length === 0) {
       <p class="data-table__empty">לא נמצאו הזמנות</p>
     } @else {
-      <cdk-virtual-scroll-viewport itemSize="49" class="data-table-viewport">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>מספר הזמנה</th>
-              <th>לקוח</th>
-              <th>פקיד מטפל</th>
-              <th>סטטוס</th>
-              <th>תאריך פתיחה</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              *cdkVirtualFor="let order of orders(); trackBy: trackById"
-              class="data-table__row--clickable"
-              title="לחץ פעמיים לעריכה"
-              (dblclick)="onEditOrder(order)"
-            >
-              <td class="data-table__numeric">{{ order.id }}</td>
-              <td>{{ order.customerName ?? '—' }}</td>
-              <td>{{ order.handlerName ?? '—' }}</td>
-              <td>
-                <span [class]="'status-pill status-pill--' + order.status">
-                  {{ statusLabels[order.status] }}
-                </span>
-              </td>
-              <td class="data-table__numeric">{{ formatDate(order.createdAt) }}</td>
-              <td>
-                <button
-                  type="button"
-                  class="icon-btn icon-btn--primary"
-                  title="ייבוא מסמכים"
-                  [attr.aria-label]="'ייבוא מסמכים להזמנה ' + order.id"
-                  (click)="onImportDocuments(order, $event)"
-                >
-                  <i class="fa-solid fa-file-import" aria-hidden="true"></i>
-                </button>
-                <button
-                  type="button"
-                  class="icon-btn icon-btn--danger"
-                  [attr.aria-label]="'מחק הזמנה ' + order.id"
-                  [disabled]="isDeleting(order.id)"
-                  (click)="onDeleteOrder(order, $event)"
-                >
-                  <i class="fa-solid fa-trash" aria-hidden="true"></i>
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </cdk-virtual-scroll-viewport>
+      <p-table
+        [value]="orders()"
+        dataKey="id"
+        [rowTrackBy]="trackById"
+        [scrollable]="true"
+        scrollHeight="flex"
+        [virtualScroll]="true"
+        [virtualScrollItemSize]="45"
+        size="small"
+      >
+        <ng-template #header>
+          <tr>
+            <th>מספר הזמנה</th>
+            <th>לקוח</th>
+            <th>פקיד מטפל</th>
+            <th>סטטוס</th>
+            <th>תאריך פתיחה</th>
+            <th><span class="sr-only">פעולות</span></th>
+          </tr>
+        </ng-template>
+        <ng-template #body let-order [rowOf]="orders()">
+          <tr class="data-table__row--clickable" title="לחץ פעמיים לעריכה" (dblclick)="onEditOrder(order)">
+            <td class="data-table__numeric">{{ order.id }}</td>
+            <td>{{ order.customerName ?? '—' }}</td>
+            <td>{{ order.handlerName ?? '—' }}</td>
+            <td>
+              <app-status-tag [status]="order.status" [label]="statusLabels[order.status]" />
+            </td>
+            <td class="data-table__numeric">{{ formatDate(order.createdAt) }}</td>
+            <td class="data-table__actions">
+              <p-button
+                icon="fa-solid fa-file-import"
+                [text]="true"
+                [rounded]="true"
+                severity="secondary"
+                size="small"
+                pTooltip="ייבוא מסמכים"
+                tooltipPosition="top"
+                [ariaLabel]="'ייבוא מסמכים להזמנה ' + order.id"
+                (onClick)="onImportDocuments(order, $event)"
+              />
+              <p-button
+                icon="fa-solid fa-trash"
+                [text]="true"
+                [rounded]="true"
+                severity="danger"
+                size="small"
+                [ariaLabel]="'מחק הזמנה ' + order.id"
+                [disabled]="isDeleting(order.id)"
+                (onClick)="onDeleteOrder(order, $event)"
+              />
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
     }
   </div>
 

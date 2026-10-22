@@ -9,6 +9,10 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { Button } from 'primeng/button';
+import { Message } from 'primeng/message';
+import { Tag } from 'primeng/tag';
+import { Tooltip } from 'primeng/tooltip';
 
 import { IMPORT_DOCUMENT_TYPE_LABELS, ImportDocumentType } from '../../../api/enums';
 import type { UploadedImportFileDto } from '../../../api/models';
@@ -46,6 +50,7 @@ export function missingRequiredTypes(
  */
 @Component({
   selector: 'app-document-staging-list',
+  imports: [Button, Message, Tag, Tooltip],
   templateUrl: './document-staging-list.html',
   styleUrl: './document-staging-list.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

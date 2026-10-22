@@ -1,5 +1,5 @@
 // Document rows shared by the CCF screen and the order form's "מסמכים" tab.
-// Builds on the global .btn / .icon-btn; everything else reads these tokens.
+// Buttons, tags and the banner are PrimeNG; everything else reads these tokens.
 
 :host {
   display: block;
@@ -22,49 +22,15 @@
   --doc-border: var(--border-color);
   --doc-surface: var(--card-bg);
   --doc-surface-alt: var(--readonly-bg);
-  --doc-info-bg: var(--light-blue-bg);
-  --doc-info-fg: var(--primary-blue);
-  --doc-ok-bg: #e7f8f1;
-  --doc-ok-fg: #047857;
-  --doc-missing-bg: #fff4e5;
-  --doc-missing-fg: #b45309;
-  --doc-error: #dc2626;
-  --doc-error-bg: #fef2f2;
-  --doc-dropzone-bg: #f0f6ff;
+  --doc-error: var(--color-danger);
+  --doc-error-bg: var(--color-danger-soft);
+  --doc-dropzone-bg: var(--color-surface-2);
 }
 
-// ── Info banner ──────────────────────────────────────────────────────────────
+// PrimeNG banner (message) above the list: spacing only.
 .doc-banner {
-  display: flex;
-  align-items: center;
-  gap: var(--doc-space-sm);
-  margin: 0 0 var(--doc-space-lg);
-  padding: var(--doc-space-md) var(--doc-space-lg);
-  background: var(--doc-info-bg);
-  color: var(--doc-info-fg);
-  border-radius: var(--doc-radius-md);
-  font-size: 0.92rem;
-}
-
-// ── Badges ───────────────────────────────────────────────────────────────────
-.doc-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 10px;
-  border-radius: var(--doc-radius-pill);
-  font-size: 0.8rem;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.doc-badge--ok {
-  background: var(--doc-ok-bg);
-  color: var(--doc-ok-fg);
-}
-
-.doc-badge--missing {
-  background: var(--doc-missing-bg);
-  color: var(--doc-missing-fg);
+  display: block;
+  margin-bottom: var(--doc-space-lg);
 }
 
 // ── Rows ─────────────────────────────────────────────────────────────────────
@@ -157,7 +123,7 @@
 }
 
 .doc__file--uploaded > .fa-circle-check {
-  color: var(--doc-ok-fg);
+  color: var(--color-success);
 }
 
 .doc__file-name {

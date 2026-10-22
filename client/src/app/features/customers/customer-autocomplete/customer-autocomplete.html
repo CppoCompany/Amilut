@@ -1,61 +1,33 @@
-<div class="customer-search" [class.customer-search--selected]="customer() !== null">
-  <input
-    #searchInput
-    class="form-control customer-search__input"
-    type="text"
-    role="combobox"
-    autocomplete="off"
-    [id]="inputId()"
-    [value]="text()"
-    [placeholder]="placeholder()"
-    [disabled]="disabled()"
-    [class.is-invalid]="invalid()"
-    [attr.aria-expanded]="open()"
-    [attr.aria-controls]="listId()"
-    [attr.aria-activedescendant]="activeOptionId()"
-    aria-autocomplete="list"
-    (input)="onInput($event)"
-    (focus)="onFocus()"
-    (blur)="onBlur()"
-    (keydown)="onKeydown($event)"
-  />
-
-  @if (loading()) {
-    <span class="customer-search__spinner" aria-label="מחפש..." title="מחפש...">
-      <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
-    </span>
-  } @else if (customer()) {
-    <span class="customer-search__check" aria-hidden="true">
-      <i class="fa-solid fa-circle-check"></i>
-    </span>
-  }
-</div>
-
-<div
-  class="autocomplete-list"
-  role="listbox"
-  [id]="listId()"
-  [class.active]="open()"
-  (mousedown)="onListMousedown($event)"
+<p-autocomplete
+  [inputId]="inputId()"
+  [ngModel]="value()"
+  (ngModelChange)="onValueChange($event)"
+  [suggestions]="results()"
+  optionLabel="name"
+  dataKey="id"
+  [minQueryLength]="minQueryLength"
+  [delay]="debounceMs"
+  [placeholder]="placeholder()"
+  [disabled]="disabled()"
+  [invalid]="invalid()"
+  [showEmptyMessage]="true"
+  [fluid]="true"
+  appendTo="body"
+  scrollHeight="240px"
+  styleClass="customer-search"
+  [class.customer-search--selected]="customer() !== null"
+  (completeMethod)="search($event.query)"
 >
-  @for (match of results(); track match.id; let i = $index) {
-    <div
-      class="autocomplete-item"
-      role="option"
-      [id]="optionId(i)"
-      [class.autocomplete-item--active]="activeIndex() === i"
-      [attr.aria-selected]="activeIndex() === i"
-      (mouseenter)="setActive(i)"
-      (click)="select(match)"
-    >
-      <div class="autocomplete-item__name">{{ match.name }}</div>
+  <ng-template #item let-match>
+    <div class="autocomplete-option">
+      <div class="autocomplete-option__name">{{ match.name }}</div>
       @if (match.phone || match.email) {
-        <div class="autocomplete-item__meta">
+        <div class="autocomplete-option__meta">
           @if (match.phone) {
             <span dir="ltr">{{ match.phone }}</span>
           }
           @if (match.phone && match.email) {
-            <span class="autocomplete-item__sep" aria-hidden="true">·</span>
+            <span aria-hidden="true">·</span>
           }
           @if (match.email) {
             <span dir="ltr">{{ match.email }}</span>
@@ -63,30 +35,32 @@
         </div>
       }
     </div>
-  }
+  </ng-template>
 
-  @if (showAddRow()) {
-    <div
-      class="autocomplete-item autocomplete-item--add"
-      role="option"
-      [id]="optionId(addRowIndex())"
-      [class.autocomplete-item--active]="activeIndex() === addRowIndex()"
-      [attr.aria-selected]="activeIndex() === addRowIndex()"
-      (mouseenter)="setActive(addRowIndex())"
-      (click)="openDialog()"
-    >
-      <i class="fa-solid fa-plus" aria-hidden="true"></i>
-      <span>לא נמצא לקוח בשם „{{ lastQuery() }}” — הוסף לקוח חדש</span>
-    </div>
-  }
+  <ng-template #empty>
+    @if (error()) {
+      <div class="autocomplete-option autocomplete-option--error" role="alert">
+        <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+        <span>חיפוש הלקוחות נכשל, נסה שוב</span>
+      </div>
+    } @else if (showAddRow()) {
+      <p-button
+        [label]="'לא נמצא לקוח בשם „' + lastQuery() + '” — הוסף לקוח חדש'"
+        icon="fa-solid fa-plus"
+        [text]="true"
+        size="small"
+        styleClass="autocomplete-add"
+        (onClick)="openDialog()"
+      />
+    }
+  </ng-template>
+</p-autocomplete>
 
-  @if (error()) {
-    <div class="autocomplete-item autocomplete-item--error" role="alert">
-      <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
-      <span>חיפוש הלקוחות נכשל, נסה שוב</span>
-    </div>
-  }
-</div>
+@if (customer()) {
+  <span class="customer-search__check" aria-hidden="true">
+    <i class="fa-solid fa-circle-check"></i>
+  </span>
+}
 
 @if (dialogOpen()) {
   <app-add-customer-dialog

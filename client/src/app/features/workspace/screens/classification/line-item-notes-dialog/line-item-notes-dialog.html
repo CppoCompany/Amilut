@@ -1,0 +1,77 @@
+<p-dialog
+  [visible]="true"
+  [modal]="true"
+  [dismissableMask]="!saving()"
+  [closable]="!saving()"
+  [closeOnEscape]="!saving()"
+  [draggable]="false"
+  [resizable]="false"
+  [style]="{ width: 'min(520px, calc(100vw - 32px))' }"
+  ariaLabelledBy="line-item-notes-title"
+  (onHide)="onHide()"
+>
+  <ng-template #header>
+    <h2 id="line-item-notes-title" class="dialog-title">
+      <i class="fa-solid fa-note-sticky" aria-hidden="true"></i>
+      הערות לשורה
+      @if (sku()) {
+        <span class="line-notes__sku" dir="ltr">{{ sku() }}</span>
+      }
+    </h2>
+  </ng-template>
+
+  <form class="dialog-form" (ngSubmit)="onSubmit()" novalidate>
+    <div class="dialog-form__body">
+      @if (notes().length) {
+        <ul class="line-notes__list" aria-label="הערות קיימות">
+          @for (note of notes(); track note.id) {
+            <li class="line-notes__item">
+              <p class="line-notes__body">{{ note.body }}</p>
+              <span class="line-notes__meta">
+                {{ note.createdByName ?? 'משתמש לא ידוע' }} · {{ note.createdAt | date: 'dd/MM/yyyy HH:mm' }}
+              </span>
+            </li>
+          }
+        </ul>
+      } @else {
+        <p class="line-notes__empty">אין הערות לשורה זו עדיין</p>
+      }
+
+      <div class="form-group">
+        <label for="line-item-note-input">הערה חדשה</label>
+        <textarea
+          id="line-item-note-input"
+          pTextarea
+          rows="3"
+          name="note"
+          [maxlength]="maxLength"
+          [ngModel]="draft()"
+          (ngModelChange)="draft.set($event)"
+          [disabled]="saving()"
+        ></textarea>
+      </div>
+
+      @if (saveError(); as message) {
+        <p-message severity="error" styleClass="form-message form-message--error" role="alert">{{ message }}</p-message>
+      }
+    </div>
+
+    <div class="dialog-form__footer">
+      <p-button
+        type="button"
+        label="סגור"
+        severity="secondary"
+        [outlined]="true"
+        [disabled]="saving()"
+        (onClick)="onHide()"
+      />
+      <p-button
+        type="submit"
+        [label]="saving() ? 'שומר…' : 'הוסף הערה'"
+        icon="fa-solid fa-plus"
+        [loading]="saving()"
+        [disabled]="saving() || draft().trim() === ''"
+      />
+    </div>
+  </form>
+</p-dialog>

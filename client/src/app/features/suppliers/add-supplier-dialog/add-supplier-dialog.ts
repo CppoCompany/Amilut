@@ -18,6 +18,10 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
+import { Button } from 'primeng/button';
+import { Dialog } from 'primeng/dialog';
+import { InputText } from 'primeng/inputtext';
+import { Message } from 'primeng/message';
 import { finalize } from 'rxjs';
 
 import { SuppliersApi } from '../../../api/suppliers-api';
@@ -27,17 +31,13 @@ const SAVE_FAILED_MESSAGE = 'שמירת הספק נכשלה, נסה שוב';
 
 /**
  * Modal popup for creating a new supplier. Emits `saved` with the created
- * supplier, or `cancelled` when closed via the button, Escape or the backdrop.
+ * supplier, or `cancelled` when closed via the button, Escape or the mask (PrimeNG dialog).
  */
 @Component({
   selector: 'app-add-supplier-dialog',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, Button, Dialog, InputText, Message],
   templateUrl: './add-supplier-dialog.html',
-  styleUrl: './add-supplier-dialog.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: {
-    '(document:keydown.escape)': 'onCancel()',
-  },
 })
 export class AddSupplierDialog implements OnInit {
   private readonly fb = inject(NonNullableFormBuilder);
@@ -64,6 +64,9 @@ export class AddSupplierDialog implements OnInit {
 
   /** Set once a submit has been attempted, so errors show even on untouched fields. */
   protected readonly submitted = signal(false);
+
+  /** Set once `saved` or `cancelled` went out — the dialog never emits twice. */
+  private closed = false;
 
   /** True while the supplier is being created on the server. */
   protected readonly saving = signal(false);
@@ -129,20 +132,19 @@ export class AddSupplierDialog implements OnInit {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
-        next: (supplier) => this.saved.emit(supplier),
+        next: (supplier) => {
+          this.closed = true;
+          this.saved.emit(supplier);
+        },
         error: () => this.error.set(SAVE_FAILED_MESSAGE),
       });
   }
 
   protected onCancel(): void {
-    if (this.saving()) return;
+    // PrimeNG also fires onHide while the parent tears the dialog down after a save.
+    if (this.saving() || this.closed) return;
+    this.closed = true;
     this.cancelled.emit();
   }
 
-  /** Only clicks on the backdrop itself (not inside the card) cancel. */
-  protected onBackdropClick(event: MouseEvent): void {
-    if (event.target === event.currentTarget) {
-      this.onCancel();
-    }
-  }
 }

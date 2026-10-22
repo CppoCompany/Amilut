@@ -260,6 +260,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/import-files/line-items/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ImportFilesController_listLineItemNotes"];
+        put?: never;
+        post: operations["ImportFilesController_addLineItemNote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/mbl": {
         parameters: {
             query?: never;
@@ -885,6 +901,37 @@ export interface components {
         };
         SaveLineItemClassificationsDto: {
             items: components["schemas"]["LineItemClassificationUpdateDto"][];
+        };
+        LineItemNoteDto: {
+            /** @example 3 */
+            id: number;
+            /**
+             * @description The `import_account_files` row the line belongs to.
+             * @example 42
+             */
+            fileId: number;
+            /**
+             * @description Position of the line inside that file's `lineItems`.
+             * @example 0
+             */
+            lineIndex: number;
+            /** @example לבדוק מול הספק את חומר הגלם */
+            body: string;
+            /** @example Dana Levi */
+            createdByName: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-20T08:30:00.000Z
+             */
+            createdAt: string;
+        };
+        CreateLineItemNoteDto: {
+            /** @example 42 */
+            fileId: number;
+            /** @example 0 */
+            lineIndex: number;
+            /** @example לבדוק מול הספק את חומר הגלם */
+            body: string;
         };
         /** @enum {string} */
         SeaMethod: SeaMethod;
@@ -2080,6 +2127,86 @@ export interface operations {
                 };
             };
             /** @description Invalid payload, a line index outside its file, an unknown country id, or neither/both of orderId/ccfId given. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unknown order/CCF, or a fileId that is not a file of it. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ImportFilesController_listLineItemNotes: {
+        parameters: {
+            query?: {
+                /** @description orders.id */
+                orderId?: number;
+                /** @description customs_clearance_files.id */
+                ccfId?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LineItemNoteDto"][];
+                };
+            };
+            /** @description Neither/both of orderId/ccfId given. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No order or customs clearance file with this id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ImportFilesController_addLineItemNote: {
+        parameters: {
+            query?: {
+                /** @description orders.id */
+                orderId?: number;
+                /** @description customs_clearance_files.id */
+                ccfId?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateLineItemNoteDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LineItemNoteDto"];
+                };
+            };
+            /** @description Empty note, a line index outside its file, or neither/both of orderId/ccfId given. */
             400: {
                 headers: {
                     [name: string]: unknown;

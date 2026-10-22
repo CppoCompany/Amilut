@@ -1,186 +1,177 @@
-<div class="dialog-backdrop" (click)="onBackdropClick($event)">
-  <form
-    class="dialog-card"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="add-customer-title"
-    [formGroup]="form"
-    (ngSubmit)="onSubmit()"
-    novalidate
-  >
-    <header class="dialog-card__header">
-      <h2 id="add-customer-title" class="dialog-card__title">
+<p-dialog
+  [visible]="true"
+  [modal]="true"
+  [dismissableMask]="!saving()"
+  [closable]="!saving()"
+  [closeOnEscape]="!saving()"
+  [draggable]="false"
+  [resizable]="false"
+  [style]="{ width: 'min(560px, calc(100vw - 32px))' }"
+  ariaLabelledBy="add-customer-title"
+  (onHide)="onCancel()"
+>
+  <ng-template #header>
+    <h2 id="add-customer-title" class="dialog-title">
         <i class="fa-solid fa-user-plus" aria-hidden="true"></i>
         לקוח חדש
       </h2>
-      <button
-        type="button"
-        class="dialog-card__close"
-        aria-label="סגור"
-        (click)="onCancel()"
-        [disabled]="saving()"
-      >
-        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
-      </button>
-    </header>
+  </ng-template>
 
-    <div class="dialog-card__body">
+  <form class="dialog-form" [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
+
+    <div class="dialog-form__body">
       <div class="form-group">
         <label class="required" for="add-customer-name">שם לקוח</label>
         <input
           #nameInput
-          id="add-customer-name"
-          class="form-control"
+          id="add-customer-name" pInputText
           type="text"
           formControlName="name"
           autocomplete="organization"
           maxlength="255"
-          [class.is-invalid]="showError(name)"
+          [invalid]="showError(name)"
         />
         @if (showError(name)) {
-          <p class="field-error">
+          <p-message severity="error" variant="simple" size="small" styleClass="field-error">
             @if (name.hasError('required')) {
               יש להזין שם לקוח
             } @else if (name.hasError('maxlength')) {
               שם הלקוח ארוך מדי (עד 255 תווים)
             }
-          </p>
+          </p-message>
         }
       </div>
 
       <div class="form-group">
         <label for="add-customer-address">כתובת</label>
         <input
-          id="add-customer-address"
-          class="form-control"
+          id="add-customer-address" pInputText
           type="text"
           formControlName="address"
           autocomplete="street-address"
           maxlength="500"
-          [class.is-invalid]="showError(address)"
+          [invalid]="showError(address)"
         />
         @if (showError(address)) {
-          <p class="field-error">הכתובת ארוכה מדי (עד 500 תווים)</p>
+          <p-message severity="error" variant="simple" size="small" styleClass="field-error">הכתובת ארוכה מדי (עד 500 תווים)</p-message>
         }
       </div>
 
       <div class="form-group">
         <label for="add-customer-company-reg-number">ח״פ</label>
         <input
-          id="add-customer-company-reg-number"
-          class="form-control"
+          id="add-customer-company-reg-number" pInputText
           type="text"
           inputmode="numeric"
           formControlName="companyRegNumber"
           dir="ltr"
           maxlength="20"
-          [class.is-invalid]="showError(companyRegNumber)"
+          [invalid]="showError(companyRegNumber)"
         />
         @if (showError(companyRegNumber)) {
-          <p class="field-error">
+          <p-message severity="error" variant="simple" size="small" styleClass="field-error">
             @if (companyRegNumber.hasError('pattern')) {
               ח״פ חייב להכיל ספרות בלבד
             } @else if (companyRegNumber.hasError('maxlength')) {
               ח״פ ארוך מדי (עד 20 ספרות)
             }
-          </p>
+          </p-message>
         }
       </div>
 
-      <div class="dialog-card__row">
+      <div class="dialog-form__row">
         <div class="form-group">
           <label for="add-customer-phone">טלפון</label>
           <input
-            id="add-customer-phone"
-            class="form-control"
+            id="add-customer-phone" pInputText
             type="tel"
             formControlName="phone"
             autocomplete="tel"
             dir="ltr"
             maxlength="50"
-            [class.is-invalid]="showError(phone)"
+            [invalid]="showError(phone)"
           />
           @if (showError(phone)) {
-            <p class="field-error">מספר הטלפון ארוך מדי (עד 50 תווים)</p>
+            <p-message severity="error" variant="simple" size="small" styleClass="field-error">מספר הטלפון ארוך מדי (עד 50 תווים)</p-message>
           }
         </div>
 
         <div class="form-group">
           <label for="add-customer-email">אימייל</label>
           <input
-            id="add-customer-email"
-            class="form-control"
+            id="add-customer-email" pInputText
             type="email"
             formControlName="email"
             autocomplete="email"
             dir="ltr"
             maxlength="255"
-            [class.is-invalid]="showError(email)"
+            [invalid]="showError(email)"
           />
           @if (showError(email)) {
-            <p class="field-error">
+            <p-message severity="error" variant="simple" size="small" styleClass="field-error">
               @if (email.hasError('email')) {
                 יש להזין כתובת אימייל תקינה
               } @else if (email.hasError('maxlength')) {
                 כתובת האימייל ארוכה מדי (עד 255 תווים)
               }
-            </p>
+            </p-message>
           }
         </div>
       </div>
 
-      <div class="dialog-card__row">
+      <div class="dialog-form__row">
         <div class="form-group">
           <label for="add-customer-contact-name">שם איש קשר</label>
           <input
-            id="add-customer-contact-name"
-            class="form-control"
+            id="add-customer-contact-name" pInputText
             type="text"
             formControlName="contactName"
             autocomplete="name"
             maxlength="255"
-            [class.is-invalid]="showError(contactName)"
+            [invalid]="showError(contactName)"
           />
           @if (showError(contactName)) {
-            <p class="field-error">שם איש הקשר ארוך מדי (עד 255 תווים)</p>
+            <p-message severity="error" variant="simple" size="small" styleClass="field-error">שם איש הקשר ארוך מדי (עד 255 תווים)</p-message>
           }
         </div>
 
         <div class="form-group">
           <label for="add-customer-contact-phone">טלפון איש קשר</label>
           <input
-            id="add-customer-contact-phone"
-            class="form-control"
+            id="add-customer-contact-phone" pInputText
             type="tel"
             formControlName="contactPhone"
             autocomplete="tel"
             dir="ltr"
             maxlength="50"
-            [class.is-invalid]="showError(contactPhone)"
+            [invalid]="showError(contactPhone)"
           />
           @if (showError(contactPhone)) {
-            <p class="field-error">מספר הטלפון ארוך מדי (עד 50 תווים)</p>
+            <p-message severity="error" variant="simple" size="small" styleClass="field-error">מספר הטלפון ארוך מדי (עד 50 תווים)</p-message>
           }
         </div>
       </div>
 
       @if (error(); as message) {
-        <p class="dialog-card__error" role="alert">{{ message }}</p>
+        <p-message severity="error" styleClass="dialog-form__error" role="alert">{{ message }}</p-message>
       }
     </div>
 
-    <footer class="dialog-card__footer">
-      <button type="button" class="btn btn-secondary" (click)="onCancel()" [disabled]="saving()">
-        ביטול
-      </button>
-      <button type="submit" class="btn btn-primary" [disabled]="saving()">
-        @if (saving()) {
-          <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
-          שומר...
-        } @else {
-          שמור
-        }
-      </button>
+    <footer class="dialog-form__footer">
+      <p-button
+        type="submit"
+        [label]="saving() ? 'שומר...' : 'שמור'"
+        [loading]="saving()"
+        [disabled]="saving()"
+      />
+      <p-button
+        label="ביטול"
+        severity="secondary"
+        [outlined]="true"
+        styleClass="dialog-cancel"
+        [disabled]="saving()"
+        (onClick)="onCancel()"
+      />
     </footer>
   </form>
-</div>
+</p-dialog>

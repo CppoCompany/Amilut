@@ -1,4 +1,4 @@
-// Builds on the shared `.hint-text` and `.form-message` classes in src/styles.scss;
+// Builds on the shared `.hint-text` class in src/styles.scss (messages are PrimeNG);
 // the per-order rows are `DocumentStagingList`'s own styles.
 
 :host {
@@ -40,5 +40,6 @@
 }
 
 .form-message {
-  margin: 0 0 12px;
+  display: block;
+  margin-bottom: 12px;
 }

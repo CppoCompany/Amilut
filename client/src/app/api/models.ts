@@ -35,6 +35,8 @@ export type LineItemClassificationUpdateDto =
   components['schemas']['LineItemClassificationUpdateDto'];
 export type SaveLineItemClassificationsDto =
   components['schemas']['SaveLineItemClassificationsDto'];
+export type LineItemNoteDto = components['schemas']['LineItemNoteDto'];
+export type CreateLineItemNoteDto = components['schemas']['CreateLineItemNoteDto'];
 
 export type CountryDto = components['schemas']['CountryDto'];
 

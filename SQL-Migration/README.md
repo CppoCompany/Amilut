@@ -30,6 +30,7 @@ wired to `npm run db:generate`.
 | `021_import_account_files_order_or_ccf.sql` | Re-points `import_account_files` from `mbl` (`account_id`) to either `orders.id` (`order_id`) or `customs_clearance_files.id` (`ccf_id`), exactly one via CHECK; truncates existing dev rows (no valid backfill target) | `Amilut` | `Admin` (via `SET ROLE`) |
 | `022_orders_last_step.sql` | Adds `orders.last_step` (`customer`/`shipment`/`schedule`/`documents`, default `customer`) — the furthest tab of the order form reached, so a saved partial order resumes there | `Amilut` | `Admin` (via `SET ROLE`) |
 | `023_notifications_actor.sql` | Adds `notifications.actor_user_id` (→ `users.id`, nullable, `ON DELETE SET NULL`) — the user whose action triggered the notification | `Amilut` | `Admin` (via `SET ROLE`) |
+| `024_create_line_item_notes.sql` | `line_item_notes` table — notes written on the classification screen against one supplier-invoice line (`file_id` → `import_account_files.id` + `line_index`), with author and timestamp | `Amilut` | `Admin` (via `SET ROLE`) |
 | `run-migrations.mjs` | Applies `001`, then every other `NNN_*.sql` in name order | — | — |
 | `reset-superuser-password.ps1` | Recovery tool: resets a lost `postgres` superuser password on this machine (elevated PowerShell; `-SaveToEnv` writes it into the root `.env`) | — | Windows admin |
 
@@ -145,13 +146,18 @@ Amilut
 │              default open], created_by → users.id, created_at, updated_at)
 │              -- 019: "תיק סליקת מכס" — can exist standalone or linked 1:1
 │              -- to an mbl shipping case
-└── notifications (id, recipient_user_id → users.id [ON DELETE CASCADE],
-               message, related_ccf_id → customs_clearance_files.id
-               [nullable, ON DELETE CASCADE], is_read[default false],
-               actor_user_id → users.id [023, nullable, ON DELETE SET
-               NULL], created_at)
-               -- 020: minimal in-app notification system, first used by the
-               -- CCF feature
+├── notifications (id, recipient_user_id → users.id [ON DELETE CASCADE],
+│              message, related_ccf_id → customs_clearance_files.id
+│              [nullable, ON DELETE CASCADE], is_read[default false],
+│              actor_user_id → users.id [023, nullable, ON DELETE SET
+│              NULL], created_at)
+│              -- 020: minimal in-app notification system, first used by the
+│              -- CCF feature
+└── line_item_notes (id, file_id → import_account_files.id [ON DELETE
+               CASCADE], line_index [position in data.lineItems, >= 0],
+               body, created_by → users.id [nullable, ON DELETE SET NULL],
+               created_at)
+               -- 024: notes popup of the classification ("סיווג") table rows
 
 Enum-like columns (`status`, `shipment_type`, `payment_terms`, `incoterm`,
 `destination`, `last_step` in `orders`; `document_type` in `order_account`; `shipping_type`,

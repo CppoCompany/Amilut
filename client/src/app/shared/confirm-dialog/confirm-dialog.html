@@ -1,21 +1,18 @@
-<div class="dialog-backdrop" (click)="onBackdropClick($event)">
-  <div
-    class="confirm-dialog"
-    role="alertdialog"
-    aria-modal="true"
-    aria-describedby="confirm-dialog-message"
-  >
-    <div class="confirm-dialog__icon">
-      <i class="fa-solid fa-trash-can" aria-hidden="true"></i>
-    </div>
-    <p id="confirm-dialog-message" class="confirm-dialog__message">{{ message() }}</p>
-    <div class="confirm-dialog__actions">
-      <button type="button" class="btn btn-secondary" (click)="onCancel()">
-        {{ cancelLabel() }}
-      </button>
-      <button type="button" class="btn btn-danger" (click)="onConfirm()">
-        {{ confirmLabel() }}
-      </button>
-    </div>
-  </div>
-</div>
+<p-dialog
+  [visible]="true"
+  [modal]="true"
+  [dismissableMask]="true"
+  [draggable]="false"
+  [resizable]="false"
+  [style]="{ width: '24rem' }"
+  header="אישור מחיקה"
+  role="alertdialog"
+  ariaLabelledBy="confirm-dialog-message"
+  (onHide)="onCancel()"
+>
+  <p id="confirm-dialog-message" class="confirm-dialog__message">{{ message() }}</p>
+  <ng-template #footer>
+    <p-button [label]="cancelLabel()" severity="secondary" [outlined]="true" (onClick)="onCancel()" />
+    <p-button [label]="confirmLabel()" severity="danger" icon="fa-solid fa-trash-can" (onClick)="onConfirm()" />
+  </ng-template>
+</p-dialog>

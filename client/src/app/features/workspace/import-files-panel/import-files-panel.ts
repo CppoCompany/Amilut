@@ -11,6 +11,12 @@ import {
   viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
+import { FormsModule } from '@angular/forms';
+import { Button } from 'primeng/button';
+import { Message } from 'primeng/message';
+import { Select } from 'primeng/select';
+import { TableModule } from 'primeng/table';
+import { Tooltip } from 'primeng/tooltip';
 import { catchError, EMPTY, finalize, map, of, switchMap } from 'rxjs';
 
 import {
@@ -22,6 +28,7 @@ import type { FilingContext } from '../../../api/filing-context.model';
 import { ImportFilesApi } from '../../../api/import-files-api';
 import type { UploadedImportFileDto } from '../../../api/models';
 import { ConfirmDialog } from '../../../shared/confirm-dialog/confirm-dialog';
+import { TypedRow } from '../../../shared/typed-row/typed-row';
 
 /** One row of a category's documents list — a file stored on the server for
  *  the current context. */
@@ -59,7 +66,7 @@ export const BLOB_URL_TTL_MS = 60_000;
  */
 @Component({
   selector: 'app-import-files-panel',
-  imports: [ConfirmDialog],
+  imports: [FormsModule, Button, Message, Select, TableModule, Tooltip, ConfirmDialog, TypedRow],
   templateUrl: './import-files-panel.html',
   styleUrl: './import-files-panel.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -95,6 +102,11 @@ export class ImportFilesPanel {
   /** Row id of the file currently being deleted, if any. */
   protected readonly deletingId = signal<number | null>(null);
 
+  /** The "סוג מסמך" select's choices, in `documentTypes()` order. */
+  protected readonly documentTypeOptions = computed(() =>
+    this.documentTypes().map((type) => ({ value: type, label: this.documentTypeLabels[type] })),
+  );
+
   /** `documents()` grouped into one section per offered type (in
    *  `documentTypes()`'s order — Bill of Lading / Supplier Invoice / Packing
    *  List / Additional Documents for the CCF screen), so "organized by
@@ -120,9 +132,8 @@ export class ImportFilesPanel {
     this.loadDocumentsOnContextChange();
   }
 
-  protected onDocumentTypeChange(event: Event): void {
-    const value = (event.target as HTMLSelectElement).value;
-    this.documentType.set(this.isOfferedDocumentType(value) ? value : null);
+  protected onDocumentTypeChange(value: string | null | undefined): void {
+    this.documentType.set(value && this.isOfferedDocumentType(value) ? value : null);
   }
 
   /** "העלה קבצים" → opens the native multi-file picker (only once a context and a document type are chosen). */

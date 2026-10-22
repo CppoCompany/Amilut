@@ -1,6 +1,8 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
+import { Select } from 'primeng/select';
 import { Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 
@@ -91,7 +93,7 @@ describe('MyOrdersListScreen ("ההזמנות שלי" list page)', () => {
     expect(req.request.params.get('pageSize')).toBe('25');
     expect(req.request.params.has('q')).toBe(false);
     expect(req.request.params.has('status')).toBe(false);
-    expect(bodyRows()[0].textContent?.trim()).toBe('טוען...');
+    expect(fixture.nativeElement.querySelector('.p-datatable-mask')).not.toBeNull();
 
     req.flush(PAGE);
     fixture.detectChanges();
@@ -101,7 +103,7 @@ describe('MyOrdersListScreen ("ההזמנות שלי" list page)', () => {
     expect(cells[0]).toBe('1001');
     expect(cells[1]).toBe('ACME');
     expect(cells[3]).toBe('ממתינה בנמל');
-    expect(bodyRows()[0].querySelector('.status-pill--waiting_at_port')).toBeTruthy();
+    expect(bodyRows()[0].querySelector('.status-tag--waiting_at_port')).toBeTruthy();
   });
 
   it('re-fetches with the clicked column as sort and resets to page 1', () => {
@@ -125,9 +127,10 @@ describe('MyOrdersListScreen ("ההזמנות שלי" list page)', () => {
     const search: HTMLInputElement = fixture.nativeElement.querySelector('input[type="search"]');
     search.value = 'acme';
     search.dispatchEvent(new Event('input'));
-    const status: HTMLSelectElement = fixture.nativeElement.querySelector('select');
-    status.value = OrderStatus.DEPARTED;
-    status.dispatchEvent(new Event('change'));
+    // The status filter is a PrimeNG select: pick through its ngModelChange.
+    fixture.debugElement
+      .query(By.directive(Select))
+      .triggerEventHandler('ngModelChange', OrderStatus.DEPARTED);
 
     await settle(SEARCH_DEBOUNCE_MS / 2);
     httpMock.expectNone((r) => r.url === '/api/orders/paged');
@@ -184,7 +187,13 @@ describe('MyOrdersListScreen ("ההזמנות שלי" list page)', () => {
     clearButton.click();
     await settle(SEARCH_DEBOUNCE_MS + 50);
 
-    const req = expectPagedRequest();
+    // The restored page 2 lies past PAGE's last row, so PrimeNG's paginator pulls it back
+    // into range first; that reload is superseded (cancelled) by the clear's own.
+    const live = httpMock
+      .match((r) => r.url === '/api/orders/paged')
+      .filter((pending) => !pending.cancelled);
+    expect(live).toHaveLength(1);
+    const req = live[0];
     expect(req.request.params.has('q')).toBe(false);
     expect(req.request.params.has('status')).toBe(false);
     expect(req.request.params.has('from')).toBe(false);

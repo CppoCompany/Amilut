@@ -1,7 +1,21 @@
 // Component-scoped additions to the shared form styles (see src/styles.scss).
-// Two-column layout: `.wizard-main` holds the step-by-step form, `.wizard-sidebar`
-// is a sticky panel at the content area's far edge (in RTL, the last flex child
-// sits at the visual left) with the step links.
+// Two-column layout: `.wizard-main` holds the step-by-step form (same column
+// width as the order / CCF screens), `.wizard-sidebar` is a sticky panel right
+// after it (in RTL, the last flex child sits at the visual left) with the step
+// links. Header, loading state and layout share one cap so nothing drifts to
+// the far edge of a wide monitor.
+
+:host {
+  --wizard-sidebar-width: 280px;
+  --wizard-gap: 24px;
+  --wizard-max-width: calc(
+    var(--form-page-max-width) + var(--wizard-gap) + var(--wizard-sidebar-width)
+  );
+}
+
+:host > .form-section {
+  max-width: var(--form-page-max-width);
+}
 
 // `.page-title`'s own margin moves onto this row so the title and the
 // "מעבר לתיק הסליקה" link sit on one line — same trick as `order.scss`.
@@ -10,44 +24,11 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  max-width: var(--wizard-max-width);
   margin-bottom: 24px;
 
   .page-title {
     margin-bottom: 0;
-  }
-}
-
-// A quiet, link-styled action (not a `.btn`) — identical to `order.scss`'s
-// `.filing-link` ("jump to a related screen, quietly").
-.filing-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-  padding: 4px 2px;
-  border: none;
-  background: none;
-  color: var(--secondary-blue);
-  font: inherit;
-  font-size: 0.92rem;
-  font-weight: 600;
-  white-space: nowrap;
-  cursor: pointer;
-
-  i {
-    font-size: 0.85rem;
-  }
-
-  &:hover,
-  &:focus-visible {
-    text-decoration: underline;
-    outline: none;
-  }
-
-  &:disabled {
-    cursor: default;
-    opacity: 0.6;
-    text-decoration: none;
   }
 }
 
@@ -84,7 +65,8 @@
   display: flex;
   align-items: flex-start;
   flex-wrap: wrap;
-  gap: 24px;
+  gap: var(--wizard-gap);
+  max-width: var(--wizard-max-width);
 }
 
 .wizard-main {
@@ -92,7 +74,7 @@
   flex-direction: column;
   gap: 24px;
   flex: 1 1 640px;
-  max-width: 1000px;
+  max-width: var(--form-page-max-width);
   min-width: 0;
 }
 
@@ -127,7 +109,7 @@
 
   &:hover:not(:disabled) {
     border-color: var(--secondary-blue);
-    box-shadow: 0 2px 8px rgba(27, 99, 199, 0.12);
+    box-shadow: 0 2px 8px rgb(15 33 43 / 0.08);
     transform: translateY(-1px);
   }
 
@@ -142,7 +124,7 @@
     opacity: 1;
     border-color: var(--secondary-blue);
     background: var(--light-blue-bg);
-    box-shadow: 0 0 0 2px rgba(27, 99, 199, 0.18);
+    box-shadow: 0 0 0 2px var(--color-accent-ring);
   }
 }
 
@@ -164,7 +146,7 @@
 // ── Progress sidebar ───────────────────────────────────────────────────────────
 // No max-height/overflow of its own: the page is the only thing that scrolls.
 .wizard-sidebar {
-  flex: 0 0 280px;
+  flex: 0 0 var(--wizard-sidebar-width);
   display: flex;
   flex-direction: column;
   gap: 18px;

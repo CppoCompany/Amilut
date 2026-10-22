@@ -8,15 +8,15 @@
       }
     </h1>
     @if (!isReadOnly() && !loadingExisting()) {
-      <span class="ccf-badge ccf-badge--info">תיק חדש</span>
+      <p-tag value="תיק חדש" severity="info" />
     }
   </header>
 
   @if (loadingExisting()) {
-    <p class="form-message" role="status">
+    <p-message severity="secondary" styleClass="form-message" role="status">
       <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
       טוען תיק...
-    </p>
+    </p-message>
   } @else {
     <section class="form-section ccf-card">
       <h2 class="section-title ccf-card__title">פרטי תיק</h2>
@@ -37,7 +37,7 @@
         @if (savedCcf(); as ccf) {
           <div class="form-group">
             <label>סטטוס</label>
-            <input type="text" class="form-control" [value]="statusLabels[ccf.status]" readonly />
+            <input type="text" pInputText [value]="statusLabels[ccf.status]" readonly />
           </div>
         }
       </div>
@@ -76,23 +76,25 @@
     }
 
     @if (errorMessage(); as message) {
-      <p class="form-message form-message--error" role="alert">{{ message }}</p>
+      <p-message severity="error" styleClass="form-message form-message--error" role="alert">{{ message }}</p-message>
     }
 
     @if (!isReadOnly()) {
       <div class="form-actions ccf-actions">
-        <button type="button" class="btn btn-secondary" [disabled]="saving()" (click)="onCancel()">
-          ביטול
-        </button>
-        <button type="button" class="btn btn-primary" [disabled]="saving()" (click)="onSave()">
-          @if (saving()) {
-            <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
-            שומר...
-          } @else {
-            <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
-            שמירת תיק עמילות
-          }
-        </button>
+        <p-button
+          label="ביטול"
+          severity="secondary"
+          [outlined]="true"
+          [disabled]="saving()"
+          (onClick)="onCancel()"
+        />
+        <p-button
+          [label]="saving() ? 'שומר...' : 'שמירת תיק עמילות'"
+          icon="fa-solid fa-floppy-disk"
+          [loading]="saving()"
+          [disabled]="saving()"
+          (onClick)="onSave()"
+        />
       </div>
     }
   }

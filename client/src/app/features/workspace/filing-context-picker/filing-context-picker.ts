@@ -8,6 +8,10 @@ import {
   untracked,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { FormsModule } from '@angular/forms';
+import { Message } from 'primeng/message';
+import { Select } from 'primeng/select';
+import { SelectButton } from 'primeng/selectbutton';
 import { finalize } from 'rxjs';
 
 import { CcfApi } from '../../../api/ccf-api';
@@ -22,12 +26,14 @@ type PickerKind = 'order' | 'ccf';
 
 /**
  * "הזמנה / תיק עמילות" dropdown at the top of the per-context screens
- * (filing, classification). A 2-way toggle picks which list is offered;
+ * (filing, classification). A 2-way PrimeNG select-button picks which list
+ * is offered (a filterable PrimeNG select);
  * the choice writes straight to {@link FilingContextService} — the hosting
  * screen reacts to that signal. Replaces the MBL-only `CasePicker`.
  */
 @Component({
   selector: 'app-filing-context-picker',
+  imports: [FormsModule, Message, Select, SelectButton],
   templateUrl: './filing-context-picker.html',
   styleUrl: './filing-context-picker.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -43,6 +49,11 @@ export class FilingContextPicker {
    *  clearing the selection (e.g. on toggle) must not snap this back to
    *  "order" just because `context()` is briefly `null`. Defaults to "order". */
   protected readonly kind = signal<PickerKind>('order');
+
+  protected readonly kindOptions: { value: PickerKind; label: string }[] = [
+    { value: 'order', label: 'הזמנה' },
+    { value: 'ccf', label: 'תיק עמילות' },
+  ];
 
   protected readonly orders = signal<OrderDto[]>([]);
   protected readonly ccfs = signal<CcfDto[]>([]);
@@ -71,14 +82,12 @@ export class FilingContextPicker {
     this.context.set(null);
   }
 
-  protected onOrderChange(event: Event): void {
-    const value = (event.target as HTMLSelectElement).value;
-    this.context.set(value === '' ? null : { kind: 'order', id: Number(value) });
+  protected onOrderChange(id: number | null | undefined): void {
+    this.context.set(id == null ? null : { kind: 'order', id });
   }
 
-  protected onCcfChange(event: Event): void {
-    const value = (event.target as HTMLSelectElement).value;
-    this.context.set(value === '' ? null : { kind: 'ccf', id: Number(value) });
+  protected onCcfChange(id: number | null | undefined): void {
+    this.context.set(id == null ? null : { kind: 'ccf', id });
   }
 
   /** "הזמנה 1024 · ACME Ltd." */

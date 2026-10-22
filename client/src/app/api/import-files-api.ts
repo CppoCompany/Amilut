@@ -4,8 +4,10 @@ import { Observable } from 'rxjs';
 
 import type { ImportDocumentType } from './enums';
 import type {
+  CreateLineItemNoteDto,
   InvoiceLineItemDto,
   LineItemClassificationUpdateDto,
+  LineItemNoteDto,
   PagedClassificationsDto,
   SaveLineItemClassificationsDto,
   UploadedImportFileDto,
@@ -139,5 +141,26 @@ export class ImportFilesApi {
       body,
       { params: contextParams(context) },
     );
+  }
+
+  /**
+   * `GET /api/import-files/line-items/notes?orderId=|ccfId=` — every note
+   * written against the order/CCF's supplier-invoice lines, oldest first.
+   */
+  listLineItemNotes(context: FilingContext): Observable<LineItemNoteDto[]> {
+    return this.http.get<LineItemNoteDto[]>(`${this.baseUrl}/line-items/notes`, {
+      params: contextParams(context),
+    });
+  }
+
+  /**
+   * `POST /api/import-files/line-items/notes?orderId=|ccfId=` — adds a note
+   * to one stored line (`fileId` + `lineIndex`), attributed to the signed-in
+   * user; returns the stored note.
+   */
+  addLineItemNote(context: FilingContext, note: CreateLineItemNoteDto): Observable<LineItemNoteDto> {
+    return this.http.post<LineItemNoteDto>(`${this.baseUrl}/line-items/notes`, note, {
+      params: contextParams(context),
+    });
   }
 }

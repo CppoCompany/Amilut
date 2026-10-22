@@ -1,7 +1,6 @@
-<p class="doc-banner" role="note">
-  <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+<p-message severity="secondary" icon="fa-solid fa-circle-info" styleClass="doc-banner" role="note">
   {{ bannerText() }}
-</p>
+</p-message>
 
 <input
   #fileInput
@@ -35,14 +34,18 @@
           }
         </span>
         @if (total === 0) {
-          <span class="doc-badge doc-badge--missing">חסר</span>
+          <p-tag value="חסר" severity="warn" styleClass="doc-badge doc-badge--missing" />
         } @else {
-          <span class="doc-badge doc-badge--ok">{{ countLabel(total) }}</span>
+          <p-tag [value]="countLabel(total)" severity="success" styleClass="doc-badge doc-badge--ok" />
         }
-        <button type="button" class="btn btn-secondary doc__upload" (click)="openPicker(type)">
-          <i class="fa-solid fa-arrow-up-from-bracket" aria-hidden="true"></i>
-          העלאה
-        </button>
+        <p-button
+          label="העלאה"
+          icon="fa-solid fa-arrow-up-from-bracket"
+          severity="secondary"
+          [outlined]="true"
+          styleClass="doc__upload"
+          (onClick)="openPicker(type)"
+        />
         <span class="doc__drop-hint">או גררו קבצים לכאן</span>
       </div>
 
@@ -52,34 +55,32 @@
             <li class="doc__file doc__file--uploaded">
               <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
               <span class="doc__file-name" dir="auto">{{ file.name }}</span>
-              <button
-                type="button"
-                class="icon-btn"
-                [attr.aria-label]="'פתח את ' + file.name"
+              <p-button
+                icon="fa-solid fa-arrow-up-right-from-square"
+                severity="secondary"
+                [text]="true"
+                [rounded]="true"
+                size="small"
+                [loading]="openingId() === file.id"
+                [ariaLabel]="'פתח את ' + file.name"
                 [disabled]="openingId() !== null"
-                (click)="openUploaded.emit(file)"
-              >
-                @if (openingId() === file.id) {
-                  <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
-                } @else {
-                  <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
-                }
-              </button>
+                (onClick)="openUploaded.emit(file)"
+              />
               @if (deletable()) {
-                <button
-                  type="button"
-                  class="icon-btn icon-btn--danger"
-                  [attr.aria-label]="'מחק את ' + file.name"
-                  title="מחיקת הקובץ"
+                <p-button
+                  icon="fa-solid fa-xmark"
+                  severity="danger"
+                  [text]="true"
+                  [rounded]="true"
+                  size="small"
+                  styleClass="icon-btn--danger"
+                  pTooltip="מחיקת הקובץ"
+                  tooltipPosition="top"
+                  [loading]="deletingId() === file.id"
+                  [ariaLabel]="'מחק את ' + file.name"
                   [disabled]="deletingId() !== null"
-                  (click)="deleteUploaded.emit(file)"
-                >
-                  @if (deletingId() === file.id) {
-                    <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
-                  } @else {
-                    <i class="fa-solid fa-xmark" aria-hidden="true"></i>
-                  }
-                </button>
+                  (onClick)="deleteUploaded.emit(file)"
+                />
               }
             </li>
           }
@@ -87,14 +88,16 @@
             <li class="doc__file">
               <i class="fa-regular fa-file" aria-hidden="true"></i>
               <span class="doc__file-name" dir="auto">{{ file.name }}</span>
-              <button
-                type="button"
-                class="icon-btn icon-btn--danger"
-                [attr.aria-label]="'הסר את ' + file.name"
-                (click)="remove(type, $index)"
-              >
-                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
-              </button>
+              <p-button
+                icon="fa-solid fa-xmark"
+                severity="danger"
+                [text]="true"
+                [rounded]="true"
+                size="small"
+                styleClass="icon-btn--danger"
+                [ariaLabel]="'הסר את ' + file.name"
+                (onClick)="remove(type, $index)"
+              />
             </li>
           }
         </ul>

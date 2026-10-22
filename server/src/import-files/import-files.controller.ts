@@ -29,6 +29,8 @@ import {
   getSchemaPath,
 } from '@nestjs/swagger';
 import { createReadStream } from 'node:fs';
+import type { JwtPayload } from '../auth/auth.types';
+import { CurrentUser } from '../auth/current-user.decorator';
 import {
   IMPORT_DOCUMENT_TYPE_FIELD,
   UploadImportFilesDto,
@@ -37,6 +39,10 @@ import { PagedClassificationsDto } from './dto/classification-row.dto';
 import { ImportFilesContextQuery } from './dto/import-files-context.query';
 import { InvoiceLineItemDto } from './dto/invoice-line-item.dto';
 import { SaveLineItemClassificationsDto } from './dto/line-item-classification.dto';
+import {
+  CreateLineItemNoteDto,
+  LineItemNoteDto,
+} from './dto/line-item-note.dto';
 import { PagedClassificationsQuery } from './dto/paged-classifications.query';
 import { UploadedImportFileDto } from './dto/uploaded-import-file.dto';
 import {
@@ -240,6 +246,43 @@ export class ImportFilesController {
     return this.importFiles.saveLineItemClassifications(
       toImportFilesContext(context),
       body.items,
+    );
+  }
+
+  /** Every note written against the order/CCF's supplier-invoice lines, oldest first. */
+  @Get('line-items/notes')
+  @ApiOkResponse({ type: LineItemNoteDto, isArray: true })
+  @ApiBadRequestResponse({
+    description: 'Neither/both of orderId/ccfId given.',
+  })
+  @ApiNotFoundResponse({
+    description: 'No order or customs clearance file with this id.',
+  })
+  listLineItemNotes(
+    @Query() context: ImportFilesContextQuery,
+  ): Promise<LineItemNoteDto[]> {
+    return this.importFiles.listLineItemNotes(toImportFilesContext(context));
+  }
+
+  /** Adds a note to one supplier-invoice line, attributed to the signed-in user. */
+  @Post('line-items/notes')
+  @ApiCreatedResponse({ type: LineItemNoteDto })
+  @ApiBadRequestResponse({
+    description:
+      'Empty note, a line index outside its file, or neither/both of orderId/ccfId given.',
+  })
+  @ApiNotFoundResponse({
+    description: 'Unknown order/CCF, or a fileId that is not a file of it.',
+  })
+  addLineItemNote(
+    @Query() context: ImportFilesContextQuery,
+    @Body() body: CreateLineItemNoteDto,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<LineItemNoteDto> {
+    return this.importFiles.addLineItemNote(
+      toImportFilesContext(context),
+      body,
+      user.sub,
     );
   }
 }
