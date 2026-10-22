@@ -8,23 +8,28 @@
   top: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
   min-width: 0;
-  padding: 12px;
-  border: var(--hairline);
+  overflow: hidden;
+  // Same card as the products table beside it (.products-card).
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
-  background: var(--readonly-bg);
+  background: var(--card-bg);
+  box-shadow: var(--shadow-sm);
 
   @media (max-width: 1200px) {
     order: 0;
     position: static;
   }
 
+  // Tinted caption band, like the products table's column-group row.
   &__header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
+    padding: 8px 12px;
+    background: var(--light-blue-bg);
+    border-bottom: 1px solid color-mix(in srgb, var(--secondary-blue) 20%, transparent);
   }
 
   // Overrides the shared .section-title spacing for this compact panel.
@@ -32,25 +37,24 @@
     margin: 0;
     padding: 0;
     border: 0;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     font-weight: 700;
-    color: var(--color-brand);
+    color: var(--primary-blue);
     line-height: 1.3;
   }
 
   .form-message {
-    margin: 0;
+    margin: 10px 12px 0;
   }
 
   &__search {
     display: block;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border-color);
   }
 
   &__table-wrap {
     overflow: hidden;
-    border: var(--hairline);
-    border-radius: var(--radius-md);
-    background: var(--card-bg);
   }
 
   &__hint {
@@ -116,27 +120,61 @@
   }
 
   .p-datatable-thead > tr > th {
-    padding: 8px 10px;
+    padding: 6px 10px;
     background: var(--readonly-bg);
     color: var(--text-muted);
     font-size: 0.75rem;
     font-weight: 700;
+    letter-spacing: 0.01em;
     white-space: nowrap;
+    border-bottom: 1px solid var(--border-color);
   }
 
-  .p-datatable-tbody > tr > td {
-    padding: 8px 10px;
-    font-size: 0.8rem;
-    vertical-align: middle;
+  // Sorted column: accent header text and icon instead of PrimeNG's fill.
+  .p-datatable-thead > tr > th.p-datatable-column-sorted {
+    background: var(--readonly-bg);
+    color: var(--secondary-blue);
+  }
+
+  .p-datatable-sort-icon,
+  .p-datatable-column-sorted .p-datatable-sort-icon {
+    font-size: 0.7rem;
+    color: inherit;
+  }
+
+  .p-datatable-tbody > tr {
+    color: var(--text-dark);
+    transition: background-color 0.15s ease;
+
+    > td {
+      padding: 8px 10px;
+      font-size: 0.8rem;
+      vertical-align: middle;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    &:nth-child(even) {
+      background: color-mix(in srgb, var(--readonly-bg) 60%, transparent);
+    }
+
+    &:hover {
+      background: var(--light-blue-bg);
+    }
+
+    // Restates the shared .data-table__row--selected look, which the striping above outranks.
+    &.data-table__row--selected {
+      background: var(--light-blue-bg);
+      box-shadow: inset -3px 0 0 var(--secondary-blue);
+    }
+
+    &:last-child > td {
+      border-bottom: 0;
+    }
   }
 
   .p-datatable-tbody > tr:focus-visible {
     outline: 2px solid var(--color-accent);
     outline-offset: -2px;
-  }
-
-  .p-datatable-sort-icon {
-    font-size: 0.7rem;
   }
 
   .pending-table__progress {
