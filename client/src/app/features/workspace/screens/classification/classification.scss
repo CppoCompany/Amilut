@@ -20,21 +20,42 @@
 // classification-pending.scss). The page is RTL, so the table's column (the
 // second one) renders on the left; it comes first in the DOM so it still
 // stacks above the products on narrow screens.
+// Two rows: the products panel's intro (title, goods description, messages)
+// and its body share them through subgrid, and the pending card sits on the
+// second row only, so both tables start at the same height.
 .products-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 22rem;
-  gap: 16px;
+  grid-template-rows: auto auto;
+  gap: 0 16px;
   align-items: start;
 
   @media (max-width: 1200px) {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+    gap: 16px;
   }
 }
 
 .products-panel {
+  display: grid;
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  grid-template-rows: subgrid;
   min-width: 0;
 
-  > .section-title {
+  @media (max-width: 1200px) {
+    display: block;
+    grid-column: auto;
+    grid-row: auto;
+  }
+
+  &__intro,
+  &__body {
+    min-width: 0;
+  }
+
+  .section-title {
     margin-bottom: 10px;
     padding-bottom: 6px;
     font-size: 1rem;

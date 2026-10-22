@@ -1,19 +1,24 @@
-<div class="form-group document-type-group">
-  <label for="documentType" class="required">סוג מסמך</label>
-  <p-select
-    inputId="documentType"
-    [options]="documentTypeOptions()"
-    optionLabel="label"
-    optionValue="value"
-    [ngModel]="documentType()"
-    (ngModelChange)="onDocumentTypeChange($event)"
-    placeholder="בחר סוג מסמך"
-    [showClear]="true"
-    appendTo="body"
-  />
-  @if (context() !== null && documentType() === null) {
-    <p class="hint-text">יש לבחור סוג מסמך לפני העלאת קבצים</p>
-  }
+<!-- Projected content (the Filing screen's Order/CCF picker) shares the "סוג מסמך" row. -->
+<div class="panel-toolbar">
+  <ng-content />
+
+  <div class="form-group document-type-group">
+    <label for="documentType" class="required">סוג מסמך</label>
+    <p-select
+      inputId="documentType"
+      [options]="documentTypeOptions()"
+      optionLabel="label"
+      optionValue="value"
+      [ngModel]="documentType()"
+      (ngModelChange)="onDocumentTypeChange($event)"
+      placeholder="בחר סוג מסמך"
+      [showClear]="true"
+      appendTo="body"
+    />
+    @if (context() !== null && documentType() === null) {
+      <p class="hint-text">יש לבחור סוג מסמך לפני העלאת קבצים</p>
+    }
+  </div>
 </div>
 
 <div class="upload-area">

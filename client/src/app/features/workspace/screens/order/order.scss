@@ -4,7 +4,8 @@
 
 :host {
   // Layout
-  --order-max-width: var(--form-page-max-width);
+  // Full width; field columns are capped by `.form-page--wide` (styles.scss).
+  --order-max-width: none;
   --order-card-gap: 24px;
 
   // Spacing

@@ -4,6 +4,9 @@
 
 .pending-ccfs {
   order: 2;
+  // Second row of .products-layout — level with the products card.
+  grid-column: 2;
+  grid-row: 2;
   position: sticky;
   top: 0;
   display: flex;
@@ -18,6 +21,8 @@
 
   @media (max-width: 1200px) {
     order: 0;
+    grid-column: auto;
+    grid-row: auto;
     position: static;
   }
 
