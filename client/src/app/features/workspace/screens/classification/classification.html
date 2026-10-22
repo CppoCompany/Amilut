@@ -1,7 +1,7 @@
 <section class="form-section classification-section" id="classificationTabPanel">
   <h2 class="section-title">סיווג</h2>
   <form class="order-form classification-form" [formGroup]="form" (ngSubmit)="onSubmit()">
-    <!-- RTL: the file list is placed on the left of the products table (see .products-layout). -->
+    <!-- RTL: the pending-files table is placed beside the products table (see .products-layout). -->
     <div class="products-layout">
       <aside class="pending-ccfs" aria-labelledby="pendingCcfsTitle">
         <header class="pending-ccfs__header">
@@ -20,45 +20,98 @@
         @if (pendingError(); as message) {
           <p-message severity="error" styleClass="form-message form-message--error" role="alert">{{ message }}</p-message>
         }
-        @if (pendingLoading() && pendingCcfs().length === 0) {
-          <p class="pending-ccfs__hint">טוען תיקים…</p>
-        } @else if (!pendingError() && pendingCcfs().length === 0) {
-          <p class="pending-ccfs__hint">אין תיקי עמילות שממתינים לסיווג</p>
-        }
-        <ul class="pending-ccfs__list">
-          @for (ccf of pendingCcfs(); track ccf.id) {
-            <li>
-              <button
-                type="button"
-                class="pending-ccfs__item"
+        <p-iconfield class="pending-ccfs__search">
+          <p-inputicon styleClass="fa-solid fa-magnifying-glass" />
+          <input
+            #pendingSearch
+            pInputText
+            pSize="small"
+            type="search"
+            placeholder="חיפוש לפי מס' תיק"
+            aria-label="חיפוש תיק לפי מספר תיק"
+            [fluid]="true"
+            (input)="pendingTable.filterGlobal(pendingSearch.value, 'contains')"
+            (keydown.enter)="$event.preventDefault()"
+          />
+        </p-iconfield>
+        <div class="pending-ccfs__table-wrap">
+          <p-table
+            #pendingTable
+            [value]="pendingRows()"
+            [globalFilterFields]="['fileNumber']"
+            sortField="fileNumber"
+            [sortOrder]="1"
+            [scrollable]="true"
+            size="small"
+            styleClass="pending-table"
+          >
+            <ng-template #header>
+              <tr>
+                <th pSortableColumn="fileNumber">
+                  מס' תיק
+                  <p-sortIcon field="fileNumber" />
+                </th>
+                <th>לקוח</th>
+                <th pSortableColumn="classifiedPercent" class="pending-table__progress">
+                  סווגו
+                  <p-sortIcon field="classifiedPercent" />
+                </th>
+              </tr>
+            </ng-template>
+            <ng-template #body let-ccf [rowOf]="pendingRows()">
+              <tr
+                class="pending-ccfs__item data-table__row--clickable"
+                [class.data-table__row--selected]="isSelectedCcf(ccf.id)"
                 [class.active]="isSelectedCcf(ccf.id)"
-                [attr.aria-pressed]="isSelectedCcf(ccf.id)"
+                [attr.aria-current]="isSelectedCcf(ccf.id) ? 'true' : null"
+                tabindex="0"
                 (click)="selectCcf(ccf.id)"
+                (keydown.enter)="selectCcf(ccf.id)"
+                (keydown.space)="$event.preventDefault(); selectCcf(ccf.id)"
               >
-                <span class="pending-ccfs__number">{{ ccf.fileNumber }}</span>
-                <span class="pending-ccfs__progress" title="שורות מסווגות">{{
-                  classificationProgress(ccf)
-                }}</span>
-                @if (ccf.shipmentFileMblNumber) {
-                  <span class="pending-ccfs__meta" dir="ltr">{{
-                    ccf.shipmentFileMblNumber
+                <td>
+                  <span class="pending-ccfs__number data-table__numeric">{{ ccf.fileNumber }}</span>
+                  @if (ccf.shipmentFileMblNumber) {
+                    <span class="pending-ccfs__meta" dir="ltr">{{ ccf.shipmentFileMblNumber }}</span>
+                  }
+                </td>
+                <td>
+                  @if (ccf.customerNames.length) {
+                    <span class="pending-ccfs__customers" [title]="ccf.customerNames.join(', ')">{{
+                      ccf.customerNames.join(', ')
+                    }}</span>
+                  }
+                </td>
+                <td class="pending-table__progress">
+                  <span class="pending-ccfs__progress" title="שורות מסווגות">{{
+                    classificationProgress(ccf)
                   }}</span>
-                }
-                @if (ccf.customerNames.length) {
-                  <span class="pending-ccfs__meta">{{ ccf.customerNames.join(', ') }}</span>
-                }
-                @if (ccf.lineCount > 0) {
-                  <p-progressbar
-                    class="pending-ccfs__bar"
-                    [value]="classificationPercent(ccf)"
-                    [showValue]="false"
-                    aria-hidden="true"
-                  />
-                }
-              </button>
-            </li>
-          }
-        </ul>
+                  @if (ccf.lineCount > 0) {
+                    <p-progressbar
+                      class="pending-ccfs__bar"
+                      [value]="ccf.classifiedPercent"
+                      [showValue]="false"
+                      aria-hidden="true"
+                    />
+                  }
+                </td>
+              </tr>
+            </ng-template>
+            <ng-template #emptymessage>
+              <tr>
+                <td colspan="3" class="pending-ccfs__hint">
+                  @if (pendingLoading()) {
+                    טוען תיקים…
+                  } @else if (pendingCcfs().length) {
+                    לא נמצאו תיקים התואמים לחיפוש
+                  } @else if (!pendingError()) {
+                    אין תיקי עמילות שממתינים לסיווג
+                  }
+                </td>
+              </tr>
+            </ng-template>
+          </p-table>
+        </div>
       </aside>
 
       <div class="products-panel">

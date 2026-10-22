@@ -602,17 +602,21 @@ describe('ClassificationScreen pending-CCF list', () => {
 
   afterEach(() => verifyHttp());
 
-  const items = (): HTMLButtonElement[] =>
+  const items = (): HTMLTableRowElement[] =>
     Array.from(fixture.nativeElement.querySelectorAll('.pending-ccfs__item'));
+  const numbers = (): (string | undefined)[] =>
+    items().map((row) => row.querySelector('.pending-ccfs__number')?.textContent?.trim());
+  const sortHeader = (field: string): HTMLElement =>
+    fixture.nativeElement.querySelector(`.pending-table th[psortablecolumn="${field}"]`);
 
-  it('lists every pending CCF with its number, progress, MBL and customers', () => {
+  it('lists every pending CCF with its number, MBL, customers and progress', () => {
     httpMock.expectOne(COUNTRIES_URL).flush(COUNTRIES);
     fixture.detectChanges();
 
-    const spans = (b: HTMLButtonElement): string[] =>
-      Array.from(b.querySelectorAll('span')).map((el) => el.textContent?.trim() ?? '');
+    const spans = (row: HTMLTableRowElement): string[] =>
+      Array.from(row.querySelectorAll('span')).map((el) => el.textContent?.trim() ?? '');
     expect(items().map(spans)).toEqual([
-      ['CCF1007', '1/4', 'MBL-1', 'ACME Ltd.'],
+      ['CCF1007', 'MBL-1', 'ACME Ltd.', '1/4'],
       ['CCF1008', '—'],
     ]);
     expect(items().some((b) => b.classList.contains('active'))).toBe(false);
@@ -628,9 +632,49 @@ describe('ClassificationScreen pending-CCF list', () => {
     httpMock.expectOne(CCF_LINE_ITEMS_URL).flush([lineItem()]);
     fixture.detectChanges();
     expect(items()[0].classList.contains('active')).toBe(true);
-    expect(items()[0].getAttribute('aria-pressed')).toBe('true');
+    expect(items()[0].getAttribute('aria-current')).toBe('true');
     expect(items()[1].classList.contains('active')).toBe(false);
     expect(fixture.nativeElement.querySelectorAll('.documents-table tbody tr').length).toBe(1);
+  });
+
+  it('sorts by file number, and by classified share when that header is clicked', () => {
+    httpMock.expectOne(COUNTRIES_URL).flush(COUNTRIES);
+    fixture.detectChanges();
+    expect(numbers()).toEqual(['CCF1007', 'CCF1008']);
+
+    sortHeader('fileNumber').click();
+    fixture.detectChanges();
+    expect(numbers()).toEqual(['CCF1008', 'CCF1007']);
+
+    sortHeader('classifiedPercent').click();
+    fixture.detectChanges();
+    expect(numbers()).toEqual(['CCF1008', 'CCF1007']);
+  });
+
+  it('filters the list by file number', () => {
+    httpMock.expectOne(COUNTRIES_URL).flush(COUNTRIES);
+    fixture.detectChanges();
+    const search: HTMLInputElement = fixture.nativeElement.querySelector('.pending-ccfs__search input');
+    // PrimeNG debounces the global filter (`filterDelay`).
+    vi.useFakeTimers();
+    onTestFinished(() => {
+      vi.useRealTimers();
+    });
+
+    search.value = '1008';
+    search.dispatchEvent(new Event('input'));
+    vi.runAllTimers();
+    fixture.detectChanges();
+    expect(numbers()).toEqual(['CCF1008']);
+
+    search.value = 'MBL-1';
+    search.dispatchEvent(new Event('input'));
+    vi.runAllTimers();
+    fixture.detectChanges();
+    expect(numbers()).toEqual([]);
+    expect(fixture.nativeElement.querySelector('.pending-ccfs__hint')?.textContent?.trim()).toBe(
+      'לא נמצאו תיקים התואמים לחיפוש',
+    );
   });
 
   it('refreshes the list after a successful save', () => {
@@ -645,9 +689,7 @@ describe('ClassificationScreen pending-CCF list', () => {
     httpMock.expectOne(PENDING_CCFS_URL).flush([pendingCcf({ id: 8, fileNumber: 'CCF1008' })]);
     fixture.detectChanges();
 
-    expect(items().map((b) => b.querySelector('.pending-ccfs__number')?.textContent)).toEqual([
-      'CCF1008',
-    ]);
+    expect(numbers()).toEqual(['CCF1008']);
     // The just-classified CCF stays open even though it left the list.
     expect(filingContext.context()).toEqual({ kind: 'ccf', id: 7 });
   });
