@@ -5,7 +5,8 @@
 
 :host {
   // Layout
-  --ccf-max-width: var(--form-page-max-width);
+  // Full width; field columns are capped by `.form-page--wide` (styles.scss).
+  --ccf-max-width: none;
   --ccf-card-gap: 24px;
 
   // Spacing scale

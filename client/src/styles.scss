@@ -67,11 +67,14 @@
   --radius-lg: 8px;
   --radius-xl: 10px;
 
-  /* Form screens (order, shipment file, customs file) share one column width:
-     wide enough for four 240px `.grid-row` columns inside a `.form-section`
-     (4 × 240 + 3 × 20 gap + 2 × 24 padding ≈ 1070px), capped so fields never
-     stretch across a wide monitor. Anchored to the inline-start edge. */
+  /* Column width of the shipment-file wizard's form: wide enough for four
+     240px `.grid-row` columns inside a `.form-section` (4 × 240 + 3 × 20 gap
+     + 2 × 24 padding ≈ 1070px). Anchored to the inline-start edge. The order,
+     filing and CCF screens are full width instead (see `.form-page--wide`). */
   --form-page-max-width: 1200px;
+
+  /* Widest a single field column grows on a `.form-page--wide` screen. */
+  --form-field-max-width: 480px;
 
   /* Shadows always carry an offset + soft blur; elevation is declared once
      per element (border OR shadow, never both heavy). */
@@ -307,6 +310,42 @@ kbd {
 
 .grid-row:last-child {
   margin-bottom: 0;
+}
+
+/* Full-width form screen (order, filing, CCF): the page fills the content
+   area like the grid screens, but each `.grid-row` keeps at most four columns
+   (fewer as its section narrows) so field groups stay in the same order at any
+   width, and no column grows past `--form-field-max-width`. */
+.form-page--wide {
+  max-width: none;
+}
+
+.form-page--wide .form-section {
+  container-type: inline-size;
+}
+
+.form-page--wide .grid-row {
+  --grid-row-cols: 1;
+  grid-template-columns: repeat(var(--grid-row-cols), minmax(0, var(--form-field-max-width)));
+}
+
+/* Breakpoints = n × 240px columns + (n − 1) × 20px gaps. */
+@container (min-width: 500px) {
+  .form-page--wide .grid-row {
+    --grid-row-cols: 2;
+  }
+}
+
+@container (min-width: 760px) {
+  .form-page--wide .grid-row {
+    --grid-row-cols: 3;
+  }
+}
+
+@container (min-width: 1020px) {
+  .form-page--wide .grid-row {
+    --grid-row-cols: 4;
+  }
 }
 
 /* Controls */

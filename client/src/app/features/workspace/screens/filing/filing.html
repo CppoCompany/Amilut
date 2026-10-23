@@ -1,4 +1,4 @@
-<form class="order-form">
+<form class="order-form form-page--wide">
   <section class="form-section">
     <h2 class="section-title">תיוק ניירת יבוא</h2>
 
@@ -9,8 +9,8 @@
       </div>
     </div>
 
-    <app-filing-context-picker />
-
-    <app-import-files-panel [context]="context()" />
+    <app-import-files-panel [context]="context()">
+      <app-filing-context-picker />
+    </app-import-files-panel>
   </section>
 </form>

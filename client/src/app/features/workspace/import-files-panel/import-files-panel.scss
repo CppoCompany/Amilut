@@ -1,7 +1,17 @@
 // Component-scoped additions to the shared form styles (see src/styles.scss).
 
-// "סוג מסמך" picker above the drop zone — narrow like the order screen's selects.
+// Row above the drop zone: any projected control (the Filing screen's
+// Order/CCF picker) beside the "סוג מסמך" picker; wraps on narrow screens.
+.panel-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0 24px;
+}
+
+// "סוג מסמך" picker — narrow like the order screen's selects.
 .document-type-group {
+  flex: 1 1 260px;
   max-width: 360px;
   margin-bottom: 12px;
 }

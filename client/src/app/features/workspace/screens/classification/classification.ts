@@ -2,6 +2,7 @@ import { DecimalPipe } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   DestroyRef,
   effect,
   inject,
@@ -12,6 +13,8 @@ import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { FormsModule, NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { Badge } from 'primeng/badge';
 import { Button } from 'primeng/button';
+import { IconField } from 'primeng/iconfield';
+import { InputIcon } from 'primeng/inputicon';
 import { InputText } from 'primeng/inputtext';
 import { Message } from 'primeng/message';
 import { ProgressBar } from 'primeng/progressbar';
@@ -67,6 +70,9 @@ interface Product {
   countryId: number | null;
 }
 
+/** A row of the pending-files table: the CCF plus its classified share, so the table can sort by it. */
+type PendingCcfRow = DashboardCcfRowDto & { classifiedPercent: number };
+
 /** A products-table row that is backed by a stored invoice line, so notes can be attached to it. */
 type StoredProduct = Product & { fileId: number; lineIndex: number };
 
@@ -84,6 +90,8 @@ type StoredProduct = Product & { fileId: number; lineIndex: number };
     DecimalPipe,
     Badge,
     Button,
+    IconField,
+    InputIcon,
     InputText,
     Message,
     ProgressBar,
@@ -96,7 +104,7 @@ type StoredProduct = Product & { fileId: number; lineIndex: number };
     LineItemNotesDialog,
   ],
   templateUrl: './classification.html',
-  styleUrl: './classification.scss',
+  styleUrls: ['./classification.scss', './classification-pending.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ClassificationScreen {
@@ -140,6 +148,9 @@ export class ClassificationScreen {
   protected readonly pendingCcfs = signal<DashboardCcfRowDto[]>([]);
   protected readonly pendingLoading = signal(false);
   protected readonly pendingError = signal<string | null>(null);
+  protected readonly pendingRows = computed<PendingCcfRow[]>(() =>
+    this.pendingCcfs().map((ccf) => ({ ...ccf, classifiedPercent: classifiedPercent(ccf) })),
+  );
 
   /** Every note of the picked context's lines, keyed by {@link noteKey}, oldest first. */
   protected readonly notesByLine = signal<ReadonlyMap<string, readonly LineItemNoteDto[]>>(
@@ -189,11 +200,6 @@ export class ClassificationScreen {
   /** "1/4" — classified lines out of the CCF's supplier-invoice lines; "—" before any were filed. */
   protected classificationProgress(ccf: DashboardCcfRowDto): string {
     return ccf.lineCount === 0 ? '—' : `${ccf.classifiedLineCount}/${ccf.lineCount}`;
-  }
-
-  /** Share of the CCF's lines already classified, 0–100, for the list item's progress bar. */
-  protected classificationPercent(ccf: DashboardCcfRowDto): number {
-    return ccf.lineCount === 0 ? 0 : Math.round((ccf.classifiedLineCount / ccf.lineCount) * 100);
   }
 
   /** The notes stored against a row's line; always empty for rows added by hand. */
@@ -400,6 +406,11 @@ export class ClassificationScreen {
         this.form.controls.goodsDescription.setValue(goodsDescriptionOf(products));
       });
   }
+}
+
+/** Share of the CCF's lines already classified, 0–100; 0 before any were filed. */
+function classifiedPercent(ccf: DashboardCcfRowDto): number {
+  return ccf.lineCount === 0 ? 0 : Math.round((ccf.classifiedLineCount / ccf.lineCount) * 100);
 }
 
 function noteKey(fileId: number, lineIndex: number): string {

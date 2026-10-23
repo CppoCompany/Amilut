@@ -1,3 +1,10 @@
 // Component-scoped additions to the shared form styles (see src/styles.scss).
 // The upload/documents-table styling moved to `ImportFilesPanel`, which now
 // owns that UI; this screen is just the picker + panel wiring.
+
+// Projected into the panel's toolbar row, beside "סוג מסמך" — same width rules.
+app-filing-context-picker {
+  display: block;
+  flex: 1 1 260px;
+  max-width: 360px;
+}

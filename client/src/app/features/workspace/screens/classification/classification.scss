@@ -1,19 +1,5 @@
 // Component-scoped additions to the shared form styles (see src/styles.scss).
 
-// The screen takes the right-hand part of the content area; the left-hand
-// column (in RTL, the second one) is deliberately left empty — reserved for a
-// future import-progress list.
-:host {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 16rem;
-  gap: 16px;
-  align-items: start;
-
-  @media (max-width: 1100px) {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
 // Tighter than the shared .form-section / .section-title spacing.
 .classification-section {
   padding: 16px;
@@ -30,181 +16,49 @@
   max-width: none;
 }
 
-// The pending-files list beside the products table, inside the tab. The page
-// is RTL, so the list's column (the second one) renders on the left; it comes
-// first in the DOM so it still stacks above the table on narrow screens.
+// The pending-files table beside the products table (styles in
+// classification-pending.scss). The page is RTL, so the table's column (the
+// second one) renders on the left; it comes first in the DOM so it still
+// stacks above the products on narrow screens.
+// Two rows: the products panel's intro (title, goods description, messages)
+// and its body share them through subgrid, and the pending card sits on the
+// second row only, so both tables start at the same height.
 .products-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 12.5rem;
-  gap: 14px;
+  grid-template-columns: minmax(0, 1fr) 22rem;
+  grid-template-rows: auto auto;
+  gap: 0 16px;
   align-items: start;
 
-  @media (max-width: 1000px) {
+  @media (max-width: 1200px) {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+    gap: 16px;
   }
 }
 
 .products-panel {
+  display: grid;
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  grid-template-rows: subgrid;
   min-width: 0;
 
-  > .section-title {
+  @media (max-width: 1200px) {
+    display: block;
+    grid-column: auto;
+    grid-row: auto;
+  }
+
+  &__intro,
+  &__body {
+    min-width: 0;
+  }
+
+  .section-title {
     margin-bottom: 10px;
     padding-bottom: 6px;
     font-size: 1rem;
-  }
-}
-
-.pending-ccfs {
-  order: 2;
-  position: sticky;
-  top: 0;
-  max-height: calc(100vh - 160px);
-  display: flex;
-  flex-direction: column;
-  padding: 10px;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  background: linear-gradient(180deg, var(--light-blue-bg) 0%, var(--readonly-bg) 70%);
-
-  @media (max-width: 1000px) {
-    order: 0;
-    position: static;
-    max-height: 22rem;
-  }
-
-  &__header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    margin-bottom: 8px;
-    padding: 0 2px 8px;
-    border-bottom: 1px solid var(--border-color);
-  }
-
-  // Overrides the shared .section-title spacing for this compact panel.
-  &__title.section-title {
-    margin: 0;
-    padding: 0;
-    border: 0;
-    font-size: 0.875rem;
-    font-weight: 700;
-    color: var(--primary-blue);
-    line-height: 1.3;
-  }
-
-  &__hint {
-    margin: 4px 2px;
-    color: var(--text-muted);
-    font-size: 0.875rem;
-  }
-
-  &__list {
-    list-style: none;
-    margin: 0;
-    padding: 2px;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  &__item {
-    position: relative;
-    width: 100%;
-    display: grid;
-    grid-template-columns: 1fr auto;
-    align-items: center;
-    gap: 2px 6px;
-    padding: 7px 10px;
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    background: var(--card-bg);
-    color: var(--text-dark);
-    font: inherit;
-    text-align: start;
-    cursor: pointer;
-    box-shadow: var(--shadow-sm);
-    transition: var(--transition);
-
-    // Accent strip on the inline-start edge (the right, in RTL).
-    &::before {
-      content: '';
-      position: absolute;
-      inset-block: 8px;
-      inset-inline-start: 0;
-      width: 3px;
-      border-radius: 0 3px 3px 0;
-      background: transparent;
-      transition: var(--transition);
-    }
-
-    &:hover {
-      border-color: color-mix(in srgb, var(--secondary-blue) 45%, transparent);
-      box-shadow: var(--shadow-md);
-      transform: translateY(-1px);
-    }
-
-    &:focus-visible {
-      outline: 2px solid var(--secondary-blue);
-      outline-offset: 2px;
-    }
-
-    &.active {
-      background: var(--light-blue-bg);
-      border-color: var(--secondary-blue);
-      box-shadow: 0 0 0 1px var(--secondary-blue);
-
-      &::before {
-        background: var(--secondary-blue);
-      }
-
-      .pending-ccfs__number {
-        color: var(--primary-blue);
-      }
-
-      .pending-ccfs__progress {
-        background: var(--secondary-blue);
-        color: #fff;
-      }
-    }
-  }
-
-  &__number {
-    font-weight: 700;
-    font-size: 0.875rem;
-  }
-
-  &__progress {
-    padding: 1px 8px;
-    border-radius: 999px;
-    background: var(--bg-color);
-    color: var(--text-muted);
-    font-size: 0.78rem;
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
-    transition: var(--transition);
-  }
-
-  &__meta {
-    grid-column: 1 / -1;
-    color: var(--text-muted);
-    font-size: 0.78rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    text-align: start;
-  }
-
-  // PrimeNG progress bar, slimmed to a 3px strip under the row.
-  &__bar {
-    grid-column: 1 / -1;
-    display: block;
-    margin-top: 4px;
-
-    ::ng-deep .p-progressbar {
-      height: 3px;
-    }
   }
 }
 
