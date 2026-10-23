@@ -1,6 +1,11 @@
 import { HttpErrorResponse } from '@angular/common/http';
 
-import type { CreateHblDto, HblDto, UpdateHblDto } from '../../../../api/models';
+import type {
+  CreateHblDto,
+  HblDocumentExtractDto,
+  HblDto,
+  UpdateHblDto,
+} from '../../../../api/models';
 
 /** Free-text / numeric fields of the HBL form (always strings; `''` = not filled).
  *  `mblId`/`containerId`/`customerId`/`orderIds` are assembled separately in
@@ -118,6 +123,31 @@ export function hblToFormValue(hbl: HblDto): HblFormValue {
     volumeCbm: hbl.volumeCbm !== null ? String(hbl.volumeCbm) : '',
     remarks: hbl.remarks ?? '',
   };
+}
+
+/** The form fields a House B/L document stated — only those, so a prefill
+ *  never blanks what the document left out. */
+export function hblExtractToFormValue(extract: HblDocumentExtractDto): Partial<HblFormValue> {
+  const value: Partial<HblFormValue> = {};
+  const text = (key: keyof HblFormValue, source: string | null) => {
+    if (source !== null && source.trim() !== '') value[key] = source;
+  };
+  const number = (key: keyof HblFormValue, source: number | null) => {
+    if (source !== null) value[key] = String(source);
+  };
+  text('hblNumber', extract.hblNumber);
+  text('shipperName', extract.shipperName);
+  text('shipperAddress', extract.shipperAddress);
+  text('consigneeName', extract.consigneeName);
+  text('consigneeAddress', extract.consigneeAddress);
+  text('notifyPartyName', extract.notifyPartyName);
+  text('notifyPartyAddress', extract.notifyPartyAddress);
+  text('cargoDescription', extract.cargoDescription);
+  text('quantity', extract.quantity);
+  number('grossWeightKg', extract.grossWeightKg);
+  number('volumeCbm', extract.volumeCbm);
+  text('remarks', extract.remarks);
+  return value;
 }
 
 const SAVE_FAILED = 'שמירת ה-HBL נכשלה';

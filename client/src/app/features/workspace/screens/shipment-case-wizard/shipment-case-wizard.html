@@ -1,5 +1,7 @@
 <div class="wizard-header-row">
-  <div class="page-title">{{ isEditingExisting() ? 'עדכון תיק שילוח' : 'יצירת תיק שילוח חדש' }}</div>
+  <div class="page-title">
+    {{ isEditingExisting() ? 'עדכון תיק שילוח' : 'יצירת תיק שילוח חדש' }}
+  </div>
   @if (savedMbl()?.ccfId; as ccfId) {
     <p-button
       label="מעבר לתיק הסליקה"
@@ -19,497 +21,231 @@
   </section>
 } @else if (loadCaseError(); as message) {
   <section class="form-section">
-    <p-message severity="error" styleClass="form-message form-message--error" role="alert">{{ message }}</p-message>
+    <p-message severity="error" styleClass="form-message form-message--error" role="alert">{{
+      message
+    }}</p-message>
   </section>
 } @else {
-<div class="wizard-layout">
-  <div class="wizard-main">
-    @if (currentStep() === 'type') {
-      <!-- Step 1. Live while no Job is saved; once one exists it's shown
+  <div class="wizard-layout">
+    <div class="wizard-main">
+      @if (currentStep() === 'type') {
+        <!-- Step 1. Live while no Job is saved; once one exists it's shown
            read-only (the chosen card highlighted, every card disabled). -->
-      <section class="form-section">
-        <h2 class="section-title">שלב 1 — בחירת סוג משלוח</h2>
-        @if (choicesLocked()) {
-          <p class="hint-text method-locked-hint">סוג המשלוח נקבע בעת יצירת ה-Job ואינו ניתן לשינוי.</p>
-        }
-        <div class="method-cards">
-          <button
-            type="button"
-            class="method-card"
-            [class.method-card--selected]="shippingType() === MblShippingType.SEA"
-            [disabled]="choicesLocked()"
-            (click)="selectShippingType(MblShippingType.SEA)"
-          >
-            <i class="fa-solid fa-ship" aria-hidden="true"></i>
-            <span class="method-card__label">{{ SHIPPING_TYPE_LABELS[MblShippingType.SEA] }}</span>
-          </button>
-          <button
-            type="button"
-            class="method-card"
-            [class.method-card--selected]="shippingType() === MblShippingType.AIR"
-            [disabled]="choicesLocked()"
-            (click)="selectShippingType(MblShippingType.AIR)"
-          >
-            <i class="fa-solid fa-plane" aria-hidden="true"></i>
-            <span class="method-card__label">{{ SHIPPING_TYPE_LABELS[MblShippingType.AIR] }}</span>
-          </button>
-        </div>
-      </section>
-    } @else if (currentStep() === 'method') {
-      <!-- Step 2 (sea only) — same live/locked split as step 1. -->
-      <section class="form-section">
-        <h2 class="section-title">שלב 2 — בחירת שיטת שילוח ימי</h2>
-        @if (choicesLocked()) {
-          <p class="hint-text method-locked-hint">שיטת השילוח נקבעה בעת יצירת ה-Job ואינה ניתנת לשינוי.</p>
-        }
-        <div class="method-cards">
-          @for (seaMethodOption of seaMethods; track seaMethodOption) {
+        <section class="form-section">
+          <h2 class="section-title">שלב 1 — בחירת סוג משלוח</h2>
+          @if (choicesLocked()) {
+            <p class="hint-text method-locked-hint">
+              סוג המשלוח נקבע בעת יצירת ה-File הראשון ואינו ניתן לשינוי.
+            </p>
+          }
+          <div class="method-cards">
             <button
               type="button"
               class="method-card"
-              [class.method-card--selected]="seaMethod() === seaMethodOption"
+              [class.method-card--selected]="shippingType() === MblShippingType.SEA"
               [disabled]="choicesLocked()"
-              (click)="selectSeaMethod(seaMethodOption)"
+              (click)="selectShippingType(MblShippingType.SEA)"
             >
-              <span class="method-card__label">{{ SEA_METHOD_LABELS[seaMethodOption] }}</span>
-              <span class="method-card__description">{{ SEA_METHOD_DESCRIPTIONS[seaMethodOption] }}</span>
+              <i class="fa-solid fa-ship" aria-hidden="true"></i>
+              <span class="method-card__label">{{
+                SHIPPING_TYPE_LABELS[MblShippingType.SEA]
+              }}</span>
             </button>
+            <button
+              type="button"
+              class="method-card"
+              [class.method-card--selected]="shippingType() === MblShippingType.AIR"
+              [disabled]="choicesLocked()"
+              (click)="selectShippingType(MblShippingType.AIR)"
+            >
+              <i class="fa-solid fa-plane" aria-hidden="true"></i>
+              <span class="method-card__label">{{
+                SHIPPING_TYPE_LABELS[MblShippingType.AIR]
+              }}</span>
+            </button>
+          </div>
+        </section>
+      } @else if (currentStep() === 'method') {
+        <!-- Step 2 (sea only) — same live/locked split as step 1. -->
+        <section class="form-section">
+          <h2 class="section-title">שלב 2 — בחירת שיטת שילוח ימי</h2>
+          @if (choicesLocked()) {
+            <p class="hint-text method-locked-hint">
+              שיטת השילוח נקבעה בעת יצירת ה-File הראשון ואינה ניתנת לשינוי.
+            </p>
           }
-        </div>
-      </section>
-    } @else if (shippingType() === MblShippingType.AIR) {
-      <section class="form-section">
-        <h2 class="section-title">משלוח אווירי</h2>
-        <p class="hint-text">תהליך יצירת תיק למשלוח אווירי ייבנה בשלב מאוחר יותר.</p>
-      </section>
-    } @else if (seaMethod(); as method) {
-      <section class="form-section">
-        <h2 class="section-title">
-          {{ SEA_METHOD_LABELS[method] }} —
-          {{ !savedMbl() || editingMbl() ? 'טופס Job' : editingHblId() !== null ? 'עריכת File' : 'יצירת Files' }}
-        </h2>
-
-        @if (!savedMbl() || editingMbl()) {
-          <!-- ── MBL step (creation, or editing an already-saved MBL) ───────── -->
-          <form class="mbl-form" [formGroup]="mblForm" (ngSubmit)="onSaveMbl()" novalidate>
-            @if (needsCustomer()) {
-              <h3 class="subsection-title">לקוח</h3>
-              <div class="grid-row">
-                @if (editingMbl()) {
-                  <div class="form-group">
-                    <label>לקוח (משותף לכל ה-Files — לא ניתן לשינוי)</label>
-                    <input type="text" pInputText [value]="savedMbl()?.customerName ?? '—'" readonly />
-                  </div>
-                } @else {
-                  <div class="form-group">
-                    <label for="mblCustomer">לקוח (משותף לכל ה-Files ב-Job זה)</label>
-                    <app-customer-autocomplete
-                      inputId="mblCustomer"
-                      placeholder="הקלד שם לקוח..."
-                      [(customer)]="mblCustomer"
-                    />
-                  </div>
-                }
-              </div>
+          <div class="method-cards">
+            @for (seaMethodOption of seaMethods; track seaMethodOption) {
+              <button
+                type="button"
+                class="method-card"
+                [class.method-card--selected]="seaMethod() === seaMethodOption"
+                [disabled]="choicesLocked()"
+                (click)="selectSeaMethod(seaMethodOption)"
+              >
+                <span class="method-card__label">{{ SEA_METHOD_LABELS[seaMethodOption] }}</span>
+                <span class="method-card__description">{{
+                  SEA_METHOD_DESCRIPTIONS[seaMethodOption]
+                }}</span>
+              </button>
             }
+          </div>
+        </section>
+      } @else if (shippingType() === MblShippingType.AIR) {
+        <section class="form-section">
+          <h2 class="section-title">משלוח אווירי</h2>
+          <p class="hint-text">תהליך יצירת תיק למשלוח אווירי ייבנה בשלב מאוחר יותר.</p>
+        </section>
+      } @else if (seaMethod(); as method) {
+        <section class="form-section">
+          <h2 class="section-title">
+            {{ SEA_METHOD_LABELS[method] }} —
+            {{
+              currentStep() === 'job'
+                ? 'טופס Job'
+                : editingHblId() !== null
+                  ? 'עריכת File'
+                  : 'יצירת Files'
+            }}
+          </h2>
 
-            <h3 class="subsection-title">זיהוי מסמך ראשי</h3>
-            <div class="grid-row">
-              <div class="form-group">
-                <label for="mblNumber">מספר MBL</label>
-                <input id="mblNumber" type="text" pInputText formControlName="mblNumber" />
-              </div>
-              <div class="form-group">
-                <label for="bookingNumber">מספר הזמנת מקום (Booking No.)</label>
-                <input id="bookingNumber" type="text" pInputText formControlName="bookingNumber" />
-              </div>
-              <div class="form-group">
-                <label for="carrierName">שם הספן (Carrier)</label>
-                <input id="carrierName" type="text" pInputText formControlName="carrierName" />
-              </div>
-              <div class="form-group">
-                <label for="mblStatus">סטטוס התיק</label>
-                <p-select
-                  inputId="mblStatus"
-                  [options]="mblStatusSelectOptions"
-                  optionLabel="label"
-                  optionValue="value"
-                  [ngModel]="mblStatus()"
-                  [ngModelOptions]="{ standalone: true }"
-                  (ngModelChange)="onMblStatusChange($event)"
-                  appendTo="body"
-                />
-              </div>
-            </div>
-
-            <h3 class="subsection-title">אונייה ומסלול</h3>
-            <div class="grid-row">
-              <div class="form-group">
-                <label for="vesselName">שם האונייה</label>
-                <input id="vesselName" type="text" pInputText formControlName="vesselName" />
-              </div>
-              <div class="form-group">
-                <label for="voyageNumber">מספר Voyage</label>
-                <input id="voyageNumber" type="text" pInputText formControlName="voyageNumber" />
-              </div>
-            </div>
-            <div class="grid-row">
-              <div class="form-group">
-                <label for="portOfLoading">Port of Loading (POL)</label>
-                <input id="portOfLoading" type="text" pInputText formControlName="portOfLoading" />
-              </div>
-              <div class="form-group">
-                <label for="portOfDischarge">Port of Discharge (POD)</label>
-                <input id="portOfDischarge" type="text" pInputText formControlName="portOfDischarge" />
-              </div>
-              <div class="form-group">
-                <label for="finalDestination">יעד סופי</label>
-                <input id="finalDestination" type="text" pInputText formControlName="finalDestination" />
-              </div>
-            </div>
-
-            <h3 class="subsection-title">שוגר - Shipper (המקונסל)</h3>
-            <div class="grid-row">
-              <div class="form-group">
-                <label for="shipperName">שם השוגר</label>
-                <input id="shipperName" type="text" pInputText formControlName="shipperName" />
-              </div>
-              <div class="form-group">
-                <label for="shipperAddress">כתובת מלאה</label>
-                <input id="shipperAddress" type="text" pInputText formControlName="shipperAddress" />
-              </div>
-            </div>
-
-            <h3 class="subsection-title">נמען - Consignee</h3>
-            <div class="grid-row">
-              <div class="form-group">
-                <label for="consigneeName">שם הנמען</label>
-                <input id="consigneeName" type="text" pInputText formControlName="consigneeName" />
-              </div>
-              <div class="form-group">
-                <label for="consigneeAddress">כתובת מלאה</label>
-                <input id="consigneeAddress" type="text" pInputText formControlName="consigneeAddress" />
-              </div>
-            </div>
-
-            <h3 class="subsection-title">Notify Party</h3>
-            <div class="grid-row">
-              <div class="form-group">
-                <label for="notifyPartyName">שם</label>
-                <input id="notifyPartyName" type="text" pInputText formControlName="notifyPartyName" />
-              </div>
-              <div class="form-group">
-                <label for="notifyPartyAddress">כתובת מלאה</label>
-                <input
-                  id="notifyPartyAddress"
-                  type="text" pInputText
-                  formControlName="notifyPartyAddress"
-                />
-              </div>
-            </div>
-
-            <h3 class="subsection-title">מכולות</h3>
-            @if (isGroupage()) {
-              <div class="data-table-wrapper" formArrayName="containers">
-                <p-table [value]="containerControls()" size="small" styleClass="containers-table">
-                  <ng-template #header>
-                    <tr>
-                      <th>מספר מכולה</th>
-                      <th>מספר מוליך (Seal)</th>
-                      <th>תיאור מטען</th>
-                      <th>משקל ברוטו (KG)</th>
-                      <th>נפח (CBM)</th>
-                      <th><span class="sr-only">פעולות</span></th>
-                    </tr>
-                  </ng-template>
-                  <ng-template #body let-container let-i="rowIndex" [rowOf]="containerControls()">
-                    <tr [formGroupName]="i">
-                      <td><input type="text" pInputText pSize="small" formControlName="containerNumber" /></td>
-                      <td><input type="text" pInputText pSize="small" formControlName="containerSealNumber" /></td>
-                      <td><input type="text" pInputText pSize="small" formControlName="cargoDescription" /></td>
-                      <td>
-                        <input type="text" inputmode="decimal" pInputText pSize="small" formControlName="grossWeightKg" />
-                      </td>
-                      <td>
-                        <input type="text" inputmode="decimal" pInputText pSize="small" formControlName="volumeCbm" />
-                      </td>
-                      <td class="data-table__actions">
-                        <p-button
-                          icon="fa-solid fa-trash"
-                          severity="danger"
-                          [text]="true"
-                          [rounded]="true"
-                          size="small"
-                          ariaLabel="הסר מכולה"
-                          [disabled]="containerControls().length <= 1"
-                          (onClick)="removeContainer(i)"
-                        />
-                      </td>
-                    </tr>
-                  </ng-template>
-                </p-table>
-              </div>
-              <div class="form-actions">
-                <p-button
-                  label="הוסף מכולה"
-                  icon="fa-solid fa-plus"
-                  severity="secondary"
-                  [outlined]="true"
-                  (onClick)="addContainer()"
-                />
-              </div>
-            } @else {
-              <div class="grid-row">
-                <div class="form-group">
-                  <label for="containerNumber">מספר מכולה</label>
-                  <input id="containerNumber" type="text" pInputText formControlName="containerNumber" />
-                </div>
-                <div class="form-group">
-                  <label for="containerSealNumber">מספר מוליך (Seal)</label>
-                  <input
-                    id="containerSealNumber"
-                    type="text" pInputText
-                    formControlName="containerSealNumber"
-                  />
-                </div>
-              </div>
-              <div class="grid-row">
-                <div class="form-group" style="grid-column: span 2">
-                  <label for="cargoDescription">תיאור המטען</label>
-                  <input id="cargoDescription" type="text" pInputText formControlName="cargoDescription" />
-                </div>
-                <div class="form-group">
-                  <label for="grossWeightKg">משקל ברוטו (KG)</label>
-                  <input
-                    id="grossWeightKg"
-                    type="text"
-                    inputmode="decimal" pInputText
-                    formControlName="grossWeightKg"
-                  />
-                </div>
-                <div class="form-group">
-                  <label for="volumeCbm">נפח (CBM)</label>
-                  <input
-                    id="volumeCbm"
-                    type="text"
-                    inputmode="decimal" pInputText
-                    formControlName="volumeCbm"
-                  />
-                </div>
-              </div>
+          @if (currentStep() === 'job') {
+            <!-- ── Job (MBL) step: review/edit the Job created with the first File. ── -->
+            @if (!jobConfirmed()) {
+              <p-message
+                severity="info"
+                icon="fa-solid fa-circle-info"
+                styleClass="form-message"
+                role="note"
+              >
+                ה-Job נוצר יחד עם ה-File הראשון. בדקו את הפרטים שמולאו מתוך המסמכים והשלימו את החסר.
+              </p-message>
             }
-
-            <h3 class="subsection-title">תנאי הובלה</h3>
-            <div class="grid-row">
-              <div class="form-group">
-                <label>Freight Terms</label>
-                <p-selectbutton
-                  [options]="paymentTermsSelectOptions"
-                  optionLabel="label"
-                  optionValue="value"
-                  [allowEmpty]="false"
-                  [ngModel]="freightTerms()"
-                  [ngModelOptions]="{ standalone: true }"
-                  (ngModelChange)="freightTerms.set($event)"
-                  class="choice-group"
-                />
-              </div>
-              <div class="form-group">
-                <label for="receiptDeliveryType">Receipt/Delivery (CY/CFS)</label>
-                <input
-                  id="receiptDeliveryType"
-                  type="text" pInputText
-                  formControlName="receiptDeliveryType"
-                />
-              </div>
-            </div>
-
-            <h3 class="subsection-title">הנפקה</h3>
-            <div class="grid-row">
-              <div class="form-group">
-                <label for="placeOfIssue">מקום ההנפקה</label>
-                <input id="placeOfIssue" type="text" pInputText formControlName="placeOfIssue" />
-              </div>
-              <div class="form-group">
-                <label for="dateOfIssue">תאריך ההנפקה</label>
-                <p-datepicker
-  inputId="dateOfIssue"
-  formControlName="dateOfIssue"
-  dataType="string"
-  dateFormat="yy-mm-dd"
-  [showIcon]="true"
-  [showButtonBar]="true"
-  appendTo="body"
-/>
-              </div>
-            </div>
-
-            @if (saveError(); as message) {
-              <p-message severity="error" styleClass="form-message form-message--error" role="alert">{{ message }}</p-message>
-            }
-
-            <div class="form-actions">
-              @if (editingMbl()) {
-                <p-button
-                  label="ביטול"
-                  severity="secondary"
-                  [outlined]="true"
-                  (onClick)="cancelEditMbl()"
-                />
-              }
-              <p-button
-                type="submit"
-                [label]="saving() ? 'שומר...' : editingMbl() ? 'עדכן Job' : 'שמור Job'"
-                [loading]="saving()"
-                [disabled]="saving()"
-              />
-            </div>
-          </form>
-        } @else if (savedMbl(); as mbl) {
-          <!-- ── Files (HBL) step. Editing the Job itself is reached via the
-               "Job" link in "התקדמות התיק" / the sidebar's Job node, not from
-               here. While a File is being edited the form below is the whole
-               page: the list and the "+ הוספת File" button come back on
-               save/cancel. ── -->
-          @if (hbls().length && editingHblId() === null) {
-            <h3 class="subsection-title">Files שנוצרו</h3>
-            <div class="data-table-wrapper">
-              <p-table [value]="hbls()" dataKey="id" size="small" styleClass="hbl-table">
-                <ng-template #header>
-                  <tr>
-                    <th>#</th>
-                    <th>מספר IBL</th>
-                    <th>מספר HBL</th>
-                    <th>לקוח</th>
-                    @if (isGroupage()) {
-                      <th>מכולה</th>
-                    }
-                    <th>הזמנות משויכות</th>
-                    <th><span class="sr-only">פעולות</span></th>
-                  </tr>
-                </ng-template>
-                <ng-template #body let-hbl [rowOf]="hbls()">
-                  <tr [class.data-table__row--selected]="editingHblId() === hbl.id">
-                    <td class="data-table__numeric">{{ hbl.sequenceNumber }}</td>
-                    <td>{{ hbl.iblNumber ?? '—' }}</td>
-                    <td>{{ hbl.hblNumber ?? '—' }}</td>
-                    <td>{{ hbl.customerName ?? '—' }}</td>
-                    @if (isGroupage()) {
-                      <td>{{ containerLabel(hbl.containerId) }}</td>
-                    }
-                    <td class="data-table__numeric">{{ hbl.orders.length }}</td>
-                    <td class="data-table__actions">
-                      <p-button
-                        label="ערוך"
-                        icon="fa-solid fa-pen"
-                        severity="secondary"
-                        [text]="true"
-                        size="small"
-                        styleClass="hbl-edit-btn"
-                        (onClick)="startEditHbl(hbl)"
-                      />
-                    </td>
-                  </tr>
-                </ng-template>
-              </p-table>
-            </div>
-          }
-
-          @if (showHblForm()) {
-            @if (editingHbl(); as hbl) {
-              <p class="hbl-edit-subtitle">
-                <i class="fa-solid fa-pen" aria-hidden="true"></i>
-                {{ hblLabel(hbl) }}
-              </p>
-            }
-            <form class="hbl-form" [formGroup]="hblForm" (ngSubmit)="onSaveHbl()" novalidate>
-              @if (editingHblId() !== null) {
+            <form class="mbl-form" [formGroup]="mblForm" (ngSubmit)="onSaveMbl()" novalidate>
+              @if (sharesCustomer()) {
+                <h3 class="subsection-title">לקוח</h3>
                 <div class="grid-row">
                   <div class="form-group">
-                    <label>לקוח (לא ניתן לשינוי)</label>
-                    <input type="text" pInputText [value]="editingHbl()?.customerName ?? '—'" readonly />
+                    <label>לקוח (משותף לכל ה-Files — נקבע ב-File הראשון)</label>
+                    <input
+                      type="text"
+                      pInputText
+                      [value]="savedMbl()?.customerName ?? '—'"
+                      readonly
+                    />
                   </div>
-                  @if (isGroupage()) {
-                    <div class="form-group">
-                      <label>מכולה (לא ניתן לשינוי)</label>
-                      <input
-                        type="text" pInputText
-                        [value]="containerLabel(editingHbl()?.containerId ?? null)"
-                        readonly
-                      />
-                    </div>
-                  }
                 </div>
-              } @else {
-                @if (isGroupage()) {
-                  <div class="grid-row">
-                    <div class="form-group" style="grid-column: span 2">
-                      <label>מכולה</label>
-                      <p-selectbutton
-                        [options]="hblContainerOptions()"
-                        optionLabel="label"
-                        optionValue="value"
-                        [allowEmpty]="false"
-                        [ngModel]="hblContainerId()"
-                        [ngModelOptions]="{ standalone: true }"
-                        (ngModelChange)="selectHblContainer($event)"
-                        class="choice-group"
-                      />
-                    </div>
-                  </div>
-                }
-
-                @if (needsHblCustomerPicker()) {
-                  <div class="grid-row">
-                    <div class="form-group">
-                      <label for="hblCustomer">לקוח</label>
-                      <app-customer-autocomplete
-                        inputId="hblCustomer"
-                        placeholder="הקלד שם לקוח..."
-                        [(customer)]="hblCustomer"
-                      />
-                    </div>
-                  </div>
-                } @else {
-                  <div class="grid-row">
-                    <div class="form-group">
-                      <label>לקוח (משותף מה-Job)</label>
-                      <input type="text" pInputText [value]="mbl.customerName ?? '—'" readonly />
-                    </div>
-                  </div>
-                }
               }
 
+              <h3 class="subsection-title">זיהוי מסמך ראשי</h3>
               <div class="grid-row">
                 <div class="form-group">
-                  <label for="hblNumber">מספר HBL</label>
-                  <input id="hblNumber" type="text" pInputText formControlName="hblNumber" />
+                  <label for="mblNumber">מספר MBL</label>
+                  <input id="mblNumber" type="text" pInputText formControlName="mblNumber" />
+                </div>
+                <div class="form-group">
+                  <label for="bookingNumber">מספר הזמנת מקום (Booking No.)</label>
+                  <input
+                    id="bookingNumber"
+                    type="text"
+                    pInputText
+                    formControlName="bookingNumber"
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="carrierName">שם הספן (Carrier)</label>
+                  <input id="carrierName" type="text" pInputText formControlName="carrierName" />
+                </div>
+                <div class="form-group">
+                  <label for="mblStatus">סטטוס התיק</label>
+                  <p-select
+                    inputId="mblStatus"
+                    [options]="mblStatusSelectOptions"
+                    optionLabel="label"
+                    optionValue="value"
+                    [ngModel]="mblStatus()"
+                    [ngModelOptions]="{ standalone: true }"
+                    (ngModelChange)="onMblStatusChange($event)"
+                    appendTo="body"
+                  />
                 </div>
               </div>
 
-              <h3 class="subsection-title">שוגר - Shipper</h3>
+              <h3 class="subsection-title">אונייה ומסלול</h3>
               <div class="grid-row">
                 <div class="form-group">
-                  <label for="hblShipperName">שם השוגר</label>
-                  <input id="hblShipperName" type="text" pInputText formControlName="shipperName" />
+                  <label for="vesselName">שם האונייה</label>
+                  <input id="vesselName" type="text" pInputText formControlName="vesselName" />
                 </div>
                 <div class="form-group">
-                  <label for="hblShipperAddress">כתובת מלאה</label>
-                  <input id="hblShipperAddress" type="text" pInputText formControlName="shipperAddress" />
+                  <label for="voyageNumber">מספר Voyage</label>
+                  <input id="voyageNumber" type="text" pInputText formControlName="voyageNumber" />
+                </div>
+              </div>
+              <div class="grid-row">
+                <div class="form-group">
+                  <label for="portOfLoading">Port of Loading (POL)</label>
+                  <input
+                    id="portOfLoading"
+                    type="text"
+                    pInputText
+                    formControlName="portOfLoading"
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="portOfDischarge">Port of Discharge (POD)</label>
+                  <input
+                    id="portOfDischarge"
+                    type="text"
+                    pInputText
+                    formControlName="portOfDischarge"
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="finalDestination">יעד סופי</label>
+                  <input
+                    id="finalDestination"
+                    type="text"
+                    pInputText
+                    formControlName="finalDestination"
+                  />
+                </div>
+              </div>
+
+              <h3 class="subsection-title">שוגר - Shipper (המקונסל)</h3>
+              <div class="grid-row">
+                <div class="form-group">
+                  <label for="shipperName">שם השוגר</label>
+                  <input id="shipperName" type="text" pInputText formControlName="shipperName" />
+                </div>
+                <div class="form-group">
+                  <label for="shipperAddress">כתובת מלאה</label>
+                  <input
+                    id="shipperAddress"
+                    type="text"
+                    pInputText
+                    formControlName="shipperAddress"
+                  />
                 </div>
               </div>
 
               <h3 class="subsection-title">נמען - Consignee</h3>
               <div class="grid-row">
                 <div class="form-group">
-                  <label for="hblConsigneeName">שם הנמען</label>
-                  <input id="hblConsigneeName" type="text" pInputText formControlName="consigneeName" />
+                  <label for="consigneeName">שם הנמען</label>
+                  <input
+                    id="consigneeName"
+                    type="text"
+                    pInputText
+                    formControlName="consigneeName"
+                  />
                 </div>
                 <div class="form-group">
-                  <label for="hblConsigneeAddress">כתובת מלאה</label>
+                  <label for="consigneeAddress">כתובת מלאה</label>
                   <input
-                    id="hblConsigneeAddress"
-                    type="text" pInputText
+                    id="consigneeAddress"
+                    type="text"
+                    pInputText
                     formControlName="consigneeAddress"
                   />
                 </div>
@@ -518,94 +254,215 @@
               <h3 class="subsection-title">Notify Party</h3>
               <div class="grid-row">
                 <div class="form-group">
-                  <label for="hblNotifyPartyName">שם</label>
+                  <label for="notifyPartyName">שם</label>
                   <input
-                    id="hblNotifyPartyName"
-                    type="text" pInputText
+                    id="notifyPartyName"
+                    type="text"
+                    pInputText
                     formControlName="notifyPartyName"
                   />
                 </div>
                 <div class="form-group">
-                  <label for="hblNotifyPartyAddress">כתובת מלאה</label>
+                  <label for="notifyPartyAddress">כתובת מלאה</label>
                   <input
-                    id="hblNotifyPartyAddress"
-                    type="text" pInputText
+                    id="notifyPartyAddress"
+                    type="text"
+                    pInputText
                     formControlName="notifyPartyAddress"
                   />
                 </div>
               </div>
 
-              <h3 class="subsection-title">מטען</h3>
-              <div class="grid-row">
-                <div class="form-group" style="grid-column: span 2">
-                  <label for="hblCargoDescription">תיאור המטען</label>
-                  <input
-                    id="hblCargoDescription"
-                    type="text" pInputText
-                    formControlName="cargoDescription"
+              <h3 class="subsection-title">מכולות</h3>
+              @if (isGroupage()) {
+                <div class="data-table-wrapper" formArrayName="containers">
+                  <p-table [value]="containerControls()" size="small" styleClass="containers-table">
+                    <ng-template #header>
+                      <tr>
+                        <th>מספר מכולה</th>
+                        <th>מספר מוליך (Seal)</th>
+                        <th>תיאור מטען</th>
+                        <th>משקל ברוטו (KG)</th>
+                        <th>נפח (CBM)</th>
+                        <th><span class="sr-only">פעולות</span></th>
+                      </tr>
+                    </ng-template>
+                    <ng-template #body let-container let-i="rowIndex" [rowOf]="containerControls()">
+                      <tr [formGroupName]="i">
+                        <td>
+                          <input
+                            type="text"
+                            pInputText
+                            pSize="small"
+                            formControlName="containerNumber"
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            pInputText
+                            pSize="small"
+                            formControlName="containerSealNumber"
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            pInputText
+                            pSize="small"
+                            formControlName="cargoDescription"
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            inputmode="decimal"
+                            pInputText
+                            pSize="small"
+                            formControlName="grossWeightKg"
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            inputmode="decimal"
+                            pInputText
+                            pSize="small"
+                            formControlName="volumeCbm"
+                          />
+                        </td>
+                        <td class="data-table__actions">
+                          <p-button
+                            icon="fa-solid fa-trash"
+                            severity="danger"
+                            [text]="true"
+                            [rounded]="true"
+                            size="small"
+                            ariaLabel="הסר מכולה"
+                            [disabled]="containerControls().length <= 1"
+                            (onClick)="removeContainer(i)"
+                          />
+                        </td>
+                      </tr>
+                    </ng-template>
+                  </p-table>
+                </div>
+                <div class="form-actions">
+                  <p-button
+                    label="הוסף מכולה"
+                    icon="fa-solid fa-plus"
+                    severity="secondary"
+                    [outlined]="true"
+                    (onClick)="addContainer()"
                   />
                 </div>
-                <div class="form-group">
-                  <label for="hblQuantity">כמות</label>
-                  <input id="hblQuantity" type="text" pInputText formControlName="quantity" />
-                </div>
-              </div>
-              <div class="grid-row">
-                <div class="form-group">
-                  <label for="hblGrossWeightKg">משקל ברוטו (KG)</label>
-                  <input
-                    id="hblGrossWeightKg"
-                    type="text"
-                    inputmode="decimal" pInputText
-                    formControlName="grossWeightKg"
-                  />
-                </div>
-                <div class="form-group">
-                  <label for="hblVolumeCbm">נפח (CBM)</label>
-                  <input
-                    id="hblVolumeCbm"
-                    type="text"
-                    inputmode="decimal" pInputText
-                    formControlName="volumeCbm"
-                  />
-                </div>
-              </div>
-
-              <h3 class="subsection-title">הערות</h3>
-              <div class="grid-row">
-                <div class="form-group" style="grid-column: span 2">
-                  <label for="hblRemarks">הערות</label>
-                  <input id="hblRemarks" type="text" pInputText formControlName="remarks" />
-                </div>
-              </div>
-
-              <h3 class="subsection-title">שיוך הזמנות (אופציונלי)</h3>
-              <div class="orders-assoc">
-                @if (hblSelectedOrderChips().length) {
-                  <div class="chip-list">
-                    @for (chip of hblSelectedOrderChips(); track chip.id) {
-                      <p-chip [label]="chip.text" />
-                    }
+              } @else {
+                <div class="grid-row">
+                  <div class="form-group">
+                    <label for="containerNumber">מספר מכולה</label>
+                    <input
+                      id="containerNumber"
+                      type="text"
+                      pInputText
+                      formControlName="containerNumber"
+                    />
                   </div>
-                } @else {
-                  <span class="chip-list--empty">לא שויכו הזמנות</span>
-                }
-                <p-button
-                  label="לשיוך להזמנה"
-                  icon="fa-solid fa-link"
-                  severity="secondary"
-                  [text]="true"
-                  size="small"
-                  styleClass="orders-assoc__link"
-                  [loading]="hblSelectedOrdersLoading()"
-                  [disabled]="hblSelectedOrdersLoading()"
-                  (onClick)="openOrdersPicker()"
-                />
-              </div>
-              <p class="hint-text selection-count">{{ hblSelectedOrderIds().size }} הזמנות נבחרו</p>
+                  <div class="form-group">
+                    <label for="containerSealNumber">מספר מוליך (Seal)</label>
+                    <input
+                      id="containerSealNumber"
+                      type="text"
+                      pInputText
+                      formControlName="containerSealNumber"
+                    />
+                  </div>
+                </div>
+                <div class="grid-row">
+                  <div class="form-group" style="grid-column: span 2">
+                    <label for="cargoDescription">תיאור המטען</label>
+                    <input
+                      id="cargoDescription"
+                      type="text"
+                      pInputText
+                      formControlName="cargoDescription"
+                    />
+                  </div>
+                  <div class="form-group">
+                    <label for="grossWeightKg">משקל ברוטו (KG)</label>
+                    <input
+                      id="grossWeightKg"
+                      type="text"
+                      inputmode="decimal"
+                      pInputText
+                      formControlName="grossWeightKg"
+                    />
+                  </div>
+                  <div class="form-group">
+                    <label for="volumeCbm">נפח (CBM)</label>
+                    <input
+                      id="volumeCbm"
+                      type="text"
+                      inputmode="decimal"
+                      pInputText
+                      formControlName="volumeCbm"
+                    />
+                  </div>
+                </div>
+              }
 
-              @if (hblSaveError(); as message) {
-                <p-message severity="error" styleClass="form-message form-message--error" role="alert">{{ message }}</p-message>
+              <h3 class="subsection-title">תנאי הובלה</h3>
+              <div class="grid-row">
+                <div class="form-group">
+                  <label>Freight Terms</label>
+                  <p-selectbutton
+                    [options]="paymentTermsSelectOptions"
+                    optionLabel="label"
+                    optionValue="value"
+                    [allowEmpty]="false"
+                    [ngModel]="freightTerms()"
+                    [ngModelOptions]="{ standalone: true }"
+                    (ngModelChange)="freightTerms.set($event)"
+                    class="choice-group"
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="receiptDeliveryType">Receipt/Delivery (CY/CFS)</label>
+                  <input
+                    id="receiptDeliveryType"
+                    type="text"
+                    pInputText
+                    formControlName="receiptDeliveryType"
+                  />
+                </div>
+              </div>
+
+              <h3 class="subsection-title">הנפקה</h3>
+              <div class="grid-row">
+                <div class="form-group">
+                  <label for="placeOfIssue">מקום ההנפקה</label>
+                  <input id="placeOfIssue" type="text" pInputText formControlName="placeOfIssue" />
+                </div>
+                <div class="form-group">
+                  <label for="dateOfIssue">תאריך ההנפקה</label>
+                  <p-datepicker
+                    inputId="dateOfIssue"
+                    formControlName="dateOfIssue"
+                    dataType="string"
+                    dateFormat="yy-mm-dd"
+                    [showIcon]="true"
+                    [showButtonBar]="true"
+                    appendTo="body"
+                  />
+                </div>
+              </div>
+
+              @if (saveError(); as message) {
+                <p-message
+                  severity="error"
+                  styleClass="form-message form-message--error"
+                  role="alert"
+                  >{{ message }}</p-message
+                >
               }
 
               <div class="form-actions">
@@ -613,131 +470,524 @@
                   label="ביטול"
                   severity="secondary"
                   [outlined]="true"
-                  styleClass="hbl-cancel"
-                  (onClick)="closeHblForm()"
+                  (onClick)="cancelEditMbl()"
                 />
                 <p-button
                   type="submit"
-                  [label]="savingHbl() ? 'שומר...' : editingHblId() !== null ? 'עדכן File' : 'שמור File'"
-                  [loading]="savingHbl()"
-                  [disabled]="savingHbl()"
+                  [label]="saving() ? 'שומר...' : jobConfirmed() ? 'עדכן Job' : 'שמור Job'"
+                  [loading]="saving()"
+                  [disabled]="saving()"
                 />
               </div>
             </form>
-
-            @if (showOrdersPicker()) {
-              <app-hbl-orders-picker-dialog
-                [initialSelection]="hblSelectedOrders()"
-                (confirmed)="onOrdersPicked($event)"
-                (cancelled)="closeOrdersPicker()"
-              />
-            }
-          } @else if (canAddAnotherHbl()) {
-            <div class="form-actions">
-              <p-button
-                [label]="hbls().length ? 'הוספת File נוסף' : 'יצירת File'"
-                icon="fa-solid fa-plus"
-                styleClass="add-hbl-btn"
-                (onClick)="openNewHblForm()"
-              />
-            </div>
           } @else {
-            <p class="hint-text">ה-File היחיד עבור FCL/FCL כבר נוצר.</p>
-          }
-        }
-      </section>
-    }
-  </div>
+            <!-- ── Files (HBL) step — the first station after the method. The
+               new-File form opens by itself for the first File; afterwards
+               "+ הוספת File נוסף" opens it. While a File is being edited the
+               form below is the whole page: the list and the add button come
+               back on save/cancel. The Job is reached via the "Job" link in
+               "התקדמות התיק" (or the button next to the add button). ── -->
+            @if (hbls().length && editingHblId() === null) {
+              <h3 class="subsection-title">Files שנוצרו</h3>
+              <div class="data-table-wrapper">
+                <p-table [value]="hbls()" dataKey="id" size="small" styleClass="hbl-table">
+                  <ng-template #header>
+                    <tr>
+                      <th>#</th>
+                      <th>מספר IBL</th>
+                      <th>מספר HBL</th>
+                      <th>לקוח</th>
+                      @if (isGroupage()) {
+                        <th>מכולה</th>
+                      }
+                      <th>הזמנות משויכות</th>
+                      <th><span class="sr-only">פעולות</span></th>
+                    </tr>
+                  </ng-template>
+                  <ng-template #body let-hbl [rowOf]="hbls()">
+                    <tr [class.data-table__row--selected]="editingHblId() === hbl.id">
+                      <td class="data-table__numeric">{{ hbl.sequenceNumber }}</td>
+                      <td>{{ hbl.iblNumber ?? '—' }}</td>
+                      <td>{{ hbl.hblNumber ?? '—' }}</td>
+                      <td>{{ hbl.customerName ?? '—' }}</td>
+                      @if (isGroupage()) {
+                        <td>{{ containerLabel(hbl.containerId) }}</td>
+                      }
+                      <td class="data-table__numeric">{{ hbl.orders.length }}</td>
+                      <td class="data-table__actions">
+                        <p-button
+                          label="ערוך"
+                          icon="fa-solid fa-pen"
+                          severity="secondary"
+                          [text]="true"
+                          size="small"
+                          styleClass="hbl-edit-btn"
+                          (onClick)="startEditHbl(hbl)"
+                        />
+                      </td>
+                    </tr>
+                  </ng-template>
+                </p-table>
+              </div>
+            }
 
-  <aside class="wizard-sidebar">
-    <div class="wizard-sidebar__header">
-      <i class="fa-solid fa-list-check" aria-hidden="true"></i>
-      התקדמות התיק
+            @if (showHblForm()) {
+              @if (editingHbl(); as hbl) {
+                <p class="hbl-edit-subtitle">
+                  <i class="fa-solid fa-pen" aria-hidden="true"></i>
+                  {{ hblLabel(hbl) }}
+                </p>
+              } @else if (!savedMbl()) {
+                <p class="hint-text hbl-first-hint">
+                  שייכו את ה-File להזמנה: פרטי ה-File וה-Job יימשכו מתוך שטר המטען (HBL) ושטר
+                  המטען-מסטר (MBL) שהועלו להזמנה.
+                </p>
+              }
+              <form class="hbl-form" [formGroup]="hblForm" (ngSubmit)="onSaveHbl()" novalidate>
+                <!-- Order association comes first: it is what fills the rest of the form. -->
+                <h3 class="subsection-title">שיוך הזמנות</h3>
+                <div class="orders-assoc">
+                  @if (hblSelectedOrderChips().length) {
+                    <div class="chip-list">
+                      @for (chip of hblSelectedOrderChips(); track chip.id) {
+                        <p-chip [label]="chip.text" />
+                      }
+                    </div>
+                  } @else {
+                    <span class="chip-list--empty">לא שויכו הזמנות</span>
+                  }
+                  <p-button
+                    label="לשיוך להזמנה"
+                    icon="fa-solid fa-link"
+                    severity="secondary"
+                    [text]="true"
+                    size="small"
+                    styleClass="orders-assoc__link"
+                    [loading]="hblSelectedOrdersLoading()"
+                    [disabled]="hblSelectedOrdersLoading() || prefillLoading()"
+                    (onClick)="openOrdersPicker()"
+                  />
+                </div>
+                <p class="hint-text selection-count">
+                  {{ hblSelectedOrderIds().size }} הזמנות נבחרו
+                </p>
+
+                @if (prefillLoading()) {
+                  <p class="hint-text prefill-loading">
+                    <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
+                    קורא את שטרי המטען של ההזמנה...
+                  </p>
+                } @else if (prefillNotice(); as notice) {
+                  <p-message
+                    [severity]="notice.severity"
+                    [icon]="
+                      notice.severity === 'info'
+                        ? 'fa-solid fa-wand-magic-sparkles'
+                        : 'fa-solid fa-triangle-exclamation'
+                    "
+                    styleClass="form-message prefill-notice"
+                    role="status"
+                  >
+                    {{ notice.text }}
+                  </p-message>
+                  @if (prefillHblOptions().length > 1) {
+                    <div class="grid-row">
+                      <div class="form-group">
+                        <label for="prefillHbl">שטר מטען בקובץ</label>
+                        <p-select
+                          inputId="prefillHbl"
+                          [options]="prefillHblOptions()"
+                          optionLabel="label"
+                          optionValue="value"
+                          [ngModel]="prefillHblIndex()"
+                          [ngModelOptions]="{ standalone: true }"
+                          (ngModelChange)="selectPrefillHbl($event)"
+                          appendTo="body"
+                        />
+                      </div>
+                    </div>
+                  }
+                }
+
+                @if (editingHblId() !== null) {
+                  <div class="grid-row">
+                    <div class="form-group">
+                      <label>לקוח (לא ניתן לשינוי)</label>
+                      <input
+                        type="text"
+                        pInputText
+                        [value]="editingHbl()?.customerName ?? '—'"
+                        readonly
+                      />
+                    </div>
+                    @if (isGroupage()) {
+                      <div class="form-group">
+                        <label>מכולה (לא ניתן לשינוי)</label>
+                        <input
+                          type="text"
+                          pInputText
+                          [value]="containerLabel(editingHbl()?.containerId ?? null)"
+                          readonly
+                        />
+                      </div>
+                    }
+                  </div>
+                } @else {
+                  @if (isGroupage()) {
+                    <div class="grid-row">
+                      @if (savedMbl()) {
+                        <div class="form-group" style="grid-column: span 2">
+                          <label>מכולה</label>
+                          <p-selectbutton
+                            [options]="hblContainerOptions()"
+                            optionLabel="label"
+                            optionValue="value"
+                            [allowEmpty]="false"
+                            [ngModel]="hblContainerId()"
+                            [ngModelOptions]="{ standalone: true }"
+                            (ngModelChange)="selectHblContainer($event)"
+                            class="choice-group"
+                          />
+                        </div>
+                      } @else {
+                        <div class="form-group">
+                          <label for="hblNewContainerNumber"
+                            >מספר מכולה (תיפתח כמכולה הראשונה ב-Job)</label
+                          >
+                          <input
+                            id="hblNewContainerNumber"
+                            type="text"
+                            pInputText
+                            [ngModel]="hblNewContainerNumber()"
+                            [ngModelOptions]="{ standalone: true }"
+                            (ngModelChange)="hblNewContainerNumber.set($event)"
+                          />
+                        </div>
+                      }
+                    </div>
+                  }
+
+                  @if (needsHblCustomerPicker()) {
+                    <div class="grid-row">
+                      <div class="form-group">
+                        <label for="hblCustomer">לקוח</label>
+                        <app-customer-autocomplete
+                          inputId="hblCustomer"
+                          placeholder="הקלד שם לקוח..."
+                          [(customer)]="hblCustomer"
+                        />
+                      </div>
+                    </div>
+                  } @else {
+                    <div class="grid-row">
+                      <div class="form-group">
+                        <label>לקוח (משותף מה-Job)</label>
+                        <input
+                          type="text"
+                          pInputText
+                          [value]="savedMbl()?.customerName ?? '—'"
+                          readonly
+                        />
+                      </div>
+                    </div>
+                  }
+                }
+
+                <div class="grid-row">
+                  <div class="form-group">
+                    <label for="hblNumber">מספר HBL</label>
+                    <input id="hblNumber" type="text" pInputText formControlName="hblNumber" />
+                  </div>
+                </div>
+
+                <h3 class="subsection-title">שוגר - Shipper</h3>
+                <div class="grid-row">
+                  <div class="form-group">
+                    <label for="hblShipperName">שם השוגר</label>
+                    <input
+                      id="hblShipperName"
+                      type="text"
+                      pInputText
+                      formControlName="shipperName"
+                    />
+                  </div>
+                  <div class="form-group">
+                    <label for="hblShipperAddress">כתובת מלאה</label>
+                    <input
+                      id="hblShipperAddress"
+                      type="text"
+                      pInputText
+                      formControlName="shipperAddress"
+                    />
+                  </div>
+                </div>
+
+                <h3 class="subsection-title">נמען - Consignee</h3>
+                <div class="grid-row">
+                  <div class="form-group">
+                    <label for="hblConsigneeName">שם הנמען</label>
+                    <input
+                      id="hblConsigneeName"
+                      type="text"
+                      pInputText
+                      formControlName="consigneeName"
+                    />
+                  </div>
+                  <div class="form-group">
+                    <label for="hblConsigneeAddress">כתובת מלאה</label>
+                    <input
+                      id="hblConsigneeAddress"
+                      type="text"
+                      pInputText
+                      formControlName="consigneeAddress"
+                    />
+                  </div>
+                </div>
+
+                <h3 class="subsection-title">Notify Party</h3>
+                <div class="grid-row">
+                  <div class="form-group">
+                    <label for="hblNotifyPartyName">שם</label>
+                    <input
+                      id="hblNotifyPartyName"
+                      type="text"
+                      pInputText
+                      formControlName="notifyPartyName"
+                    />
+                  </div>
+                  <div class="form-group">
+                    <label for="hblNotifyPartyAddress">כתובת מלאה</label>
+                    <input
+                      id="hblNotifyPartyAddress"
+                      type="text"
+                      pInputText
+                      formControlName="notifyPartyAddress"
+                    />
+                  </div>
+                </div>
+
+                <h3 class="subsection-title">מטען</h3>
+                <div class="grid-row">
+                  <div class="form-group" style="grid-column: span 2">
+                    <label for="hblCargoDescription">תיאור המטען</label>
+                    <input
+                      id="hblCargoDescription"
+                      type="text"
+                      pInputText
+                      formControlName="cargoDescription"
+                    />
+                  </div>
+                  <div class="form-group">
+                    <label for="hblQuantity">כמות</label>
+                    <input id="hblQuantity" type="text" pInputText formControlName="quantity" />
+                  </div>
+                </div>
+                <div class="grid-row">
+                  <div class="form-group">
+                    <label for="hblGrossWeightKg">משקל ברוטו (KG)</label>
+                    <input
+                      id="hblGrossWeightKg"
+                      type="text"
+                      inputmode="decimal"
+                      pInputText
+                      formControlName="grossWeightKg"
+                    />
+                  </div>
+                  <div class="form-group">
+                    <label for="hblVolumeCbm">נפח (CBM)</label>
+                    <input
+                      id="hblVolumeCbm"
+                      type="text"
+                      inputmode="decimal"
+                      pInputText
+                      formControlName="volumeCbm"
+                    />
+                  </div>
+                </div>
+
+                <h3 class="subsection-title">הערות</h3>
+                <div class="grid-row">
+                  <div class="form-group" style="grid-column: span 2">
+                    <label for="hblRemarks">הערות</label>
+                    <input id="hblRemarks" type="text" pInputText formControlName="remarks" />
+                  </div>
+                </div>
+
+                @if (hblSaveError(); as message) {
+                  <p-message
+                    severity="error"
+                    styleClass="form-message form-message--error"
+                    role="alert"
+                    >{{ message }}</p-message
+                  >
+                }
+
+                <div class="form-actions">
+                  <p-button
+                    label="ביטול"
+                    severity="secondary"
+                    [outlined]="true"
+                    styleClass="hbl-cancel"
+                    (onClick)="closeHblForm()"
+                  />
+                  <p-button
+                    type="submit"
+                    [label]="
+                      savingHbl()
+                        ? 'שומר...'
+                        : editingHblId() !== null
+                          ? 'עדכן File'
+                          : savedMbl()
+                            ? 'שמור File'
+                            : 'שמור File והמשך ל-Job'
+                    "
+                    [loading]="savingHbl()"
+                    [disabled]="savingHbl() || prefillLoading()"
+                  />
+                </div>
+              </form>
+
+              @if (showOrdersPicker()) {
+                <app-hbl-orders-picker-dialog
+                  [initialSelection]="hblSelectedOrders()"
+                  (confirmed)="onOrdersPicked($event)"
+                  (cancelled)="closeOrdersPicker()"
+                />
+              }
+            } @else {
+              <div class="form-actions files-step-actions">
+                @if (savedMbl()) {
+                  <p-button
+                    [label]="jobConfirmed() ? 'עריכת Job' : 'המשך ל-Job'"
+                    icon="fa-solid fa-anchor"
+                    severity="secondary"
+                    [outlined]="true"
+                    styleClass="go-to-job-btn"
+                    (onClick)="goToJobStep()"
+                  />
+                }
+                @if (canAddAnotherHbl()) {
+                  <p-button
+                    [label]="hbls().length ? 'הוספת File נוסף' : 'יצירת File'"
+                    icon="fa-solid fa-plus"
+                    styleClass="add-hbl-btn"
+                    (onClick)="openNewHblForm()"
+                  />
+                } @else {
+                  <p class="hint-text">ה-File היחיד עבור FCL/FCL כבר נוצר.</p>
+                }
+              </div>
+            }
+          }
+        </section>
+      }
     </div>
 
-    <!-- Each step is a link: enabled when the station is reachable from the
+    <aside class="wizard-sidebar">
+      <div class="wizard-sidebar__header">
+        <i class="fa-solid fa-list-check" aria-hidden="true"></i>
+        התקדמות התיק
+      </div>
+
+      <!-- Each step is a link: enabled when the station is reachable from the
          current state (see the `canGoTo…` guards), otherwise a plain label. -->
-    <ol class="wizard-steps">
-      <li
-        class="wizard-step"
-        [class.wizard-step--done]="shippingType() !== null"
-        [class.wizard-step--current]="currentStep() === 'type'"
-      >
-        <button
-          type="button"
-          class="wizard-step__link"
-          [disabled]="!canGoToTypeStep()"
-          [attr.aria-current]="currentStep() === 'type' ? 'step' : null"
-          (click)="goToTypeStep()"
-        >
-          <span class="wizard-step__icon">
-            <i class="fa-solid" [class.fa-check]="shippingType() !== null" [class.fa-circle]="shippingType() === null"></i>
-          </span>
-          <span>סוג משלוח</span>
-        </button>
-      </li>
-      @if (shippingType() === MblShippingType.SEA) {
+      <ol class="wizard-steps">
         <li
           class="wizard-step"
-          [class.wizard-step--done]="seaMethod() !== null"
-          [class.wizard-step--current]="currentStep() === 'method'"
+          [class.wizard-step--done]="shippingType() !== null"
+          [class.wizard-step--current]="currentStep() === 'type'"
         >
           <button
             type="button"
             class="wizard-step__link"
-            [disabled]="!canGoToMethodStep()"
-            [attr.aria-current]="currentStep() === 'method' ? 'step' : null"
-            (click)="goToMethodStep()"
+            [disabled]="!canGoToTypeStep()"
+            [attr.aria-current]="currentStep() === 'type' ? 'step' : null"
+            (click)="goToTypeStep()"
           >
             <span class="wizard-step__icon">
-              <i class="fa-solid" [class.fa-check]="seaMethod() !== null" [class.fa-circle]="seaMethod() === null"></i>
+              <i
+                class="fa-solid"
+                [class.fa-check]="shippingType() !== null"
+                [class.fa-circle]="shippingType() === null"
+              ></i>
             </span>
-            <span>שיטת שילוח ימי</span>
+            <span>סוג משלוח</span>
           </button>
         </li>
-        <li
-          class="wizard-step"
-          [class.wizard-step--done]="savedMbl() !== null"
-          [class.wizard-step--current]="currentStep() === 'job'"
-        >
-          <button
-            type="button"
-            class="wizard-step__link"
-            [disabled]="!canGoToJobStep()"
-            [attr.aria-current]="currentStep() === 'job' ? 'step' : null"
-            (click)="goToJobStep()"
+        @if (shippingType() === MblShippingType.SEA) {
+          <li
+            class="wizard-step"
+            [class.wizard-step--done]="seaMethod() !== null"
+            [class.wizard-step--current]="currentStep() === 'method'"
           >
-            <span class="wizard-step__icon">
-              <i class="fa-solid" [class.fa-check]="savedMbl() !== null" [class.fa-circle]="savedMbl() === null"></i>
-            </span>
-            <span>Job</span>
-          </button>
-        </li>
-        <li
-          class="wizard-step"
-          [class.wizard-step--done]="hbls().length > 0"
-          [class.wizard-step--current]="currentStep() === 'files'"
-        >
-          <button
-            type="button"
-            class="wizard-step__link"
-            [disabled]="!canGoToFilesStep()"
-            [attr.aria-current]="currentStep() === 'files' ? 'step' : null"
-            (click)="goToFilesStep()"
+            <button
+              type="button"
+              class="wizard-step__link"
+              [disabled]="!canGoToMethodStep()"
+              [attr.aria-current]="currentStep() === 'method' ? 'step' : null"
+              (click)="goToMethodStep()"
+            >
+              <span class="wizard-step__icon">
+                <i
+                  class="fa-solid"
+                  [class.fa-check]="seaMethod() !== null"
+                  [class.fa-circle]="seaMethod() === null"
+                ></i>
+              </span>
+              <span>שיטת שילוח ימי</span>
+            </button>
+          </li>
+          <li
+            class="wizard-step"
+            [class.wizard-step--done]="hbls().length > 0"
+            [class.wizard-step--current]="currentStep() === 'files'"
           >
-            <span class="wizard-step__icon">
-              <i class="fa-solid" [class.fa-check]="hbls().length > 0" [class.fa-circle]="hbls().length === 0"></i>
-            </span>
-            <span>Files</span>
-          </button>
-        </li>
-      } @else if (shippingType() === MblShippingType.AIR) {
-        <li class="wizard-step">
-          <span class="wizard-step__icon"><i class="fa-solid fa-circle-minus"></i></span>
-          <span>אווירי (בקרוב)</span>
-        </li>
-      }
-    </ol>
-  </aside>
-</div>
+            <button
+              type="button"
+              class="wizard-step__link"
+              [disabled]="!canGoToFilesStep()"
+              [attr.aria-current]="currentStep() === 'files' ? 'step' : null"
+              (click)="goToFilesStep()"
+            >
+              <span class="wizard-step__icon">
+                <i
+                  class="fa-solid"
+                  [class.fa-check]="hbls().length > 0"
+                  [class.fa-circle]="hbls().length === 0"
+                ></i>
+              </span>
+              <span>File</span>
+            </button>
+          </li>
+          <li
+            class="wizard-step"
+            [class.wizard-step--done]="jobConfirmed()"
+            [class.wizard-step--current]="currentStep() === 'job'"
+          >
+            <button
+              type="button"
+              class="wizard-step__link"
+              [disabled]="!canGoToJobStep()"
+              [attr.aria-current]="currentStep() === 'job' ? 'step' : null"
+              (click)="goToJobStep()"
+            >
+              <span class="wizard-step__icon">
+                <i
+                  class="fa-solid"
+                  [class.fa-check]="jobConfirmed()"
+                  [class.fa-circle]="!jobConfirmed()"
+                ></i>
+              </span>
+              <span>Job</span>
+            </button>
+          </li>
+        } @else if (shippingType() === MblShippingType.AIR) {
+          <li class="wizard-step">
+            <span class="wizard-step__icon"><i class="fa-solid fa-circle-minus"></i></span>
+            <span>אווירי (בקרוב)</span>
+          </li>
+        }
+      </ol>
+    </aside>
+  </div>
 }

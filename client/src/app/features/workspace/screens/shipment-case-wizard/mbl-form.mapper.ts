@@ -1,7 +1,14 @@
 import { HttpErrorResponse } from '@angular/common/http';
 
 import { MblShippingType, MblStatus, PaymentTerms, SeaMethod } from '../../../../api/enums';
-import type { CreateMblContainerDto, CreateMblDto, MblContainerDto, MblDto } from '../../../../api/models';
+import type {
+  CreateMblContainerDto,
+  CreateMblDto,
+  MblContainerDto,
+  MblContainerExtractDto,
+  MblDocumentExtractDto,
+  MblDto,
+} from '../../../../api/models';
 
 /** Free-text / date / numeric fields of the MBL form (always strings; `''` = not filled).
  *  `containerNumber`...`volumeCbm` are the single-container fields, sent only for the
@@ -195,6 +202,54 @@ export function containerToFormValue(container: MblContainerDto): MblContainerFo
     grossWeightKg: container.grossWeightKg !== null ? String(container.grossWeightKg) : '',
     volumeCbm: container.volumeCbm !== null ? String(container.volumeCbm) : '',
   };
+}
+
+/** The Job form prefilled from a Master B/L document (or the master-level
+ *  boxes of a House B/L): every stated field, blanks for the rest. The
+ *  single-container fields take the document's first container. */
+export function mblExtractToFormValue(extract: MblDocumentExtractDto | null): MblFormValue {
+  if (!extract) return { ...EMPTY_MBL_FORM_VALUE };
+  const first: MblContainerExtractDto | undefined = extract.containers[0];
+  const text = (source: string | null | undefined) => source ?? '';
+  const number = (source: number | null | undefined) =>
+    source === null || source === undefined ? '' : String(source);
+  return {
+    mblNumber: text(extract.mblNumber),
+    bookingNumber: text(extract.bookingNumber),
+    vesselName: text(extract.vesselName),
+    voyageNumber: text(extract.voyageNumber),
+    portOfLoading: text(extract.portOfLoading),
+    portOfDischarge: text(extract.portOfDischarge),
+    finalDestination: text(extract.finalDestination),
+    carrierName: text(extract.carrierName),
+    shipperName: text(extract.shipperName),
+    shipperAddress: text(extract.shipperAddress),
+    consigneeName: text(extract.consigneeName),
+    consigneeAddress: text(extract.consigneeAddress),
+    notifyPartyName: text(extract.notifyPartyName),
+    notifyPartyAddress: text(extract.notifyPartyAddress),
+    containerNumber: text(first?.containerNumber),
+    containerSealNumber: text(first?.containerSealNumber),
+    cargoDescription: text(first?.cargoDescription),
+    grossWeightKg: number(first?.grossWeightKg ?? extract.grossWeightKg),
+    volumeCbm: number(first?.volumeCbm ?? extract.volumeCbm),
+    receiptDeliveryType: text(extract.receiptDeliveryType),
+    placeOfIssue: text(extract.placeOfIssue),
+    dateOfIssue: text(extract.dateOfIssue),
+  };
+}
+
+/** The groupage container table prefilled from a Master B/L document's container rows. */
+export function mblExtractContainersToFormValue(
+  extract: MblDocumentExtractDto | null,
+): MblContainerFormValue[] {
+  return (extract?.containers ?? []).map((container) => ({
+    containerNumber: container.containerNumber ?? '',
+    containerSealNumber: container.containerSealNumber ?? '',
+    cargoDescription: container.cargoDescription ?? '',
+    grossWeightKg: container.grossWeightKg !== null ? String(container.grossWeightKg) : '',
+    volumeCbm: container.volumeCbm !== null ? String(container.volumeCbm) : '',
+  }));
 }
 
 const SAVE_FAILED = 'שמירת ה-MBL נכשלה';

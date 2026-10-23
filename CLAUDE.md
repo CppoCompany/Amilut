@@ -149,6 +149,20 @@ The database CHECK constraints for enum-like columns (`status`,
 `shipment_type`, `payment_terms`, `incoterm`, `destination`, `last_step` in `orders`) must
 be kept in sync with the server enums by hand.
 
+### Shipping-case wizard (File → Job) and bill-of-lading extraction
+
+"יצירת תיק שילוח" (`client/.../screens/shipment-case-wizard/`) runs type →
+sea method → **File (HBL)** → **Job (MBL)**. The first File's form opens by
+itself with "לשיוך להזמנה" on top; picking an order calls
+`GET /api/import-files/bill-of-lading?orderId=` which parses the order's newest
+`MASTER_BILL_OF_LADING` upload into Job fields and its newest `BILL_OF_LADING`
+upload into File fields (one per house B/L in the file). Saving the first File
+creates the Job (prefilled) and then the HBL, and opens the Job form for review.
+The extractor lives in `server/src/import-files/bill-of-lading-extraction/`
+(PDF via `pdf2json`, HTML, plain text; label dictionary in
+`bill-of-lading-fields.ts`, fixtures copied from `files/` in `__fixtures__/`).
+Extend the label regexes there when a new B/L layout is not recognised.
+
 ## Authentication
 
 Login page with user name (= email) and password. The email must match an

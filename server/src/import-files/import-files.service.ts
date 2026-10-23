@@ -4,9 +4,18 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { mkdir, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import * as path from 'node:path';
 import type { PoolClient } from 'pg';
+import {
+  extractHblDocuments,
+  extractMblDocument,
+} from './bill-of-lading-extraction/bill-of-lading-extractor';
+import {
+  DocPage,
+  readDocument,
+} from './bill-of-lading-extraction/document-model';
+import { BillOfLadingExtractDto } from './dto/bill-of-lading-extract.dto';
 import { Paged } from '../common/paging/paged.dto';
 import {
   orderByClause,
@@ -616,6 +625,69 @@ export class ImportFilesService {
       data: Omit<ImportAccountFileData, 'lineItems' | 'extractionError'>;
     }>(selectLatestFilesSql(context), [context.id]);
     return rows.map(({ id, data }) => ({ id, ...data }));
+  }
+
+  /**
+   * Reads the Job / File fields out of the order/CCF's bill-of-lading
+   * paperwork: the newest `MASTER_BILL_OF_LADING` upload becomes Job (MBL)
+   * fields, the newest `BILL_OF_LADING` upload becomes File (HBL) fields —
+   * one per house B/L the file holds. A missing document leaves its part
+   * empty; one that cannot be read (a scan, an unsupported type) leaves its
+   * error set. A document problem never fails the request.
+   *
+   * @throws NotFoundException — the order/CCF does not exist.
+   */
+  async getBillOfLadingExtract(
+    context: ImportFilesContext,
+  ): Promise<BillOfLadingExtractDto> {
+    const files = await this.listImportFiles(context); // newest first
+    const mblFile =
+      files.find(
+        (file) =>
+          file.documentType === ImportDocumentType.MASTER_BILL_OF_LADING,
+      ) ?? null;
+    const hblFile =
+      files.find(
+        (file) => file.documentType === ImportDocumentType.BILL_OF_LADING,
+      ) ?? null;
+
+    const result: BillOfLadingExtractDto = {
+      mblFileName: mblFile?.name ?? null,
+      mbl: null,
+      mblError: null,
+      hblFileName: hblFile?.name ?? null,
+      hbls: [],
+      hblError: null,
+    };
+    if (mblFile) {
+      try {
+        result.mbl = extractMblDocument(
+          await this.readDocumentPages(context, mblFile.id),
+        );
+      } catch (err) {
+        result.mblError = describeExtractionError(err);
+      }
+    }
+    if (hblFile) {
+      try {
+        result.hbls = extractHblDocuments(
+          await this.readDocumentPages(context, hblFile.id),
+        );
+      } catch (err) {
+        result.hblError = describeExtractionError(err);
+      }
+    }
+    return result;
+  }
+
+  /** The stored file's text, as pages of cells, for the bill-of-lading extractor. */
+  private async readDocumentPages(
+    context: ImportFilesContext,
+    fileId: number,
+  ): Promise<DocPage[]> {
+    const stored = await this.getImportFile(context, fileId);
+    const buffer = await readFile(stored.absolutePath);
+    return readDocument(buffer, stored.name, stored.mimeType);
   }
 
   /**

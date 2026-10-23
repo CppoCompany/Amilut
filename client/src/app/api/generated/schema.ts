@@ -212,6 +212,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/import-files/bill-of-lading": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ImportFilesController_getBillOfLadingExtract"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/import-files/files/{fileId}": {
         parameters: {
             query?: never;
@@ -866,6 +882,84 @@ export interface components {
              */
             extractionError?: string;
         };
+        /** @enum {string} */
+        PaymentTerms: PaymentTerms;
+        MblContainerExtractDto: {
+            /** @example BMOU4512398 */
+            containerNumber: string | null;
+            /** @example SL-332211 */
+            containerSealNumber: string | null;
+            cargoDescription: string | null;
+            /** @example 8950 */
+            grossWeightKg: number | null;
+            /** @example 32.4 */
+            volumeCbm: number | null;
+        };
+        MblDocumentExtractDto: {
+            /** @example NGB-LCL-2026-7731 */
+            mblNumber: string | null;
+            /** @example BKG-CFS-8820 */
+            bookingNumber: string | null;
+            /** @example OOCL HONG KONG */
+            vesselName: string | null;
+            /** @example 088E */
+            voyageNumber: string | null;
+            /** @example Shanghai, China */
+            portOfLoading: string | null;
+            /** @example Haifa Port, Israel */
+            portOfDischarge: string | null;
+            /** @example Haifa CFS Terminal */
+            finalDestination: string | null;
+            carrierName: string | null;
+            shipperName: string | null;
+            shipperAddress: string | null;
+            consigneeName: string | null;
+            consigneeAddress: string | null;
+            notifyPartyName: string | null;
+            notifyPartyAddress: string | null;
+            freightTerms: components["schemas"]["PaymentTerms"] | null;
+            /** @example CFS/CFS */
+            receiptDeliveryType: string | null;
+            placeOfIssue: string | null;
+            /** Format: date */
+            dateOfIssue: string | null;
+            /** @example 26 PACKAGES */
+            totalPackages: string | null;
+            /** @example 8950 */
+            grossWeightKg: number | null;
+            /** @example 32.4 */
+            volumeCbm: number | null;
+            containers: components["schemas"]["MblContainerExtractDto"][];
+        };
+        HblDocumentExtractDto: {
+            /** @example HBL-NGB-LCL-2026-7731-01 */
+            hblNumber: string | null;
+            shipperName: string | null;
+            shipperAddress: string | null;
+            consigneeName: string | null;
+            consigneeAddress: string | null;
+            notifyPartyName: string | null;
+            notifyPartyAddress: string | null;
+            cargoDescription: string | null;
+            /** @example 8 wooden crates */
+            quantity: string | null;
+            grossWeightKg: number | null;
+            volumeCbm: number | null;
+            /** @example LCL CONSOL / CFS TO CFS */
+            remarks: string | null;
+            master: components["schemas"]["MblDocumentExtractDto"];
+        };
+        BillOfLadingExtractDto: {
+            /** @example MBL.html */
+            mblFileName: string | null;
+            mbl: components["schemas"]["MblDocumentExtractDto"] | null;
+            /** @example Unsupported file type */
+            mblError: string | null;
+            /** @example שטר מטען.pdf */
+            hblFileName: string | null;
+            hbls: components["schemas"]["HblDocumentExtractDto"][];
+            hblError: string | null;
+        };
         LineItemClassificationUpdateDto: {
             /** @example eu */
             tradeAgreement: components["schemas"]["TradeAgreement"] | null;
@@ -981,8 +1075,6 @@ export interface components {
             pageSize: number;
             items: components["schemas"]["MblSummaryDto"][];
         };
-        /** @enum {string} */
-        PaymentTerms: PaymentTerms;
         CreateMblContainerDto: {
             /** @example MSKU1234567 */
             containerNumber?: string;
@@ -1967,6 +2059,44 @@ export interface operations {
                 };
             };
             /** @description No files, missing or invalid documentType, an unsafe file name, or neither/both of orderId/ccfId given. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No order or customs clearance file with this id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ImportFilesController_getBillOfLadingExtract: {
+        parameters: {
+            query?: {
+                /** @description orders.id */
+                orderId?: number;
+                /** @description customs_clearance_files.id */
+                ccfId?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BillOfLadingExtractDto"];
+                };
+            };
+            /** @description Neither/both of orderId/ccfId given. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -3013,15 +3143,15 @@ export enum ImportDocumentType {
     CERTIFICATE_OF_ORIGIN = "CERTIFICATE_OF_ORIGIN",
     OTHER = "OTHER"
 }
+export enum PaymentTerms {
+    PREPAID = "prepaid",
+    COLLECT = "collect"
+}
 export enum SeaMethod {
     FCL_FCL = "fcl_fcl",
     FCL_LCL = "fcl_lcl",
     LCL_LCL = "lcl_lcl",
     GROUPAGE_FCL = "groupage_fcl"
-}
-export enum PaymentTerms {
-    PREPAID = "prepaid",
-    COLLECT = "collect"
 }
 export enum ShipmentType {
     SEA = "sea",

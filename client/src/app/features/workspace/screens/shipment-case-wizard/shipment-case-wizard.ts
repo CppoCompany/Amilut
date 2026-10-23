@@ -18,7 +18,7 @@ import { Message } from 'primeng/message';
 import { Select } from 'primeng/select';
 import { SelectButton } from 'primeng/selectbutton';
 import { TableModule } from 'primeng/table';
-import { finalize, forkJoin, switchMap } from 'rxjs';
+import { catchError, finalize, forkJoin, of, switchMap } from 'rxjs';
 
 import {
   MBL_SHIPPING_TYPE_LABELS,
@@ -32,8 +32,18 @@ import {
   SEA_METHOD_LABELS,
   SeaMethod,
 } from '../../../../api/enums';
-import type { CustomerDto, HblDto, MblDto, OrderDto } from '../../../../api/models';
+import type {
+  BillOfLadingExtractDto,
+  CustomerDto,
+  HblDocumentExtractDto,
+  HblDto,
+  MblDocumentExtractDto,
+  MblDto,
+  OrderDto,
+} from '../../../../api/models';
+import { CustomersApi } from '../../../../api/customers-api';
 import { HblApi } from '../../../../api/hbl-api';
+import { ImportFilesApi } from '../../../../api/import-files-api';
 import { MblApi } from '../../../../api/mbl-api';
 import { OrdersApi } from '../../../../api/orders-api';
 import { TypedRow } from '../../../../shared/typed-row/typed-row';
@@ -42,6 +52,7 @@ import { NavigationService } from '../../navigation.service';
 import { SelectionStateService } from '../../selection-state.service';
 import {
   EMPTY_HBL_FORM_VALUE,
+  hblExtractToFormValue,
   hblToFormValue,
   saveErrorMessage as saveHblErrorMessage,
   toCreateHblDto,
@@ -51,7 +62,10 @@ import { HblOrdersPickerDialog } from './hbl-orders-picker-dialog/hbl-orders-pic
 import {
   EMPTY_MBL_CONTAINER_FORM_VALUE,
   EMPTY_MBL_FORM_VALUE,
+  MblContainerFormValue,
   containerToFormValue,
+  mblExtractContainersToFormValue,
+  mblExtractToFormValue,
   mblToFormValue,
   saveErrorMessage as saveMblErrorMessage,
   toCreateMblDto,
@@ -68,8 +82,9 @@ const SEA_METHOD_DESCRIPTIONS: Record<SeaMethod, string> = {
 };
 
 /** The sea-freight wizard's four stations, as listed in the "התקדמות התיק"
- *  sidebar. `null` while on the air placeholder (no station applies). */
-type WizardStep = 'type' | 'method' | 'job' | 'files';
+ *  sidebar, in order: type → method → files → job. `null` while on the air
+ *  placeholder (no station applies). */
+type WizardStep = 'type' | 'method' | 'files' | 'job';
 
 /** A selected order as shown in the File form's summary chips. */
 interface SelectedOrderChip {
@@ -77,10 +92,35 @@ interface SelectedOrderChip {
   text: string;
 }
 
-/** "יצירת תיק שילוח" — the Job/File (MBL/HBL) shipping-case workflow. The only
- *  shipping-case screen in the app: reached either via "יצירת תיק שילוח" in the
- *  sidebar (a blank draft), or via a double-click in "התיקים שלי" to load an
- *  existing Job for editing (see `NavigationService.openCaseForEdit`/`editCaseId`). */
+/** What "לשיוך להזמנה" found in the chosen orders' paperwork, as told to the user. */
+interface PrefillNotice {
+  severity: 'info' | 'warn';
+  text: string;
+}
+
+/** The document-derived part of one File: the house B/Ls its order holds
+ *  (one per page of a multi-house file, user-selectable) and the Job
+ *  fields found alongside them. */
+interface PrefillSource {
+  hblFileName: string | null;
+  hbls: HblDocumentExtractDto[];
+  mblFileName: string | null;
+  mbl: MblDocumentExtractDto | null;
+}
+
+/**
+ * "יצירת תיק שילוח" — the File/Job (HBL/MBL) shipping-case workflow, the
+ * only shipping-case screen in the app. Reached either via "יצירת תיק
+ * שילוח" in the sidebar (a blank draft), or via a double-click in "התיקים
+ * שלי" to load an existing case for editing (see
+ * `NavigationService.openCaseForEdit`/`editCaseId`).
+ *
+ * The File comes first: after the shipping type/method the File form opens
+ * at once, starting with "לשיוך להזמנה". Picking an order fetches the MBL
+ * and HBL documents filed under it and prefills the File (from the HBL) and
+ * the Job (from the MBL). Saving the first File creates the Job in the same
+ * go (an `hbl` row needs its `mbl`), then opens the Job form for review.
+ */
 @Component({
   selector: 'app-shipment-case-wizard-screen',
   imports: [
@@ -109,6 +149,8 @@ export class ShipmentCaseWizardScreen {
   private readonly mblApi = inject(MblApi);
   private readonly hblApi = inject(HblApi);
   private readonly ordersApi = inject(OrdersApi);
+  private readonly customersApi = inject(CustomersApi);
+  private readonly importFilesApi = inject(ImportFilesApi);
   private readonly destroyRef = inject(DestroyRef);
 
   protected readonly MblShippingType = MblShippingType;
@@ -135,11 +177,11 @@ export class ShipmentCaseWizardScreen {
   protected readonly shippingType = signal<MblShippingType | null>(null);
   protected readonly seaMethod = signal<SeaMethod | null>(null);
 
-  // ── Job (MBL) step ───────────────────────────────────────────────────────────
-  /** Set only for `fcl_lcl` — one customer, shared by every File under this Job. */
-  protected readonly needsCustomer = computed(() => this.seaMethod() === SeaMethod.FCL_LCL);
+  // ── Job (MBL) ────────────────────────────────────────────────────────────────
   protected readonly isGroupage = computed(() => this.seaMethod() === SeaMethod.GROUPAGE_FCL);
-  protected readonly mblCustomer = signal<CustomerDto | null>(null);
+  /** `fcl_lcl` shares one customer across every File; it is the first File's
+   *  customer and is shown read-only on the Job. */
+  protected readonly sharesCustomer = computed(() => this.seaMethod() === SeaMethod.FCL_LCL);
   protected readonly freightTerms = signal<PaymentTerms | null>(null);
   /** Lifecycle status of the case (`mbl.status`) — drives "תיקים בהתרה" when set to `in_release`. */
   protected readonly mblStatus = signal<MblStatus>(MblStatus.OPEN);
@@ -172,12 +214,17 @@ export class ShipmentCaseWizardScreen {
 
   protected readonly saving = signal(false);
   protected readonly saveError = signal<string | null>(null);
+  /** The Job row. Created together with the first File (prefilled from the
+   *  order's MBL document), then reviewed/edited on the Job step. */
   protected readonly savedMbl = signal<MblDto | null>(null);
-  /** True while re-showing the Job form to edit an already-saved Job (triggered
-   *  from the "Job" progress link). */
+  /** True while the Job form is open — the "Job" station of the wizard. */
   protected readonly editingMbl = signal(false);
+  /** True once the user has saved the Job form (or loaded an existing case):
+   *  the "Job" station shows as done. A Job auto-created with the first File
+   *  is not done until it has been looked at. */
+  protected readonly jobConfirmed = signal(false);
 
-  // ── File (HBL) step ──────────────────────────────────────────────────────────
+  // ── File (HBL) ───────────────────────────────────────────────────────────────
   protected readonly hbls = signal<HblDto[]>([]);
   protected readonly hblsLoading = signal(false);
 
@@ -186,11 +233,17 @@ export class ShipmentCaseWizardScreen {
     () => this.seaMethod() !== SeaMethod.FCL_FCL || this.hbls().length === 0,
   );
 
-  /** A customer must be picked per-File for every method except `fcl_lcl`, where
-   *  it's inherited from the Job's own `customerId` (chosen once, in the Job step). */
-  protected readonly needsHblCustomerPicker = computed(() => this.seaMethod() !== SeaMethod.FCL_LCL);
+  /** A customer is picked per-File, except under an `fcl_lcl` Job that
+   *  already exists — its customer (the first File's) is inherited. */
+  protected readonly needsHblCustomerPicker = computed(
+    () => !this.sharesCustomer() || this.savedMbl() === null,
+  );
   protected readonly hblCustomer = signal<CustomerDto | null>(null);
+  /** Groupage, Job already saved: the File's container, one of the Job's. */
   protected readonly hblContainerId = signal<number | null>(null);
+  /** Groupage, no Job yet: the container the first File goes into, typed (or
+   *  read from the HBL document). It becomes the Job's first container row. */
+  protected readonly hblNewContainerNumber = signal('');
   /** The saved Job's containers as choices for a new File (groupage only). */
   protected readonly hblContainerOptions = computed(() =>
     (this.savedMbl()?.containers ?? []).map((container) => ({
@@ -200,10 +253,10 @@ export class ShipmentCaseWizardScreen {
   );
 
   /** Non-null while editing an already-saved File (picked from the created-File
-   *  list or the sidebar's "עריכת File" link) instead of creating a new one. The
-   *  main pane then shows the edit page alone — no File list, no "+ הוספת File" —
-   *  and returns to them on save/cancel. `customerId`/`containerId` are immutable
-   *  once created, so the picker/choice-group are hidden in this mode. */
+   *  list) instead of creating a new one. The main pane then shows the edit
+   *  page alone — no File list, no "+ הוספת File" — and returns to them on
+   *  save/cancel. `customerId`/`containerId` are immutable once created, so
+   *  the picker/choice-group are hidden in this mode. */
   protected readonly editingHblId = signal<number | null>(null);
   protected readonly editingHbl = computed(() => {
     const id = this.editingHblId();
@@ -225,9 +278,9 @@ export class ShipmentCaseWizardScreen {
     remarks: [EMPTY_HBL_FORM_VALUE.remarks],
   });
 
-  // Optional order association, picked in the "לשיוך להזמנה" popup
-  // (`HblOrdersPickerDialog`). The id set is what gets saved; the DTO list is
-  // display detail for the summary chips and the popup's pre-checked rows.
+  // Order association, picked in the "לשיוך להזמנה" popup (`HblOrdersPickerDialog`)
+  // — the first thing on the File form. The id set is what gets saved; the DTO
+  // list is display detail for the summary chips and the popup's pre-checked rows.
   protected readonly hblSelectedOrderIds = signal<ReadonlySet<number>>(new Set());
   protected readonly hblSelectedOrders = signal<OrderDto[]>([]);
   /** True while the File-being-edited's already-associated orders are being
@@ -242,11 +295,33 @@ export class ShipmentCaseWizardScreen {
     });
   });
 
+  // ── Prefill from the order's MBL / HBL documents ────────────────────────────
+  /** True while the chosen orders' bill-of-lading paperwork is being read. */
+  protected readonly prefillLoading = signal(false);
+  protected readonly prefillNotice = signal<PrefillNotice | null>(null);
+  private readonly prefillSource = signal<PrefillSource | null>(null);
+  /** Which house B/L of a multi-house file fills the form. */
+  protected readonly prefillHblIndex = signal(0);
+  protected readonly prefillHblOptions = computed(() =>
+    (this.prefillSource()?.hbls ?? []).map((hbl, index) => ({
+      value: index,
+      label: hbl.hblNumber ?? `שטר מטען ${index + 1}`,
+    })),
+  );
+  /** The Job fields to create the Job with: the order's MBL document, else
+   *  the master-level boxes of the chosen house B/L. */
+  private readonly jobPrefill = computed<MblDocumentExtractDto | null>(() => {
+    const source = this.prefillSource();
+    if (!source) return null;
+    return source.mbl ?? source.hbls[this.prefillHblIndex()]?.master ?? null;
+  });
+
   protected readonly savingHbl = signal(false);
   protected readonly hblSaveError = signal<string | null>(null);
-  /** Whether the create/edit File form is currently open — collapsed by default
-   *  behind an explicit "+ הוספת File נוסף" button (see `openNewHblForm`),
-   *  so creating more than one File is a clearly visible, deliberate action. */
+  /** Whether the create/edit File form is open. It opens by itself for the
+   *  first File (right after the sea method is chosen) and behind an explicit
+   *  "+ הוספת File נוסף" afterwards, so creating more than one File is a
+   *  clearly visible, deliberate action. */
   protected readonly showHblForm = signal(false);
 
   // ── Loading an existing case for edit (double-click in "התיקים שלי") ────────
@@ -274,20 +349,19 @@ export class ShipmentCaseWizardScreen {
     if (shippingType === null) return 'type';
     if (shippingType === MblShippingType.AIR) return null;
     if (this.seaMethod() === null) return 'method';
-    if (!this.savedMbl() || this.editingMbl()) return 'job';
+    if (this.editingMbl()) return 'job';
     return 'files';
   });
   protected readonly canGoToTypeStep = computed(() => this.currentStep() !== 'type');
   protected readonly canGoToMethodStep = computed(
     () => this.shippingType() === MblShippingType.SEA && this.currentStep() !== 'method',
   );
-  protected readonly canGoToJobStep = computed(
-    () => this.seaMethod() !== null && this.currentStep() !== 'job',
-  );
   protected readonly canGoToFilesStep = computed(
-    () => this.savedMbl() !== null && this.currentStep() !== 'files',
+    () => this.seaMethod() !== null && this.currentStep() !== 'files',
   );
-
+  protected readonly canGoToJobStep = computed(
+    () => this.savedMbl() !== null && this.currentStep() !== 'job',
+  );
 
   constructor() {
     // A double-click on a row in "התיקים שלי" navigates to
@@ -325,7 +399,7 @@ export class ShipmentCaseWizardScreen {
     // drives the breadcrumb) in sync with whichever Job/Files this screen is
     // working on — freshly created, saved again, loaded for edit, or any time
     // a File is added/edited. Does nothing while `savedMbl` is `null` (still
-    // on step 1/2, or mid-wizard with no Job saved yet).
+    // on step 1/2, or on the first File with no Job saved yet).
     effect(() => {
       const mbl = this.savedMbl();
       if (mbl) {
@@ -340,9 +414,11 @@ export class ShipmentCaseWizardScreen {
     this.seaMethod.set(null);
   }
 
+  /** Step 2 → straight into the first File's form, "לשיוך להזמנה" first. */
   protected selectSeaMethod(method: SeaMethod): void {
     if (this.choicesLocked()) return;
     this.seaMethod.set(method);
+    this.openNewHblForm();
   }
 
   // "התקדמות התיק" links — the wizard's only backward navigation (there are no
@@ -374,16 +450,18 @@ export class ShipmentCaseWizardScreen {
     this.seaMethod.set(null);
   }
 
-  /** Re-opens the saved Job's form. */
-  protected goToJobStep(): void {
-    if (!this.canGoToJobStep()) return;
-    this.startEditMbl();
-  }
-
-  /** Leaves the Job form (discarding unsaved edits) for the Files step. */
+  /** Leaves the Job form (discarding unsaved edits) for the Files step; with
+   *  no File yet, the new-File form opens there by itself. */
   protected goToFilesStep(): void {
     if (!this.canGoToFilesStep()) return;
     this.showFilesStep();
+    if (this.hbls().length === 0 && !this.showHblForm()) this.openNewHblForm();
+  }
+
+  /** Opens the saved Job's form. */
+  protected goToJobStep(): void {
+    if (!this.canGoToJobStep()) return;
+    this.startEditMbl();
   }
 
   /** Makes the main pane show the Files step: closes the Job form (unsaved
@@ -415,9 +493,9 @@ export class ShipmentCaseWizardScreen {
     this.mblForm.controls.containers.removeAt(index);
   }
 
-  /** Re-opens the already-saved Job's fields for editing — the customer picker
-   *  (fcl_lcl only) is intentionally NOT re-editable here: changing it after
-   *  Files already exist under the old customer would break their shared-customer
+  /** Opens the saved Job's fields for review/editing — the customer (fcl_lcl
+   *  only) is intentionally NOT editable here: it is the first File's, and
+   *  changing it after Files exist under it would break their shared-customer
    *  invariant (enforced server-side by `HblService.validateCustomer`). */
   protected startEditMbl(): void {
     const mbl = this.savedMbl();
@@ -453,17 +531,14 @@ export class ShipmentCaseWizardScreen {
     this.saveError.set(null);
   }
 
+  /** Saves the Job form onto the existing Job (always created with the first
+   *  File) and returns to the Files step. */
   protected onSaveMbl(): void {
     const shippingType = this.shippingType();
-    if (!shippingType || this.saving()) return;
-    const seaMethod = this.seaMethod();
-    const editing = this.editingMbl();
     const existingMbl = this.savedMbl();
+    if (!shippingType || !existingMbl || this.saving()) return;
+    const seaMethod = this.seaMethod();
 
-    if (this.needsCustomer() && !editing && !this.mblCustomer()) {
-      this.saveError.set('יש לבחור לקוח לפני השמירה');
-      return;
-    }
     if (this.isGroupage() && this.mblForm.controls.containers.length === 0) {
       this.saveError.set('יש להוסיף לפחות מכולה אחת');
       return;
@@ -473,29 +548,27 @@ export class ShipmentCaseWizardScreen {
     this.saving.set(true);
 
     const { containers, ...formFields } = this.mblForm.getRawValue();
-    const customerId = editing ? (existingMbl?.customerId ?? null) : (this.mblCustomer()?.id ?? null);
     const dto = toCreateMblDto(
       shippingType,
       seaMethod,
-      customerId,
+      existingMbl.customerId,
       this.freightTerms(),
       this.mblStatus(),
       formFields,
       containers,
     );
 
-    const request$ =
-      editing && existingMbl ? this.mblApi.update(existingMbl.id, dto) : this.mblApi.create(dto);
-
-    request$
-      .pipe(finalize(() => this.saving.set(false)), takeUntilDestroyed(this.destroyRef))
+    this.mblApi
+      .update(existingMbl.id, dto)
+      .pipe(
+        finalize(() => this.saving.set(false)),
+        takeUntilDestroyed(this.destroyRef),
+      )
       .subscribe({
         next: (mbl) => {
           this.savedMbl.set(mbl);
+          this.jobConfirmed.set(true);
           this.editingMbl.set(false);
-          if (!editing) {
-            this.loadHbls(mbl.id);
-          }
         },
         error: (error: unknown) => this.saveError.set(saveMblErrorMessage(error)),
       });
@@ -518,10 +591,10 @@ export class ShipmentCaseWizardScreen {
   }
 
   /** Picks the container for the File being created, from the form's
-   *  choice-group. Switching to a *different* container clears whatever was
-   *  typed so far: a File belongs to exactly one container, so half-filled
-   *  data from the previous choice must not carry over. Ignored while editing
-   *  an existing File (container is immutable). */
+   *  choice-group (groupage with a saved Job). Switching to a *different*
+   *  container clears whatever was typed so far: a File belongs to exactly
+   *  one container, so half-filled data from the previous choice must not
+   *  carry over. Ignored while editing an existing File (container is immutable). */
   protected selectHblContainer(containerId: number): void {
     if (this.editingHblId() !== null) return;
     this.showFilesStep();
@@ -530,8 +603,8 @@ export class ShipmentCaseWizardScreen {
     this.hblContainerId.set(containerId);
   }
 
-  /** Opens a blank form for a brand-new File — the explicit "+ הוספת File
-   *  נוסף" action (or "+ יצירת File" for the first one). */
+  /** Opens a blank form for a brand-new File — by itself for the first File,
+   *  then via "+ הוספת File נוסף". */
   protected openNewHblForm(): void {
     this.showFilesStep();
     this.resetHblForm();
@@ -542,12 +615,10 @@ export class ShipmentCaseWizardScreen {
    *  they were. Saving or cancelling returns to the File list + "+ הוספת File". */
   protected startEditHbl(hbl: HblDto): void {
     this.showFilesStep();
+    this.resetHblForm();
     this.hblForm.patchValue(hblToFormValue(hbl));
     this.hblSelectedOrderIds.set(new Set(hbl.orders.map((order) => order.id)));
-    this.hblSelectedOrders.set([]);
-    this.hblSaveError.set(null);
     this.editingHblId.set(hbl.id);
-    this.showOrdersPicker.set(false);
     this.showHblForm.set(true);
 
     if (hbl.orders.length === 0) return;
@@ -582,29 +653,166 @@ export class ShipmentCaseWizardScreen {
     this.showOrdersPicker.set(false);
   }
 
+  /** Records the chosen orders and, for a new File, reads their MBL/HBL
+   *  paperwork into the form (and the Job-to-be). */
   protected onOrdersPicked(orders: OrderDto[]): void {
     this.hblSelectedOrders.set(orders);
     this.hblSelectedOrderIds.set(new Set(orders.map((order) => order.id)));
     this.showOrdersPicker.set(false);
+    if (this.editingHblId() !== null) return;
+    if (orders.length === 0) {
+      this.clearPrefill();
+      return;
+    }
+    this.prefillFromOrders(orders);
   }
 
+  /** A multi-house HBL file: fills the form from the house B/L picked in the select. */
+  protected selectPrefillHbl(index: number | null | undefined): void {
+    const source = this.prefillSource();
+    if (index === null || index === undefined || !source?.hbls[index]) return;
+    this.prefillHblIndex.set(index);
+    this.applyHblExtract(source.hbls[index]);
+  }
+
+  /**
+   * Reads the bill-of-lading paperwork filed under the chosen orders: the
+   * first order with an HBL document fills the File, the first with an MBL
+   * document (or, failing that, the master boxes of the HBL) will fill the
+   * Job. The File's customer, when still unpicked, follows the first order.
+   */
+  private prefillFromOrders(orders: OrderDto[]): void {
+    this.prefillLoading.set(true);
+    this.prefillNotice.set(null);
+    const requestedIds = orders.map((order) => order.id);
+
+    if (this.needsHblCustomerPicker() && this.hblCustomer() === null) {
+      this.customersApi
+        .getById(orders[0].customerId)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (customer) => {
+            if (this.hblCustomer() === null && this.editingHblId() === null) {
+              this.hblCustomer.set(customer);
+            }
+          },
+          error: () => {},
+        });
+    }
+
+    forkJoin(
+      orders.map((order) =>
+        this.importFilesApi
+          .getBillOfLadingExtract({ kind: 'order', id: order.id })
+          .pipe(catchError(() => of<BillOfLadingExtractDto | null>(null))),
+      ),
+    )
+      .pipe(
+        finalize(() => this.prefillLoading.set(false)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((results) => {
+        // Only if these are still the orders on the form.
+        const currentIds = [...this.hblSelectedOrderIds()];
+        if (currentIds.join(',') !== requestedIds.join(',')) return;
+        this.applyPrefillResults(results);
+      });
+  }
+
+  private applyPrefillResults(results: (BillOfLadingExtractDto | null)[]): void {
+    const found = results.filter((r): r is BillOfLadingExtractDto => r !== null);
+    const withHbl = found.find((r) => r.hbls.length > 0) ?? null;
+    const withMbl = found.find((r) => r.mbl !== null) ?? null;
+    const hblError = found.find((r) => r.hblError !== null) ?? null;
+    const mblError = found.find((r) => r.mblError !== null) ?? null;
+
+    const source: PrefillSource = {
+      hblFileName: withHbl?.hblFileName ?? null,
+      hbls: withHbl?.hbls ?? [],
+      mblFileName: withMbl?.mblFileName ?? null,
+      mbl: withMbl?.mbl ?? null,
+    };
+    this.prefillSource.set(source);
+    this.prefillHblIndex.set(0);
+    if (source.hbls.length > 0) this.applyHblExtract(source.hbls[0]);
+
+    const lines: string[] = [];
+    if (source.hbls.length > 0) {
+      lines.push(
+        source.hbls.length > 1
+          ? `ה-File מולא מתוך "${source.hblFileName}" (${source.hbls.length} שטרי מטען בקובץ — ניתן לבחור ביניהם)`
+          : `ה-File מולא מתוך "${source.hblFileName}"`,
+      );
+    } else if (hblError) {
+      lines.push(`קריאת שטר המטען "${hblError.hblFileName}" נכשלה: ${hblError.hblError}`);
+    } else if (found.length === 0) {
+      lines.push('לא ניתן היה לקרוא את מסמכי ההזמנה');
+    } else {
+      lines.push('לא נמצא שטר מטען (HBL) בהזמנה — יש למלא את ה-File ידנית');
+    }
+    if (this.savedMbl() === null) {
+      if (source.mbl) {
+        lines.push(`ה-Job ייווצר מתוך "${source.mblFileName}"`);
+      } else if (mblError) {
+        lines.push(`קריאת שטר המטען-מסטר "${mblError.mblFileName}" נכשלה: ${mblError.mblError}`);
+      } else if (source.hbls.length > 0) {
+        lines.push('לא נמצא שטר מטען-מסטר (MBL) בהזמנה — ה-Job ייווצר מפרטי המסטר שבשטר המטען');
+      } else if (found.length > 0) {
+        lines.push('לא נמצא שטר מטען-מסטר (MBL) בהזמנה — יש למלא את ה-Job ידנית');
+      }
+    }
+    this.prefillNotice.set({
+      severity: source.hbls.length > 0 || source.mbl ? 'info' : 'warn',
+      text: lines.join('. '),
+    });
+  }
+
+  /** Writes the document's stated fields over the form (the rest stay as typed). */
+  private applyHblExtract(extract: HblDocumentExtractDto): void {
+    this.hblForm.patchValue(hblExtractToFormValue(extract));
+    if (this.isGroupage() && this.savedMbl() === null && this.hblNewContainerNumber() === '') {
+      const container = extract.master.containers[0]?.containerNumber;
+      if (container) this.hblNewContainerNumber.set(container);
+    }
+  }
+
+  private clearPrefill(): void {
+    this.prefillSource.set(null);
+    this.prefillHblIndex.set(0);
+    this.prefillNotice.set(null);
+    this.prefillLoading.set(false);
+  }
+
+  /** Saves the File. For the very first File the Job is created first (from
+   *  the order's MBL document, else blank) — an `hbl` row needs its `mbl` —
+   *  and the Job form then opens for review. */
   protected onSaveHbl(): void {
+    const shippingType = this.shippingType();
+    const seaMethod = this.seaMethod();
+    if (!shippingType || this.savingHbl()) return;
     const mbl = this.savedMbl();
-    if (!mbl || this.savingHbl()) return;
     const editingId = this.editingHblId();
 
     let customerId: number | null = null;
     let containerId: number | null = null;
+    const newContainerNumber = this.hblNewContainerNumber().trim();
     if (!editingId) {
-      customerId = this.needsHblCustomerPicker() ? (this.hblCustomer()?.id ?? null) : mbl.customerId;
+      customerId = this.needsHblCustomerPicker()
+        ? (this.hblCustomer()?.id ?? null)
+        : (mbl?.customerId ?? null);
       if (customerId === null) {
         this.hblSaveError.set('יש לבחור לקוח עבור ה-File');
         return;
       }
       if (this.isGroupage()) {
-        containerId = this.hblContainerId();
-        if (containerId === null) {
-          this.hblSaveError.set('יש לבחור מכולה עבור ה-File');
+        if (mbl) {
+          containerId = this.hblContainerId();
+          if (containerId === null) {
+            this.hblSaveError.set('יש לבחור מכולה עבור ה-File');
+            return;
+          }
+        } else if (newContainerNumber === '') {
+          this.hblSaveError.set('יש להזין מספר מכולה עבור ה-File');
           return;
         }
       }
@@ -615,15 +823,43 @@ export class ShipmentCaseWizardScreen {
 
     const formValue = this.hblForm.getRawValue();
     const orderIds = [...this.hblSelectedOrderIds()];
+    const createdJob = mbl === null && !editingId;
 
     const request$ = editingId
       ? this.hblApi
           .update(editingId, toUpdateHblDto(formValue))
           .pipe(switchMap((hbl) => this.hblApi.updateOrders(hbl.id, orderIds)))
-      : this.hblApi.create(toCreateHblDto(mbl.id, containerId, customerId!, formValue, orderIds));
+      : mbl
+        ? this.hblApi.create(toCreateHblDto(mbl.id, containerId, customerId!, formValue, orderIds))
+        : this.mblApi
+            .create(this.buildJobDto(shippingType, seaMethod, customerId!, newContainerNumber))
+            .pipe(
+              switchMap((createdMbl) => {
+                this.savedMbl.set(createdMbl);
+                const container = this.isGroupage()
+                  ? (createdMbl.containers.find(
+                      (c) =>
+                        (c.containerNumber ?? '').toUpperCase() ===
+                        newContainerNumber.toUpperCase(),
+                    ) ?? createdMbl.containers[0])
+                  : null;
+                return this.hblApi.create(
+                  toCreateHblDto(
+                    createdMbl.id,
+                    container?.id ?? null,
+                    customerId!,
+                    formValue,
+                    orderIds,
+                  ),
+                );
+              }),
+            );
 
     request$
-      .pipe(finalize(() => this.savingHbl.set(false)), takeUntilDestroyed(this.destroyRef))
+      .pipe(
+        finalize(() => this.savingHbl.set(false)),
+        takeUntilDestroyed(this.destroyRef),
+      )
       .subscribe({
         next: (hbl) => {
           this.hbls.update((list) => {
@@ -634,18 +870,61 @@ export class ShipmentCaseWizardScreen {
             return next;
           });
           this.resetHblForm();
+          if (createdJob) this.startEditMbl();
         },
         error: (error: unknown) => this.hblSaveError.set(saveHblErrorMessage(error)),
       });
+  }
+
+  /** The Job created along with the first File: the order's MBL document (or
+   *  the HBL's master boxes) where found, otherwise blank; `fcl_lcl` takes
+   *  the File's customer as its shared one; groupage gets the document's
+   *  container rows plus the File's own container when not among them. */
+  private buildJobDto(
+    shippingType: MblShippingType,
+    seaMethod: SeaMethod | null,
+    customerId: number,
+    newContainerNumber: string,
+  ) {
+    const prefill = this.jobPrefill();
+    const form = mblExtractToFormValue(prefill);
+    let containers: MblContainerFormValue[] = [];
+    if (this.isGroupage()) {
+      containers = mblExtractContainersToFormValue(prefill);
+      const known = containers.some(
+        (c) => c.containerNumber.toUpperCase() === newContainerNumber.toUpperCase(),
+      );
+      if (!known) {
+        containers.unshift({
+          ...EMPTY_MBL_CONTAINER_FORM_VALUE,
+          containerNumber: newContainerNumber,
+        });
+      }
+    }
+    return toCreateMblDto(
+      shippingType,
+      seaMethod,
+      this.sharesCustomer() ? customerId : null,
+      prefill?.freightTerms ?? null,
+      MblStatus.OPEN,
+      form,
+      containers,
+    );
   }
 
   private loadHbls(mblId: number): void {
     this.hblsLoading.set(true);
     this.hblApi
       .findByMblId(mblId)
-      .pipe(finalize(() => this.hblsLoading.set(false)), takeUntilDestroyed(this.destroyRef))
+      .pipe(
+        finalize(() => this.hblsLoading.set(false)),
+        takeUntilDestroyed(this.destroyRef),
+      )
       .subscribe({
-        next: (rows) => this.hbls.set(rows),
+        next: (rows) => {
+          this.hbls.set(rows);
+          if (rows.length === 0 && !this.showHblForm()) this.openNewHblForm();
+        },
         error: () => this.hbls.set([]),
       });
   }
@@ -665,11 +944,11 @@ export class ShipmentCaseWizardScreen {
     const containers = this.mblForm.controls.containers;
     containers.clear();
     containers.push(this.buildContainerGroup());
-    this.mblCustomer.set(null);
     this.freightTerms.set(null);
     this.mblStatus.set(MblStatus.OPEN);
     this.savedMbl.set(null);
     this.editingMbl.set(false);
+    this.jobConfirmed.set(false);
     this.viewingLockedStep.set(null);
     this.saveError.set(null);
     this.saving.set(false);
@@ -677,8 +956,9 @@ export class ShipmentCaseWizardScreen {
     this.resetHblForm();
   }
 
-  /** Blanks the user-entered part of the File form (fields, customer, orders)
-   *  while leaving the form open and the container choice untouched. */
+  /** Blanks the user-entered part of the File form (fields, customer, orders,
+   *  what the documents filled in) while leaving the form open and the
+   *  container choice untouched. */
   private clearHblFormFields(): void {
     this.hblForm.reset(EMPTY_HBL_FORM_VALUE);
     this.hblCustomer.set(null);
@@ -687,11 +967,13 @@ export class ShipmentCaseWizardScreen {
     this.hblSelectedOrdersLoading.set(false);
     this.showOrdersPicker.set(false);
     this.hblSaveError.set(null);
+    this.clearPrefill();
   }
 
   private resetHblForm(): void {
     this.clearHblFormFields();
     this.hblContainerId.set(null);
+    this.hblNewContainerNumber.set('');
     this.savingHbl.set(false);
     this.editingHblId.set(null);
     this.showHblForm.set(false);
@@ -699,19 +981,22 @@ export class ShipmentCaseWizardScreen {
 
   /** Loads an existing Job (and its Files) for editing — reached only via a
    *  double-click in "התיקים שלי" (see `NavigationService.openCaseForEdit`).
-   *  Jumps straight to the Files step; there's no step 1/2 to show since the
-   *  shipping type/method are already fixed. */
+   *  Lands on the Files step; the Job is reachable from the sidebar. */
   private loadCaseForEdit(mblId: number): void {
     this.loadingCase.set(true);
     this.loadCaseError.set(null);
     this.mblApi
       .getById(mblId)
-      .pipe(finalize(() => this.loadingCase.set(false)), takeUntilDestroyed(this.destroyRef))
+      .pipe(
+        finalize(() => this.loadingCase.set(false)),
+        takeUntilDestroyed(this.destroyRef),
+      )
       .subscribe({
         next: (mbl) => {
           this.shippingType.set(mbl.shippingType);
           this.seaMethod.set(mbl.seaMethod);
           this.savedMbl.set(mbl);
+          this.jobConfirmed.set(true);
           this.isEditingExisting.set(true);
           this.loadHbls(mbl.id);
         },

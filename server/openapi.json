@@ -727,6 +727,59 @@
         ]
       }
     },
+    "/api/import-files/bill-of-lading": {
+      "get": {
+        "operationId": "ImportFilesController_getBillOfLadingExtract",
+        "parameters": [
+          {
+            "name": "orderId",
+            "required": false,
+            "in": "query",
+            "description": "orders.id",
+            "schema": {
+              "example": 1024,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "ccfId",
+            "required": false,
+            "in": "query",
+            "description": "customs_clearance_files.id",
+            "schema": {
+              "example": 7,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillOfLadingExtractDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Neither/both of orderId/ccfId given."
+          },
+          "404": {
+            "description": "No order or customs clearance file with this id."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "import-files"
+        ]
+      }
+    },
     "/api/import-files/files/{fileId}": {
       "get": {
         "operationId": "ImportFilesController_getImportFile",
@@ -3382,6 +3435,309 @@
           "uploadedAt"
         ]
       },
+      "PaymentTerms": {
+        "type": "string",
+        "enum": [
+          "prepaid",
+          "collect"
+        ],
+        "x-enum-varnames": [
+          "PREPAID",
+          "COLLECT"
+        ]
+      },
+      "MblContainerExtractDto": {
+        "type": "object",
+        "properties": {
+          "containerNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "BMOU4512398"
+          },
+          "containerSealNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "SL-332211"
+          },
+          "cargoDescription": {
+            "type": "string",
+            "nullable": true
+          },
+          "grossWeightKg": {
+            "type": "number",
+            "nullable": true,
+            "example": 8950
+          },
+          "volumeCbm": {
+            "type": "number",
+            "nullable": true,
+            "example": 32.4
+          }
+        },
+        "required": [
+          "containerNumber",
+          "containerSealNumber",
+          "cargoDescription",
+          "grossWeightKg",
+          "volumeCbm"
+        ]
+      },
+      "MblDocumentExtractDto": {
+        "type": "object",
+        "properties": {
+          "mblNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "NGB-LCL-2026-7731"
+          },
+          "bookingNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "BKG-CFS-8820"
+          },
+          "vesselName": {
+            "type": "string",
+            "nullable": true,
+            "example": "OOCL HONG KONG"
+          },
+          "voyageNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "088E"
+          },
+          "portOfLoading": {
+            "type": "string",
+            "nullable": true,
+            "example": "Shanghai, China"
+          },
+          "portOfDischarge": {
+            "type": "string",
+            "nullable": true,
+            "example": "Haifa Port, Israel"
+          },
+          "finalDestination": {
+            "type": "string",
+            "nullable": true,
+            "example": "Haifa CFS Terminal"
+          },
+          "carrierName": {
+            "type": "string",
+            "nullable": true
+          },
+          "shipperName": {
+            "type": "string",
+            "nullable": true
+          },
+          "shipperAddress": {
+            "type": "string",
+            "nullable": true
+          },
+          "consigneeName": {
+            "type": "string",
+            "nullable": true
+          },
+          "consigneeAddress": {
+            "type": "string",
+            "nullable": true
+          },
+          "notifyPartyName": {
+            "type": "string",
+            "nullable": true
+          },
+          "notifyPartyAddress": {
+            "type": "string",
+            "nullable": true
+          },
+          "freightTerms": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PaymentTerms"
+              }
+            ]
+          },
+          "receiptDeliveryType": {
+            "type": "string",
+            "nullable": true,
+            "example": "CFS/CFS"
+          },
+          "placeOfIssue": {
+            "type": "string",
+            "nullable": true
+          },
+          "dateOfIssue": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "totalPackages": {
+            "type": "string",
+            "nullable": true,
+            "example": "26 PACKAGES"
+          },
+          "grossWeightKg": {
+            "type": "number",
+            "nullable": true,
+            "example": 8950
+          },
+          "volumeCbm": {
+            "type": "number",
+            "nullable": true,
+            "example": 32.4
+          },
+          "containers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MblContainerExtractDto"
+            }
+          }
+        },
+        "required": [
+          "mblNumber",
+          "bookingNumber",
+          "vesselName",
+          "voyageNumber",
+          "portOfLoading",
+          "portOfDischarge",
+          "finalDestination",
+          "carrierName",
+          "shipperName",
+          "shipperAddress",
+          "consigneeName",
+          "consigneeAddress",
+          "notifyPartyName",
+          "notifyPartyAddress",
+          "freightTerms",
+          "receiptDeliveryType",
+          "placeOfIssue",
+          "dateOfIssue",
+          "totalPackages",
+          "grossWeightKg",
+          "volumeCbm",
+          "containers"
+        ]
+      },
+      "HblDocumentExtractDto": {
+        "type": "object",
+        "properties": {
+          "hblNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "HBL-NGB-LCL-2026-7731-01"
+          },
+          "shipperName": {
+            "type": "string",
+            "nullable": true
+          },
+          "shipperAddress": {
+            "type": "string",
+            "nullable": true
+          },
+          "consigneeName": {
+            "type": "string",
+            "nullable": true
+          },
+          "consigneeAddress": {
+            "type": "string",
+            "nullable": true
+          },
+          "notifyPartyName": {
+            "type": "string",
+            "nullable": true
+          },
+          "notifyPartyAddress": {
+            "type": "string",
+            "nullable": true
+          },
+          "cargoDescription": {
+            "type": "string",
+            "nullable": true
+          },
+          "quantity": {
+            "type": "string",
+            "nullable": true,
+            "example": "8 wooden crates"
+          },
+          "grossWeightKg": {
+            "type": "number",
+            "nullable": true
+          },
+          "volumeCbm": {
+            "type": "number",
+            "nullable": true
+          },
+          "remarks": {
+            "type": "string",
+            "nullable": true,
+            "example": "LCL CONSOL / CFS TO CFS"
+          },
+          "master": {
+            "$ref": "#/components/schemas/MblDocumentExtractDto"
+          }
+        },
+        "required": [
+          "hblNumber",
+          "shipperName",
+          "shipperAddress",
+          "consigneeName",
+          "consigneeAddress",
+          "notifyPartyName",
+          "notifyPartyAddress",
+          "cargoDescription",
+          "quantity",
+          "grossWeightKg",
+          "volumeCbm",
+          "remarks",
+          "master"
+        ]
+      },
+      "BillOfLadingExtractDto": {
+        "type": "object",
+        "properties": {
+          "mblFileName": {
+            "type": "string",
+            "nullable": true,
+            "example": "MBL.html"
+          },
+          "mbl": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MblDocumentExtractDto"
+              }
+            ]
+          },
+          "mblError": {
+            "type": "string",
+            "nullable": true,
+            "example": "Unsupported file type"
+          },
+          "hblFileName": {
+            "type": "string",
+            "nullable": true,
+            "example": "שטר מטען.pdf"
+          },
+          "hbls": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HblDocumentExtractDto"
+            }
+          },
+          "hblError": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "mblFileName",
+          "mbl",
+          "mblError",
+          "hblFileName",
+          "hbls",
+          "hblError"
+        ]
+      },
       "LineItemClassificationUpdateDto": {
         "type": "object",
         "properties": {
@@ -3662,17 +4018,6 @@
           "page",
           "pageSize",
           "items"
-        ]
-      },
-      "PaymentTerms": {
-        "type": "string",
-        "enum": [
-          "prepaid",
-          "collect"
-        ],
-        "x-enum-varnames": [
-          "PREPAID",
-          "COLLECT"
         ]
       },
       "CreateMblContainerDto": {

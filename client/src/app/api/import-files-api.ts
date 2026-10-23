@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 
 import type { ImportDocumentType } from './enums';
 import type {
+  BillOfLadingExtractDto,
   CreateLineItemNoteDto,
   InvoiceLineItemDto,
   LineItemClassificationUpdateDto,
@@ -16,7 +17,8 @@ import type { FilingContext } from './filing-context.model';
 import { PagedQueryParams, toHttpParams } from './paging';
 
 /** Sort keys accepted by `GET /api/import-files/classifications` (whitelisted server-side). */
-export type ClassificationSortKey = 'createdAt' | 'orderId' | 'ccfId' | 'item' | 'classificationCode';
+export type ClassificationSortKey =
+  'createdAt' | 'orderId' | 'ccfId' | 'item' | 'classificationCode';
 
 /** Query parameters accepted by `GET /api/import-files/classifications` — "הסיווגים שלי". */
 export interface PagedClassificationsParams extends PagedQueryParams {
@@ -35,10 +37,7 @@ export const IMPORT_DOCUMENT_TYPE_FIELD = 'documentType';
 
 /** `?orderId=`/`?ccfId=` — every import-files route is scoped by exactly one. */
 function contextParams(context: FilingContext): HttpParams {
-  return new HttpParams().set(
-    context.kind === 'order' ? 'orderId' : 'ccfId',
-    String(context.id),
-  );
+  return new HttpParams().set(context.kind === 'order' ? 'orderId' : 'ccfId', String(context.id));
 }
 
 /**
@@ -56,7 +55,9 @@ export class ImportFilesApi {
    * `GET /api/import-files/classifications` — one page of classified
    * supplier-invoice lines across every order/CCF, filtered/sorted server-side.
    */
-  listClassifications(params: PagedClassificationsParams = {}): Observable<PagedClassificationsDto> {
+  listClassifications(
+    params: PagedClassificationsParams = {},
+  ): Observable<PagedClassificationsDto> {
     return this.http.get<PagedClassificationsDto>(`${this.baseUrl}/classifications`, {
       params: toHttpParams(params),
     });
@@ -69,6 +70,18 @@ export class ImportFilesApi {
    */
   listImportFiles(context: FilingContext): Observable<UploadedImportFileDto[]> {
     return this.http.get<UploadedImportFileDto[]>(this.baseUrl, { params: contextParams(context) });
+  }
+
+  /**
+   * `GET /api/import-files/bill-of-lading?orderId=|ccfId=` — the Job / File
+   * fields the server read out of the order's newest MBL and HBL uploads
+   * (see `BillOfLadingExtractDto`). A missing or unreadable document is
+   * reported inside the body, never as an error status.
+   */
+  getBillOfLadingExtract(context: FilingContext): Observable<BillOfLadingExtractDto> {
+    return this.http.get<BillOfLadingExtractDto>(`${this.baseUrl}/bill-of-lading`, {
+      params: contextParams(context),
+    });
   }
 
   /**
@@ -136,11 +149,9 @@ export class ImportFilesApi {
     items: readonly LineItemClassificationUpdateDto[],
   ): Observable<InvoiceLineItemDto[]> {
     const body: SaveLineItemClassificationsDto = { items: [...items] };
-    return this.http.put<InvoiceLineItemDto[]>(
-      `${this.baseUrl}/line-items/classification`,
-      body,
-      { params: contextParams(context) },
-    );
+    return this.http.put<InvoiceLineItemDto[]>(`${this.baseUrl}/line-items/classification`, body, {
+      params: contextParams(context),
+    });
   }
 
   /**
@@ -158,7 +169,10 @@ export class ImportFilesApi {
    * to one stored line (`fileId` + `lineIndex`), attributed to the signed-in
    * user; returns the stored note.
    */
-  addLineItemNote(context: FilingContext, note: CreateLineItemNoteDto): Observable<LineItemNoteDto> {
+  addLineItemNote(
+    context: FilingContext,
+    note: CreateLineItemNoteDto,
+  ): Observable<LineItemNoteDto> {
     return this.http.post<LineItemNoteDto>(`${this.baseUrl}/line-items/notes`, note, {
       params: contextParams(context),
     });

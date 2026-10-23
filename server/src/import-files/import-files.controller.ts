@@ -35,6 +35,7 @@ import {
   IMPORT_DOCUMENT_TYPE_FIELD,
   UploadImportFilesDto,
 } from './dto/upload-import-files.dto';
+import { BillOfLadingExtractDto } from './dto/bill-of-lading-extract.dto';
 import { PagedClassificationsDto } from './dto/classification-row.dto';
 import { ImportFilesContextQuery } from './dto/import-files-context.query';
 import { InvoiceLineItemDto } from './dto/invoice-line-item.dto';
@@ -144,6 +145,29 @@ export class ImportFilesController {
     @Query() context: ImportFilesContextQuery,
   ): Promise<UploadedImportFileDto[]> {
     return this.importFiles.listImportFiles(toImportFilesContext(context));
+  }
+
+  /**
+   * The Job / File fields read out of the order/CCF's bill-of-lading
+   * paperwork (newest `MASTER_BILL_OF_LADING` → Job, newest
+   * `BILL_OF_LADING` → Files) — the prefill behind "לשיוך להזמנה" in the
+   * shipping-case wizard. Document problems are reported inside the body,
+   * not as an error status.
+   */
+  @Get('bill-of-lading')
+  @ApiOkResponse({ type: BillOfLadingExtractDto })
+  @ApiBadRequestResponse({
+    description: 'Neither/both of orderId/ccfId given.',
+  })
+  @ApiNotFoundResponse({
+    description: 'No order or customs clearance file with this id.',
+  })
+  getBillOfLadingExtract(
+    @Query() context: ImportFilesContextQuery,
+  ): Promise<BillOfLadingExtractDto> {
+    return this.importFiles.getBillOfLadingExtract(
+      toImportFilesContext(context),
+    );
   }
 
   /**
