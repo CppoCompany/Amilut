@@ -110,7 +110,11 @@ App connection for the server: role `Admin` / password `Admin`, database
   severity), `app-data-grid` (server-paged `p-table`), `app-search-select`,
   `app-multi-select`, `app-confirm-dialog`, `app-table-skeleton`. Use
   `[rowOf]="rows"` (`shared/typed-row`) on a `p-table` body template to type
-  its row variable under strict templates.
+  its row variable under strict templates. Every in-memory `p-table` sorts via
+  `appTableSort` (`shared/table-sort`) + `pSortableColumn` / `p-sortIcon` on
+  its headers (pass accessors to sort enum columns by their Hebrew label);
+  `app-data-grid` sorts on the server, so a new sortable column there needs
+  its key in the endpoint's `*_SORT_COLUMNS` whitelist.
 - `styleClass` lands on the host for most PrimeNG components but on the inner
   `<button>` for `p-button`; style PrimeNG internals from component SCSS with
   `:host ::ng-deep …`. `ngModel` writes to PrimeNG controls asynchronously, so

@@ -490,17 +490,17 @@
             @if (hbls().length && editingHblId() === null) {
               <h3 class="subsection-title">Files שנוצרו</h3>
               <div class="data-table-wrapper">
-                <p-table [value]="hbls()" dataKey="id" size="small" styleClass="hbl-table">
+                <p-table [appTableSort]="hblSort" [value]="hbls()" dataKey="id" size="small" styleClass="hbl-table">
                   <ng-template #header>
                     <tr>
-                      <th>#</th>
-                      <th>מספר IBL</th>
-                      <th>מספר HBL</th>
-                      <th>לקוח</th>
+                      <th pSortableColumn="sequenceNumber"># <p-sortIcon field="sequenceNumber" /></th>
+                      <th pSortableColumn="iblNumber">מספר IBL <p-sortIcon field="iblNumber" /></th>
+                      <th pSortableColumn="hblNumber">מספר HBL <p-sortIcon field="hblNumber" /></th>
+                      <th pSortableColumn="customerName">לקוח <p-sortIcon field="customerName" /></th>
                       @if (isGroupage()) {
-                        <th>מכולה</th>
+                        <th pSortableColumn="containerId">מכולה <p-sortIcon field="containerId" /></th>
                       }
-                      <th>הזמנות משויכות</th>
+                      <th pSortableColumn="orders">הזמנות משויכות <p-sortIcon field="orders" /></th>
                       <th><span class="sr-only">פעולות</span></th>
                     </tr>
                   </ng-template>

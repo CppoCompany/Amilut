@@ -563,8 +563,15 @@
                 "createdAt",
                 "orderId",
                 "ccfId",
+                "contextLabel",
+                "fileName",
                 "item",
-                "classificationCode"
+                "description",
+                "quantity",
+                "classificationCode",
+                "tradeAgreement",
+                "countryName",
+                "approvals"
               ]
             }
           }
@@ -1358,7 +1365,12 @@
               "enum": [
                 "id",
                 "mblNumber",
+                "shippingType",
+                "customerNames",
                 "carrierName",
+                "hblCount",
+                "orderCount",
+                "handlerName",
                 "status",
                 "createdAt"
               ]
@@ -2115,7 +2127,11 @@
               "enum": [
                 "id",
                 "customerName",
+                "supplierName",
                 "status",
+                "shipmentType",
+                "destination",
+                "etaDate",
                 "createdAt"
               ]
             }

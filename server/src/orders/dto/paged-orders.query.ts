@@ -8,7 +8,11 @@ import { OrderStatus } from '../orders.enums';
 export const ORDER_SORT_COLUMNS = {
   id: 'o.id',
   customerName: 'c.name',
+  supplierName: 'sup.name',
   status: 'o.status',
+  shipmentType: 'o.shipment_type',
+  destination: 'o.destination',
+  etaDate: 'o.eta_date',
   createdAt: 'o.created_at',
 } as const;
 export type OrderSortKey = keyof typeof ORDER_SORT_COLUMNS;

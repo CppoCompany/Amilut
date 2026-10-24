@@ -68,18 +68,19 @@
         [virtualScroll]="true"
         [virtualScrollItemSize]="45"
         size="small"
+        [appTableSort]="caseSort"
       >
         <ng-template #header>
           <tr>
-            <th>מספר תיק</th>
-            <th>שיטת משלוח</th>
-            <th>מספר MBL</th>
-            <th>מספרי הזמנות</th>
-            <th>לקוחות</th>
-            <th>Files</th>
-            <th>מוביל</th>
-            <th>סטטוס</th>
-            <th>תאריך פתיחה</th>
+            <th pSortableColumn="id">מספר תיק <p-sortIcon field="id" /></th>
+            <th pSortableColumn="shippingType">שיטת משלוח <p-sortIcon field="shippingType" /></th>
+            <th pSortableColumn="mblNumber">מספר MBL <p-sortIcon field="mblNumber" /></th>
+            <th pSortableColumn="orderIds">מספרי הזמנות <p-sortIcon field="orderIds" /></th>
+            <th pSortableColumn="customerNames">לקוחות <p-sortIcon field="customerNames" /></th>
+            <th pSortableColumn="hblCount">Files <p-sortIcon field="hblCount" /></th>
+            <th pSortableColumn="carrierName">מוביל <p-sortIcon field="carrierName" /></th>
+            <th pSortableColumn="status">סטטוס <p-sortIcon field="status" /></th>
+            <th pSortableColumn="createdAt">תאריך פתיחה <p-sortIcon field="createdAt" /></th>
             <th><span class="sr-only">פעולות</span></th>
           </tr>
         </ng-template>

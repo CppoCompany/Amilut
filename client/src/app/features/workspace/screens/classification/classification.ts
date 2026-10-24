@@ -48,6 +48,7 @@ import type {
 } from '../../../../api/models';
 import { MultiSelect, MultiSelectOption } from '../../../../shared/multi-select/multi-select';
 import { TypedRow } from '../../../../shared/typed-row/typed-row';
+import { TableSort } from '../../../../shared/table-sort/table-sort';
 import { FilingContextService } from '../../filing-context.service';
 import { NavigationService } from '../../navigation.service';
 import { LineItemNotesDialog } from './line-item-notes-dialog/line-item-notes-dialog';
@@ -100,6 +101,7 @@ type StoredProduct = Product & { fileId: number; lineIndex: number };
     Textarea,
     Tooltip,
     MultiSelect,
+    TableSort,
     TypedRow,
     LineItemNotesDialog,
   ],

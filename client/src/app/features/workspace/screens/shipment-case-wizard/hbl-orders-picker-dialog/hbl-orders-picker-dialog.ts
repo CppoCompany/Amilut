@@ -21,6 +21,7 @@ import { combineLatest, debounceTime, finalize, skip } from 'rxjs';
 import type { CustomerDto, OrderDto, SupplierDto } from '../../../../../api/models';
 import { ListOrdersParams, OrdersApi } from '../../../../../api/orders-api';
 import { TypedRow } from '../../../../../shared/typed-row/typed-row';
+import { TableSort } from '../../../../../shared/table-sort/table-sort';
 import {
   CustomerAutocomplete,
   SEARCH_DEBOUNCE_MS,
@@ -49,6 +50,7 @@ const MAX_ROWS = 200;
     TableModule,
     CustomerAutocomplete,
     SupplierAutocomplete,
+    TableSort,
     TypedRow,
   ],
   templateUrl: './hbl-orders-picker-dialog.html',

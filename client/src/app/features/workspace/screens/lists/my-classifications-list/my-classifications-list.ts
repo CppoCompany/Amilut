@@ -39,11 +39,11 @@ export class MyClassificationsListScreen {
     rowKey: (row) => `${row.fileId}:${row.lineIndex}`,
     errorText: 'טעינת הסיווגים נכשלה',
     columns: [
-      { key: 'contextLabel', header: 'הקשר', cell: (r) => r.contextLabel },
-      { key: 'fileName', header: 'קובץ', cell: (r) => textOrEmDash(r.fileName) },
+      { key: 'contextLabel', header: 'הקשר', sortable: true, cell: (r) => r.contextLabel },
+      { key: 'fileName', header: 'קובץ', sortable: true, cell: (r) => textOrEmDash(r.fileName) },
       { key: 'item', header: 'מק"ט', sortable: true, cell: (r) => textOrEmDash(r.item) },
-      { key: 'description', header: 'תיאור', cell: (r) => textOrEmDash(r.description) },
-      { key: 'quantity', header: 'כמות', cssClass: 'data-table__numeric', cell: (r) => textOrEmDash(r.quantity) },
+      { key: 'description', header: 'תיאור', sortable: true, cell: (r) => textOrEmDash(r.description) },
+      { key: 'quantity', header: 'כמות', sortable: true, cssClass: 'data-table__numeric', cell: (r) => textOrEmDash(r.quantity) },
       {
         key: 'classificationCode',
         header: 'פרט מכס',
@@ -54,15 +54,17 @@ export class MyClassificationsListScreen {
       {
         key: 'tradeAgreement',
         header: 'הסכם סחר',
+        sortable: true,
         cell: (r) =>
           r.classification.tradeAgreement
             ? TRADE_AGREEMENT_LABELS[r.classification.tradeAgreement]
             : '—',
       },
-      { key: 'countryName', header: 'מדינת מקור', cell: (r) => textOrEmDash(r.countryName) },
+      { key: 'countryName', header: 'מדינת מקור', sortable: true, cell: (r) => textOrEmDash(r.countryName) },
       {
         key: 'approvals',
         header: 'אישורים',
+        sortable: true,
         cssClass: 'data-table__numeric',
         cell: (r) => String(r.classification.approvals.length),
       },

@@ -74,8 +74,10 @@
 }
 
 // Products table: a card with a two-level sticky header (invoice / classification
-// groups), quiet rows that highlight on hover or while editing, and inline
-// controls that only show their border on hover / focus.
+// groups) and inline controls that only show their border on hover / focus.
+// Header cells and the row hover are the theme's (amilut-preset `datatable`,
+// global hover in styles.scss), as on every other table; body cells stay
+// compact because each row holds a row of editors.
 .products-card {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
@@ -94,7 +96,10 @@
   border-collapse: separate;
   border-spacing: 0;
 
-  th,
+  th {
+    white-space: nowrap;
+  }
+
   td {
     padding: 6px 6px;
     font-size: 0.8rem;
@@ -102,21 +107,9 @@
     border-bottom: 1px solid var(--border-color);
   }
 
-  th {
-    background: var(--readonly-bg);
-    color: var(--text-muted);
-    font-size: 0.75rem;
-    font-weight: 700;
-    letter-spacing: 0.01em;
-  }
-
-  // Column-group captions above the column headers.
+  // Column-group captions above the column headers: same header cell, centred.
   &__groups th {
-    padding: 5px 8px;
-    background: var(--light-blue-bg);
-    color: var(--primary-blue);
-    font-size: 0.72rem;
-    border-bottom-color: color-mix(in srgb, var(--secondary-blue) 20%, transparent);
+    text-align: center;
   }
 
   // Divider between the invoice columns and the classification columns.
@@ -140,20 +133,14 @@
   }
 
   tbody tr {
-    transition: background-color 0.15s ease;
-
     // Status strip on the row's inline-start edge (the right, in RTL).
     td:first-child {
       box-shadow: inset -3px 0 0 transparent;
     }
 
-    &:nth-child(even) td {
-      background: color-mix(in srgb, var(--readonly-bg) 60%, transparent);
-    }
-
-    &:hover td,
-    &:focus-within td {
-      background: var(--light-blue-bg);
+    // The row being edited keeps the hover tint.
+    &:focus-within {
+      background: var(--p-datatable-row-hover-background);
     }
 
     &.is-classified td:first-child {

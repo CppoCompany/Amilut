@@ -72,12 +72,12 @@
           אין הודעות
         </p>
       } @else {
-        <p-table [value]="messages()" size="small" styleClass="dashboard-table" dataKey="id">
+        <p-table appTableSort [value]="messages()" size="small" styleClass="dashboard-table" dataKey="id">
           <ng-template #header>
             <tr>
-              <th>הודעה</th>
-              <th>בוצע ע"י</th>
-              <th class="data-table__numeric">תאריך</th>
+              <th pSortableColumn="message">הודעה <p-sortIcon field="message" /></th>
+              <th pSortableColumn="actorName">בוצע ע"י <p-sortIcon field="actorName" /></th>
+              <th pSortableColumn="createdAt" class="data-table__numeric">תאריך <p-sortIcon field="createdAt" /></th>
             </tr>
           </ng-template>
           <ng-template #body let-message [rowOf]="messages()">
@@ -128,14 +128,14 @@
           אין נתונים להצגה
         </p>
       } @else {
-        <p-table [value]="data()!.myOrders" size="small" styleClass="dashboard-table" dataKey="id">
+        <p-table [appTableSort]="orderSort" [value]="data()!.myOrders" size="small" styleClass="dashboard-table" dataKey="id">
           <ng-template #header>
             <tr>
-              <th class="data-table__numeric">מספר הזמנה</th>
-              <th>לקוח</th>
-              <th>פקיד מטפל</th>
-              <th class="data-table__status">סטטוס</th>
-              <th class="data-table__numeric">תאריך פתיחה</th>
+              <th pSortableColumn="id" class="data-table__numeric">מספר הזמנה <p-sortIcon field="id" /></th>
+              <th pSortableColumn="customerName">לקוח <p-sortIcon field="customerName" /></th>
+              <th pSortableColumn="handlerName">פקיד מטפל <p-sortIcon field="handlerName" /></th>
+              <th pSortableColumn="status" class="data-table__status">סטטוס <p-sortIcon field="status" /></th>
+              <th pSortableColumn="createdAt" class="data-table__numeric">תאריך פתיחה <p-sortIcon field="createdAt" /></th>
             </tr>
           </ng-template>
           <ng-template #body let-order [rowOf]="data()!.myOrders">
@@ -187,15 +187,15 @@
           אין נתונים להצגה
         </p>
       } @else {
-        <p-table [value]="data()!.casesInRelease" size="small" styleClass="dashboard-table" dataKey="id">
+        <p-table [appTableSort]="caseInReleaseSort" [value]="data()!.casesInRelease" size="small" styleClass="dashboard-table" dataKey="id">
           <ng-template #header>
             <tr>
-              <th class="data-table__numeric">מספר תיק</th>
-              <th>מספר MBL</th>
-              <th>לקוחות</th>
-              <th>מוביל</th>
-              <th class="data-table__status">סטטוס</th>
-              <th class="data-table__numeric">תאריך פתיחה</th>
+              <th pSortableColumn="id" class="data-table__numeric">מספר תיק <p-sortIcon field="id" /></th>
+              <th pSortableColumn="mblNumber">מספר MBL <p-sortIcon field="mblNumber" /></th>
+              <th pSortableColumn="customerNames">לקוחות <p-sortIcon field="customerNames" /></th>
+              <th pSortableColumn="carrierName">מוביל <p-sortIcon field="carrierName" /></th>
+              <th pSortableColumn="status" class="data-table__status">סטטוס <p-sortIcon field="status" /></th>
+              <th pSortableColumn="createdAt" class="data-table__numeric">תאריך פתיחה <p-sortIcon field="createdAt" /></th>
             </tr>
           </ng-template>
           <ng-template #body let-mblCase [rowOf]="data()!.casesInRelease">
@@ -242,14 +242,14 @@
           אין נתונים להצגה
         </p>
       } @else {
-        <p-table [value]="data()!.ccfsPendingClassification" size="small" styleClass="dashboard-table" dataKey="id">
+        <p-table [appTableSort]="ccfSort" [value]="data()!.ccfsPendingClassification" size="small" styleClass="dashboard-table" dataKey="id">
           <ng-template #header>
             <tr>
-              <th>מספר תיק</th>
-              <th>מספר MBL</th>
-              <th>לקוחות</th>
-              <th class="data-table__numeric">שורות מסווגות</th>
-              <th class="data-table__numeric">תאריך פתיחה</th>
+              <th pSortableColumn="fileNumber">מספר תיק <p-sortIcon field="fileNumber" /></th>
+              <th pSortableColumn="shipmentFileMblNumber">מספר MBL <p-sortIcon field="shipmentFileMblNumber" /></th>
+              <th pSortableColumn="customerNames">לקוחות <p-sortIcon field="customerNames" /></th>
+              <th pSortableColumn="progress" class="data-table__numeric">שורות מסווגות <p-sortIcon field="progress" /></th>
+              <th pSortableColumn="createdAt" class="data-table__numeric">תאריך פתיחה <p-sortIcon field="createdAt" /></th>
             </tr>
           </ng-template>
           <ng-template #body let-ccf [rowOf]="data()!.ccfsPendingClassification">
@@ -299,15 +299,15 @@
           אין נתונים להצגה
         </p>
       } @else {
-        <p-table [value]="data()!.ccfs" size="small" styleClass="dashboard-table" dataKey="id">
+        <p-table [appTableSort]="ccfSort" [value]="data()!.ccfs" size="small" styleClass="dashboard-table" dataKey="id">
           <ng-template #header>
             <tr>
-              <th>מספר תיק</th>
-              <th>מספר MBL</th>
-              <th>לקוחות</th>
-              <th class="data-table__numeric">שורות מסווגות</th>
-              <th class="data-table__status">סטטוס</th>
-              <th class="data-table__numeric">תאריך פתיחה</th>
+              <th pSortableColumn="fileNumber">מספר תיק <p-sortIcon field="fileNumber" /></th>
+              <th pSortableColumn="shipmentFileMblNumber">מספר MBL <p-sortIcon field="shipmentFileMblNumber" /></th>
+              <th pSortableColumn="customerNames">לקוחות <p-sortIcon field="customerNames" /></th>
+              <th pSortableColumn="progress" class="data-table__numeric">שורות מסווגות <p-sortIcon field="progress" /></th>
+              <th pSortableColumn="status" class="data-table__status">סטטוס <p-sortIcon field="status" /></th>
+              <th pSortableColumn="createdAt" class="data-table__numeric">תאריך פתיחה <p-sortIcon field="createdAt" /></th>
             </tr>
           </ng-template>
           <ng-template #body let-ccf [rowOf]="data()!.ccfs">
@@ -360,16 +360,16 @@
           אין נתונים להצגה
         </p>
       } @else {
-        <p-table [value]="data()!.importProcesses" size="small" styleClass="dashboard-table" dataKey="id">
+        <p-table [appTableSort]="importProcessSort" [value]="data()!.importProcesses" size="small" styleClass="dashboard-table" dataKey="id">
           <ng-template #header>
             <tr>
-              <th class="data-table__numeric">מספר תיק</th>
-              <th>מספר MBL</th>
-              <th>סוג משלוח</th>
-              <th>לקוחות</th>
-              <th class="data-table__numeric">Files</th>
-              <th class="data-table__status">סטטוס</th>
-              <th class="data-table__numeric">תאריך פתיחה</th>
+              <th pSortableColumn="id" class="data-table__numeric">מספר תיק <p-sortIcon field="id" /></th>
+              <th pSortableColumn="mblNumber">מספר MBL <p-sortIcon field="mblNumber" /></th>
+              <th pSortableColumn="shippingType">סוג משלוח <p-sortIcon field="shippingType" /></th>
+              <th pSortableColumn="customerNames">לקוחות <p-sortIcon field="customerNames" /></th>
+              <th pSortableColumn="hblCount" class="data-table__numeric">Files <p-sortIcon field="hblCount" /></th>
+              <th pSortableColumn="status" class="data-table__status">סטטוס <p-sortIcon field="status" /></th>
+              <th pSortableColumn="createdAt" class="data-table__numeric">תאריך פתיחה <p-sortIcon field="createdAt" /></th>
             </tr>
           </ng-template>
           <ng-template #body let-process [rowOf]="data()!.importProcesses">

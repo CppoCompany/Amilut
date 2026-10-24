@@ -24,13 +24,17 @@ import {
   ORDER_STATUS_LABELS,
 } from '../../../../api/enums';
 import type {
+  DashboardCaseInReleaseRowDto,
   DashboardCcfRowDto,
+  DashboardImportProcessRowDto,
+  DashboardOrderRowDto,
   DashboardResponseDto,
   NotificationDto,
 } from '../../../../api/models';
 import { NotificationsApi } from '../../../../api/notifications-api';
 import { StatusTag } from '../../../../shared/status-tag/status-tag';
 import { TableSkeleton } from '../../../../shared/table-skeleton/table-skeleton';
+import { SortAccessors, TableSort } from '../../../../shared/table-sort/table-sort';
 import { TypedRow } from '../../../../shared/typed-row/typed-row';
 import { ToastService } from '../../../../shared/toast/toast.service';
 import { isTreeChildGroup, TreeChild } from '../../navigation.model';
@@ -59,7 +63,7 @@ export const DASHBOARD_ACTION_ROW_IDS = {
 /** "איזור האישי" — landing screen: quick actions, the "הודעות" widget and five compact "latest 5" cards. */
 @Component({
   selector: 'app-dashboard-screen',
-  imports: [Button, Message, TableModule, Tag, StatusTag, TableSkeleton, TypedRow],
+  imports: [Button, Message, TableModule, Tag, StatusTag, TableSkeleton, TableSort, TypedRow],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -98,6 +102,22 @@ export class DashboardScreen {
   protected readonly shippingTypeLabels = MBL_SHIPPING_TYPE_LABELS;
   protected readonly ccfStatusLabels = CCF_STATUS_LABELS;
   protected readonly listRows = DASHBOARD_LIST_ROW_IDS;
+
+  /** Card columns that sort by their shown label / ratio rather than the raw field (`appTableSort`). */
+  protected readonly orderSort: SortAccessors<DashboardOrderRowDto> = {
+    status: (order) => ORDER_STATUS_LABELS[order.status],
+  };
+  protected readonly caseInReleaseSort: SortAccessors<DashboardCaseInReleaseRowDto> = {
+    status: (mblCase) => this.mblStatusLabel(mblCase.status),
+  };
+  protected readonly ccfSort: SortAccessors<DashboardCcfRowDto> = {
+    progress: classifiedRatio,
+    status: (ccf) => CCF_STATUS_LABELS[ccf.status],
+  };
+  protected readonly importProcessSort: SortAccessors<DashboardImportProcessRowDto> = {
+    shippingType: (process) => MBL_SHIPPING_TYPE_LABELS[process.shippingType],
+    status: (process) => this.mblStatusLabel(process.status),
+  };
 
   constructor() {
     this.load();
@@ -278,4 +298,9 @@ export class DashboardScreen {
         },
       });
   }
+}
+
+/** Classified share of a CCF's lines (`null` when it has none — shown as an em dash). */
+function classifiedRatio(ccf: DashboardCcfRowDto): number | null {
+  return ccf.lineCount === 0 ? null : ccf.classifiedLineCount / ccf.lineCount;
 }

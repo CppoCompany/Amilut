@@ -68,12 +68,12 @@
           <span class="document-category__count">({{ category.docs.length }})</span>
         </h3>
         @if (category.docs.length > 0) {
-          <p-table [value]="category.docs" styleClass="documents-table" size="small" dataKey="id">
+          <p-table appTableSort [value]="category.docs" styleClass="documents-table" size="small" dataKey="id">
             <ng-template #header>
               <tr>
-                <th>שם קובץ</th>
-                <th>תאריך</th>
-                <th>גודל</th>
+                <th pSortableColumn="name">שם קובץ <p-sortIcon field="name" /></th>
+                <th pSortableColumn="uploadedAt">תאריך <p-sortIcon field="uploadedAt" /></th>
+                <th pSortableColumn="bytes">גודל <p-sortIcon field="bytes" /></th>
                 <th>פעולות</th>
               </tr>
             </ng-template>

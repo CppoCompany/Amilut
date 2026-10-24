@@ -16,7 +16,13 @@ import { MblStatus } from '../mbl.enums';
 export const MBL_SORT_COLUMNS = {
   id: 'm.id',
   mblNumber: 'm.mbl_number',
+  // Aggregates are fine here: the paged query is GROUP BY m.id (…).
+  shippingType: '(m.shipping_type, m.sea_method)',
+  customerNames: `string_agg(DISTINCT c.name, ', ')`,
   carrierName: 'm.carrier_name',
+  hblCount: 'count(DISTINCT h.id)',
+  orderCount: 'count(DISTINCT o.id)',
+  handlerName: 'u.name',
   status: 'm.status',
   createdAt: 'm.created_at',
 } as const;

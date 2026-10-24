@@ -44,7 +44,7 @@
     } @else if (rows().length === 0) {
       <p class="data-table__empty">לא נמצאו הזמנות ללא שיוך</p>
     } @else {
-      <p-table [value]="rows()" dataKey="id" size="small" [scrollable]="true" scrollHeight="flex">
+      <p-table appTableSort [value]="rows()" dataKey="id" size="small" [scrollable]="true" scrollHeight="flex">
         <ng-template #header>
           <tr>
             <th class="orders-picker__check">
@@ -55,9 +55,9 @@
                 (ngModelChange)="toggleAll()"
               />
             </th>
-            <th>מספר הזמנה</th>
-            <th>לקוח</th>
-            <th>ספק</th>
+            <th pSortableColumn="id">מספר הזמנה <p-sortIcon field="id" /></th>
+            <th pSortableColumn="customerName">לקוח <p-sortIcon field="customerName" /></th>
+            <th pSortableColumn="supplierName">ספק <p-sortIcon field="supplierName" /></th>
           </tr>
         </ng-template>
         <ng-template #body let-order [rowOf]="rows()">
