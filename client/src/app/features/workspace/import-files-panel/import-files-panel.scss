@@ -1,7 +1,128 @@
 // Component-scoped additions to the shared form styles (see src/styles.scss).
 
-// Row above the drop zone: any projected control (the Filing screen's
-// Order/CCF picker) beside the "סוג מסמך" picker; wraps on narrow screens.
+:host {
+  display: block;
+}
+
+// `split` (Filing screen): two equal halves filling the page height — upload
+// and the selected record's documents on the right (first in RTL), the record
+// tables on the left; the tables and the documents list virtual-scroll in the
+// space left to them. One column below 1100px, records first (a record has to
+// be picked before anything can be uploaded), each list a fixed height there.
+:host(.import-files-panel--split) {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: minmax(0, 1fr);
+  flex: 1;
+  // Below this the page scrolls instead of squeezing the lists to nothing.
+  min-height: 32rem;
+  gap: 24px;
+
+  .panel-upload,
+  .panel-records {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .panel-upload {
+    padding: 16px;
+    border: var(--hairline);
+    border-radius: var(--radius-lg);
+    background: var(--card-bg);
+  }
+
+  .document-type-group {
+    max-width: none;
+  }
+
+  .documents-scroll {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 12rem;
+    margin-top: 12px;
+  }
+
+  @media (max-width: 1100px) {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+    flex: none;
+
+    .panel-records {
+      order: -1;
+      height: 32rem;
+    }
+
+    .documents-scroll {
+      flex: none;
+      height: 24rem;
+    }
+  }
+}
+
+// The `split` documents table: one row per caption / file, all the fixed
+// height `virtualScrollItemSize` assumes.
+:host ::ng-deep .documents-table--virtual {
+  .p-datatable-tbody > tr {
+    height: 45px;
+  }
+
+  .document-group-row > td {
+    background: var(--bg-color);
+  }
+
+  .document-group-row .document-category__title {
+    margin: 0;
+  }
+
+  .document-empty-row > td {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+  }
+
+  // Fixed layout: "פעולות" is just wide enough for "פתח" + the delete icon
+  // (the spinner replaces the label while opening, so it never grows); the
+  // three unsized columns share the rest equally.
+  .p-datatable-table {
+    width: 100%;
+    table-layout: fixed;
+  }
+
+  .p-datatable-thead > tr > th:last-child,
+  .p-datatable-tbody > tr > td.data-table__actions {
+    width: 6rem;
+    padding-inline: 0.375rem;
+    white-space: nowrap;
+  }
+
+  // Long names cut with an ellipsis (full name in the tooltip) instead of
+  // widening their column.
+  .document-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.panel-upload,
+.panel-records {
+  min-width: 0;
+}
+
+.panel-documents__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 24px 0 0;
+  padding-top: 16px;
+  border-top: var(--hairline);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-brand);
+}
+
+// Row above the drop zone: the "סוג מסמך" picker; wraps on narrow screens.
 .panel-toolbar {
   display: flex;
   flex-wrap: wrap;

@@ -211,7 +211,7 @@ export class NavigationService {
         icon: 'fa-solid fa-file-import',
         // Visible in the sidebar (unlike before this screen supported an
         // Order/CCF picker): opening it directly now has a real "pick one"
-        // flow (FilingContextPicker) to land on, not just a hand-off from
+        // flow (FilingRecords) to land on, not just a hand-off from
         // the Order/CCF screens' own "תיוק ניירת יבוא" links (see
         // `openFilingFor`).
       },

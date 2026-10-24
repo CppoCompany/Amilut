@@ -6,10 +6,11 @@ import { By } from '@angular/platform-browser';
 import { Select } from 'primeng/select';
 import { vi } from 'vitest';
 
-import { ImportDocumentType } from '../../../api/enums';
+import { IMPORT_DOCUMENT_TYPE_LABELS, ImportDocumentType } from '../../../api/enums';
 import type { FilingContext } from '../../../api/filing-context.model';
 import { IMPORT_DOCUMENT_TYPE_FIELD, IMPORT_FILES_FIELD } from '../../../api/import-files-api';
 import type { UploadedImportFileDto } from '../../../api/models';
+import { stubLayoutForVirtualScroll } from '../../../shared/testing/virtual-scroll';
 import { ImportFilesPanel } from './import-files-panel';
 
 type PanelInternals = {
@@ -393,5 +394,91 @@ describe('ImportFilesPanel', () => {
       expect(rowNames()).toHaveLength(2);
       expect(internals.errorMessage()).toBe('מחיקת הקובץ "invoice.pdf" נכשלה');
     });
+  });
+});
+
+describe('ImportFilesPanel in the split layout (Filing screen)', () => {
+  const PACKING_LABEL = IMPORT_DOCUMENT_TYPE_LABELS[ImportDocumentType.PACKING_LIST];
+  const INVOICE_LABEL = IMPORT_DOCUMENT_TYPE_LABELS[ImportDocumentType.SUPPLIER_INVOICE];
+  const SECOND_PACKING_LIST: UploadedImportFileDto = {
+    ...PACKING_LIST,
+    id: 18,
+    name: 'a-packing.pdf',
+    uploadedAt: '2026-09-23T10:00:00.000Z',
+  };
+
+  beforeEach(async () => {
+    stubLayoutForVirtualScroll();
+    await TestBed.configureTestingModule({
+      imports: [ImportFilesPanel],
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    }).compileComponents();
+
+    httpMock = TestBed.inject(HttpTestingController);
+    fixture = TestBed.createComponent(ImportFilesPanel);
+    fixture.componentRef.setInput('layout', 'split');
+    fixture.componentRef.setInput('documentTypes', [
+      ImportDocumentType.SUPPLIER_INVOICE,
+      ImportDocumentType.PACKING_LIST,
+    ]);
+    fixture.componentRef.setInput('context', ORDER_CONTEXT);
+    fixture.detectChanges();
+  });
+
+  afterEach(() => {
+    httpMock.verify();
+    vi.restoreAllMocks();
+  });
+
+  /** Lets PrimeNG's virtual scroller lay out its rows — it does so on a timer. */
+  async function settle(): Promise<void> {
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    fixture.detectChanges();
+  }
+
+  /** Each row of the one documents table: a caption, the empty line, or a file name. */
+  function tableRows(): string[] {
+    return Array.from(fixture.nativeElement.querySelectorAll('.documents-table--virtual tbody tr')).map(
+      (tr) => (tr as HTMLElement).querySelector('td')?.textContent?.replace(/\s+/g, ' ').trim() ?? '',
+    );
+  }
+
+  it('lists every category in one virtual-scrolled table, captions included', async () => {
+    flushList([INVOICE]);
+    await settle();
+
+    expect(fixture.nativeElement.querySelector('.document-categories')).toBeNull();
+    expect(tableRows()).toEqual([
+      `${INVOICE_LABEL} (1)`,
+      'invoice.pdf',
+      `${PACKING_LABEL} (0)`,
+      'לא הועלו מסמכים מסוג זה',
+    ]);
+  });
+
+  it('sorts files within their category, captions staying put', async () => {
+    flushList([SECOND_PACKING_LIST, INVOICE, PACKING_LIST]);
+    await settle();
+    expect(tableRows()).toEqual([
+      `${INVOICE_LABEL} (1)`,
+      'invoice.pdf',
+      `${PACKING_LABEL} (2)`,
+      'a-packing.pdf',
+      'מפרט אריזות.pdf',
+    ]);
+
+    const byDate = fixture.nativeElement.querySelector('th[psortablecolumn="uploadedAt"]') as HTMLElement;
+    byDate.click(); // ascending: oldest first
+    await settle();
+
+    expect(tableRows()).toEqual([
+      `${INVOICE_LABEL} (1)`,
+      'invoice.pdf',
+      `${PACKING_LABEL} (2)`,
+      'מפרט אריזות.pdf',
+      'a-packing.pdf',
+    ]);
   });
 });
