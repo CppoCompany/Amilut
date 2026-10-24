@@ -4,6 +4,7 @@ import {
   Get,
   Param,
   ParseIntPipe,
+  Patch,
   Post,
   Query,
 } from '@nestjs/common';
@@ -16,6 +17,7 @@ import {
 } from '@nestjs/swagger';
 import type { JwtPayload } from '../auth/auth.types';
 import { CurrentUser } from '../auth/current-user.decorator';
+import { ChangeClearanceStatusDto } from '../status-tracks/dto/status-history.dto';
 import { CcfService } from './ccf.service';
 import { CcfDto } from './dto/ccf.dto';
 import { CreateCcfDto } from './dto/create-ccf.dto';
@@ -56,5 +58,17 @@ export class CcfController {
   @ApiNotFoundResponse()
   findById(@Param('id', ParseIntPipe) id: number): Promise<CcfDto> {
     return this.ccf.findById(id);
+  }
+
+  /** Clearance status of a per-house (air) CCF. */
+  @Patch(':id/clearance-status')
+  @ApiOkResponse({ type: CcfDto })
+  @ApiNotFoundResponse()
+  changeClearanceStatus(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ChangeClearanceStatusDto,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<CcfDto> {
+    return this.ccf.changeClearanceStatus(id, dto.status, dto.reason, user.sub);
   }
 }

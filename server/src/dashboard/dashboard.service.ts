@@ -82,7 +82,7 @@ const MBL_CASE_SELECT = `
          m.carrier_name,
          m.status,
          m.created_at,
-         count(DISTINCT h.id) AS hbl_count,
+         count(DISTINCT h.id) FILTER (WHERE NOT h.is_master_mirror) AS hbl_count,
          array_agg(DISTINCT c.name) FILTER (WHERE c.name IS NOT NULL) AS customer_names
     FROM mbl m
     LEFT JOIN hbl       h ON h.mbl_id = m.id
@@ -121,13 +121,15 @@ const CCF_ROW_SELECT = `
          (SELECT array_agg(DISTINCT cu.name)
             FROM hbl h
             JOIN customers cu ON cu.id = h.customer_id
-           WHERE h.mbl_id = c.shipment_file_id) AS customer_names,
+           WHERE (c.hbl_id IS NULL AND h.mbl_id = c.shipment_file_id)
+              OR h.id = c.hbl_id) AS customer_names,
          c.status,
          inv_lines.line_count,
          inv_lines.classified_line_count,
          c.created_at
     FROM customs_clearance_files c
-    LEFT JOIN mbl m ON m.id = c.shipment_file_id
+    LEFT JOIN mbl m ON m.id = COALESCE(c.shipment_file_id,
+                                       (SELECT ch.mbl_id FROM hbl ch WHERE ch.id = c.hbl_id))
    CROSS JOIN LATERAL (
          SELECT count(*) AS line_count,
                 count(*) FILTER (

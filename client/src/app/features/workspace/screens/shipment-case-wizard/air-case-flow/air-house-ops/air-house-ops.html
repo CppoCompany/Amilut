@@ -1,0 +1,310 @@
+<div class="ops">
+  <div class="ops__summary">
+    @if (house().arrivalState; as state) {
+      <app-status-tag [status]="state" [label]="ARRIVAL_STATE_LABELS[state]" />
+    }
+    <span class="ops__pieces">{{ piecesLabel() }}</span>
+  </div>
+
+  <h4 class="ops__title">סטטוסים</h4>
+  <div class="grid-row">
+    <div class="form-group">
+      <label for="docStatus-{{ house().id }}">סטטוס מסמכים</label>
+      <p-select
+        [inputId]="'docStatus-' + house().id"
+        [options]="documentOptions"
+        optionLabel="label"
+        optionValue="value"
+        [ngModel]="house().documentStatus"
+        (ngModelChange)="onDocumentStatus($event)"
+        [disabled]="busy()"
+        appendTo="body"
+      />
+    </div>
+    <div class="form-group">
+      <label>תיק סליקה (CCF)</label>
+      <div class="ops__ccf">
+        <p-button
+          [label]="ccf() ? 'מעבר לתיק ' + ccf()!.fileNumber : 'פתיחת תיק סליקה ל-HAWB'"
+          icon="fa-solid fa-stamp"
+          severity="secondary"
+          [outlined]="true"
+          size="small"
+          [disabled]="busy()"
+          (onClick)="openCcf()"
+        />
+      </div>
+    </div>
+    @if (ccf(); as openedCcf) {
+      <div class="form-group">
+        <label for="clrStatus-{{ house().id }}">סטטוס סליקה</label>
+        <p-select
+          [inputId]="'clrStatus-' + house().id"
+          [options]="clearanceOptions"
+          optionLabel="label"
+          optionValue="value"
+          [ngModel]="openedCcf.clearanceStatus"
+          (ngModelChange)="onClearanceStatus($event)"
+          [disabled]="busy()"
+          appendTo="body"
+        />
+      </div>
+    }
+  </div>
+  <p class="hint-text">
+    הכנת מסמכים וסיווג אפשריים גם בהגעה חלקית. שחרור/הצהרה חלקיים אינם נתמכים בשלב זה.
+  </p>
+
+  @if (pendingCorrection(); as pending) {
+    <div class="ops__correction">
+      <span>
+        החזרת הסטטוס ל"{{ statusValueLabel(pending.value) }}" היא תיקון — יש לציין סיבה:
+      </span>
+      <input
+        type="text"
+        pInputText
+        aria-label="סיבת התיקון"
+        [ngModel]="correctionReason()"
+        (ngModelChange)="correctionReason.set($event)"
+      />
+      <p-button
+        label="אישור תיקון"
+        size="small"
+        [disabled]="correctionReason().trim() === '' || busy()"
+        (onClick)="confirmCorrection()"
+      />
+      <p-button
+        label="ביטול"
+        size="small"
+        severity="secondary"
+        [text]="true"
+        (onClick)="cancelCorrection()"
+      />
+    </div>
+  }
+
+  <h4 class="ops__title">הגעות</h4>
+  @if (house().mblId === null) {
+    <p class="hint-text">ניתן לרשום הגעה רק לאחר שיוך ה-HAWB ל-MAWB.</p>
+  } @else {
+    @if (arrivals().length) {
+      <div class="data-table-wrapper">
+        <p-table [value]="arrivals()" dataKey="id" size="small">
+          <ng-template #header>
+            <tr>
+              <th>טיסה</th>
+              <th>תאריך הגעה</th>
+              <th>חלקים</th>
+              <th>נרשם ע"י</th>
+              <th>הערות</th>
+              <th><span class="sr-only">פעולות</span></th>
+            </tr>
+          </ng-template>
+          <ng-template #body let-arrival [rowOf]="arrivals()">
+            <tr [class.ops__voided]="arrival.voidedAt !== null">
+              <td>{{ arrival.flightNumber }}</td>
+              <td>{{ arrival.arrivalDate }}</td>
+              <td class="data-table__numeric">{{ arrival.piecesReceived }}</td>
+              <td>{{ arrival.createdByName ?? '—' }}</td>
+              <td>
+                @if (arrival.isOverride) {
+                  <span class="ops__badge">חריגה: {{ arrival.overrideReason }}</span>
+                }
+                @if (arrival.voidedAt) {
+                  <span class="ops__badge">בוטל: {{ arrival.voidReason }}</span>
+                }
+                {{ arrival.notes ?? '' }}
+              </td>
+              <td class="data-table__actions">
+                @if (!arrival.voidedAt) {
+                  <p-button
+                    icon="fa-solid fa-ban"
+                    severity="secondary"
+                    [text]="true"
+                    size="small"
+                    ariaLabel="ביטול רישום ההגעה"
+                    (onClick)="voidTarget.set(arrival)"
+                  />
+                }
+              </td>
+            </tr>
+          </ng-template>
+        </p-table>
+      </div>
+    }
+    <div class="ops__arrival">
+      <input
+        type="text"
+        pInputText
+        placeholder="מספר טיסה"
+        aria-label="מספר טיסה"
+        [ngModel]="arrivalFlight()"
+        (ngModelChange)="arrivalFlight.set($event)"
+      />
+      <p-datepicker
+        dataType="string"
+        dateFormat="yy-mm-dd"
+        placeholder="תאריך הגעה"
+        ariaLabel="תאריך הגעה"
+        appendTo="body"
+        [ngModel]="arrivalDate()"
+        (ngModelChange)="arrivalDate.set($event ?? '')"
+      />
+      <input
+        type="number"
+        min="1"
+        pInputText
+        placeholder="חלקים שהתקבלו"
+        aria-label="חלקים שהתקבלו"
+        [ngModel]="arrivalPieces()"
+        (ngModelChange)="setArrivalPieces($event)"
+      />
+      <input
+        type="text"
+        pInputText
+        placeholder="הערות"
+        aria-label="הערות"
+        [ngModel]="arrivalNotes()"
+        (ngModelChange)="arrivalNotes.set($event)"
+      />
+      <p-button
+        label="רישום הגעה"
+        icon="fa-solid fa-plane-arrival"
+        size="small"
+        [disabled]="busy()"
+        (onClick)="addArrival()"
+      />
+    </div>
+    @if (newTotalExceeds()) {
+      <div class="ops__correction">
+        <p-checkbox
+          inputId="override-{{ house().id }}"
+          [binary]="true"
+          [ngModel]="arrivalOverride()"
+          (ngModelChange)="arrivalOverride.set($event)"
+        />
+        <label for="override-{{ house().id }}">אישור חריגה — יותר חלקים מהצפוי</label>
+        <input
+          type="text"
+          pInputText
+          placeholder="סיבת החריגה (חובה)"
+          aria-label="סיבת החריגה"
+          [ngModel]="arrivalOverrideReason()"
+          (ngModelChange)="arrivalOverrideReason.set($event)"
+        />
+      </div>
+    }
+  }
+
+  @if (!isMirror()) {
+    <h4 class="ops__title">שיוך ל-MAWB</h4>
+    <div class="ops__arrival">
+      <p-select
+        [options]="relinkOptions()"
+        optionLabel="label"
+        optionValue="value"
+        placeholder="העברה ל-MAWB אחר"
+        ariaLabel="MAWB יעד"
+        [filter]="true"
+        [ngModel]="relinkTarget()"
+        (ngModelChange)="relinkTarget.set($event)"
+        appendTo="body"
+      />
+      <input
+        type="text"
+        pInputText
+        [placeholder]="relinkNeedsReason() ? 'סיבה (חובה — כבר נרשמו הגעות)' : 'סיבה (אופציונלי)'"
+        aria-label="סיבת שינוי השיוך"
+        [ngModel]="relinkReason()"
+        (ngModelChange)="relinkReason.set($event)"
+      />
+      <p-button
+        label="העברה"
+        size="small"
+        severity="secondary"
+        [disabled]="relinkTarget() === null || busy()"
+        (onClick)="relink(false)"
+      />
+      @if (house().mblId !== null) {
+        <p-button
+          label="ניתוק מה-MAWB"
+          size="small"
+          severity="secondary"
+          [text]="true"
+          [disabled]="busy()"
+          (onClick)="relink(true)"
+        />
+      }
+    </div>
+  }
+
+  @if (error(); as message) {
+    <p-message severity="error" styleClass="form-message form-message--error" role="alert">{{
+      message
+    }}</p-message>
+  }
+
+  <p-button
+    [label]="showHistory() ? 'הסתרת היסטוריה' : 'היסטוריית שינויים'"
+    icon="fa-solid fa-clock-rotate-left"
+    severity="secondary"
+    [text]="true"
+    size="small"
+    (onClick)="toggleHistory()"
+  />
+  @if (showHistory()) {
+    <ul class="ops__history">
+      @for (entry of statusHistory(); track entry.id) {
+        <li>
+          {{ entry.changedAt.slice(0, 16).replace('T', ' ') }} ·
+          {{ statusValueLabel(entry.fromValue) }} ← {{ statusValueLabel(entry.toValue) }} ·
+          {{ SOURCE_LABELS[entry.source] }} · {{ entry.changedByName ?? '—' }}
+          @if (entry.reason) {
+            · {{ entry.reason }}
+          }
+        </li>
+      }
+      @for (link of linkHistory(); track link.id) {
+        <li>
+          {{ link.changedAt.slice(0, 16).replace('T', ' ') }} · שיוך:
+          {{ link.previousMblNumber ?? (link.previousMblId ? 'תיק ' + link.previousMblId : 'ללא') }}
+          ←
+          {{ link.newMblNumber ?? (link.newMblId ? 'תיק ' + link.newMblId : 'ללא') }}
+          · {{ link.changedByName ?? '—' }}
+          @if (link.reason) {
+            · {{ link.reason }}
+          }
+        </li>
+      }
+      @if (!statusHistory().length && !linkHistory().length) {
+        <li>אין שינויים רשומים</li>
+      }
+    </ul>
+  }
+</div>
+
+<p-dialog
+  header="ביטול רישום הגעה"
+  [modal]="true"
+  [visible]="voidTarget() !== null"
+  (visibleChange)="onVoidDialogVisible($event)"
+  [style]="{ width: '28rem' }"
+>
+  <p>הרישום לא יימחק — הוא יסומן כמבוטל ולא ייספר. יש לציין סיבה:</p>
+  <input
+    type="text"
+    pInputText
+    class="ops__dialog-input"
+    aria-label="סיבת הביטול"
+    [ngModel]="voidReason()"
+    (ngModelChange)="voidReason.set($event)"
+  />
+  <ng-template #footer>
+    <p-button label="סגירה" severity="secondary" [text]="true" (onClick)="voidTarget.set(null)" />
+    <p-button
+      label="ביטול הרישום"
+      [disabled]="voidReason().trim() === '' || busy()"
+      (onClick)="confirmVoid()"
+    />
+  </ng-template>
+</p-dialog>

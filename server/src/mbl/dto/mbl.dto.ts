@@ -1,6 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { AirMethod } from '../../air/air.enums';
 import { PaymentTerms } from '../../orders/orders.enums';
+import {
+  ShipmentStatus,
+  ShipmentStatusSource,
+} from '../../status-tracks/status-tracks.enums';
 import { MblShippingType, MblStatus, SeaMethod } from '../mbl.enums';
+import { FlightLegDto } from './flight-leg.dto';
 import { MblContainerDto } from './mbl-container.dto';
 
 export class MblDto {
@@ -129,6 +135,71 @@ export class MblDto {
   /** Only non-empty for `seaMethod = 'groupage_fcl'`. */
   @ApiProperty({ type: () => MblContainerDto, isArray: true })
   containers!: MblContainerDto[];
+
+  // ── Air (MAWB) only — `null` / empty on a sea MBL ──────────────────────────
+  @ApiProperty({ enum: AirMethod, enumName: 'AirMethod', nullable: true })
+  airMethod!: AirMethod | null;
+
+  @ApiProperty({ type: 'string', nullable: true, example: 'HKG' })
+  departureAirportCode!: string | null;
+
+  @ApiProperty({ type: 'string', nullable: true, example: 'TLV' })
+  destinationAirportCode!: string | null;
+
+  @ApiProperty({ type: 'integer', nullable: true, example: 1 })
+  cargoTerminalId!: number | null;
+
+  /** Joined for display (Hebrew name) — `null` when no listed terminal is set. */
+  @ApiProperty({ type: 'string', nullable: true, example: 'ממ"ן' })
+  cargoTerminalName!: string | null;
+
+  @ApiProperty({ type: 'string', nullable: true })
+  cargoTerminalOther!: string | null;
+
+  @ApiProperty({ type: 'integer', nullable: true, example: 12 })
+  pieces!: number | null;
+
+  /** Greater of gross and volumetric weight, rounded per the rule snapshot below. */
+  @ApiProperty({ type: 'number', nullable: true, example: 412 })
+  calculatedChargeableWeightKg!: number | null;
+
+  /** The chargeable weight on / approved from the AWB. */
+  @ApiProperty({ type: 'number', nullable: true, example: 412.5 })
+  approvedChargeableWeightKg!: number | null;
+
+  /** True when the approved value differs from the calculated one (a recorded override). */
+  @ApiProperty({ example: false })
+  chargeableWeightOverridden!: boolean;
+
+  @ApiProperty({ type: 'integer', nullable: true, example: 6000 })
+  volumetricDivisor!: number | null;
+
+  @ApiProperty({ type: 'number', nullable: true, example: 0.5 })
+  weightRoundingStepKg!: number | null;
+
+  @ApiProperty({ type: 'string', isArray: true, example: ['PER'] })
+  specialHandlingCodes!: string[];
+
+  @ApiProperty({
+    enum: ShipmentStatus,
+    enumName: 'ShipmentStatus',
+    nullable: true,
+  })
+  shipmentStatus!: ShipmentStatus | null;
+
+  @ApiProperty({
+    enum: ShipmentStatusSource,
+    enumName: 'ShipmentStatusSource',
+    nullable: true,
+  })
+  shipmentStatusSource!: ShipmentStatusSource | null;
+
+  @ApiProperty({ type: () => FlightLegDto, isArray: true })
+  flightLegs!: FlightLegDto[];
+
+  /** Direct shipments only: the hidden house carrying orders / CCF / arrivals. */
+  @ApiProperty({ type: 'integer', nullable: true, example: 12 })
+  mirrorHblId!: number | null;
 
   @ApiProperty({ format: 'date-time', example: '2026-09-20T08:30:00.000Z' })
   createdAt!: string;

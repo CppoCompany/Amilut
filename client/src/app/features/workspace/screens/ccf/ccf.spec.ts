@@ -8,6 +8,7 @@ import { CcfStatus, MblShippingType, MblStatus, SeaMethod } from '../../../../ap
 import type { CcfDto, MblSummaryDto } from '../../../../api/models';
 import { NavigationService } from '../../navigation.service';
 import { CcfScreen } from './ccf';
+import { SEA_CCF_HOUSE_FIELDS } from '../../../../api/testing/sea-defaults';
 
 type CcfInternals = {
   selectedShipmentFileId: WritableSignal<number | null>;
@@ -27,6 +28,7 @@ const SHIPMENT_FILE: MblSummaryDto = {
   id: 42,
   shippingType: MblShippingType.SEA,
   seaMethod: SeaMethod.FCL_FCL,
+  airMethod: null,
   status: MblStatus.OPEN,
   mblNumber: 'MBL-987654321',
   carrierName: 'MAERSK LINE',
@@ -40,6 +42,7 @@ const SHIPMENT_FILE: MblSummaryDto = {
 };
 
 const SAVED_CCF: CcfDto = {
+  ...SEA_CCF_HOUSE_FIELDS,
   id: 100,
   fileNumber: 'CCF1000',
   shipmentFileId: null,

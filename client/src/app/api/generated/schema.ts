@@ -52,6 +52,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/air/airports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AirController_listAirports"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/air/cargo-terminals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AirController_listCargoTerminals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/air/weight-rule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AirController_resolveWeightRule"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ccf": {
         parameters: {
             query?: never;
@@ -92,6 +140,38 @@ export interface paths {
             cookie?: never;
         };
         get: operations["CcfController_findById"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ccf/{id}/clearance-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["CcfController_changeClearanceStatus"];
+        trace?: never;
+    };
+    "/api/status-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["StatusTracksController_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -340,6 +420,22 @@ export interface paths {
         patch: operations["MblController_update"];
         trace?: never;
     };
+    "/api/mbl/{id}/shipment-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["MblController_changeShipmentStatus"];
+        trace?: never;
+    };
     "/api/hbl": {
         parameters: {
             query?: never;
@@ -347,7 +443,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["HblController_findByMblId"];
+        get: operations["HblController_list"];
         put?: never;
         post: operations["HblController_create"];
         delete?: never;
@@ -386,6 +482,86 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["HblController_updateOrders"];
+        trace?: never;
+    };
+    "/api/hbl/{id}/master": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["HblController_linkToMaster"];
+        trace?: never;
+    };
+    "/api/hbl/{id}/link-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["HblController_listLinkHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/hbl/{id}/document-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["HblController_changeDocumentStatus"];
+        trace?: never;
+    };
+    "/api/hbl/{id}/arrivals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["HblController_listArrivals"];
+        put?: never;
+        post: operations["HblController_addArrival"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/hbl/{id}/arrivals/{arrivalId}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["HblController_voidArrival"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/notifications": {
@@ -537,8 +713,43 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         LoginDto: Record<string, never>;
+        AirportDto: {
+            /** @example TLV */
+            code: string;
+            /** @example נמל התעופה בן גוריון */
+            nameHe: string;
+            /** @example Ben Gurion Airport */
+            nameEn: string;
+            /** @example true */
+            isImportDestination: boolean;
+        };
+        CargoTerminalDto: {
+            /** @example 1 */
+            id: number;
+            /** @example TLV */
+            airportCode: string;
+            /** @example null */
+            code: string | null;
+            /** @example ממ"ן */
+            nameHe: string;
+            /** @example Maman */
+            nameEn: string;
+        };
+        /** @enum {string} */
+        WeightRoundingMode: WeightRoundingMode;
+        WeightRuleDto: {
+            /** @example 6000 */
+            volumetricDivisor: number;
+            /** @example 0.5 */
+            roundingStepKg: number;
+            roundingMode: components["schemas"]["WeightRoundingMode"];
+            /** @example null */
+            airlinePrefix: string | null;
+        };
         /** @enum {string} */
         CcfStatus: CcfStatus;
+        /** @enum {string} */
+        ClearanceStatus: ClearanceStatus;
         CcfDto: {
             /** @example 1 */
             id: number;
@@ -548,7 +759,12 @@ export interface components {
             shipmentFileId: number | null;
             /** @example MBL-987654321 */
             shipmentFileMblNumber: string | null;
+            /** @example 15 */
+            hblId: number | null;
+            /** @example HAWB-001 */
+            hblNumber: string | null;
             status: components["schemas"]["CcfStatus"];
+            clearanceStatus: components["schemas"]["ClearanceStatus"] | null;
             /** @example 7 */
             createdBy: number;
             /** @example Dana Levi */
@@ -571,6 +787,36 @@ export interface components {
         CreateCcfDto: {
             /** @example 42 */
             shipmentFileId?: number;
+            /** @example 15 */
+            hblId?: number;
+        };
+        ChangeClearanceStatusDto: {
+            /** @example ATD was entered on the wrong leg */
+            reason?: string;
+            status: components["schemas"]["ClearanceStatus"];
+        };
+        /** @enum {string} */
+        StatusEntityType: StatusEntityType;
+        /** @enum {string} */
+        StatusTrack: StatusTrack;
+        /** @enum {string} */
+        StatusChangeSource: StatusChangeSource;
+        StatusHistoryEntryDto: {
+            /** @example 1 */
+            id: number;
+            track: components["schemas"]["StatusTrack"];
+            /** @example booking_confirmed */
+            fromValue: string | null;
+            /** @example departed */
+            toValue: string | null;
+            source: components["schemas"]["StatusChangeSource"];
+            reason: string | null;
+            /** @example 1 */
+            changedBy: number | null;
+            /** @example Dana Levi */
+            changedByName: string | null;
+            /** Format: date-time */
+            changedAt: string;
         };
         CountryDto: {
             /** @example 106 */
@@ -1029,11 +1275,14 @@ export interface components {
         };
         /** @enum {string} */
         SeaMethod: SeaMethod;
+        /** @enum {string} */
+        AirMethod: AirMethod;
         MblSummaryDto: {
             /** @example 1 */
             id: number;
             shippingType: components["schemas"]["MblShippingType"];
             seaMethod: components["schemas"]["SeaMethod"] | null;
+            airMethod: components["schemas"]["AirMethod"] | null;
             status: components["schemas"]["MblStatus"];
             /** @example MBL-987654321 */
             mblNumber: string | null;
@@ -1075,6 +1324,22 @@ export interface components {
             pageSize: number;
             items: components["schemas"]["MblSummaryDto"][];
         };
+        CreateFlightLegDto: {
+            /** @example LY 008 */
+            flightNumber?: string;
+            /** @example HKG */
+            fromAirport?: string;
+            /** @example TLV */
+            toAirport?: string;
+            /** Format: date-time */
+            etd?: string;
+            /** Format: date-time */
+            eta?: string;
+            /** Format: date-time */
+            atd?: string;
+            /** Format: date-time */
+            ata?: string;
+        };
         CreateMblContainerDto: {
             /** @example MSKU1234567 */
             containerNumber?: string;
@@ -1090,6 +1355,7 @@ export interface components {
         CreateMblDto: {
             shippingType: components["schemas"]["MblShippingType"];
             seaMethod?: components["schemas"]["SeaMethod"];
+            airMethod?: components["schemas"]["AirMethod"];
             /** @example 3 */
             customerId?: number;
             /** @example MBL-987654321 */
@@ -1141,6 +1407,26 @@ export interface components {
             carrierName?: string;
             /** @default open */
             status: components["schemas"]["MblStatus"];
+            /** @example HKG */
+            departureAirportCode?: string;
+            /** @example TLV */
+            destinationAirportCode?: string;
+            /** @example 1 */
+            cargoTerminalId?: number | null;
+            cargoTerminalOther?: string | null;
+            /** @example 12 */
+            pieces?: number;
+            /** @example 412.5 */
+            approvedChargeableWeightKg?: number | null;
+            /** @example Airline rounded per its own tariff */
+            chargeableWeightOverrideReason?: string;
+            /**
+             * @example [
+             *       "PER"
+             *     ]
+             */
+            specialHandlingCodes?: string[];
+            flightLegs?: components["schemas"]["CreateFlightLegDto"][];
             containers?: components["schemas"]["CreateMblContainerDto"][];
         };
         MblContainerDto: {
@@ -1156,6 +1442,28 @@ export interface components {
             grossWeightKg: number | null;
             /** @example 25.5 */
             volumeCbm: number | null;
+        };
+        /** @enum {string} */
+        ShipmentStatus: ShipmentStatus;
+        /** @enum {string} */
+        ShipmentStatusSource: ShipmentStatusSource;
+        FlightLegDto: {
+            /** @example 1 */
+            legNo: number;
+            /** @example LY 008 */
+            flightNumber: string | null;
+            /** @example HKG */
+            fromAirport: string | null;
+            /** @example TLV */
+            toAirport: string | null;
+            /** Format: date-time */
+            etd: string | null;
+            /** Format: date-time */
+            eta: string | null;
+            /** Format: date-time */
+            atd: string | null;
+            /** Format: date-time */
+            ata: string | null;
         };
         MblDto: {
             /** @example 1 */
@@ -1219,6 +1527,39 @@ export interface components {
             /** @example 7 */
             ccfId: number | null;
             containers: components["schemas"]["MblContainerDto"][];
+            airMethod: components["schemas"]["AirMethod"] | null;
+            /** @example HKG */
+            departureAirportCode: string | null;
+            /** @example TLV */
+            destinationAirportCode: string | null;
+            /** @example 1 */
+            cargoTerminalId: number | null;
+            /** @example ממ"ן */
+            cargoTerminalName: string | null;
+            cargoTerminalOther: string | null;
+            /** @example 12 */
+            pieces: number | null;
+            /** @example 412 */
+            calculatedChargeableWeightKg: number | null;
+            /** @example 412.5 */
+            approvedChargeableWeightKg: number | null;
+            /** @example false */
+            chargeableWeightOverridden: boolean;
+            /** @example 6000 */
+            volumetricDivisor: number | null;
+            /** @example 0.5 */
+            weightRoundingStepKg: number | null;
+            /**
+             * @example [
+             *       "PER"
+             *     ]
+             */
+            specialHandlingCodes: string[];
+            shipmentStatus: components["schemas"]["ShipmentStatus"] | null;
+            shipmentStatusSource: components["schemas"]["ShipmentStatusSource"] | null;
+            flightLegs: components["schemas"]["FlightLegDto"][];
+            /** @example 12 */
+            mirrorHblId: number | null;
             /**
              * Format: date-time
              * @example 2026-09-20T08:30:00.000Z
@@ -1282,7 +1623,32 @@ export interface components {
             carrierName?: string;
             /** @default open */
             status: components["schemas"]["MblStatus"];
+            /** @example HKG */
+            departureAirportCode?: string;
+            /** @example TLV */
+            destinationAirportCode?: string;
+            /** @example 1 */
+            cargoTerminalId?: number | null;
+            cargoTerminalOther?: string | null;
+            /** @example 12 */
+            pieces?: number;
+            /** @example 412.5 */
+            approvedChargeableWeightKg?: number | null;
+            /** @example Airline rounded per its own tariff */
+            chargeableWeightOverrideReason?: string;
+            /**
+             * @example [
+             *       "PER"
+             *     ]
+             */
+            specialHandlingCodes?: string[];
+            flightLegs?: components["schemas"]["CreateFlightLegDto"][];
             containers?: components["schemas"]["CreateMblContainerDto"][];
+        };
+        ChangeShipmentStatusDto: {
+            /** @example ATD was entered on the wrong leg */
+            reason?: string;
+            status: components["schemas"]["ShipmentStatus"];
         };
         HblOrderSummaryDto: {
             /** @example 1000 */
@@ -1290,11 +1656,30 @@ export interface components {
             /** @example ACME Ltd. */
             customerName: string | null;
         };
+        PieceDimensionDto: {
+            /** @example 4 */
+            pieceCount: number;
+            /** @example 120 */
+            lengthCm: number;
+            /** @example 80 */
+            widthCm: number;
+            /** @example 60 */
+            heightCm: number;
+        };
+        /** @enum {string} */
+        DocumentStatus: DocumentStatus;
+        /** @enum {string} */
+        ArrivalState: ArrivalState;
         HblDto: {
             /** @example 1 */
             id: number;
             /** @example 1 */
-            mblId: number;
+            mblId: number | null;
+            /** @example 114-12345675 */
+            mblNumber: string | null;
+            shippingType: components["schemas"]["MblShippingType"];
+            /** @example false */
+            isMasterMirror: boolean;
             /** @example 1 */
             containerId: number | null;
             /** @example 3 */
@@ -1302,7 +1687,7 @@ export interface components {
             /** @example ACME Ltd. */
             customerName: string | null;
             /** @example 1 */
-            sequenceNumber: number;
+            sequenceNumber: number | null;
             /** @example IB-001 */
             iblNumber: string | null;
             /** @example HBL-ERZ-2026-001 */
@@ -1326,6 +1711,31 @@ export interface components {
             /** @example LCL - 3 PARTIES / CY/CFS */
             remarks: string | null;
             orders: components["schemas"]["HblOrderSummaryDto"][];
+            /** @example 12 */
+            pieces: number | null;
+            pieceDimensions: components["schemas"]["PieceDimensionDto"][];
+            /** @example 120 */
+            calculatedChargeableWeightKg: number | null;
+            /** @example 120.5 */
+            approvedChargeableWeightKg: number | null;
+            /** @example false */
+            chargeableWeightOverridden: boolean;
+            /** @example 6000 */
+            volumetricDivisor: number | null;
+            /** @example 0.5 */
+            weightRoundingStepKg: number | null;
+            /**
+             * @example [
+             *       "DGR"
+             *     ]
+             */
+            specialHandlingCodes: string[];
+            documentStatus: components["schemas"]["DocumentStatus"] | null;
+            /** @example 0 */
+            piecesReceived: number;
+            arrivalState: components["schemas"]["ArrivalState"] | null;
+            /** @example 7 */
+            ccfId: number | null;
             /**
              * Format: date-time
              * @example 2026-09-20T08:30:00.000Z
@@ -1339,7 +1749,8 @@ export interface components {
         };
         CreateHblDto: {
             /** @example 1000 */
-            mblId: number;
+            mblId?: number;
+            shippingType?: components["schemas"]["MblShippingType"];
             /** @example 1 */
             containerId?: number;
             /** @example 3 */
@@ -1368,6 +1779,18 @@ export interface components {
             volumeCbm?: number;
             /** @example LCL - 3 PARTIES / CY/CFS */
             remarks?: string;
+            /** @example 12 */
+            pieces?: number;
+            pieceDimensions?: components["schemas"]["PieceDimensionDto"][];
+            /** @example 120.5 */
+            approvedChargeableWeightKg?: number | null;
+            chargeableWeightOverrideReason?: string;
+            /**
+             * @example [
+             *       "DGR"
+             *     ]
+             */
+            specialHandlingCodes?: string[];
             /**
              * @example [
              *       1000
@@ -1404,6 +1827,18 @@ export interface components {
             volumeCbm?: number;
             /** @example LCL - 3 PARTIES / CY/CFS */
             remarks?: string;
+            /** @example 12 */
+            pieces?: number;
+            pieceDimensions?: components["schemas"]["PieceDimensionDto"][];
+            /** @example 120.5 */
+            approvedChargeableWeightKg?: number | null;
+            chargeableWeightOverrideReason?: string;
+            /**
+             * @example [
+             *       "DGR"
+             *     ]
+             */
+            specialHandlingCodes?: string[];
         };
         ManageHblOrdersDto: {
             /**
@@ -1412,6 +1847,80 @@ export interface components {
              *     ]
              */
             orderIds: number[];
+        };
+        LinkHblMasterDto: {
+            /** @example 12 */
+            mblId: number | null;
+            /** @example Offloaded and rebooked on the next flight */
+            reason?: string;
+        };
+        HblLinkHistoryEntryDto: {
+            /** @example 1 */
+            id: number;
+            /** @example 11 */
+            previousMblId: number | null;
+            /** @example 114-12345675 */
+            previousMblNumber: string | null;
+            /** @example 12 */
+            newMblId: number | null;
+            /** @example 114-12345686 */
+            newMblNumber: string | null;
+            /** @example false */
+            isCorrection: boolean;
+            reason: string | null;
+            /** @example Dana Levi */
+            changedByName: string | null;
+            /** Format: date-time */
+            changedAt: string;
+        };
+        ChangeDocumentStatusDto: {
+            /** @example ATD was entered on the wrong leg */
+            reason?: string;
+            status: components["schemas"]["DocumentStatus"];
+        };
+        HblArrivalDto: {
+            /** @example 1 */
+            id: number;
+            /** @example LY 008 */
+            flightNumber: string;
+            /**
+             * Format: date
+             * @example 2026-10-21
+             */
+            arrivalDate: string;
+            /** @example 4 */
+            piecesReceived: number;
+            notes: string | null;
+            /** @example false */
+            isOverride: boolean;
+            overrideReason: string | null;
+            /** @example Dana Levi */
+            createdByName: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            voidedAt: string | null;
+            voidedByName: string | null;
+            voidReason: string | null;
+        };
+        CreateHblArrivalDto: {
+            /** @example LY 008 */
+            flightNumber: string;
+            /**
+             * Format: date
+             * @example 2026-10-21
+             */
+            arrivalDate: string;
+            /** @example 4 */
+            piecesReceived: number;
+            notes?: string;
+            /** @example false */
+            override?: boolean;
+            overrideReason?: string;
+        };
+        VoidHblArrivalDto: {
+            /** @example Recorded on the wrong HAWB */
+            reason: string;
         };
         NotificationDto: {
             /** @example 1 */
@@ -1707,11 +2216,75 @@ export interface operations {
             };
         };
     };
+    AirController_listAirports: {
+        parameters: {
+            query?: {
+                /** @description Only airports a MAWB may arrive at. */
+                importDestination?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AirportDto"][];
+                };
+            };
+        };
+    };
+    AirController_listCargoTerminals: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CargoTerminalDto"][];
+                };
+            };
+        };
+    };
+    AirController_resolveWeightRule: {
+        parameters: {
+            query?: {
+                /** @description 3-digit IATA airline prefix */
+                airlinePrefix?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeightRuleDto"];
+                };
+            };
+        };
+    };
     CcfController_findAll: {
         parameters: {
             query?: {
                 status?: components["schemas"]["CcfStatus"];
                 shipmentFileId?: number;
+                hblId?: number;
                 limit?: number;
             };
             header?: never;
@@ -1796,6 +2369,59 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    CcfController_changeClearanceStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeClearanceStatusDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CcfDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    StatusTracksController_list: {
+        parameters: {
+            query: {
+                entityType: components["schemas"]["StatusEntityType"];
+                entityId: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatusHistoryEntryDto"][];
+                };
             };
         };
     };
@@ -2514,10 +3140,42 @@ export interface operations {
             };
         };
     };
-    HblController_findByMblId: {
+    MblController_changeShipmentStatus: {
         parameters: {
-            query: {
-                mblId: number;
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeShipmentStatusDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MblDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    HblController_list: {
+        parameters: {
+            query?: {
+                mblId?: number;
+                unassigned?: boolean;
             };
             header?: never;
             path?: never;
@@ -2663,6 +3321,173 @@ export interface operations {
         };
         responses: {
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HblDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    HblController_linkToMaster: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LinkHblMasterDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HblDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    HblController_listLinkHistory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HblLinkHistoryEntryDto"][];
+                };
+            };
+        };
+    };
+    HblController_changeDocumentStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeDocumentStatusDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HblDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    HblController_listArrivals: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HblArrivalDto"][];
+                };
+            };
+        };
+    };
+    HblController_addArrival: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateHblArrivalDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HblDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    HblController_voidArrival: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                arrivalId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VoidHblArrivalDto"];
+            };
+        };
+        responses: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3063,9 +3888,34 @@ export enum PathsApiOrdersPagedGetParametersQuerySort {
     status = "status",
     createdAt = "createdAt"
 }
+export enum WeightRoundingMode {
+    UP = "up",
+    NEAREST = "nearest"
+}
 export enum CcfStatus {
     OPEN = "open",
     CLOSED = "closed"
+}
+export enum ClearanceStatus {
+    NOT_STARTED = "not_started",
+    CLASSIFICATION = "classification",
+    COMPLIANCE_CHECK = "compliance_check",
+    READY_FOR_DECLARATION = "ready_for_declaration"
+}
+export enum StatusEntityType {
+    MBL = "mbl",
+    HBL = "hbl",
+    CCF = "ccf"
+}
+export enum StatusTrack {
+    SHIPMENT = "shipment",
+    DOCUMENT = "document",
+    CLEARANCE = "clearance"
+}
+export enum StatusChangeSource {
+    MANUAL = "manual",
+    AUTO = "auto",
+    CORRECTION = "correction"
 }
 export enum OrderStatus {
     PREPARING = "preparing",
@@ -3152,6 +4002,33 @@ export enum SeaMethod {
     FCL_LCL = "fcl_lcl",
     LCL_LCL = "lcl_lcl",
     GROUPAGE_FCL = "groupage_fcl"
+}
+export enum AirMethod {
+    DIRECT = "direct",
+    CONSOLIDATION = "consolidation",
+    BACK_TO_BACK = "back_to_back"
+}
+export enum ShipmentStatus {
+    BOOKING_CONFIRMED = "booking_confirmed",
+    DEPARTED = "departed",
+    IN_TRANSIT = "in_transit",
+    ARRIVED = "arrived"
+}
+export enum ShipmentStatusSource {
+    MANUAL = "manual",
+    AUTO = "auto"
+}
+export enum DocumentStatus {
+    PENDING = "pending",
+    UNDER_REVIEW = "under_review",
+    MISSING_INFORMATION = "missing_information",
+    APPROVED = "approved"
+}
+export enum ArrivalState {
+    NOT_ARRIVED = "not_arrived",
+    PARTIAL = "partial",
+    COMPLETE = "complete",
+    OVER_RECEIVED = "over_received"
 }
 export enum ShipmentType {
     SEA = "sea",

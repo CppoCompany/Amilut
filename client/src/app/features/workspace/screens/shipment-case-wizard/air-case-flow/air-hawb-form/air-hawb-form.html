@@ -1,0 +1,241 @@
+<form class="air-form" [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
+  <h3 class="subsection-title">{{ title() }}</h3>
+
+  <div class="grid-row">
+    <div class="form-group">
+      <label for="hawbCustomer">לקוח (יבואן)</label>
+      @if (isEdit()) {
+        <input
+          id="hawbCustomer"
+          type="text"
+          pInputText
+          [value]="customer()?.name ?? '—'"
+          readonly
+        />
+      } @else {
+        <app-customer-autocomplete
+          inputId="hawbCustomer"
+          placeholder="הקלד שם לקוח..."
+          [(customer)]="customer"
+        />
+      }
+    </div>
+    <div class="form-group">
+      <label for="hblNumber">מספר HAWB (מהמסמך של הסוכן)</label>
+      <input id="hblNumber" type="text" pInputText formControlName="hblNumber" />
+      <small class="hint-text">
+        ניתן להשאיר ריק עד שיתקבל המסמך — עד אז יוצג מזהה פנימי זמני.
+      </small>
+    </div>
+  </div>
+
+  <div class="orders-row">
+    <span class="orders-row__label">הזמנות משויכות</span>
+    @for (chip of orderChips(); track chip.id) {
+      <p-chip [label]="chip.text" [removable]="true" (onRemove)="removeOrder(chip.id)" />
+    } @empty {
+      <span class="hint-text">לא שויכו הזמנות</span>
+    }
+    <p-button
+      label="שיוך להזמנה"
+      icon="fa-solid fa-link"
+      severity="secondary"
+      [text]="true"
+      size="small"
+      (onClick)="showOrdersPicker.set(true)"
+    />
+  </div>
+
+  <h3 class="subsection-title">צדדים</h3>
+  <div class="grid-row">
+    <div class="form-group">
+      <label for="hShipperName">שולח (Shipper)</label>
+      <input id="hShipperName" type="text" pInputText formControlName="shipperName" />
+    </div>
+    <div class="form-group">
+      <label for="hShipperAddress">כתובת השולח</label>
+      <input id="hShipperAddress" type="text" pInputText formControlName="shipperAddress" />
+    </div>
+  </div>
+  <div class="grid-row">
+    <div class="form-group">
+      <label for="hConsigneeName">נמען (Consignee)</label>
+      <input id="hConsigneeName" type="text" pInputText formControlName="consigneeName" />
+    </div>
+    <div class="form-group">
+      <label for="hConsigneeAddress">כתובת הנמען</label>
+      <input id="hConsigneeAddress" type="text" pInputText formControlName="consigneeAddress" />
+    </div>
+  </div>
+  <div class="grid-row">
+    <div class="form-group">
+      <label for="hNotifyName">Notify Party</label>
+      <input id="hNotifyName" type="text" pInputText formControlName="notifyPartyName" />
+    </div>
+    <div class="form-group">
+      <label for="hNotifyAddress">כתובת Notify</label>
+      <input id="hNotifyAddress" type="text" pInputText formControlName="notifyPartyAddress" />
+    </div>
+  </div>
+
+  <h3 class="subsection-title">מטען</h3>
+  <div class="grid-row">
+    <div class="form-group form-group--wide">
+      <label for="hCargo">תיאור הטובין</label>
+      <input id="hCargo" type="text" pInputText formControlName="cargoDescription" />
+    </div>
+    <div class="form-group">
+      <label for="hPieces">מספר חלקים צפוי</label>
+      <input id="hPieces" type="number" min="1" pInputText formControlName="pieces" />
+    </div>
+    <div class="form-group">
+      <label for="hShc">קודי טיפול מיוחד (SHC)</label>
+      <input
+        id="hShc"
+        type="text"
+        pInputText
+        formControlName="specialHandlingCodes"
+        placeholder="DGR, PER"
+      />
+    </div>
+  </div>
+  <div class="grid-row">
+    <div class="form-group">
+      <label for="hGross">משקל ברוטו (ק"ג)</label>
+      <input id="hGross" type="number" min="0" pInputText formControlName="grossWeightKg" />
+    </div>
+    <div class="form-group">
+      <label for="hVolume">נפח (CBM)</label>
+      <input id="hVolume" type="number" min="0" pInputText formControlName="volumeCbm" />
+    </div>
+  </div>
+
+  <div class="dims" formArrayName="dimensions">
+    <span class="dims__title">מידות (ס"מ) — לחישוב משקל נפחי; כשמוזנות הן גוברות על הנפח</span>
+    @for (row of dimensionControls(); track $index; let i = $index) {
+      <div class="dims__row" [formGroupName]="i">
+        <input
+          type="number"
+          min="1"
+          pInputText
+          formControlName="pieceCount"
+          aria-label="כמות"
+          placeholder="כמות"
+        />
+        <input
+          type="number"
+          min="0"
+          pInputText
+          formControlName="lengthCm"
+          aria-label="אורך"
+          placeholder="אורך"
+        />
+        <input
+          type="number"
+          min="0"
+          pInputText
+          formControlName="widthCm"
+          aria-label="רוחב"
+          placeholder="רוחב"
+        />
+        <input
+          type="number"
+          min="0"
+          pInputText
+          formControlName="heightCm"
+          aria-label="גובה"
+          placeholder="גובה"
+        />
+        <p-button
+          icon="fa-solid fa-trash"
+          severity="secondary"
+          [text]="true"
+          ariaLabel="הסרת שורת מידות"
+          (onClick)="removeDimension(i)"
+        />
+      </div>
+    }
+    <p-button
+      label="הוסף שורת מידות"
+      icon="fa-solid fa-plus"
+      severity="secondary"
+      [text]="true"
+      size="small"
+      (onClick)="addDimension()"
+    />
+  </div>
+
+  <h3 class="subsection-title">משקל לחיוב</h3>
+  <div class="grid-row">
+    <div class="form-group">
+      <label for="hCalc">מחושב (תצוגה מקדימה)</label>
+      <input id="hCalc" type="text" pInputText [value]="previewWeight() ?? '—'" readonly />
+      @if (hbl()?.volumetricDivisor; as divisor) {
+        <small class="hint-text"
+          >נשמר לפי מחלק {{ divisor }}, עיגול {{ hbl()?.weightRoundingStepKg }} ק"ג</small
+        >
+      }
+    </div>
+    <div class="form-group">
+      <label for="hApproved">מאושר / לפי ה-AWB</label>
+      <input
+        id="hApproved"
+        type="number"
+        min="0"
+        pInputText
+        formControlName="approvedChargeableWeightKg"
+      />
+    </div>
+    @if (weightDiffers()) {
+      <div class="form-group form-group--wide">
+        <label for="hReason">סיבת החריגה (חובה)</label>
+        <input
+          id="hReason"
+          type="text"
+          pInputText
+          formControlName="chargeableWeightOverrideReason"
+        />
+      </div>
+    }
+  </div>
+  @if (weightDiffers()) {
+    <p-message severity="warn" icon="fa-solid fa-triangle-exclamation" styleClass="form-message">
+      המשקל המאושר שונה מהמשקל המחושב. השמירה תתועד כחריגה (override).
+    </p-message>
+  } @else if (hbl()?.chargeableWeightOverridden) {
+    <p-message severity="info" icon="fa-solid fa-circle-info" styleClass="form-message">
+      משקל לחיוב מאושר שונה מהמחושב נשמר כחריגה מתועדת.
+    </p-message>
+  }
+
+  <div class="grid-row">
+    <div class="form-group form-group--wide">
+      <label for="hRemarks">הערות</label>
+      <input id="hRemarks" type="text" pInputText formControlName="remarks" />
+    </div>
+  </div>
+
+  @if (localError() ?? error(); as message) {
+    <p-message severity="error" styleClass="form-message form-message--error" role="alert">{{
+      message
+    }}</p-message>
+  }
+
+  <div class="form-actions">
+    <p-button label="ביטול" severity="secondary" [outlined]="true" (onClick)="cancelled.emit()" />
+    <p-button
+      type="submit"
+      [label]="isEdit() ? 'שמירת HAWB' : 'יצירת HAWB'"
+      icon="fa-solid fa-floppy-disk"
+      [loading]="saving()"
+    />
+  </div>
+</form>
+
+@if (showOrdersPicker()) {
+  <app-hbl-orders-picker-dialog
+    [initialSelection]="selectedOrders()"
+    (confirmed)="onOrdersPicked($event)"
+    (cancelled)="showOrdersPicker.set(false)"
+  />
+}

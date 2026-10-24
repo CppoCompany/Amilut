@@ -1,0 +1,39 @@
+:host {
+  display: block;
+}
+
+.form-group--wide {
+  flex: 2 1 320px;
+}
+
+.orders-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-block: 0.75rem;
+
+  &__label {
+    font-weight: 600;
+    color: var(--color-brand);
+  }
+}
+
+.dims {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-block: 0.75rem;
+
+  &__title {
+    font-size: 0.875rem;
+    color: var(--color-fg-muted);
+  }
+
+  &__row {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(4.5rem, 8rem)) auto;
+    gap: 0.5rem;
+    align-items: center;
+  }
+}

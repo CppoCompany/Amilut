@@ -14,4 +14,12 @@ export class CreateCcfDto {
   @IsInt()
   @Min(1)
   shipmentFileId?: number;
+
+  /** Air: the HAWB (house) this CCF clears — one CCF per HAWB / importer.
+   *  Mutually exclusive with `shipmentFileId`; only accepted for an air house. */
+  @ApiPropertyOptional({ type: 'integer', example: 15 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  hblId?: number;
 }

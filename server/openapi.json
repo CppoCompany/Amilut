@@ -58,6 +58,111 @@
         ]
       }
     },
+    "/api/air/airports": {
+      "get": {
+        "operationId": "AirController_listAirports",
+        "parameters": [
+          {
+            "name": "importDestination",
+            "required": false,
+            "in": "query",
+            "description": "Only airports a MAWB may arrive at.",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AirportDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "air"
+        ]
+      }
+    },
+    "/api/air/cargo-terminals": {
+      "get": {
+        "operationId": "AirController_listCargoTerminals",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CargoTerminalDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "air"
+        ]
+      }
+    },
+    "/api/air/weight-rule": {
+      "get": {
+        "operationId": "AirController_resolveWeightRule",
+        "parameters": [
+          {
+            "name": "airlinePrefix",
+            "required": false,
+            "in": "query",
+            "description": "3-digit IATA airline prefix",
+            "schema": {
+              "example": "114",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeightRuleDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "air"
+        ]
+      }
+    },
     "/api/ccf": {
       "get": {
         "operationId": "CcfController_findAll",
@@ -76,6 +181,15 @@
             "in": "query",
             "schema": {
               "example": 42,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "hblId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": 15,
               "type": "integer"
             }
           },
@@ -209,6 +323,101 @@
         ],
         "tags": [
           "ccf"
+        ]
+      }
+    },
+    "/api/ccf/{id}/clearance-status": {
+      "patch": {
+        "operationId": "CcfController_changeClearanceStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeClearanceStatusDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CcfDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "ccf"
+        ]
+      }
+    },
+    "/api/status-history": {
+      "get": {
+        "operationId": "StatusTracksController_list",
+        "parameters": [
+          {
+            "name": "entityType",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/StatusEntityType"
+            }
+          },
+          {
+            "name": "entityId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "example": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StatusHistoryEntryDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "status-history"
         ]
       }
     },
@@ -1500,17 +1709,74 @@
         ]
       }
     },
+    "/api/mbl/{id}/shipment-status": {
+      "patch": {
+        "operationId": "MblController_changeShipmentStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeShipmentStatusDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MblDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "mbl"
+        ]
+      }
+    },
     "/api/hbl": {
       "get": {
-        "operationId": "HblController_findByMblId",
+        "operationId": "HblController_list",
         "parameters": [
           {
             "name": "mblId",
-            "required": true,
+            "required": false,
             "in": "query",
             "schema": {
               "example": 1000,
               "type": "integer"
+            }
+          },
+          {
+            "name": "unassigned",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": true,
+              "type": "boolean"
             }
           }
         ],
@@ -1714,6 +1980,280 @@
         },
         "responses": {
           "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HblDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "hbl"
+        ]
+      }
+    },
+    "/api/hbl/{id}/master": {
+      "patch": {
+        "operationId": "HblController_linkToMaster",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkHblMasterDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HblDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "hbl"
+        ]
+      }
+    },
+    "/api/hbl/{id}/link-history": {
+      "get": {
+        "operationId": "HblController_listLinkHistory",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HblLinkHistoryEntryDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "hbl"
+        ]
+      }
+    },
+    "/api/hbl/{id}/document-status": {
+      "patch": {
+        "operationId": "HblController_changeDocumentStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeDocumentStatusDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HblDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "hbl"
+        ]
+      }
+    },
+    "/api/hbl/{id}/arrivals": {
+      "get": {
+        "operationId": "HblController_listArrivals",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HblArrivalDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "hbl"
+        ]
+      },
+      "post": {
+        "operationId": "HblController_addArrival",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateHblArrivalDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HblDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "hbl"
+        ]
+      }
+    },
+    "/api/hbl/{id}/arrivals/{arrivalId}/void": {
+      "post": {
+        "operationId": "HblController_voidArrival",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "arrivalId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoidHblArrivalDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
             "description": "",
             "content": {
               "application/json": {
@@ -2448,6 +2988,108 @@
         "type": "object",
         "properties": {}
       },
+      "AirportDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "TLV"
+          },
+          "nameHe": {
+            "type": "string",
+            "example": "נמל התעופה בן גוריון"
+          },
+          "nameEn": {
+            "type": "string",
+            "example": "Ben Gurion Airport"
+          },
+          "isImportDestination": {
+            "type": "boolean",
+            "example": true
+          }
+        },
+        "required": [
+          "code",
+          "nameHe",
+          "nameEn",
+          "isImportDestination"
+        ]
+      },
+      "CargoTerminalDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "airportCode": {
+            "type": "string",
+            "example": "TLV"
+          },
+          "code": {
+            "type": "string",
+            "nullable": true,
+            "example": null
+          },
+          "nameHe": {
+            "type": "string",
+            "example": "ממ\"ן"
+          },
+          "nameEn": {
+            "type": "string",
+            "example": "Maman"
+          }
+        },
+        "required": [
+          "id",
+          "airportCode",
+          "code",
+          "nameHe",
+          "nameEn"
+        ]
+      },
+      "WeightRoundingMode": {
+        "type": "string",
+        "enum": [
+          "up",
+          "nearest"
+        ],
+        "x-enum-varnames": [
+          "UP",
+          "NEAREST"
+        ]
+      },
+      "WeightRuleDto": {
+        "type": "object",
+        "properties": {
+          "volumetricDivisor": {
+            "type": "integer",
+            "example": 6000
+          },
+          "roundingStepKg": {
+            "type": "number",
+            "example": 0.5
+          },
+          "roundingMode": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WeightRoundingMode"
+              }
+            ]
+          },
+          "airlinePrefix": {
+            "type": "string",
+            "nullable": true,
+            "example": null
+          }
+        },
+        "required": [
+          "volumetricDivisor",
+          "roundingStepKg",
+          "roundingMode",
+          "airlinePrefix"
+        ]
+      },
       "CcfStatus": {
         "type": "string",
         "enum": [
@@ -2457,6 +3099,21 @@
         "x-enum-varnames": [
           "OPEN",
           "CLOSED"
+        ]
+      },
+      "ClearanceStatus": {
+        "type": "string",
+        "enum": [
+          "not_started",
+          "classification",
+          "compliance_check",
+          "ready_for_declaration"
+        ],
+        "x-enum-varnames": [
+          "NOT_STARTED",
+          "CLASSIFICATION",
+          "COMPLIANCE_CHECK",
+          "READY_FOR_DECLARATION"
         ]
       },
       "CcfDto": {
@@ -2480,10 +3137,28 @@
             "nullable": true,
             "example": "MBL-987654321"
           },
+          "hblId": {
+            "type": "integer",
+            "nullable": true,
+            "example": 15
+          },
+          "hblNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "HAWB-001"
+          },
           "status": {
             "allOf": [
               {
                 "$ref": "#/components/schemas/CcfStatus"
+              }
+            ]
+          },
+          "clearanceStatus": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ClearanceStatus"
               }
             ]
           },
@@ -2512,7 +3187,10 @@
           "fileNumber",
           "shipmentFileId",
           "shipmentFileMblNumber",
+          "hblId",
+          "hblNumber",
           "status",
+          "clearanceStatus",
           "createdBy",
           "createdByName",
           "createdAt",
@@ -2537,8 +3215,132 @@
           "shipmentFileId": {
             "type": "integer",
             "example": 42
+          },
+          "hblId": {
+            "type": "integer",
+            "example": 15
           }
         }
+      },
+      "ChangeClearanceStatusDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "example": "ATD was entered on the wrong leg"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ClearanceStatus"
+              }
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "StatusEntityType": {
+        "type": "string",
+        "enum": [
+          "mbl",
+          "hbl",
+          "ccf"
+        ],
+        "x-enum-varnames": [
+          "MBL",
+          "HBL",
+          "CCF"
+        ]
+      },
+      "StatusTrack": {
+        "type": "string",
+        "enum": [
+          "shipment",
+          "document",
+          "clearance"
+        ],
+        "x-enum-varnames": [
+          "SHIPMENT",
+          "DOCUMENT",
+          "CLEARANCE"
+        ]
+      },
+      "StatusChangeSource": {
+        "type": "string",
+        "enum": [
+          "manual",
+          "auto",
+          "correction"
+        ],
+        "x-enum-varnames": [
+          "MANUAL",
+          "AUTO",
+          "CORRECTION"
+        ]
+      },
+      "StatusHistoryEntryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "track": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StatusTrack"
+              }
+            ]
+          },
+          "fromValue": {
+            "type": "string",
+            "nullable": true,
+            "example": "booking_confirmed"
+          },
+          "toValue": {
+            "type": "string",
+            "nullable": true,
+            "example": "departed"
+          },
+          "source": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StatusChangeSource"
+              }
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "changedBy": {
+            "type": "integer",
+            "nullable": true,
+            "example": 1
+          },
+          "changedByName": {
+            "type": "string",
+            "nullable": true,
+            "example": "Dana Levi"
+          },
+          "changedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "track",
+          "fromValue",
+          "toValue",
+          "source",
+          "reason",
+          "changedBy",
+          "changedByName",
+          "changedAt"
+        ]
       },
       "CountryDto": {
         "type": "object",
@@ -3893,6 +4695,19 @@
           "GROUPAGE_FCL"
         ]
       },
+      "AirMethod": {
+        "type": "string",
+        "enum": [
+          "direct",
+          "consolidation",
+          "back_to_back"
+        ],
+        "x-enum-varnames": [
+          "DIRECT",
+          "CONSOLIDATION",
+          "BACK_TO_BACK"
+        ]
+      },
       "MblSummaryDto": {
         "type": "object",
         "properties": {
@@ -3912,6 +4727,14 @@
             "allOf": [
               {
                 "$ref": "#/components/schemas/SeaMethod"
+              }
+            ]
+          },
+          "airMethod": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AirMethod"
               }
             ]
           },
@@ -3979,6 +4802,7 @@
           "id",
           "shippingType",
           "seaMethod",
+          "airMethod",
           "status",
           "mblNumber",
           "carrierName",
@@ -4020,6 +4844,39 @@
           "items"
         ]
       },
+      "CreateFlightLegDto": {
+        "type": "object",
+        "properties": {
+          "flightNumber": {
+            "type": "string",
+            "example": "LY 008"
+          },
+          "fromAirport": {
+            "type": "string",
+            "example": "HKG"
+          },
+          "toAirport": {
+            "type": "string",
+            "example": "TLV"
+          },
+          "etd": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "eta": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "atd": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "ata": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "CreateMblContainerDto": {
         "type": "object",
         "properties": {
@@ -4059,6 +4916,13 @@
             "allOf": [
               {
                 "$ref": "#/components/schemas/SeaMethod"
+              }
+            ]
+          },
+          "airMethod": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AirMethod"
               }
             ]
           },
@@ -4169,6 +5033,51 @@
               }
             ]
           },
+          "departureAirportCode": {
+            "type": "string",
+            "example": "HKG"
+          },
+          "destinationAirportCode": {
+            "type": "string",
+            "example": "TLV"
+          },
+          "cargoTerminalId": {
+            "type": "integer",
+            "nullable": true,
+            "example": 1
+          },
+          "cargoTerminalOther": {
+            "type": "string",
+            "nullable": true
+          },
+          "pieces": {
+            "type": "integer",
+            "example": 12
+          },
+          "approvedChargeableWeightKg": {
+            "type": "number",
+            "nullable": true,
+            "example": 412.5
+          },
+          "chargeableWeightOverrideReason": {
+            "type": "string",
+            "example": "Airline rounded per its own tariff"
+          },
+          "specialHandlingCodes": {
+            "example": [
+              "PER"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "flightLegs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateFlightLegDto"
+            }
+          },
           "containers": {
             "type": "array",
             "items": {
@@ -4220,6 +5129,86 @@
           "cargoDescription",
           "grossWeightKg",
           "volumeCbm"
+        ]
+      },
+      "ShipmentStatus": {
+        "type": "string",
+        "enum": [
+          "booking_confirmed",
+          "departed",
+          "in_transit",
+          "arrived"
+        ],
+        "x-enum-varnames": [
+          "BOOKING_CONFIRMED",
+          "DEPARTED",
+          "IN_TRANSIT",
+          "ARRIVED"
+        ]
+      },
+      "ShipmentStatusSource": {
+        "type": "string",
+        "enum": [
+          "manual",
+          "auto"
+        ],
+        "x-enum-varnames": [
+          "MANUAL",
+          "AUTO"
+        ]
+      },
+      "FlightLegDto": {
+        "type": "object",
+        "properties": {
+          "legNo": {
+            "type": "integer",
+            "example": 1
+          },
+          "flightNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "LY 008"
+          },
+          "fromAirport": {
+            "type": "string",
+            "nullable": true,
+            "example": "HKG"
+          },
+          "toAirport": {
+            "type": "string",
+            "nullable": true,
+            "example": "TLV"
+          },
+          "etd": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "eta": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "atd": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "ata": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": [
+          "legNo",
+          "flightNumber",
+          "fromAirport",
+          "toAirport",
+          "etd",
+          "eta",
+          "atd",
+          "ata"
         ]
       },
       "MblDto": {
@@ -4398,6 +5387,103 @@
               "$ref": "#/components/schemas/MblContainerDto"
             }
           },
+          "airMethod": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AirMethod"
+              }
+            ]
+          },
+          "departureAirportCode": {
+            "type": "string",
+            "nullable": true,
+            "example": "HKG"
+          },
+          "destinationAirportCode": {
+            "type": "string",
+            "nullable": true,
+            "example": "TLV"
+          },
+          "cargoTerminalId": {
+            "type": "integer",
+            "nullable": true,
+            "example": 1
+          },
+          "cargoTerminalName": {
+            "type": "string",
+            "nullable": true,
+            "example": "ממ\"ן"
+          },
+          "cargoTerminalOther": {
+            "type": "string",
+            "nullable": true
+          },
+          "pieces": {
+            "type": "integer",
+            "nullable": true,
+            "example": 12
+          },
+          "calculatedChargeableWeightKg": {
+            "type": "number",
+            "nullable": true,
+            "example": 412
+          },
+          "approvedChargeableWeightKg": {
+            "type": "number",
+            "nullable": true,
+            "example": 412.5
+          },
+          "chargeableWeightOverridden": {
+            "type": "boolean",
+            "example": false
+          },
+          "volumetricDivisor": {
+            "type": "integer",
+            "nullable": true,
+            "example": 6000
+          },
+          "weightRoundingStepKg": {
+            "type": "number",
+            "nullable": true,
+            "example": 0.5
+          },
+          "specialHandlingCodes": {
+            "example": [
+              "PER"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "shipmentStatus": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ShipmentStatus"
+              }
+            ]
+          },
+          "shipmentStatusSource": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ShipmentStatusSource"
+              }
+            ]
+          },
+          "flightLegs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FlightLegDto"
+            }
+          },
+          "mirrorHblId": {
+            "type": "integer",
+            "nullable": true,
+            "example": 12
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time",
@@ -4443,6 +5529,23 @@
           "handlerName",
           "ccfId",
           "containers",
+          "airMethod",
+          "departureAirportCode",
+          "destinationAirportCode",
+          "cargoTerminalId",
+          "cargoTerminalName",
+          "cargoTerminalOther",
+          "pieces",
+          "calculatedChargeableWeightKg",
+          "approvedChargeableWeightKg",
+          "chargeableWeightOverridden",
+          "volumetricDivisor",
+          "weightRoundingStepKg",
+          "specialHandlingCodes",
+          "shipmentStatus",
+          "shipmentStatusSource",
+          "flightLegs",
+          "mirrorHblId",
           "createdAt",
           "updatedAt"
         ]
@@ -4557,6 +5660,51 @@
               }
             ]
           },
+          "departureAirportCode": {
+            "type": "string",
+            "example": "HKG"
+          },
+          "destinationAirportCode": {
+            "type": "string",
+            "example": "TLV"
+          },
+          "cargoTerminalId": {
+            "type": "integer",
+            "nullable": true,
+            "example": 1
+          },
+          "cargoTerminalOther": {
+            "type": "string",
+            "nullable": true
+          },
+          "pieces": {
+            "type": "integer",
+            "example": 12
+          },
+          "approvedChargeableWeightKg": {
+            "type": "number",
+            "nullable": true,
+            "example": 412.5
+          },
+          "chargeableWeightOverrideReason": {
+            "type": "string",
+            "example": "Airline rounded per its own tariff"
+          },
+          "specialHandlingCodes": {
+            "example": [
+              "PER"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "flightLegs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateFlightLegDto"
+            }
+          },
           "containers": {
             "type": "array",
             "items": {
@@ -4564,6 +5712,25 @@
             }
           }
         }
+      },
+      "ChangeShipmentStatusDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "example": "ATD was entered on the wrong leg"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ShipmentStatus"
+              }
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
       },
       "HblOrderSummaryDto": {
         "type": "object",
@@ -4583,6 +5750,63 @@
           "customerName"
         ]
       },
+      "PieceDimensionDto": {
+        "type": "object",
+        "properties": {
+          "pieceCount": {
+            "type": "integer",
+            "example": 4
+          },
+          "lengthCm": {
+            "type": "number",
+            "example": 120
+          },
+          "widthCm": {
+            "type": "number",
+            "example": 80
+          },
+          "heightCm": {
+            "type": "number",
+            "example": 60
+          }
+        },
+        "required": [
+          "pieceCount",
+          "lengthCm",
+          "widthCm",
+          "heightCm"
+        ]
+      },
+      "DocumentStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "under_review",
+          "missing_information",
+          "approved"
+        ],
+        "x-enum-varnames": [
+          "PENDING",
+          "UNDER_REVIEW",
+          "MISSING_INFORMATION",
+          "APPROVED"
+        ]
+      },
+      "ArrivalState": {
+        "type": "string",
+        "enum": [
+          "not_arrived",
+          "partial",
+          "complete",
+          "over_received"
+        ],
+        "x-enum-varnames": [
+          "NOT_ARRIVED",
+          "PARTIAL",
+          "COMPLETE",
+          "OVER_RECEIVED"
+        ]
+      },
       "HblDto": {
         "type": "object",
         "properties": {
@@ -4592,7 +5816,24 @@
           },
           "mblId": {
             "type": "integer",
+            "nullable": true,
             "example": 1
+          },
+          "mblNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "114-12345675"
+          },
+          "shippingType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MblShippingType"
+              }
+            ]
+          },
+          "isMasterMirror": {
+            "type": "boolean",
+            "example": false
           },
           "containerId": {
             "type": "integer",
@@ -4610,6 +5851,7 @@
           },
           "sequenceNumber": {
             "type": "integer",
+            "nullable": true,
             "example": 1
           },
           "iblNumber": {
@@ -4679,6 +5921,75 @@
               "$ref": "#/components/schemas/HblOrderSummaryDto"
             }
           },
+          "pieces": {
+            "type": "integer",
+            "nullable": true,
+            "example": 12
+          },
+          "pieceDimensions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PieceDimensionDto"
+            }
+          },
+          "calculatedChargeableWeightKg": {
+            "type": "number",
+            "nullable": true,
+            "example": 120
+          },
+          "approvedChargeableWeightKg": {
+            "type": "number",
+            "nullable": true,
+            "example": 120.5
+          },
+          "chargeableWeightOverridden": {
+            "type": "boolean",
+            "example": false
+          },
+          "volumetricDivisor": {
+            "type": "integer",
+            "nullable": true,
+            "example": 6000
+          },
+          "weightRoundingStepKg": {
+            "type": "number",
+            "nullable": true,
+            "example": 0.5
+          },
+          "specialHandlingCodes": {
+            "example": [
+              "DGR"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "documentStatus": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DocumentStatus"
+              }
+            ]
+          },
+          "piecesReceived": {
+            "type": "integer",
+            "example": 0
+          },
+          "arrivalState": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ArrivalState"
+              }
+            ]
+          },
+          "ccfId": {
+            "type": "integer",
+            "nullable": true,
+            "example": 7
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time",
@@ -4693,6 +6004,9 @@
         "required": [
           "id",
           "mblId",
+          "mblNumber",
+          "shippingType",
+          "isMasterMirror",
           "containerId",
           "customerId",
           "customerName",
@@ -4711,6 +6025,18 @@
           "volumeCbm",
           "remarks",
           "orders",
+          "pieces",
+          "pieceDimensions",
+          "calculatedChargeableWeightKg",
+          "approvedChargeableWeightKg",
+          "chargeableWeightOverridden",
+          "volumetricDivisor",
+          "weightRoundingStepKg",
+          "specialHandlingCodes",
+          "documentStatus",
+          "piecesReceived",
+          "arrivalState",
+          "ccfId",
           "createdAt",
           "updatedAt"
         ]
@@ -4721,6 +6047,13 @@
           "mblId": {
             "type": "integer",
             "example": 1000
+          },
+          "shippingType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MblShippingType"
+              }
+            ]
           },
           "containerId": {
             "type": "integer",
@@ -4778,6 +6111,33 @@
             "type": "string",
             "example": "LCL - 3 PARTIES / CY/CFS"
           },
+          "pieces": {
+            "type": "integer",
+            "example": 12
+          },
+          "pieceDimensions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PieceDimensionDto"
+            }
+          },
+          "approvedChargeableWeightKg": {
+            "type": "number",
+            "nullable": true,
+            "example": 120.5
+          },
+          "chargeableWeightOverrideReason": {
+            "type": "string"
+          },
+          "specialHandlingCodes": {
+            "example": [
+              "DGR"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "orderIds": {
             "example": [
               1000
@@ -4789,7 +6149,6 @@
           }
         },
         "required": [
-          "mblId",
           "customerId"
         ]
       },
@@ -4851,6 +6210,33 @@
           "remarks": {
             "type": "string",
             "example": "LCL - 3 PARTIES / CY/CFS"
+          },
+          "pieces": {
+            "type": "integer",
+            "example": 12
+          },
+          "pieceDimensions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PieceDimensionDto"
+            }
+          },
+          "approvedChargeableWeightKg": {
+            "type": "number",
+            "nullable": true,
+            "example": 120.5
+          },
+          "chargeableWeightOverrideReason": {
+            "type": "string"
+          },
+          "specialHandlingCodes": {
+            "example": [
+              "DGR"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
@@ -4869,6 +6255,214 @@
         },
         "required": [
           "orderIds"
+        ]
+      },
+      "LinkHblMasterDto": {
+        "type": "object",
+        "properties": {
+          "mblId": {
+            "type": "integer",
+            "nullable": true,
+            "example": 12
+          },
+          "reason": {
+            "type": "string",
+            "example": "Offloaded and rebooked on the next flight"
+          }
+        },
+        "required": [
+          "mblId"
+        ]
+      },
+      "HblLinkHistoryEntryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "previousMblId": {
+            "type": "integer",
+            "nullable": true,
+            "example": 11
+          },
+          "previousMblNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "114-12345675"
+          },
+          "newMblId": {
+            "type": "integer",
+            "nullable": true,
+            "example": 12
+          },
+          "newMblNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "114-12345686"
+          },
+          "isCorrection": {
+            "type": "boolean",
+            "example": false
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "changedByName": {
+            "type": "string",
+            "nullable": true,
+            "example": "Dana Levi"
+          },
+          "changedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "previousMblId",
+          "previousMblNumber",
+          "newMblId",
+          "newMblNumber",
+          "isCorrection",
+          "reason",
+          "changedByName",
+          "changedAt"
+        ]
+      },
+      "ChangeDocumentStatusDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "example": "ATD was entered on the wrong leg"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DocumentStatus"
+              }
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "HblArrivalDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "flightNumber": {
+            "type": "string",
+            "example": "LY 008"
+          },
+          "arrivalDate": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-10-21"
+          },
+          "piecesReceived": {
+            "type": "integer",
+            "example": 4
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "isOverride": {
+            "type": "boolean",
+            "example": false
+          },
+          "overrideReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdByName": {
+            "type": "string",
+            "nullable": true,
+            "example": "Dana Levi"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "voidedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "voidedByName": {
+            "type": "string",
+            "nullable": true
+          },
+          "voidReason": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "flightNumber",
+          "arrivalDate",
+          "piecesReceived",
+          "notes",
+          "isOverride",
+          "overrideReason",
+          "createdByName",
+          "createdAt",
+          "voidedAt",
+          "voidedByName",
+          "voidReason"
+        ]
+      },
+      "CreateHblArrivalDto": {
+        "type": "object",
+        "properties": {
+          "flightNumber": {
+            "type": "string",
+            "example": "LY 008"
+          },
+          "arrivalDate": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-10-21"
+          },
+          "piecesReceived": {
+            "type": "integer",
+            "example": 4
+          },
+          "notes": {
+            "type": "string"
+          },
+          "override": {
+            "type": "boolean",
+            "example": false
+          },
+          "overrideReason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "flightNumber",
+          "arrivalDate",
+          "piecesReceived"
+        ]
+      },
+      "VoidHblArrivalDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "example": "Recorded on the wrong HAWB"
+          }
+        },
+        "required": [
+          "reason"
         ]
       },
       "NotificationDto": {

@@ -31,6 +31,11 @@ wired to `npm run db:generate`.
 | `022_orders_last_step.sql` | Adds `orders.last_step` (`customer`/`shipment`/`schedule`/`documents`, default `customer`) — the furthest tab of the order form reached, so a saved partial order resumes there | `Amilut` | `Admin` (via `SET ROLE`) |
 | `023_notifications_actor.sql` | Adds `notifications.actor_user_id` (→ `users.id`, nullable, `ON DELETE SET NULL`) — the user whose action triggered the notification | `Amilut` | `Admin` (via `SET ROLE`) |
 | `024_create_line_item_notes.sql` | `line_item_notes` table — notes written on the classification screen against one supplier-invoice line (`file_id` → `import_account_files.id` + `line_index`), with author and timestamp | `Amilut` | `Admin` (via `SET ROLE`) |
+| `025_air_reference_tables.sql` | Air lookups: `airport` (seeded with TLV, mapped to `orders.destination = 'ben_gurion'`), `cargo_terminal` (seeded with Maman / Swissport by name — `code` left NULL until verified), `air_weight_rule` (default row: divisor 6000, round up to 0.5 kg; no carrier rows) | `Amilut` | `Admin` (via `SET ROLE`) |
+| `026_air_master_house.sql` | Air columns on `mbl` (MAWB: `air_method`, airports, terminal, pieces, calculated/approved chargeable weight + rule snapshot + override marker, SHC codes) and `hbl` (HAWB: `shipping_type`, `is_master_mirror`, `handler_user_id`, pieces, weights, SHC); `hbl.mbl_id`/`sequence_number` become nullable (sea still requires a master via CHECK); air-only unique MAWB/HAWB numbers; `mbl_flight_leg`, `hbl_piece_dimension` | `Amilut` | `Admin` (via `SET ROLE`) |
+| `027_air_status_arrivals_audit.sql` | Status tracks `mbl.shipment_status(+_source)`, `hbl.document_status`; append-only `status_history`, `hbl_master_link_history`, `audit_log`; `hbl_arrival` (void-only updates); triggers enforcing it | `Amilut` | `Admin` (via `SET ROLE`) |
+| `028_ccf_per_house.sql` | `customs_clearance_files.hbl_id` (UNIQUE — one CCF per air HAWB, at most one of `shipment_file_id`/`hbl_id`) and `clearance_status` | `Amilut` | `Admin` (via `SET ROLE`) |
+| `029_fix_air_test_orders_destination.sql` | Moves the two identified air test orders (1001, 1003 — matched on all their fingerprints) from `ashdod` to `ben_gurion`; only reports any other air order with a non-airport destination | `Amilut` | `Admin` (via `SET ROLE`) |
 | `run-migrations.mjs` | Applies `001`, then every other `NNN_*.sql` in name order | — | — |
 | `reset-superuser-password.ps1` | Recovery tool: resets a lost `postgres` superuser password on this machine (elevated PowerShell; `-SaveToEnv` writes it into the root `.env`) | — | Windows admin |
 
@@ -153,19 +158,48 @@ Amilut
 │              NULL], created_at)
 │              -- 020: minimal in-app notification system, first used by the
 │              -- CCF feature
-└── line_item_notes (id, file_id → import_account_files.id [ON DELETE
-               CASCADE], line_index [position in data.lineItems, >= 0],
-               body, created_by → users.id [nullable, ON DELETE SET NULL],
-               created_at)
-               -- 024: notes popup of the classification ("סיווג") table rows
+├── line_item_notes (id, file_id → import_account_files.id [ON DELETE
+│              CASCADE], line_index [position in data.lineItems, >= 0],
+│              body, created_by → users.id [nullable, ON DELETE SET NULL],
+│              created_at)
+│              -- 024: notes popup of the classification ("סיווג") table rows
+│
+│   Air freight (025–028). `mbl` = MAWB and `hbl` = HAWB when shipping_type = 'air'
+│   (columns listed in 026/027); a Direct MAWB has one hidden house with
+│   is_master_mirror = true. Air HAWBs may have mbl_id NULL (awaiting a MAWB).
+├── airport (code [IATA, PK], name_he, name_en, is_import_destination,
+│              order_destination [UNIQUE, ↔ orders.destination], is_active)
+├── cargo_terminal (id, airport_code → airport.code, code [nullable, UNIQUE —
+│              unverified], name_he, name_en, is_active, sort_order)
+├── air_weight_rule (id, airline_prefix [3 digits, NULL = default, UNIQUE],
+│              volumetric_divisor, rounding_step_kg, rounding_mode[up|nearest])
+├── mbl_flight_leg (id, mbl_id → mbl.id [CASCADE], leg_no, flight_number,
+│              from_airport, to_airport, etd, eta, atd, ata)
+├── hbl_piece_dimension (id, hbl_id → hbl.id [CASCADE], piece_count,
+│              length_cm, width_cm, height_cm)
+├── hbl_arrival (id, hbl_id → hbl.id [RESTRICT], flight_number, arrival_date,
+│              pieces_received, notes, is_override, override_reason,
+│              created_by, created_at, voided_at, voided_by, void_reason)
+│              -- rows are never deleted; one-time void only (trigger)
+├── status_history (id, entity_type[mbl|hbl|ccf], entity_id, track
+│              [shipment|document|clearance], from_value, to_value,
+│              source[manual|auto|correction], reason, changed_by, changed_at)
+├── hbl_master_link_history (id, hbl_id, previous_mbl_id, new_mbl_id,
+│              is_correction, reason, changed_by, changed_at)
+└── audit_log (id, entity_type, entity_id, action, before_value, after_value,
+               reason, changed_by, changed_at)
+               -- the three history tables are append-only (triggers)
 
 Enum-like columns (`status`, `shipment_type`, `payment_terms`, `incoterm`,
 `destination`, `last_step` in `orders`; `document_type` in `order_account`; `shipping_type`,
-`sea_method`, `freight_terms`, `status` in `mbl`; `status` in
-`customs_clearance_files`) store English codes guarded by CHECK constraints;
+`sea_method`, `freight_terms`, `status`, `air_method`, `shipment_status`,
+`shipment_status_source` in `mbl`; `shipping_type`, `document_status` in `hbl`;
+`status`, `clearance_status` in `customs_clearance_files`; the tracks / sources
+in `status_history`) store English codes guarded by CHECK constraints;
 the source of truth for `orders`' enums is `server/src/orders/orders.enums.ts`,
-for `mbl`'s is `server/src/mbl/mbl.enums.ts`, and for `customs_clearance_files`'
-is `server/src/ccf/ccf.enums.ts`.
+for `mbl`'s is `server/src/mbl/mbl.enums.ts` + `server/src/air/air.enums.ts`,
+for the status tracks `server/src/status-tracks/status-tracks.enums.ts`, and
+for `customs_clearance_files`' `status` is `server/src/ccf/ccf.enums.ts`.
 ```
 
 Connect the app with role `Admin` / password `Admin` on `127.0.0.1:5432`.

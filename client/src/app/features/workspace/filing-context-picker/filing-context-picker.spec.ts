@@ -17,6 +17,7 @@ import {
 import type { CcfDto, OrderDto } from '../../../api/models';
 import { FilingContextService } from '../filing-context.service';
 import { FilingContextPicker } from './filing-context-picker';
+import { SEA_CCF_HOUSE_FIELDS } from '../../../api/testing/sea-defaults';
 
 const ORDERS_URL = '/api/orders';
 const CCFS_URL = '/api/ccf';
@@ -56,6 +57,7 @@ function ccf(id: number, fileNumber: string): CcfDto {
     id,
     fileNumber,
     shipmentFileId: null,
+    ...SEA_CCF_HOUSE_FIELDS,
     shipmentFileMblNumber: null,
     status: CcfStatus.OPEN,
     createdBy: 7,

@@ -146,8 +146,11 @@ adding an enum member on the server breaks the client build there until a
 label is added — that is intentional.
 
 The database CHECK constraints for enum-like columns (`status`,
-`shipment_type`, `payment_terms`, `incoterm`, `destination`, `last_step` in `orders`) must
-be kept in sync with the server enums by hand.
+`shipment_type`, `payment_terms`, `incoterm`, `destination`, `last_step` in `orders`;
+`air_method`, `shipment_status` in `mbl`; `document_status` in `hbl`;
+`clearance_status` in `customs_clearance_files`) must be kept in sync with the
+server enums by hand. A new enum must also be added to `NAMED_ENUMS` in
+`server/src/openapi.ts`, or the generated client members come out lower-case.
 
 ### Shipping-case wizard (File → Job) and bill-of-lading extraction
 
@@ -162,6 +165,29 @@ The extractor lives in `server/src/import-files/bill-of-lading-extraction/`
 (PDF via `pdf2json`, HTML, plain text; label dictionary in
 `bill-of-lading-fields.ts`, fixtures copied from `files/` in `__fixtures__/`).
 Extend the label regexes there when a new B/L layout is not recognised.
+
+### Air-freight import (MAWB / HAWB)
+
+Same tables as sea: `mbl` is the MAWB and `hbl` the HAWB when
+`shipping_type = 'air'` (`server/src/mbl/`, air helpers in `server/src/air/`,
+status tracks in `server/src/status-tracks/`). Air methods: `direct` (MAWB only —
+the server keeps one hidden house with `is_master_mirror` for orders / CCF /
+arrivals; never list it as a HAWB), `consolidation`, `back_to_back` (one HAWB).
+An air HAWB may exist before its MAWB (`hbl.mbl_id` NULL; linked later via
+`PATCH /api/hbl/:id/master`, audited; after an arrival only with a reason).
+MAWB numbers are validated (IATA mod-7 check digit) and unique among air rows;
+real HAWB numbers are unique system-wide (trimmed, upper-cased). Chargeable
+weight = max(gross, volumetric) per `air_weight_rule` (default 6000 / 0.5 kg up,
+no carrier rules seeded); calculated and approved values are stored apart and an
+approved value that differs needs a reason. Arrivals are per HAWB
+(`hbl_arrival`, void instead of delete, over-receipt only as a reasoned
+override). Independent status tracks: `mbl.shipment_status` (departed / arrived
+also set automatically from the first leg's ATD / last leg's ATA),
+`hbl.document_status`, `customs_clearance_files.clearance_status`; `mbl.status`
+remains the case status for both modes. One CCF per air HAWB
+(`customs_clearance_files.hbl_id`); sea CCFs keep `shipment_file_id`. History
+tables are append-only (DB triggers). Client: `screens/shipment-case-wizard/air-case-flow/`.
+No partial customs release, no AWB extraction yet (no sample AWBs in `files/`).
 
 ## Authentication
 

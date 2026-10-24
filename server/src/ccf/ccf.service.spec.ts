@@ -1,6 +1,7 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { DatabaseService } from '../database/database.service';
+import { StatusTracksService } from '../status-tracks/status-tracks.service';
 import { CcfStatus } from './ccf.enums';
 import { CcfService } from './ccf.service';
 
@@ -36,7 +37,11 @@ describe('CcfService', () => {
   beforeEach(async () => {
     db = { query: jest.fn(), queryOne: jest.fn(), transaction: jest.fn() };
     const moduleRef = await Test.createTestingModule({
-      providers: [CcfService, { provide: DatabaseService, useValue: db }],
+      providers: [
+        CcfService,
+        { provide: DatabaseService, useValue: db },
+        { provide: StatusTracksService, useValue: {} },
+      ],
     }).compile();
     service = moduleRef.get(CcfService);
   });

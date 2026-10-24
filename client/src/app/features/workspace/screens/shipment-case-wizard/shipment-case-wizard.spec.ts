@@ -26,6 +26,7 @@ import type {
 } from '../../../../api/models';
 import { NavigationService } from '../../navigation.service';
 import { ShipmentCaseWizardScreen } from './shipment-case-wizard';
+import { SEA_HBL_AIR_FIELDS, SEA_MBL_AIR_FIELDS } from '../../../../api/testing/sea-defaults';
 
 /** Only the "מעבר לתיק הסליקה" link cares about `ccfId`; every other field is
  *  an arbitrary valid placeholder. */
@@ -63,6 +64,7 @@ const MINIMAL_MBL: MblDto = {
   handlerName: null,
   ccfId: null,
   containers: [],
+  ...SEA_MBL_AIR_FIELDS,
   createdAt: '2026-09-01T08:30:00.000Z',
   updatedAt: '2026-09-01T08:30:00.000Z',
 };
@@ -170,6 +172,7 @@ function container(id: number): MblContainerDto {
 /** A saved File with no associated orders (so opening it for edit makes no HTTP call). */
 function hbl(id: number, overrides: Partial<HblDto> = {}): HblDto {
   return {
+    ...SEA_HBL_AIR_FIELDS,
     id,
     mblId: MINIMAL_MBL.id,
     containerId: null,
@@ -292,14 +295,35 @@ describe('ShipmentCaseWizardScreen', () => {
     expect(stepLinks()[0].disabled).toBe(true); // already on step 1
   });
 
-  it('selecting אווירי shows a blank/placeholder page, not the sea method step', () => {
+  it('selecting אווירי shows the three air structures, not the sea methods', () => {
     methodCards()[1].click(); // אווירי
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('.method-card')).toBeNull();
-    expect(hintText()).toContain('אווירי');
+    const cards = methodCards();
+    expect(cards.map((c) => c.querySelector('.method-card__label')?.textContent?.trim())).toEqual([
+      'ישיר (Direct)',
+      'קונסולידציה',
+      'Back-to-back',
+    ]);
+    expect(sectionTitle()).toContain('מבנה המשלוח האווירי');
     expect(backButton()).toBeNull(); // no in-form back button anywhere in the flow
     expect(stepLinks()[0].disabled).toBe(false); // "סוג משלוח" link is the way back
+  });
+
+  it('choosing an air structure opens the air flow (HAWB first) and loads the unassigned HAWBs', () => {
+    const httpMock = TestBed.inject(HttpTestingController);
+    methodCards()[1].click(); // אווירי
+    fixture.detectChanges();
+    methodCards()[1].click(); // קונסולידציה
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('app-air-case-flow')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('app-air-hawb-form')).not.toBeNull();
+    expect(
+      httpMock.match(
+        (req) => req.url.endsWith('/api/hbl') && req.params.get('unassigned') === 'true',
+      ),
+    ).toHaveLength(1);
   });
 
   it('selecting ימי shows the four sea freight methods', () => {
@@ -477,7 +501,7 @@ describe('ShipmentCaseWizardScreen', () => {
       expect(fixture.nativeElement.querySelector('.method-locked-hint')).toBeNull();
       cards[1].click(); // אווירי — the choice can change
       fixture.detectChanges();
-      expect(hintText()).toContain('אווירי');
+      expect(sectionTitle()).toContain('מבנה המשלוח האווירי');
     });
 
     it('once a Job exists, "Job" opens its form and "File" returns to the Files step', () => {
