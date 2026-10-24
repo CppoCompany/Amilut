@@ -21,6 +21,9 @@ import { TableModule } from 'primeng/table';
 import { catchError, finalize, forkJoin, of, switchMap } from 'rxjs';
 
 import {
+  AIR_METHODS,
+  AIR_METHOD_LABELS,
+  AirMethod,
   MBL_SHIPPING_TYPE_LABELS,
   MBL_STATUS_LABELS,
   MBL_STATUSES,
@@ -47,9 +50,11 @@ import { ImportFilesApi } from '../../../../api/import-files-api';
 import { MblApi } from '../../../../api/mbl-api';
 import { OrdersApi } from '../../../../api/orders-api';
 import { TypedRow } from '../../../../shared/typed-row/typed-row';
+import { SortAccessors, TableSort } from '../../../../shared/table-sort/table-sort';
 import { CustomerAutocomplete } from '../../../customers/customer-autocomplete/customer-autocomplete';
 import { NavigationService } from '../../navigation.service';
 import { SelectionStateService } from '../../selection-state.service';
+import { AirCaseFlow, AirCaseState } from './air-case-flow/air-case-flow';
 import {
   EMPTY_HBL_FORM_VALUE,
   hblExtractToFormValue,
@@ -82,9 +87,15 @@ const SEA_METHOD_DESCRIPTIONS: Record<SeaMethod, string> = {
   [SeaMethod.GROUPAGE_FCL]: 'מספר מכולות, כל אחת עם Files משל עצמה',
 };
 
+const AIR_METHOD_DESCRIPTIONS: Record<AirMethod, string> = {
+  [AirMethod.DIRECT]: 'MAWB בלבד, ללא HAWB — היבואן רשום ב-MAWB',
+  [AirMethod.CONSOLIDATION]: 'MAWB אחד עם מספר HAWBs (יבואן לכל HAWB)',
+  [AirMethod.BACK_TO_BACK]: 'MAWB אחד עם HAWB אחד',
+};
+
 /** The sea-freight wizard's four stations, as listed in the "התקדמות התיק"
- *  sidebar, in order: type → method → files → job. `null` while on the air
- *  placeholder (no station applies). */
+ *  sidebar, in order: type → method → files → job. `null` while the air
+ *  flow (`AirCaseFlow`) owns the main pane. */
 type WizardStep = 'type' | 'method' | 'files' | 'job';
 
 /** A selected order as shown in the File form's summary chips. */
@@ -137,7 +148,9 @@ interface PrefillSource {
     TableModule,
     CustomerAutocomplete,
     HblOrdersPickerDialog,
+    TableSort,
     TypedRow,
+    AirCaseFlow,
   ],
   templateUrl: './shipment-case-wizard.html',
   styleUrl: './shipment-case-wizard.scss',
@@ -159,6 +172,9 @@ export class ShipmentCaseWizardScreen {
   protected readonly SHIPPING_TYPE_LABELS = MBL_SHIPPING_TYPE_LABELS;
   protected readonly SEA_METHOD_LABELS = SEA_METHOD_LABELS;
   protected readonly SEA_METHOD_DESCRIPTIONS = SEA_METHOD_DESCRIPTIONS;
+  protected readonly AIR_METHOD_LABELS = AIR_METHOD_LABELS;
+  protected readonly AIR_METHOD_DESCRIPTIONS = AIR_METHOD_DESCRIPTIONS;
+  protected readonly airMethods = AIR_METHODS;
   protected readonly seaMethods: readonly SeaMethod[] = [
     SeaMethod.FCL_FCL,
     SeaMethod.FCL_LCL,
@@ -177,6 +193,12 @@ export class ShipmentCaseWizardScreen {
 
   protected readonly shippingType = signal<MblShippingType | null>(null);
   protected readonly seaMethod = signal<SeaMethod | null>(null);
+  /** Air branch: the MAWB/HAWB structure chosen in step 2. */
+  protected readonly airMethod = signal<AirMethod | null>(null);
+  /** Air branch: an existing MAWB opened from "התיקים שלי". */
+  protected readonly airEditMblId = signal<number | null>(null);
+  /** Air branch: a HAWB or MAWB has been saved — steps 1/2 are then locked. */
+  protected readonly airCaseStarted = signal(false);
 
   // ── Job (MBL) ────────────────────────────────────────────────────────────────
   protected readonly isGroupage = computed(() => this.seaMethod() === SeaMethod.GROUPAGE_FCL);
@@ -227,6 +249,11 @@ export class ShipmentCaseWizardScreen {
 
   // ── File (HBL) ───────────────────────────────────────────────────────────────
   protected readonly hbls = signal<HblDto[]>([]);
+  /** "מכולה" sorts by the label shown, "הזמנות משויכות" by the count (`appTableSort`). */
+  protected readonly hblSort: SortAccessors<HblDto> = {
+    containerId: (hbl) => this.containerLabel(hbl.containerId),
+    orders: (hbl) => hbl.orders.length,
+  };
   protected readonly hblsLoading = signal(false);
 
   /** `fcl_fcl` allows exactly one File; every other method allows adding more freely. */
@@ -340,7 +367,9 @@ export class ShipmentCaseWizardScreen {
    *  natural flow. Ignored while no Job is saved (steps 1/2 are then live). */
   private readonly viewingLockedStep = signal<'type' | 'method' | null>(null);
   /** True once the shipping type/method can no longer be changed. */
-  protected readonly choicesLocked = computed(() => this.savedMbl() !== null);
+  protected readonly choicesLocked = computed(
+    () => this.savedMbl() !== null || this.airCaseStarted(),
+  );
 
   /** Which station the main pane is showing right now. */
   protected readonly currentStep = computed<WizardStep | null>(() => {
@@ -348,14 +377,16 @@ export class ShipmentCaseWizardScreen {
     if (viewing !== null && this.choicesLocked()) return viewing;
     const shippingType = this.shippingType();
     if (shippingType === null) return 'type';
-    if (shippingType === MblShippingType.AIR) return null;
+    if (shippingType === MblShippingType.AIR) {
+      return this.airMethod() === null ? 'method' : null;
+    }
     if (this.seaMethod() === null) return 'method';
     if (this.editingMbl()) return 'job';
     return 'files';
   });
   protected readonly canGoToTypeStep = computed(() => this.currentStep() !== 'type');
   protected readonly canGoToMethodStep = computed(
-    () => this.shippingType() === MblShippingType.SEA && this.currentStep() !== 'method',
+    () => this.shippingType() !== null && this.currentStep() !== 'method',
   );
   protected readonly canGoToFilesStep = computed(
     () => this.seaMethod() !== null && this.currentStep() !== 'files',
@@ -413,6 +444,23 @@ export class ShipmentCaseWizardScreen {
     if (this.choicesLocked()) return;
     this.shippingType.set(type);
     this.seaMethod.set(null);
+    this.airMethod.set(null);
+  }
+
+  /** Air step 2 → the air flow (HAWB form first; MAWB form for Direct). */
+  protected selectAirMethod(method: AirMethod): void {
+    if (this.choicesLocked()) return;
+    this.airMethod.set(method);
+  }
+
+  /** Back to the air flow from a read-only step 1/2 view. */
+  protected goToAirCase(): void {
+    this.viewingLockedStep.set(null);
+  }
+
+  /** Mirrors the air case into the breadcrumb selection once it has a MAWB. */
+  protected onAirCaseState(state: AirCaseState): void {
+    if (state.mbl) this.selection.selectShippingCase(state.mbl, state.houses);
   }
 
   /** Step 2 → straight into the first File's form, "לשיוך להזמנה" first. */
@@ -438,6 +486,7 @@ export class ShipmentCaseWizardScreen {
     this.resetMblState();
     this.shippingType.set(null);
     this.seaMethod.set(null);
+    this.airMethod.set(null);
   }
 
   /** Back to step 2 — same live/locked split as `goToTypeStep`. */
@@ -449,6 +498,7 @@ export class ShipmentCaseWizardScreen {
     }
     this.resetMblState();
     this.seaMethod.set(null);
+    this.airMethod.set(null);
   }
 
   /** Leaves the Job form (discarding unsaved edits) for the Files step; with
@@ -994,6 +1044,15 @@ export class ShipmentCaseWizardScreen {
       )
       .subscribe({
         next: (mbl) => {
+          if (mbl.shippingType === MblShippingType.AIR) {
+            // The air flow loads its own MAWB / HAWBs from the id.
+            this.shippingType.set(MblShippingType.AIR);
+            this.airMethod.set(mbl.airMethod);
+            this.airEditMblId.set(mbl.id);
+            this.airCaseStarted.set(true);
+            this.isEditingExisting.set(true);
+            return;
+          }
           this.shippingType.set(mbl.shippingType);
           this.seaMethod.set(mbl.seaMethod);
           this.savedMbl.set(mbl);
@@ -1008,6 +1067,9 @@ export class ShipmentCaseWizardScreen {
   private reset(): void {
     this.shippingType.set(null);
     this.seaMethod.set(null);
+    this.airMethod.set(null);
+    this.airEditMblId.set(null);
+    this.airCaseStarted.set(false);
     this.isEditingExisting.set(false);
     this.loadCaseError.set(null);
     this.resetMblState();

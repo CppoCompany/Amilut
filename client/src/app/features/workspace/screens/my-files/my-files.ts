@@ -13,6 +13,7 @@ import type { CustomerDto, MblSummaryDto } from '../../../../api/models';
 import { ConfirmDialog } from '../../../../shared/confirm-dialog/confirm-dialog';
 import { StatusTag } from '../../../../shared/status-tag/status-tag';
 import { TypedRow } from '../../../../shared/typed-row/typed-row';
+import { SortAccessors, TableSort } from '../../../../shared/table-sort/table-sort';
 import {
   CustomerAutocomplete,
   SEARCH_DEBOUNCE_MS,
@@ -34,6 +35,7 @@ const MAX_ROWS = 200;
     CustomerAutocomplete,
     ConfirmDialog,
     StatusTag,
+    TableSort,
     TypedRow,
   ],
   templateUrl: './my-files.html',
@@ -49,6 +51,11 @@ export class MyFilesScreen {
   protected readonly filterCarrierName = signal('');
   protected readonly filterCaseNumber = signal('');
   protected readonly statusLabels = MBL_STATUS_LABELS;
+  /** Label columns sort by the text shown, not the enum value (`appTableSort`). */
+  protected readonly caseSort: SortAccessors<MblSummaryDto> = {
+    shippingType: (mblCase) => this.methodLabel(mblCase),
+    status: (mblCase) => MBL_STATUS_LABELS[mblCase.status],
+  };
 
   // ── Grid state ──────────────────────────────────────────────────────────────
   protected readonly cases = signal<MblSummaryDto[]>([]);

@@ -65,6 +65,32 @@
             </button>
           </div>
         </section>
+      } @else if (currentStep() === 'method' && shippingType() === MblShippingType.AIR) {
+        <!-- Step 2 (air) — the MAWB/HAWB structure; same live/locked split. -->
+        <section class="form-section">
+          <h2 class="section-title">שלב 2 — מבנה המשלוח האווירי</h2>
+          @if (choicesLocked()) {
+            <p class="hint-text method-locked-hint">
+              מבנה המשלוח נקבע בעת השמירה הראשונה ואינו ניתן לשינוי.
+            </p>
+          }
+          <div class="method-cards">
+            @for (airMethodOption of airMethods; track airMethodOption) {
+              <button
+                type="button"
+                class="method-card"
+                [class.method-card--selected]="airMethod() === airMethodOption"
+                [disabled]="choicesLocked()"
+                (click)="selectAirMethod(airMethodOption)"
+              >
+                <span class="method-card__label">{{ AIR_METHOD_LABELS[airMethodOption] }}</span>
+                <span class="method-card__description">{{
+                  AIR_METHOD_DESCRIPTIONS[airMethodOption]
+                }}</span>
+              </button>
+            }
+          </div>
+        </section>
       } @else if (currentStep() === 'method') {
         <!-- Step 2 (sea only) — same live/locked split as step 1. -->
         <section class="form-section">
@@ -92,10 +118,8 @@
           </div>
         </section>
       } @else if (shippingType() === MblShippingType.AIR) {
-        <section class="form-section">
-          <h2 class="section-title">משלוח אווירי</h2>
-          <p class="hint-text">תהליך יצירת תיק למשלוח אווירי ייבנה בשלב מאוחר יותר.</p>
-        </section>
+        <!-- The air flow renders below, outside this chain, so it stays alive
+           (draft HAWBs included) while steps 1/2 are viewed read-only. -->
       } @else if (seaMethod(); as method) {
         <section class="form-section">
           <h2 class="section-title">
@@ -490,17 +514,17 @@
             @if (hbls().length && editingHblId() === null) {
               <h3 class="subsection-title">Files שנוצרו</h3>
               <div class="data-table-wrapper">
-                <p-table [value]="hbls()" dataKey="id" size="small" styleClass="hbl-table">
+                <p-table [appTableSort]="hblSort" [value]="hbls()" dataKey="id" size="small" styleClass="hbl-table">
                   <ng-template #header>
                     <tr>
-                      <th>#</th>
-                      <th>מספר IBL</th>
-                      <th>מספר HBL</th>
-                      <th>לקוח</th>
+                      <th pSortableColumn="sequenceNumber"># <p-sortIcon field="sequenceNumber" /></th>
+                      <th pSortableColumn="iblNumber">מספר IBL <p-sortIcon field="iblNumber" /></th>
+                      <th pSortableColumn="hblNumber">מספר HBL <p-sortIcon field="hblNumber" /></th>
+                      <th pSortableColumn="customerName">לקוח <p-sortIcon field="customerName" /></th>
                       @if (isGroupage()) {
-                        <th>מכולה</th>
+                        <th pSortableColumn="containerId">מכולה <p-sortIcon field="containerId" /></th>
                       }
-                      <th>הזמנות משויכות</th>
+                      <th pSortableColumn="orders">הזמנות משויכות <p-sortIcon field="orders" /></th>
                       <th><span class="sr-only">פעולות</span></th>
                     </tr>
                   </ng-template>
@@ -881,6 +905,17 @@
           }
         </section>
       }
+
+      @if (shippingType() === MblShippingType.AIR && airMethod(); as method) {
+        <div [hidden]="currentStep() !== null">
+          <app-air-case-flow
+            [airMethod]="method"
+            [editMblId]="airEditMblId()"
+            (started)="airCaseStarted.set(true)"
+            (stateChange)="onAirCaseState($event)"
+          />
+        </div>
+      }
     </div>
 
     <aside class="wizard-sidebar">
@@ -982,9 +1017,49 @@
             </button>
           </li>
         } @else if (shippingType() === MblShippingType.AIR) {
-          <li class="wizard-step">
-            <span class="wizard-step__icon"><i class="fa-solid fa-circle-minus"></i></span>
-            <span>אווירי (בקרוב)</span>
+          <li
+            class="wizard-step"
+            [class.wizard-step--done]="airMethod() !== null"
+            [class.wizard-step--current]="currentStep() === 'method'"
+          >
+            <button
+              type="button"
+              class="wizard-step__link"
+              [disabled]="!canGoToMethodStep()"
+              [attr.aria-current]="currentStep() === 'method' ? 'step' : null"
+              (click)="goToMethodStep()"
+            >
+              <span class="wizard-step__icon">
+                <i
+                  class="fa-solid"
+                  [class.fa-check]="airMethod() !== null"
+                  [class.fa-circle]="airMethod() === null"
+                ></i>
+              </span>
+              <span>מבנה משלוח אווירי</span>
+            </button>
+          </li>
+          <li
+            class="wizard-step"
+            [class.wizard-step--done]="airCaseStarted()"
+            [class.wizard-step--current]="airMethod() !== null && currentStep() === null"
+          >
+            <button
+              type="button"
+              class="wizard-step__link"
+              [disabled]="airMethod() === null || currentStep() === null"
+              [attr.aria-current]="airMethod() !== null && currentStep() === null ? 'step' : null"
+              (click)="goToAirCase()"
+            >
+              <span class="wizard-step__icon">
+                <i
+                  class="fa-solid"
+                  [class.fa-check]="airCaseStarted()"
+                  [class.fa-circle]="!airCaseStarted()"
+                ></i>
+              </span>
+              <span>HAWB / MAWB</span>
+            </button>
           </li>
         }
       </ol>

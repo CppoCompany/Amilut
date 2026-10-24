@@ -1,6 +1,16 @@
 import type { INestApplication } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import type { OpenAPIObject } from '@nestjs/swagger';
+import { AirMethod, ArrivalState, WeightRoundingMode } from './air/air.enums';
+import {
+  ClearanceStatus,
+  DocumentStatus,
+  ShipmentStatus,
+  ShipmentStatusSource,
+  StatusChangeSource,
+  StatusEntityType,
+  StatusTrack,
+} from './status-tracks/status-tracks.enums';
 import { CcfStatus } from './ccf/ccf.enums';
 import {
   ClassificationApproval,
@@ -42,6 +52,16 @@ export const NAMED_ENUMS: Record<string, Record<string, string>> = {
   MblShippingType,
   SeaMethod,
   MblStatus,
+  AirMethod,
+  ArrivalState,
+  WeightRoundingMode,
+  ShipmentStatus,
+  ShipmentStatusSource,
+  DocumentStatus,
+  ClearanceStatus,
+  StatusEntityType,
+  StatusTrack,
+  StatusChangeSource,
 };
 
 type SchemaWithExtensions = {

@@ -2,13 +2,15 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
-import type { CcfStatus } from './enums';
+import type { CcfStatus, ClearanceStatus } from './enums';
 import type { CcfDto, CreateCcfDto, NextCcfFileNumberDto } from './models';
 
 /** Query parameters accepted by `GET /api/ccf` — the Order/CCF picker's data source. */
 export interface ListCcfParams {
   status?: CcfStatus;
   shipmentFileId?: number;
+  /** Air: the CCF of one HAWB. */
+  hblId?: number;
   limit?: number;
 }
 
@@ -39,6 +41,11 @@ export class CcfApi {
   /** Preview of the number the next create will most likely get — not reserved. */
   peekNextFileNumber(): Observable<NextCcfFileNumberDto> {
     return this.http.get<NextCcfFileNumberDto>(`${this.baseUrl}/next-file-number`);
+  }
+
+  /** Clearance status of a per-HAWB (air) CCF; backwards needs a `reason`. */
+  changeClearanceStatus(id: number, status: ClearanceStatus, reason?: string): Observable<CcfDto> {
+    return this.http.patch<CcfDto>(`${this.baseUrl}/${id}/clearance-status`, { status, reason });
   }
 
   getById(id: number): Observable<CcfDto> {

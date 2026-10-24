@@ -1,124 +1,196 @@
-<!-- Projected content (the Filing screen's Order/CCF picker) shares the "סוג מסמך" row. -->
-<div class="panel-toolbar">
-  <ng-content />
-
-  <div class="form-group document-type-group">
-    <label for="documentType" class="required">סוג מסמך</label>
-    <p-select
-      inputId="documentType"
-      [options]="documentTypeOptions()"
-      optionLabel="label"
-      optionValue="value"
-      [ngModel]="documentType()"
-      (ngModelChange)="onDocumentTypeChange($event)"
-      placeholder="בחר סוג מסמך"
-      [showClear]="true"
-      appendTo="body"
-    />
-    @if (context() !== null && documentType() === null) {
-      <p class="hint-text">יש לבחור סוג מסמך לפני העלאת קבצים</p>
-    }
-  </div>
-</div>
-
-<div class="upload-area">
-  <div class="upload-instructions">
-    <div class="upload-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
-    <div class="upload-text">
-      <div class="upload-text__title">גרור לכאן קבצים</div>
-      <div class="upload-text__hint">תמיכה בקבצי PDF, XLSX, תמונות</div>
+<!-- Upload + the context's files below it: the right-hand side in the `split` layout. -->
+<div class="panel-upload">
+  <div class="panel-toolbar">
+    <div class="form-group document-type-group">
+      <label for="documentType" class="required">סוג מסמך</label>
+      <p-select
+        inputId="documentType"
+        [options]="documentTypeOptions()"
+        optionLabel="label"
+        optionValue="value"
+        [ngModel]="documentType()"
+        (ngModelChange)="onDocumentTypeChange($event)"
+        placeholder="בחר סוג מסמך"
+        [showClear]="true"
+        appendTo="body"
+      />
+      @if (context() !== null && documentType() === null) {
+        <p class="hint-text">יש לבחור סוג מסמך לפני העלאת קבצים</p>
+      }
     </div>
   </div>
-  <input
-    #fileInput
-    type="file"
-    multiple
-    hidden
-    accept=".pdf,.xlsx,.xls,image/*"
-    aria-label="בחירת קבצים להעלאה"
-    (change)="onFilesSelected($event)"
-  />
-  <p-button
-    [label]="uploading() ? 'מעלה קבצים…' : 'העלה קבצים'"
-    icon="fa-solid fa-arrow-up-from-bracket"
-    [loading]="uploading()"
-    styleClass="upload-btn"
-    [disabled]="uploading() || context() === null || documentType() === null"
-    (onClick)="openFilePicker()"
-  />
+
+  <div class="upload-area">
+    <div class="upload-instructions">
+      <div class="upload-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+      <div class="upload-text">
+        <div class="upload-text__title">גרור לכאן קבצים</div>
+        <div class="upload-text__hint">תמיכה בקבצי PDF, XLSX, תמונות</div>
+      </div>
+    </div>
+    <input
+      #fileInput
+      type="file"
+      multiple
+      hidden
+      accept=".pdf,.xlsx,.xls,image/*"
+      aria-label="בחירת קבצים להעלאה"
+      (change)="onFilesSelected($event)"
+    />
+    <p-button
+      [label]="uploading() ? 'מעלה קבצים…' : 'העלה קבצים'"
+      icon="fa-solid fa-arrow-up-from-bracket"
+      [loading]="uploading()"
+      styleClass="upload-btn"
+      [disabled]="uploading() || context() === null || documentType() === null"
+      (onClick)="openFilePicker()"
+    />
+  </div>
+
+  @if (successMessage(); as message) {
+    <p-message severity="success" styleClass="form-message form-message--success" role="status">{{ message }}</p-message>
+  }
+  @if (errorMessage(); as message) {
+    <p-message severity="error" styleClass="form-message form-message--error" role="alert">{{ message }}</p-message>
+  }
+
+  @if (layout() === 'split') {
+    <h3 class="panel-documents__title">
+      <i class="fa-solid fa-file-lines" aria-hidden="true"></i>
+      מסמכים
+    </h3>
+  }
+
+  @if (context() === null) {
+    <p class="hint-text documents-hint">בחר הזמנה או תיק עמילות כדי להציג את הקבצים שלו</p>
+  } @else if (loading()) {
+    <p class="hint-text documents-hint">טוען קבצים…</p>
+  } @else if (layout() === 'split') {
+    <div class="data-table-wrapper documents-scroll">
+      <p-table
+        [value]="documentRows()"
+        [rowTrackBy]="trackDocumentRow"
+        [customSort]="true"
+        (sortFunction)="onDocumentsSort($event)"
+        [scrollable]="true"
+        scrollHeight="flex"
+        [virtualScroll]="true"
+        [virtualScrollItemSize]="45"
+        styleClass="documents-table documents-table--virtual"
+        size="small"
+      >
+        <ng-template #header>
+          <tr>
+            <th pSortableColumn="name">שם קובץ <p-sortIcon field="name" /></th>
+            <th pSortableColumn="uploadedAt">תאריך <p-sortIcon field="uploadedAt" /></th>
+            <th pSortableColumn="bytes">גודל <p-sortIcon field="bytes" /></th>
+            <th>פעולות</th>
+          </tr>
+        </ng-template>
+        <ng-template #body let-row [rowOf]="documentRows()">
+          @if (row.kind === 'category') {
+            <tr class="document-group-row">
+              <td colspan="4">
+                <span class="document-category__title">
+                  {{ row.label }}
+                  <span class="document-category__count">({{ row.count }})</span>
+                </span>
+              </td>
+            </tr>
+          } @else if (row.kind === 'empty') {
+            <tr class="document-empty-row">
+              <td colspan="4">לא הועלו מסמכים מסוג זה</td>
+            </tr>
+          } @else {
+            <tr>
+              <td class="document-name" [title]="row.doc.name">{{ row.doc.name }}</td>
+              <td class="data-table__numeric">{{ row.doc.date }}</td>
+              <td class="data-table__numeric">{{ row.doc.size }}</td>
+              <td class="data-table__actions">
+                <ng-container *ngTemplateOutlet="docActions; context: { $implicit: row.doc }" />
+              </td>
+            </tr>
+          }
+        </ng-template>
+      </p-table>
+    </div>
+  } @else {
+    <div class="document-categories">
+      @for (category of documentsByType(); track category.type) {
+        <section class="document-category">
+          <h3 class="document-category__title">
+            {{ category.label }}
+            <span class="document-category__count">({{ category.docs.length }})</span>
+          </h3>
+          @if (category.docs.length > 0) {
+            <p-table
+              appTableSort
+              [value]="category.docs"
+              styleClass="documents-table"
+              size="small"
+              dataKey="id"
+            >
+              <ng-template #header>
+                <tr>
+                  <th pSortableColumn="name">שם קובץ <p-sortIcon field="name" /></th>
+                  <th pSortableColumn="uploadedAt">תאריך <p-sortIcon field="uploadedAt" /></th>
+                  <th pSortableColumn="bytes">גודל <p-sortIcon field="bytes" /></th>
+                  <th>פעולות</th>
+                </tr>
+              </ng-template>
+              <ng-template #body let-doc [rowOf]="category.docs">
+                <tr>
+                  <td>{{ doc.name }}</td>
+                  <td class="data-table__numeric">{{ doc.date }}</td>
+                  <td class="data-table__numeric">{{ doc.size }}</td>
+                  <td class="data-table__actions">
+                    <ng-container *ngTemplateOutlet="docActions; context: { $implicit: doc }" />
+                  </td>
+                </tr>
+              </ng-template>
+            </p-table>
+          } @else {
+            <p class="document-category__empty">לא הועלו מסמכים מסוג זה</p>
+          }
+        </section>
+      }
+    </div>
+  }
 </div>
 
-@if (successMessage(); as message) {
-  <p-message severity="success" styleClass="form-message form-message--success" role="status">{{ message }}</p-message>
-}
-@if (errorMessage(); as message) {
-  <p-message severity="error" styleClass="form-message form-message--error" role="alert">{{ message }}</p-message>
-}
+<!-- Projected content (the Filing screen's Order/CCF tables): the left-hand side in the `split` layout. -->
+<div class="panel-records">
+  <ng-content />
+</div>
 
-@if (context() === null) {
-  <p class="hint-text documents-hint">בחר הזמנה או תיק עמילות כדי להציג את הקבצים שלו</p>
-} @else if (loading()) {
-  <p class="hint-text documents-hint">טוען קבצים…</p>
-} @else {
-  <div class="document-categories">
-    @for (category of documentsByType(); track category.type) {
-      <section class="document-category">
-        <h3 class="document-category__title">
-          {{ category.label }}
-          <span class="document-category__count">({{ category.docs.length }})</span>
-        </h3>
-        @if (category.docs.length > 0) {
-          <p-table [value]="category.docs" styleClass="documents-table" size="small" dataKey="id">
-            <ng-template #header>
-              <tr>
-                <th>שם קובץ</th>
-                <th>תאריך</th>
-                <th>גודל</th>
-                <th>פעולות</th>
-              </tr>
-            </ng-template>
-            <ng-template #body let-doc [rowOf]="category.docs">
-              <tr>
-                <td>{{ doc.name }}</td>
-                <td class="data-table__numeric">{{ doc.date }}</td>
-                <td class="data-table__numeric">{{ doc.size }}</td>
-                <td class="data-table__actions">
-                  <p-button
-                    [label]="openingId() === doc.id ? 'פותח…' : 'פתח'"
-                    severity="secondary"
-                    [outlined]="true"
-                    size="small"
-                    styleClass="open-btn"
-                    [loading]="openingId() === doc.id"
-                    [disabled]="openingId() !== null"
-                    [ariaLabel]="'פתח את ' + doc.name"
-                    (onClick)="openDocument(doc)"
-                  />
-                  <p-button
-                    icon="fa-solid fa-xmark"
-                    severity="danger"
-                    [text]="true"
-                    [rounded]="true"
-                    size="small"
-                    styleClass="delete-btn"
-                    pTooltip="מחיקת הקובץ"
-                    tooltipPosition="top"
-                    [loading]="deletingId() === doc.id"
-                    [disabled]="deletingId() !== null"
-                    [ariaLabel]="'מחק את ' + doc.name"
-                    (onClick)="requestDelete(doc)"
-                  />
-                </td>
-              </tr>
-            </ng-template>
-          </p-table>
-        } @else {
-          <p class="document-category__empty">לא הועלו מסמכים מסוג זה</p>
-        }
-      </section>
-    }
-  </div>
-}
+<!-- A file row's "פתח" / delete buttons, shared by both layouts' tables. -->
+<ng-template #docActions let-doc>
+  <p-button
+    [label]="openingId() === doc.id ? (layout() === 'split' ? '' : 'פותח…') : 'פתח'"
+    severity="secondary"
+    [outlined]="true"
+    size="small"
+    styleClass="open-btn"
+    [loading]="openingId() === doc.id"
+    [disabled]="openingId() !== null"
+    [ariaLabel]="'פתח את ' + doc.name"
+    (onClick)="openDocument(doc)"
+  />
+  <p-button
+    icon="fa-solid fa-xmark"
+    severity="danger"
+    [text]="true"
+    [rounded]="true"
+    size="small"
+    styleClass="delete-btn"
+    pTooltip="מחיקת הקובץ"
+    tooltipPosition="top"
+    [loading]="deletingId() === doc.id"
+    [disabled]="deletingId() !== null"
+    [ariaLabel]="'מחק את ' + doc.name"
+    (onClick)="requestDelete(doc)"
+  />
+</ng-template>
 
 @if (docToDelete(); as doc) {
   <app-confirm-dialog

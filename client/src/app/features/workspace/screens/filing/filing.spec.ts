@@ -1,8 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { By } from '@angular/platform-browser';
-import { Select } from 'primeng/select';
+import { vi } from 'vitest';
 
 import {
   Destination,
@@ -16,6 +15,7 @@ import type { OrderDto, UploadedImportFileDto } from '../../../../api/models';
 import { FilingContextService } from '../../filing-context.service';
 import { NavigationService } from '../../navigation.service';
 import { FilingScreen } from './filing';
+import { stubLayoutForVirtualScroll } from '../../../../shared/testing/virtual-scroll';
 
 const ORDERS_URL = '/api/orders';
 const CCFS_URL = '/api/ccf';
@@ -99,6 +99,7 @@ describe('FilingScreen', () => {
   let httpMock: HttpTestingController;
 
   beforeEach(async () => {
+    stubLayoutForVirtualScroll();
     await TestBed.configureTestingModule({
       imports: [FilingScreen],
       providers: [provideHttpClient(), provideHttpClientTesting()],
@@ -113,18 +114,22 @@ describe('FilingScreen', () => {
   });
 
   afterEach(() => httpMock.verify());
+  afterEach(() => vi.restoreAllMocks());
 
-  it('renders the context picker and the import-files panel, scoped by the picker selection', () => {
-    expect(fixture.nativeElement.querySelector('app-filing-context-picker')).toBeTruthy();
-    expect(fixture.nativeElement.querySelector('app-import-files-panel')).toBeTruthy();
-
-    // Pick order 1000 the way the picker's PrimeNG select reports it.
-    fixture.debugElement
-      .query(By.css('app-filing-context-picker'))
-      .query(By.directive(Select))
-      .triggerEventHandler('ngModelChange', 1000);
+  it('renders the records tables inside the split import-files panel, scoped by the selected row', async () => {
+    // PrimeNG's virtual scroller lays out its rows on a timer.
+    await new Promise((resolve) => setTimeout(resolve, 5));
     fixture.detectChanges();
 
+    const panel = fixture.nativeElement.querySelector('app-import-files-panel') as HTMLElement;
+    expect(panel.classList).toContain('import-files-panel--split');
+    expect(panel.querySelector('app-filing-records')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('app-filing-context-picker')).toBeNull();
+
+    (panel.querySelector('app-filing-records tbody tr[tabindex]') as HTMLElement).click();
+    fixture.detectChanges();
+
+    expect(TestBed.inject(FilingContextService).context()).toEqual({ kind: 'order', id: 1000 });
     httpMock.expectOne((req) => req.url === '/api/import-files').flush([]);
   });
 });

@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { AirMethod } from '../../air/air.enums';
 import { MblShippingType, MblStatus, SeaMethod } from '../mbl.enums';
 
 /** One row of "התיקים שלי" — the MBL/HBL workflow's shipping-case grid.
@@ -13,6 +14,9 @@ export class MblSummaryDto {
 
   @ApiProperty({ enum: SeaMethod, enumName: 'SeaMethod', nullable: true })
   seaMethod!: SeaMethod | null;
+
+  @ApiProperty({ enum: AirMethod, enumName: 'AirMethod', nullable: true })
+  airMethod!: AirMethod | null;
 
   @ApiProperty({ enum: MblStatus, enumName: 'MblStatus' })
   status!: MblStatus;
@@ -30,6 +34,7 @@ export class MblSummaryDto {
   @ApiProperty({ type: 'string', nullable: true, example: 'Dana Levi' })
   handlerName!: string | null;
 
+  /** Real houses only — a Direct MAWB's hidden mirror house is not counted. */
   @ApiProperty({ type: 'integer', example: 3 })
   hblCount!: number;
 

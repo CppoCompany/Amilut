@@ -20,6 +20,7 @@ import {
 } from '@nestjs/swagger';
 import type { JwtPayload } from '../auth/auth.types';
 import { CurrentUser } from '../auth/current-user.decorator';
+import { ChangeShipmentStatusDto } from '../status-tracks/dto/status-history.dto';
 import { CreateMblDto } from './dto/create-mbl.dto';
 import { ListMblQuery } from './dto/list-mbl.query';
 import { MblDto } from './dto/mbl.dto';
@@ -77,15 +78,33 @@ export class MblController {
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateMblDto,
+    @CurrentUser() user: JwtPayload,
   ): Promise<MblDto> {
-    return this.mbl.update(id, dto);
+    return this.mbl.update(id, dto, user.sub);
+  }
+
+  /** Air MAWB shipment status (manual). Moving it backwards is a correction
+   *  and needs `reason`; departed/arrived are also set automatically from
+   *  the flight legs' ATD/ATA. Every change lands in the status history. */
+  @Patch(':id/shipment-status')
+  @ApiOkResponse({ type: MblDto })
+  @ApiNotFoundResponse()
+  changeShipmentStatus(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ChangeShipmentStatusDto,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<MblDto> {
+    return this.mbl.changeShipmentStatus(id, dto.status, dto.reason, user.sub);
   }
 
   @Delete(':id')
   @HttpCode(204)
   @ApiNoContentResponse()
   @ApiNotFoundResponse()
-  remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
-    return this.mbl.remove(id);
+  remove(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<void> {
+    return this.mbl.remove(id, user.sub);
   }
 }

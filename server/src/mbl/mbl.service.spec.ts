@@ -1,5 +1,7 @@
 import { Test } from '@nestjs/testing';
+import { AirReferenceService } from '../air/air-reference.service';
 import { DatabaseService } from '../database/database.service';
+import { StatusTracksService } from '../status-tracks/status-tracks.service';
 import { PaymentTerms } from '../orders/orders.enums';
 import { MblShippingType, MblStatus, SeaMethod } from './mbl.enums';
 import { MblService } from './mbl.service';
@@ -81,7 +83,12 @@ describe('MblService', () => {
       transaction: jest.fn(),
     };
     const moduleRef = await Test.createTestingModule({
-      providers: [MblService, { provide: DatabaseService, useValue: db }],
+      providers: [
+        MblService,
+        { provide: DatabaseService, useValue: db },
+        { provide: AirReferenceService, useValue: {} },
+        { provide: StatusTracksService, useValue: {} },
+      ],
     }).compile();
     service = moduleRef.get(MblService);
   });
@@ -137,15 +144,37 @@ describe('MblService', () => {
       );
       db.queryOne.mockResolvedValueOnce(mblRow);
 
-      await service.create({ shippingType: MblShippingType.AIR }, 7);
+      await service.create(
+        { shippingType: MblShippingType.SEA, seaMethod: SeaMethod.FCL_FCL },
+        7,
+      );
 
       const [insertSql, insertParams] = client.query.mock.calls[0] as [
         string,
         unknown[],
       ];
-      expect(insertSql).toMatch(/\(shipping_type, handler_user_id\)/);
+      expect(insertSql).toMatch(
+        /\(shipping_type, handler_user_id, sea_method\)/,
+      );
       expect(insertSql).not.toMatch(/status/);
-      expect(insertParams).toEqual([MblShippingType.AIR, 7]);
+      expect(insertParams).toEqual([MblShippingType.SEA, 7, SeaMethod.FCL_FCL]);
+    });
+
+    it('requires an air method for an air MAWB and rejects air fields on a sea MBL', async () => {
+      await expect(
+        service.create({ shippingType: MblShippingType.AIR }, 7),
+      ).rejects.toThrow(/airMethod is required/);
+      await expect(
+        service.create(
+          {
+            shippingType: MblShippingType.SEA,
+            seaMethod: SeaMethod.FCL_FCL,
+            pieces: 3,
+          },
+          7,
+        ),
+      ).rejects.toThrow(/pieces not applicable/);
+      expect(db.transaction).not.toHaveBeenCalled();
     });
   });
 
@@ -183,7 +212,7 @@ describe('MblService', () => {
       expect(sql).toMatch(/m\.created_at::date >= \$5::date/);
       expect(sql).toMatch(/m\.created_at::date <= \$6::date/);
       expect(sql).toMatch(
-        /GROUP BY m\.id, m\.shipping_type, m\.sea_method, m\.status/,
+        /GROUP BY m\.id, m\.shipping_type, m\.sea_method, m\.air_method, m\.status/,
       );
       expect(sql).toMatch(/ORDER BY m\.mbl_number ASC NULLS LAST, m\.id DESC/);
       expect(sql).toMatch(/LIMIT \$7 OFFSET \$8/);
@@ -204,6 +233,7 @@ describe('MblService', () => {
         {
           id: 5,
           shippingType: MblShippingType.SEA,
+          airMethod: null,
           seaMethod: SeaMethod.FCL_FCL,
           status: MblStatus.IN_RELEASE,
           mblNumber: 'MBL-1',

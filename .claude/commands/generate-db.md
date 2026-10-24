@@ -33,6 +33,11 @@ invoke the runner directly.
    - `022_orders_last_step.sql` — adds `orders.last_step` (furthest order-form tab reached: `customer`/`shipment`/`schedule`/`documents`, default `customer`)
    - `023_notifications_actor.sql` — adds `notifications.actor_user_id` (→ `users.id`, who triggered the notification; nullable, `ON DELETE SET NULL`)
    - `024_create_line_item_notes.sql` — `line_item_notes` table (notes on a classification-screen row: `file_id` → `import_account_files.id` + `line_index`, author, timestamp)
+   - `025_air_reference_tables.sql` — air lookups: `airport` (TLV), `cargo_terminal` (Maman / Swissport, codes NULL until verified), `air_weight_rule` (default 6000 / 0.5 kg up)
+   - `026_air_master_house.sql` — MAWB/HAWB columns on `mbl`/`hbl`, nullable `hbl.mbl_id` for air only, air-only unique numbers, `mbl_flight_leg`, `hbl_piece_dimension`
+   - `027_air_status_arrivals_audit.sql` — status tracks, `hbl_arrival`, append-only `status_history` / `hbl_master_link_history` / `audit_log`
+   - `028_ccf_per_house.sql` — `customs_clearance_files.hbl_id` (one CCF per air HAWB) + `clearance_status`
+   - `029_fix_air_test_orders_destination.sql` — moves the two identified air test orders to `ben_gurion`; reports (never changes) any other mismatch
    If the folder or files are missing, stop and tell Barak.
 
 2. **Decide whether the superuser password is needed.** It is needed **only

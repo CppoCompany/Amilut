@@ -12,6 +12,7 @@ import {
   toPaged,
   WithTotal,
 } from '../common/paging/paging.util';
+import { AirReferenceService } from '../air/air-reference.service';
 import { DatabaseService } from '../database/database.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { ListOrdersQuery } from './dto/list-orders.query';
@@ -128,11 +129,15 @@ const PG_FOREIGN_KEY_VIOLATION = '23503';
 
 @Injectable()
 export class OrdersService {
-  constructor(private readonly db: DatabaseService) {}
+  constructor(
+    private readonly db: DatabaseService,
+    private readonly airReference: AirReferenceService,
+  ) {}
 
   /** Opens a new order; the handler is always the signed-in user. */
   async create(dto: CreateOrderDto, handlerUserId: number): Promise<OrderDto> {
     assertIncotermMatchesPaymentTerms(dto.paymentTerms, dto.incoterm);
+    await this.assertAirDestination(dto.shipmentType, dto.destination);
     await this.assertCustomerUsable(dto.customerId);
     if (dto.supplierId !== undefined) {
       await this.assertSupplierUsable(dto.supplierId);
@@ -275,6 +280,12 @@ export class OrdersService {
       dto.paymentTerms ?? existing.paymentTerms,
       dto.incoterm ?? existing.incoterm,
     );
+    if (dto.shipmentType !== undefined || dto.destination !== undefined) {
+      await this.assertAirDestination(
+        dto.shipmentType ?? existing.shipmentType,
+        dto.destination ?? existing.destination,
+      );
+    }
     if (
       dto.customerId !== undefined &&
       dto.customerId !== existing.customerId
@@ -319,6 +330,20 @@ export class OrdersService {
     );
     if (!row) {
       throw new NotFoundException(`Order ${id} not found`);
+    }
+  }
+
+  /** An air shipment must arrive at an airport configured as an import
+   *  destination (`airport.order_destination`, migration 025) — today TLV. */
+  private async assertAirDestination(
+    shipmentType: ShipmentType,
+    destination: Destination,
+  ): Promise<void> {
+    if (shipmentType !== ShipmentType.AIR) return;
+    if (!(await this.airReference.isAirImportDestination(destination))) {
+      throw new BadRequestException(
+        'משלוח אווירי חייב להגיע לשדה תעופה המוגדר כיעד יבוא (נתב"ג)',
+      );
     }
   }
 

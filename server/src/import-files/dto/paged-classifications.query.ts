@@ -8,8 +8,16 @@ export const CLASSIFICATION_SORT_COLUMNS = {
   createdAt: 'f.created_at',
   orderId: 'f.order_id',
   ccfId: 'f.ccf_id',
+  // Orders first, then CCFs — the order of the "הזמנה N" / "תיק עמילות X" labels.
+  contextLabel: '(f.order_id IS NULL, f.order_id, ccf.file_number)',
+  fileName: `f.data->>'name'`,
   item: `li.item->>'item'`,
+  description: `li.item->>'description'`,
+  quantity: `CASE WHEN jsonb_typeof(li.item->'quantity') = 'number' THEN (li.item->>'quantity')::numeric END`,
   classificationCode: `li.item->'classification'->>'classificationCode'`,
+  tradeAgreement: `li.item->'classification'->>'tradeAgreement'`,
+  countryName: 'co.name',
+  approvals: `CASE WHEN jsonb_typeof(li.item->'classification'->'approvals') = 'array' THEN jsonb_array_length(li.item->'classification'->'approvals') ELSE 0 END`,
 } as const;
 export type ClassificationSortKey = keyof typeof CLASSIFICATION_SORT_COLUMNS;
 export const CLASSIFICATION_SORT_KEYS = Object.keys(

@@ -1,0 +1,335 @@
+<form class="air-form" [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
+  @if (isDirect()) {
+    <h3 class="subsection-title">יבואן (משלוח ישיר — ללא HAWB)</h3>
+    <div class="grid-row">
+      <div class="form-group">
+        <label for="mawbCustomer">לקוח</label>
+        <app-customer-autocomplete
+          inputId="mawbCustomer"
+          placeholder="הקלד שם לקוח..."
+          [(customer)]="customer"
+        />
+      </div>
+    </div>
+    <div class="orders-row">
+      <span class="orders-row__label">הזמנות משויכות</span>
+      @for (chip of orderChips(); track chip.id) {
+        <p-chip [label]="chip.text" [removable]="true" (onRemove)="removeOrder(chip.id)" />
+      } @empty {
+        <span class="hint-text">לא שויכו הזמנות</span>
+      }
+      <p-button
+        label="שיוך להזמנה"
+        icon="fa-solid fa-link"
+        severity="secondary"
+        [text]="true"
+        size="small"
+        (onClick)="showOrdersPicker.set(true)"
+      />
+    </div>
+  }
+
+  <h3 class="subsection-title">זיהוי MAWB</h3>
+  <div class="grid-row">
+    <div class="form-group">
+      <label for="mblNumber">מספר MAWB</label>
+      <input
+        id="mblNumber"
+        type="text"
+        pInputText
+        formControlName="mblNumber"
+        placeholder="125-12345675"
+        [class.ng-invalid]="awbError() !== null"
+        [class.ng-dirty]="awbError() !== null"
+      />
+      @if (awbError(); as message) {
+        <small class="field-error">{{ message }}</small>
+      }
+    </div>
+    <div class="form-group">
+      <label for="carrierName">חברת התעופה</label>
+      <input id="carrierName" type="text" pInputText formControlName="carrierName" />
+    </div>
+    <div class="form-group">
+      <label for="bookingNumber">מספר הזמנת מקום (Booking)</label>
+      <input id="bookingNumber" type="text" pInputText formControlName="bookingNumber" />
+    </div>
+    <div class="form-group">
+      <label for="mawbStatus">סטטוס התיק</label>
+      <p-select
+        inputId="mawbStatus"
+        [options]="statusOptions"
+        optionLabel="label"
+        optionValue="value"
+        [ngModel]="status()"
+        [ngModelOptions]="{ standalone: true }"
+        (ngModelChange)="status.set($event)"
+        appendTo="body"
+      />
+    </div>
+  </div>
+
+  <h3 class="subsection-title">מסלול והגעה</h3>
+  <div class="grid-row">
+    <div class="form-group">
+      <label for="departureAirport">שדה המראה (IATA)</label>
+      <input
+        id="departureAirport"
+        type="text"
+        pInputText
+        maxlength="3"
+        formControlName="departureAirportCode"
+        placeholder="HKG"
+      />
+    </div>
+    <div class="form-group">
+      <label for="destinationAirport">שדה יעד</label>
+      <p-select
+        inputId="destinationAirport"
+        [options]="airportOptions()"
+        optionLabel="label"
+        optionValue="value"
+        formControlName="destinationAirportCode"
+        placeholder="בחירת שדה תעופה"
+        appendTo="body"
+      />
+    </div>
+    <div class="form-group">
+      <label for="cargoTerminal">מסוף מטען</label>
+      <p-select
+        inputId="cargoTerminal"
+        [options]="terminalOptions()"
+        optionLabel="label"
+        optionValue="value"
+        [ngModel]="terminalId()"
+        [ngModelOptions]="{ standalone: true }"
+        (ngModelChange)="terminalId.set($event)"
+        [showClear]="true"
+        placeholder="בחירת מסוף"
+        appendTo="body"
+      />
+    </div>
+    @if (terminalId() === OTHER_TERMINAL) {
+      <div class="form-group">
+        <label for="terminalOther">מסוף אחר</label>
+        <input
+          id="terminalOther"
+          type="text"
+          pInputText
+          [ngModel]="terminalOther()"
+          [ngModelOptions]="{ standalone: true }"
+          (ngModelChange)="terminalOther.set($event)"
+        />
+      </div>
+    }
+  </div>
+
+  <div class="legs" formArrayName="legs">
+    <span class="legs__title">
+      קטעי טיסה — ATD בקטע הראשון מסמן "המריא", ATA בקטע האחרון מסמן "נחת" (אוטומטית בשמירה)
+    </span>
+    @for (leg of legControls(); track $index; let i = $index) {
+      <div class="legs__row" [formGroupName]="i">
+        <span class="legs__no">{{ i + 1 }}</span>
+        <input
+          type="text"
+          pInputText
+          formControlName="flightNumber"
+          placeholder="טיסה"
+          aria-label="מספר טיסה"
+        />
+        <input
+          type="text"
+          pInputText
+          maxlength="3"
+          formControlName="fromAirport"
+          placeholder="מ-"
+          aria-label="משדה"
+        />
+        <input
+          type="text"
+          pInputText
+          maxlength="3"
+          formControlName="toAirport"
+          placeholder="אל"
+          aria-label="לשדה"
+        />
+        @for (field of ['etd', 'eta', 'atd', 'ata']; track field) {
+          <p-datepicker
+            [formControlName]="field"
+            dataType="string"
+            dateFormat="yy-mm-dd"
+            [showTime]="true"
+            hourFormat="24"
+            [placeholder]="field.toUpperCase()"
+            [ariaLabel]="field.toUpperCase()"
+            appendTo="body"
+          />
+        }
+        <p-button
+          icon="fa-solid fa-trash"
+          severity="secondary"
+          [text]="true"
+          ariaLabel="הסרת קטע"
+          (onClick)="removeLeg(i)"
+        />
+      </div>
+    }
+    <p-button
+      label="הוסף קטע טיסה"
+      icon="fa-solid fa-plus"
+      severity="secondary"
+      [text]="true"
+      size="small"
+      (onClick)="addLeg()"
+    />
+  </div>
+
+  <h3 class="subsection-title">צדדים</h3>
+  <div class="grid-row">
+    <div class="form-group">
+      <label for="mShipperName">שולח (Shipper)</label>
+      <input id="mShipperName" type="text" pInputText formControlName="shipperName" />
+    </div>
+    <div class="form-group">
+      <label for="mShipperAddress">כתובת השולח</label>
+      <input id="mShipperAddress" type="text" pInputText formControlName="shipperAddress" />
+    </div>
+  </div>
+  <div class="grid-row">
+    <div class="form-group">
+      <label for="mConsigneeName">נמען (Consignee)</label>
+      <input id="mConsigneeName" type="text" pInputText formControlName="consigneeName" />
+    </div>
+    <div class="form-group">
+      <label for="mConsigneeAddress">כתובת הנמען</label>
+      <input id="mConsigneeAddress" type="text" pInputText formControlName="consigneeAddress" />
+    </div>
+  </div>
+  <div class="grid-row">
+    <div class="form-group">
+      <label for="mNotifyName">Notify Party</label>
+      <input id="mNotifyName" type="text" pInputText formControlName="notifyPartyName" />
+    </div>
+    <div class="form-group">
+      <label for="mNotifyAddress">כתובת Notify</label>
+      <input id="mNotifyAddress" type="text" pInputText formControlName="notifyPartyAddress" />
+    </div>
+  </div>
+
+  <h3 class="subsection-title">מטען ומשקל לחיוב</h3>
+  <div class="grid-row">
+    <div class="form-group form-group--wide">
+      <label for="mCargo">תיאור הטובין</label>
+      <input id="mCargo" type="text" pInputText formControlName="cargoDescription" />
+    </div>
+    <div class="form-group">
+      <label for="mPieces">מספר חלקים</label>
+      <input id="mPieces" type="number" min="1" pInputText formControlName="pieces" />
+    </div>
+    <div class="form-group">
+      <label for="mShc">קודי טיפול מיוחד (SHC)</label>
+      <input
+        id="mShc"
+        type="text"
+        pInputText
+        formControlName="specialHandlingCodes"
+        placeholder="DGR, PER"
+      />
+    </div>
+  </div>
+  <div class="grid-row">
+    <div class="form-group">
+      <label for="mGross">משקל ברוטו (ק"ג)</label>
+      <input id="mGross" type="number" min="0" pInputText formControlName="grossWeightKg" />
+    </div>
+    <div class="form-group">
+      <label for="mVolume">נפח (CBM)</label>
+      <input id="mVolume" type="number" min="0" pInputText formControlName="volumeCbm" />
+    </div>
+    <div class="form-group">
+      <label for="mCalc">משקל לחיוב מחושב</label>
+      <input id="mCalc" type="text" pInputText [value]="previewWeight() ?? '—'" readonly />
+    </div>
+    <div class="form-group">
+      <label for="mApproved">מאושר / לפי ה-AWB</label>
+      <input
+        id="mApproved"
+        type="number"
+        min="0"
+        pInputText
+        formControlName="approvedChargeableWeightKg"
+      />
+    </div>
+  </div>
+  @if (weightDiffers()) {
+    <div class="grid-row">
+      <div class="form-group form-group--wide">
+        <label for="mReason">סיבת החריגה (חובה)</label>
+        <input
+          id="mReason"
+          type="text"
+          pInputText
+          formControlName="chargeableWeightOverrideReason"
+        />
+      </div>
+    </div>
+    <p-message severity="warn" icon="fa-solid fa-triangle-exclamation" styleClass="form-message">
+      המשקל המאושר שונה מהמשקל המחושב. השמירה תתועד כחריגה (override).
+    </p-message>
+  }
+
+  <h3 class="subsection-title">הנפקה ותשלום</h3>
+  <div class="grid-row">
+    <div class="form-group">
+      <label for="placeOfIssue">מקום הנפקה</label>
+      <input id="placeOfIssue" type="text" pInputText formControlName="placeOfIssue" />
+    </div>
+    <div class="form-group">
+      <label for="dateOfIssue">תאריך הנפקה</label>
+      <p-datepicker
+        inputId="dateOfIssue"
+        formControlName="dateOfIssue"
+        dataType="string"
+        dateFormat="yy-mm-dd"
+        appendTo="body"
+      />
+    </div>
+    <div class="form-group">
+      <label>תנאי הובלה</label>
+      <p-selectbutton
+        [options]="freightOptions"
+        optionLabel="label"
+        optionValue="value"
+        [ngModel]="freightTerms()"
+        [ngModelOptions]="{ standalone: true }"
+        (ngModelChange)="freightTerms.set($event)"
+        class="choice-group"
+      />
+    </div>
+  </div>
+
+  @if (localError() ?? error(); as message) {
+    <p-message severity="error" styleClass="form-message form-message--error" role="alert">{{
+      message
+    }}</p-message>
+  }
+
+  <div class="form-actions">
+    <p-button label="ביטול" severity="secondary" [outlined]="true" (onClick)="cancelled.emit()" />
+    <p-button
+      type="submit"
+      [label]="isEdit() ? 'שמירת MAWB' : 'יצירת MAWB'"
+      icon="fa-solid fa-floppy-disk"
+      [loading]="saving()"
+    />
+  </div>
+</form>
+
+@if (showOrdersPicker()) {
+  <app-hbl-orders-picker-dialog
+    [initialSelection]="selectedOrders()"
+    (confirmed)="onOrdersPicked($event)"
+    (cancelled)="showOrdersPicker.set(false)"
+  />
+}

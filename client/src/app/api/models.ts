@@ -28,6 +28,18 @@ export type CreateHblDto = components['schemas']['CreateHblDto'];
 export type UpdateHblDto = components['schemas']['UpdateHblDto'];
 export type HblOrderSummaryDto = components['schemas']['HblOrderSummaryDto'];
 
+// Air freight (MAWB / HAWB)
+export type FlightLegDto = components['schemas']['FlightLegDto'];
+export type CreateFlightLegDto = components['schemas']['CreateFlightLegDto'];
+export type PieceDimensionDto = components['schemas']['PieceDimensionDto'];
+export type HblArrivalDto = components['schemas']['HblArrivalDto'];
+export type CreateHblArrivalDto = components['schemas']['CreateHblArrivalDto'];
+export type HblLinkHistoryEntryDto = components['schemas']['HblLinkHistoryEntryDto'];
+export type AirportDto = components['schemas']['AirportDto'];
+export type CargoTerminalDto = components['schemas']['CargoTerminalDto'];
+export type WeightRuleDto = components['schemas']['WeightRuleDto'];
+export type StatusHistoryEntryDto = components['schemas']['StatusHistoryEntryDto'];
+
 export type UploadedImportFileDto = components['schemas']['UploadedImportFileDto'];
 export type BillOfLadingExtractDto = components['schemas']['BillOfLadingExtractDto'];
 export type MblDocumentExtractDto = components['schemas']['MblDocumentExtractDto'];

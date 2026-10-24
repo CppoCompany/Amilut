@@ -1,0 +1,53 @@
+:host {
+  display: block;
+}
+
+.case-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+
+  &__meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  &__number {
+    font-weight: 600;
+    color: var(--color-brand);
+  }
+
+  &__value {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    min-height: 2.5rem;
+    color: var(--color-fg);
+  }
+}
+
+.list-head,
+.mawb-actions,
+.correction {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.list-head {
+  justify-content: space-between;
+}
+
+.mawb-actions {
+  margin-top: 1rem;
+}
+
+.correction {
+  padding: 0.5rem;
+  border-radius: var(--radius-sm, 4px);
+  background: var(--color-warning-soft);
+}

@@ -37,7 +37,7 @@ export class MyOrdersListScreen {
     columns: [
       { key: 'id', header: 'מספר הזמנה', sortable: true, cssClass: 'data-table__numeric' },
       { key: 'customerName', header: 'לקוח', sortable: true, cell: (o) => textOrEmDash(o.customerName) },
-      { key: 'supplierName', header: 'ספק', cell: (o) => textOrEmDash(o.supplierName) },
+      { key: 'supplierName', header: 'ספק', sortable: true, cell: (o) => textOrEmDash(o.supplierName) },
       {
         key: 'status',
         header: 'סטטוס',
@@ -45,9 +45,9 @@ export class MyOrdersListScreen {
         cell: (o) => ORDER_STATUS_LABELS[o.status],
         pill: (o) => o.status,
       },
-      { key: 'shipmentType', header: 'סוג משלוח', cell: (o) => SHIPMENT_TYPE_LABELS[o.shipmentType] },
-      { key: 'destination', header: 'יעד', cell: (o) => DESTINATION_LABELS[o.destination] },
-      { key: 'etaDate', header: 'ETA', cssClass: 'data-table__numeric', cell: (o) => formatHeDate(o.etaDate) },
+      { key: 'shipmentType', header: 'סוג משלוח', sortable: true, cell: (o) => SHIPMENT_TYPE_LABELS[o.shipmentType] },
+      { key: 'destination', header: 'יעד', sortable: true, cell: (o) => DESTINATION_LABELS[o.destination] },
+      { key: 'etaDate', header: 'ETA', sortable: true, cssClass: 'data-table__numeric', cell: (o) => formatHeDate(o.etaDate) },
       {
         key: 'createdAt',
         header: 'תאריך פתיחה',
