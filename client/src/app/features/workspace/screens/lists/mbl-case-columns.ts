@@ -14,18 +14,18 @@ export function mblMethodLabel(mblCase: MblSummaryDto): string {
 /**
  * Columns shared by the three MBL-case lists ("התיקים שלי", "תיקים בהתרה",
  * "תהליכי יבוא") — they all read `GET /api/mbl/paged`, only the fixed query
- * differs. Sortable keys match the server's whitelist.
+ * differs. Every column sorts; the keys match the server's whitelist (`MBL_SORT_COLUMNS`).
  */
 export function mblCaseColumns(): GridColumn<MblSummaryDto>[] {
   return [
     { key: 'id', header: 'מספר תיק', sortable: true, cssClass: 'data-table__numeric' },
     { key: 'mblNumber', header: 'מספר MBL', sortable: true, cell: (c) => textOrEmDash(c.mblNumber) },
-    { key: 'shippingType', header: 'שיטת משלוח', cell: mblMethodLabel },
-    { key: 'customerNames', header: 'לקוחות', cell: (c) => joinOrEmDash(c.customerNames) },
+    { key: 'shippingType', header: 'שיטת משלוח', sortable: true, cell: mblMethodLabel },
+    { key: 'customerNames', header: 'לקוחות', sortable: true, cell: (c) => joinOrEmDash(c.customerNames) },
     { key: 'carrierName', header: 'מוביל', sortable: true, cell: (c) => textOrEmDash(c.carrierName) },
-    { key: 'hblCount', header: 'Files', cssClass: 'data-table__numeric' },
-    { key: 'orderCount', header: 'הזמנות', cssClass: 'data-table__numeric' },
-    { key: 'handlerName', header: 'פקיד מטפל', cell: (c) => textOrEmDash(c.handlerName) },
+    { key: 'hblCount', header: 'Files', sortable: true, cssClass: 'data-table__numeric' },
+    { key: 'orderCount', header: 'הזמנות', sortable: true, cssClass: 'data-table__numeric' },
+    { key: 'handlerName', header: 'פקיד מטפל', sortable: true, cell: (c) => textOrEmDash(c.handlerName) },
     {
       key: 'status',
       header: 'סטטוס',

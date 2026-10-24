@@ -41,6 +41,7 @@
             [globalFilterFields]="['fileNumber']"
             sortField="fileNumber"
             [sortOrder]="1"
+            appTableSort
             [scrollable]="true"
             size="small"
             styleClass="pending-table"
@@ -51,7 +52,10 @@
                   מס' תיק
                   <p-sortIcon field="fileNumber" />
                 </th>
-                <th>לקוח</th>
+                <th pSortableColumn="customerNames">
+                  לקוח
+                  <p-sortIcon field="customerNames" />
+                </th>
                 <th pSortableColumn="classifiedPercent" class="pending-table__progress">
                   סווגו
                   <p-sortIcon field="classifiedPercent" />

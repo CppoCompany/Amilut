@@ -119,7 +119,7 @@ export const AmilutPreset = definePreset(Aura, {
       colorScheme: {
         light: {
           headerCell: { background: '{primary.50}', color: '{primary.900}' },
-          row: { hoverBackground: '{surface.50}' },
+          row: { hoverBackground: '{surface.100}' },
         },
       },
     },

@@ -546,6 +546,18 @@ kbd {
   }
 }
 
+/* Row hover for every PrimeNG table, from the preset's datatable.row.hover
+   tokens (PrimeNG itself only applies them to tables with [rowHover]).
+   Selected rows keep their tint; full-width empty/hint rows stay still. */
+.p-datatable-tbody > tr {
+  transition: background-color 120ms ease;
+}
+
+.p-datatable-tbody > tr:not(.data-table__row--selected):not(:has(> td[colspan])):hover {
+  background: var(--p-datatable-row-hover-background);
+  color: var(--p-datatable-row-hover-color);
+}
+
 /* A selected row: tint plus an ink bar on the leading (right) edge, so it
    reads without relying on the tint. Beats PrimeNG's own row background. */
 .p-datatable-tbody > tr.data-table__row--selected {

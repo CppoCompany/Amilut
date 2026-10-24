@@ -16,6 +16,7 @@ import { ListOrdersParams, OrdersApi } from '../../../../api/orders-api';
 import { ConfirmDialog } from '../../../../shared/confirm-dialog/confirm-dialog';
 import { StatusTag } from '../../../../shared/status-tag/status-tag';
 import { TypedRow } from '../../../../shared/typed-row/typed-row';
+import { SortAccessors, TableSort } from '../../../../shared/table-sort/table-sort';
 import { SEARCH_DEBOUNCE_MS } from '../../../customers/customer-autocomplete/customer-autocomplete';
 import { NavigationService } from '../../navigation.service';
 
@@ -36,6 +37,7 @@ const MAX_ROWS = 200;
     Tooltip,
     ConfirmDialog,
     StatusTag,
+    TableSort,
     TypedRow,
   ],
   templateUrl: './my-orders.html',
@@ -51,6 +53,10 @@ export class MyOrdersScreen {
   protected readonly filterStatus = signal<OrderStatus | ''>('');
   protected readonly filterCreatedDate = signal('');
   protected readonly statusLabels = ORDER_STATUS_LABELS;
+  /** "סטטוס" sorts by its Hebrew label, as shown (`appTableSort`). */
+  protected readonly orderSort: SortAccessors<OrderDto> = {
+    status: (order) => ORDER_STATUS_LABELS[order.status],
+  };
   /** Status filter choices: "הכל" (empty = no filter), then every status. */
   protected readonly statusOptions: { value: OrderStatus | ''; label: string }[] = [
     { value: '', label: 'הכל' },

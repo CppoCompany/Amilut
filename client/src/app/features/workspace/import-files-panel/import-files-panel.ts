@@ -28,6 +28,7 @@ import type { FilingContext } from '../../../api/filing-context.model';
 import { ImportFilesApi } from '../../../api/import-files-api';
 import type { UploadedImportFileDto } from '../../../api/models';
 import { ConfirmDialog } from '../../../shared/confirm-dialog/confirm-dialog';
+import { TableSort } from '../../../shared/table-sort/table-sort';
 import { TypedRow } from '../../../shared/typed-row/typed-row';
 
 /** One row of a category's documents list — a file stored on the server for
@@ -38,6 +39,9 @@ interface ShipmentDocument {
   name: string;
   date: string;
   size: string;
+  /** Raw upload time (ISO) and byte count — the "תאריך" / "גודל" columns sort on these. */
+  uploadedAt: string;
+  bytes: number;
   /** Raw kind of paperwork — drives grouping; labels come from `documentTypeLabels`. */
   documentType: ImportDocumentType;
 }
@@ -66,7 +70,7 @@ export const BLOB_URL_TTL_MS = 60_000;
  */
 @Component({
   selector: 'app-import-files-panel',
-  imports: [FormsModule, Button, Message, Select, TableModule, Tooltip, ConfirmDialog, TypedRow],
+  imports: [FormsModule, Button, Message, Select, TableModule, Tooltip, ConfirmDialog, TableSort, TypedRow],
   templateUrl: './import-files-panel.html',
   styleUrl: './import-files-panel.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -304,6 +308,8 @@ function toShipmentDocument(file: UploadedImportFileDto): ShipmentDocument {
     name: file.name,
     date: formatDocumentDate(file.uploadedAt),
     size: formatFileSize(file.size),
+    uploadedAt: file.uploadedAt,
+    bytes: file.size,
     documentType: file.documentType,
   };
 }

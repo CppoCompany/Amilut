@@ -3864,8 +3864,15 @@ export enum PathsApiImportFilesClassificationsGetParametersQuerySort {
     createdAt = "createdAt",
     orderId = "orderId",
     ccfId = "ccfId",
+    contextLabel = "contextLabel",
+    fileName = "fileName",
     item = "item",
-    classificationCode = "classificationCode"
+    description = "description",
+    quantity = "quantity",
+    classificationCode = "classificationCode",
+    tradeAgreement = "tradeAgreement",
+    countryName = "countryName",
+    approvals = "approvals"
 }
 export enum PathsApiMblPagedGetParametersQueryDir {
     asc = "asc",
@@ -3874,7 +3881,12 @@ export enum PathsApiMblPagedGetParametersQueryDir {
 export enum PathsApiMblPagedGetParametersQuerySort {
     id = "id",
     mblNumber = "mblNumber",
+    shippingType = "shippingType",
+    customerNames = "customerNames",
     carrierName = "carrierName",
+    hblCount = "hblCount",
+    orderCount = "orderCount",
+    handlerName = "handlerName",
     status = "status",
     createdAt = "createdAt"
 }
@@ -3885,7 +3897,11 @@ export enum PathsApiOrdersPagedGetParametersQueryDir {
 export enum PathsApiOrdersPagedGetParametersQuerySort {
     id = "id",
     customerName = "customerName",
+    supplierName = "supplierName",
     status = "status",
+    shipmentType = "shipmentType",
+    destination = "destination",
+    etaDate = "etaDate",
     createdAt = "createdAt"
 }
 export enum WeightRoundingMode {

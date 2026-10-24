@@ -50,6 +50,7 @@ import { ImportFilesApi } from '../../../../api/import-files-api';
 import { MblApi } from '../../../../api/mbl-api';
 import { OrdersApi } from '../../../../api/orders-api';
 import { TypedRow } from '../../../../shared/typed-row/typed-row';
+import { SortAccessors, TableSort } from '../../../../shared/table-sort/table-sort';
 import { CustomerAutocomplete } from '../../../customers/customer-autocomplete/customer-autocomplete';
 import { NavigationService } from '../../navigation.service';
 import { SelectionStateService } from '../../selection-state.service';
@@ -146,6 +147,7 @@ interface PrefillSource {
     TableModule,
     CustomerAutocomplete,
     HblOrdersPickerDialog,
+    TableSort,
     TypedRow,
     AirCaseFlow,
   ],
@@ -246,6 +248,11 @@ export class ShipmentCaseWizardScreen {
 
   // ── File (HBL) ───────────────────────────────────────────────────────────────
   protected readonly hbls = signal<HblDto[]>([]);
+  /** "מכולה" sorts by the label shown, "הזמנות משויכות" by the count (`appTableSort`). */
+  protected readonly hblSort: SortAccessors<HblDto> = {
+    containerId: (hbl) => this.containerLabel(hbl.containerId),
+    orders: (hbl) => hbl.orders.length,
+  };
   protected readonly hblsLoading = signal(false);
 
   /** `fcl_fcl` allows exactly one File; every other method allows adding more freely. */
