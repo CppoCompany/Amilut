@@ -158,10 +158,20 @@ itself with "לשיוך להזמנה" on top; picking an order calls
 `MASTER_BILL_OF_LADING` upload into Job fields and its newest `BILL_OF_LADING`
 upload into File fields (one per house B/L in the file). Saving the first File
 creates the Job (prefilled) and then the HBL, and opens the Job form for review.
+Uploads filed as plain `BILL_OF_LADING` are told apart by content
+(`classifyBillOfLading`: a "House B/L No." box = File, otherwise master), so
+both bills may be filed under "שטר מטען". House B/L party boxes left "To be
+completed" take the master document's parties, and party addresses the bills
+omit are completed from the newest `SUPPLIER_INVOICE` (seller / buyer boxes)
+when the names match (`party-addresses.ts`); on the client the Job prefill merges the
+MBL document with the HBL's master boxes (`mergeMblExtracts`), e.g. the
+container / seal only the house B/L prints.
 The extractor lives in `server/src/import-files/bill-of-lading-extraction/`
 (PDF via `pdf2json`, HTML, plain text; label dictionary in
 `bill-of-lading-fields.ts`, fixtures copied from `files/` in `__fixtures__/`).
 Extend the label regexes there when a new B/L layout is not recognised.
+`pdf-text.ts` copies pooled Buffers before handing them to pdf2json — small
+PDFs (< 4 kB) otherwise fail with "Invalid XRef stream header".
 
 ## Authentication
 

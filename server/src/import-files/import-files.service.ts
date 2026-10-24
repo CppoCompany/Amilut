@@ -8,6 +8,7 @@ import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import * as path from 'node:path';
 import type { PoolClient } from 'pg';
 import {
+  classifyBillOfLading,
   extractHblDocuments,
   extractMblDocument,
 } from './bill-of-lading-extraction/bill-of-lading-extractor';
@@ -15,6 +16,12 @@ import {
   DocPage,
   readDocument,
 } from './bill-of-lading-extraction/document-model';
+import {
+  completePartiesFromMaster,
+  completePartyAddresses,
+  extractInvoiceParties,
+  needsPartyAddresses,
+} from './bill-of-lading-extraction/party-addresses';
 import { BillOfLadingExtractDto } from './dto/bill-of-lading-extract.dto';
 import { Paged } from '../common/paging/paged.dto';
 import {
@@ -629,11 +636,16 @@ export class ImportFilesService {
 
   /**
    * Reads the Job / File fields out of the order/CCF's bill-of-lading
-   * paperwork: the newest `MASTER_BILL_OF_LADING` upload becomes Job (MBL)
-   * fields, the newest `BILL_OF_LADING` upload becomes File (HBL) fields —
-   * one per house B/L the file holds. A missing document leaves its part
-   * empty; one that cannot be read (a scan, an unsupported type) leaves its
-   * error set. A document problem never fails the request.
+   * paperwork. Uploads filed as `MASTER_BILL_OF_LADING` are the master;
+   * uploads filed as `BILL_OF_LADING` are told apart by content
+   * (`classifyBillOfLading`), since users file both bills under that type.
+   * The newest master becomes Job (MBL) fields, the newest house B/L becomes
+   * File (HBL) fields — one per house B/L the file holds. House B/L party
+   * boxes left "To be completed" take the master's parties; addresses the
+   * bills leave out are completed from the newest `SUPPLIER_INVOICE`
+   * (seller / buyer boxes) when the names match. A missing document leaves
+   * its part empty; one that cannot be read (a scan, an unsupported type)
+   * leaves its error set. A document problem never fails the request.
    *
    * @throws NotFoundException — the order/CCF does not exist.
    */
@@ -641,43 +653,77 @@ export class ImportFilesService {
     context: ImportFilesContext,
   ): Promise<BillOfLadingExtractDto> {
     const files = await this.listImportFiles(context); // newest first
-    const mblFile =
-      files.find(
-        (file) =>
-          file.documentType === ImportDocumentType.MASTER_BILL_OF_LADING,
-      ) ?? null;
-    const hblFile =
-      files.find(
-        (file) => file.documentType === ImportDocumentType.BILL_OF_LADING,
-      ) ?? null;
-
     const result: BillOfLadingExtractDto = {
-      mblFileName: mblFile?.name ?? null,
+      mblFileName: null,
       mbl: null,
       mblError: null,
-      hblFileName: hblFile?.name ?? null,
+      hblFileName: null,
       hbls: [],
       hblError: null,
     };
-    if (mblFile) {
+    let masterDone = false;
+    let houseDone = false;
+    for (const file of files) {
+      if (masterDone && houseDone) break;
+      const filedAsMaster =
+        file.documentType === ImportDocumentType.MASTER_BILL_OF_LADING;
+      if (
+        !filedAsMaster &&
+        file.documentType !== ImportDocumentType.BILL_OF_LADING
+      ) {
+        continue;
+      }
+      let pages: DocPage[];
       try {
-        result.mbl = extractMblDocument(
-          await this.readDocumentPages(context, mblFile.id),
-        );
+        pages = await this.readDocumentPages(context, file.id);
       } catch (err) {
-        result.mblError = describeExtractionError(err);
+        // An unreadable bill is reported for whichever part is still open.
+        const error = describeExtractionError(err);
+        if (!masterDone && (filedAsMaster || houseDone)) {
+          result.mblFileName = file.name;
+          result.mblError = error;
+          masterDone = true;
+        } else if (!houseDone && !filedAsMaster) {
+          result.hblFileName = file.name;
+          result.hblError = error;
+          houseDone = true;
+        }
+        continue;
+      }
+      const kind = filedAsMaster ? 'master' : classifyBillOfLading(pages);
+      if (kind === 'master' && !masterDone) {
+        result.mblFileName = file.name;
+        result.mbl = extractMblDocument(pages);
+        masterDone = true;
+      } else if (kind === 'house' && !houseDone) {
+        result.hblFileName = file.name;
+        result.hbls = extractHblDocuments(pages);
+        houseDone = true;
       }
     }
-    if (hblFile) {
-      try {
-        result.hbls = extractHblDocuments(
-          await this.readDocumentPages(context, hblFile.id),
-        );
-      } catch (err) {
-        result.hblError = describeExtractionError(err);
-      }
+    completePartiesFromMaster(result);
+    if (needsPartyAddresses(result)) {
+      await this.completeAddressesFromInvoice(context, files, result);
     }
     return result;
+  }
+
+  /** Fills party addresses the bills of lading omit from the newest supplier invoice, if it can be read. */
+  private async completeAddressesFromInvoice(
+    context: ImportFilesContext,
+    files: readonly UploadedImportFileDto[],
+    result: BillOfLadingExtractDto,
+  ): Promise<void> {
+    const invoice = files.find(
+      (file) => file.documentType === ImportDocumentType.SUPPLIER_INVOICE,
+    );
+    if (!invoice) return;
+    try {
+      const pages = await this.readDocumentPages(context, invoice.id);
+      completePartyAddresses(result, extractInvoiceParties(pages));
+    } catch {
+      // The invoice only helps with addresses; an unreadable one changes nothing.
+    }
   }
 
   /** The stored file's text, as pages of cells, for the bill-of-lading extractor. */

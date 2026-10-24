@@ -66,6 +66,7 @@ import {
   containerToFormValue,
   mblExtractContainersToFormValue,
   mblExtractToFormValue,
+  mergeMblExtracts,
   mblToFormValue,
   saveErrorMessage as saveMblErrorMessage,
   toCreateMblDto,
@@ -308,12 +309,12 @@ export class ShipmentCaseWizardScreen {
       label: hbl.hblNumber ?? `שטר מטען ${index + 1}`,
     })),
   );
-  /** The Job fields to create the Job with: the order's MBL document, else
-   *  the master-level boxes of the chosen house B/L. */
+  /** The Job fields to create the Job with: the order's MBL document,
+   *  completed from the master-level boxes of the chosen house B/L. */
   private readonly jobPrefill = computed<MblDocumentExtractDto | null>(() => {
     const source = this.prefillSource();
     if (!source) return null;
-    return source.mbl ?? source.hbls[this.prefillHblIndex()]?.master ?? null;
+    return mergeMblExtracts(source.mbl, source.hbls[this.prefillHblIndex()]?.master ?? null);
   });
 
   protected readonly savingHbl = signal(false);

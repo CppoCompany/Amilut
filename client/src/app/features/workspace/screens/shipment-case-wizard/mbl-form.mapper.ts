@@ -204,6 +204,68 @@ export function containerToFormValue(container: MblContainerDto): MblContainerFo
   };
 }
 
+/**
+ * The Job fields from the order's MBL document, completed from the house
+ * B/L's master-level boxes: every field the MBL document left empty, and the
+ * containers when the MBL document names none (a house B/L often prints the
+ * container / seal the master only lists in its cargo table). Either side may
+ * be missing.
+ */
+export function mergeMblExtracts(
+  primary: MblDocumentExtractDto | null,
+  fallback: MblDocumentExtractDto | null,
+): MblDocumentExtractDto | null {
+  if (!primary) return fallback;
+  if (!fallback) return primary;
+  const merged: MblDocumentExtractDto = { ...primary };
+  for (const key of Object.keys(primary) as (keyof MblDocumentExtractDto)[]) {
+    if (key === 'containers' || primary[key] !== null) continue;
+    // An address belongs to a name: the house B/L's consignee address must
+    // not land on a master consigned "To Order".
+    const nameKey = PARTY_NAME_OF_ADDRESS[key];
+    if (nameKey && primary[nameKey] !== null && !sameName(primary[nameKey], fallback[nameKey])) {
+      continue;
+    }
+    (merged as Record<string, unknown>)[key] = fallback[key];
+  }
+  const numbered = (c: MblContainerExtractDto) => c.containerNumber !== null;
+  if (!primary.containers.some(numbered) && fallback.containers.some(numbered)) {
+    // The MBL's only (unnumbered) cargo line describes the single container.
+    const describe = primary.containers.length === 1 && fallback.containers.length === 1;
+    merged.containers = fallback.containers.map((container) =>
+      describe ? completeContainer(container, primary.containers[0]) : container,
+    );
+  }
+  return merged;
+}
+
+const PARTY_NAME_OF_ADDRESS: Partial<
+  Record<keyof MblDocumentExtractDto, 'shipperName' | 'consigneeName' | 'notifyPartyName'>
+> = {
+  shipperAddress: 'shipperName',
+  consigneeAddress: 'consigneeName',
+  notifyPartyAddress: 'notifyPartyName',
+};
+
+/** "East Harbor Components Co., Ltd." ~ "EAST HARBOR COMPONENTS CO LTD". */
+function sameName(a: string | null, b: string | null): boolean {
+  const normalize = (name: string) => name.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
+  return a !== null && b !== null && normalize(a) === normalize(b);
+}
+
+function completeContainer(
+  container: MblContainerExtractDto,
+  from: MblContainerExtractDto,
+): MblContainerExtractDto {
+  return {
+    containerNumber: container.containerNumber ?? from.containerNumber,
+    containerSealNumber: container.containerSealNumber ?? from.containerSealNumber,
+    cargoDescription: container.cargoDescription ?? from.cargoDescription,
+    grossWeightKg: container.grossWeightKg ?? from.grossWeightKg,
+    volumeCbm: container.volumeCbm ?? from.volumeCbm,
+  };
+}
+
 /** The Job form prefilled from a Master B/L document (or the master-level
  *  boxes of a House B/L): every stated field, blanks for the rest. The
  *  single-container fields take the document's first container. */

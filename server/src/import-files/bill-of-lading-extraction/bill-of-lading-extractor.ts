@@ -35,6 +35,26 @@ const SEAL_RE = /seal\s*(?:no\.?|number|#)?\s*[:.]?\s*([A-Z0-9][A-Z0-9-]{2,})/i;
 const SERVICE_TYPE_RE =
   /\b(CY|CFS|DOOR|SD)\s*(?:\/|-|TO)\s*(CY|CFS|DOOR|SD)\b/i;
 
+/** Which bill of lading a document is, judged by its content. */
+export type BillOfLadingKind = 'master' | 'house';
+
+/**
+ * Tells a Master B/L from a House B/L by content, for uploads filed under
+ * the generic "Bill of Lading" type: a document with a "House B/L No." box
+ * is a house B/L (even though it also quotes the master number); one whose
+ * boxes or title speak only of the master is the master; anything else is
+ * taken as the house B/L, the document a File is made from.
+ */
+export function classifyBillOfLading(pages: DocPage[]): BillOfLadingKind {
+  const labels = findLabels(pages);
+  if (labels.some((l) => l.field === 'hblNumber')) return 'house';
+  if (labels.some((l) => l.field === 'mblNumber')) return 'master';
+  const text = allText(pages).join('\n');
+  if (/\bhouse\s+(?:bill\s+of\s+lading|b\/l)\b/i.test(text)) return 'house';
+  if (/\bmaster\s+(?:bill\s+of\s+lading|b\/l)\b/i.test(text)) return 'master';
+  return 'house';
+}
+
 /**
  * Reads the Job (MBL) fields out of a document. Works on a Master B/L and,
  * for the master-level boxes, on a House B/L too.
@@ -69,9 +89,19 @@ export function extractMblDocument(pages: DocPage[]): MblDocumentExtractDto {
     }
   }
   if (containers.length === 1) {
+    // One container carries the whole consignment: the document's cargo
+    // table / totals describe it.
     const only = containers[0];
-    if (only.grossWeightKg === null) only.grossWeightKg = grossWeightKg;
-    if (only.volumeCbm === null) only.volumeCbm = volumeCbm;
+    const goods = records.length === 1 ? toContainer(records[0]) : null;
+    if (only.cargoDescription === null) {
+      only.cargoDescription = goods?.cargoDescription ?? null;
+    }
+    if (only.grossWeightKg === null) {
+      only.grossWeightKg = goods?.grossWeightKg ?? grossWeightKg;
+    }
+    if (only.volumeCbm === null) {
+      only.volumeCbm = goods?.volumeCbm ?? volumeCbm;
+    }
   }
 
   return {
@@ -98,11 +128,42 @@ export function extractMblDocument(pages: DocPage[]): MblDocumentExtractDto {
     ),
     placeOfIssue: clip(placeOfIssue, PORT_MAX),
     dateOfIssue,
-    totalPackages: clip(reader.single('totalPackages'), QUANTITY_MAX),
+    totalPackages: clip(
+      reader.single('totalPackages') ?? packagesFromTable(records),
+      QUANTITY_MAX,
+    ),
     grossWeightKg,
     volumeCbm,
     containers,
   };
+}
+
+/**
+ * The packages column of the cargo table when no "Total packages" box
+ * exists: the single record's text ("120 cartons"), the records' counts
+ * summed when they share a unit ("26 PACKAGES"), else the texts joined.
+ */
+function packagesFromTable(records: readonly CargoRecord[]): string | null {
+  const texts = records
+    .map((record) => joinLines(record.packages, ' '))
+    .filter((text): text is string => text !== null);
+  if (texts.length === 0) return null;
+  if (texts.length === 1) return texts[0];
+  const parsed = texts.map((text) =>
+    /^\s*(\d{1,3}(?:,\d{3})+|\d+)\s*(.*)$/.exec(text),
+  );
+  if (parsed.every((m) => m !== null)) {
+    const units = new Set(parsed.map((m) => m[2].trim().toLowerCase()));
+    if (units.size === 1) {
+      const total = parsed.reduce(
+        (sum, m) => sum + Number(m[1].replace(/,/g, '')),
+        0,
+      );
+      const unit = parsed[0][2].trim();
+      return unit ? `${total} ${unit}` : String(total);
+    }
+  }
+  return texts.join('; ');
 }
 
 /**
@@ -168,7 +229,7 @@ function extractHblDocument(pages: DocPage[]): HblDocumentExtractDto {
 // ── Labelled boxes ─────────────────────────────────────────────────────────────
 
 /** Reads fields by their labels: the first occurrence with a real value wins. */
-class FieldReader {
+export class FieldReader {
   constructor(
     private readonly pages: DocPage[],
     private readonly labels: readonly LabelOccurrence[],
@@ -303,6 +364,9 @@ function containerFromLabels(
   const sealText = reader.single('sealNumber');
   const containerSealNumber =
     (containerText && SEAL_RE.exec(containerText)?.[1]) ||
+    (containerText &&
+      containerNumber &&
+      sealBeside(containerText, containerNumber)) ||
     (sealText && (SEAL_RE.exec(`seal ${sealText}`)?.[1] ?? null)) ||
     null;
   if (containerNumber === null && containerSealNumber === null) return null;
@@ -313,6 +377,22 @@ function containerFromLabels(
     grossWeightKg: null,
     volumeCbm: null,
   };
+}
+
+/**
+ * The seal printed next to the container number in one box
+ * ("TGHU1234567 / SEAL-DEMO-88421", "BMOU4512398 SL-332211"): the
+ * reference-like token that follows the container number.
+ */
+function sealBeside(text: string, containerNumber: string): string | null {
+  const index = text.toUpperCase().indexOf(containerNumber);
+  if (index < 0) return null;
+  const rest = text
+    .slice(index + containerNumber.length)
+    .replace(/^[\s/,;:|-]+/, '')
+    .replace(/^seal(?:\s*(?:no\.?|number|#))?(?=[\s:.])\s*[:.]?\s*/i, '');
+  const token = /^([A-Z0-9][A-Z0-9-]{2,})/i.exec(rest)?.[1] ?? null;
+  return token && /\d/.test(token) ? token : null;
 }
 
 // ── Cargo table ────────────────────────────────────────────────────────────────

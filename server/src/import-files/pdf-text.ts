@@ -57,11 +57,27 @@ export function parsePdf(buffer: Buffer): Promise<Output> {
       finish(() => resolve(data));
     });
     try {
-      parser.parseBuffer(buffer, PDF2JSON_QUIET);
+      parser.parseBuffer(exactBytes(buffer), PDF2JSON_QUIET);
     } catch (err) {
       finish(() => reject(toError(err)));
     }
   });
+}
+
+/**
+ * pdf2json's `parseBuffer` replaces a Buffer whose `byteLength` differs from
+ * its underlying `ArrayBuffer` with a view over that whole ArrayBuffer from
+ * offset 0. Node pools small Buffers (under 4 kB, e.g. a `readFile` of a short
+ * PDF) inside a shared 8 kB ArrayBuffer, so such a PDF would be parsed from
+ * the wrong bytes and fail with "Invalid XRef stream header". Hand it a copy
+ * that owns its ArrayBuffer exactly.
+ */
+function exactBytes(buffer: Buffer): Buffer {
+  if (buffer.byteOffset === 0 && buffer.buffer.byteLength === buffer.byteLength)
+    return buffer;
+  const copy = new Uint8Array(buffer.byteLength);
+  copy.set(buffer);
+  return Buffer.from(copy.buffer);
 }
 
 /** pdf2json reports errors as `{ parserError: Error | string }` or a bare Error. */

@@ -22,6 +22,8 @@ export type BlField =
   | 'shipper'
   | 'consignee'
   | 'notifyParty'
+  | 'seller'
+  | 'buyer'
   | 'containerNumber'
   | 'sealNumber'
   | 'freight'
@@ -91,6 +93,27 @@ const LABELS: ReadonlyArray<readonly [BlField, RegExp]> = [
   ['shipper', label(String.raw`shipper(?:\s*\/?\s*exporter)?`)],
   ['consignee', label(String.raw`consignee`)],
   ['notifyParty', label(String.raw`notify(?:\s*party|\s*address)?`)],
+  // Invoice parties, read for the addresses a bill of lading leaves out.
+  // "Seller and buyer" is a section heading, not the seller's box;
+  // "Supplier" only as a whole label, not "Supplier Invoice …".
+  [
+    'heading',
+    label(
+      String.raw`(?:seller|supplier|exporter)\s*(?:and|&|\/)\s*(?:buyer|importer)`,
+    ),
+  ],
+  [
+    'seller',
+    label(
+      String.raw`seller|exporter|vendor|beneficiary|sold\s*by|supplier(?=\s*[:.]|\s*$)`,
+    ),
+  ],
+  [
+    'buyer',
+    label(
+      String.raw`buyer|importer|purchaser|bill\s*to|sold\s*to|invoice\s*to|ship\s*to`,
+    ),
+  ],
   [
     'containerNumber',
     label(String.raw`(?:container|cntr|cont)${NO}(?:\s*\/\s*seal${NO})?`),
@@ -138,7 +161,7 @@ const LABELS: ReadonlyArray<readonly [BlField, RegExp]> = [
   [
     'heading',
     label(
-      String.raw`cargo\s*(?:details|particulars)|particulars|authori[sz]ed\s*signature|signature|drafting\s*note|notes?\b|remarks?\b|terms\b|declared\s*value|delivery\s*agent|forwarding|master\s*reference|on\s*board|shipped\s*on\s*board|(?:no\.?|number)\s*of\s*originals?|internal\s*(?:draft|working)|page\b|total\b`,
+      String.raw`cargo\s*(?:details|particulars)|particulars|authori[sz]ed\s*signature|signature|drafting\s*note|notes?\b|remarks?\b|terms\b|declared\s*value|delivery\s*agent|forwarding|master\s*reference|on\s*board|shipped\s*on\s*board|(?:no\.?|number)\s*of\s*originals?|originals?\b|internal\s*(?:draft|working)|page\b|total\b`,
     ),
   ],
 ];
@@ -230,7 +253,7 @@ export function collectValue(
   let rightBound = Number.POSITIVE_INFINITY;
   for (let i = at.cell + 1; i < row.cells.length; i += 1) {
     const cell = row.cells[i];
-    if (isLabelCell(cell)) {
+    if (isLabelCell(cell) && !isValueOf(at.field, cell)) {
       rightBound = cell.x;
       break;
     }
@@ -260,9 +283,20 @@ export function collectValue(
   return lines;
 }
 
+/**
+ * A cell beside a label that reads as the same label with text after it is
+ * that label's value, not a new box: "Freight terms | Freight Prepaid",
+ * "Container No. | Container TGHU1234567".
+ */
+function isValueOf(field: BlField, cell: DocCell): boolean {
+  const match = matchLabel(cell.text);
+  return match !== null && match.field === field && match.remainder !== '';
+}
+
+/** Lines of a cell; a literal `<br>` printed into a PDF counts as a line break too. */
 function splitLines(text: string): string[] {
   return text
-    .split('\n')
+    .split(/\n|<br\s*\/?>/i)
     .map((line) => line.trim())
     .filter((line) => line !== '');
 }

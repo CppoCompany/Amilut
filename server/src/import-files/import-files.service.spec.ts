@@ -1069,6 +1069,241 @@ describe('ImportFilesService', () => {
     });
   });
 
+  describe('getBillOfLadingExtract', () => {
+    const FIXTURES = path.join(
+      __dirname,
+      'bill-of-lading-extraction/__fixtures__',
+    );
+    const MBL_FILE = '01_Master_Bill_of_Lading_MBL.pdf';
+    const HBL_FILE = '02_House_Bill_of_Lading_HBL.pdf';
+
+    interface StoredBill {
+      id: number;
+      name: string;
+      documentType: ImportDocumentType;
+      /** Fixture to copy under the order folder; a missing one stays unreadable. */
+      fixture?: string;
+      mimeType?: string;
+      uploadedAt: string;
+    }
+
+    /** The order exists and holds `bills` (newest first); the readable ones are on disk. */
+    async function orderHolds(bills: StoredBill[]) {
+      const rows = bills.map((bill) => ({
+        id: bill.id,
+        data: {
+          documentType: bill.documentType,
+          name: bill.name,
+          size: 1,
+          mimeType: bill.mimeType ?? 'application/pdf',
+          relativePath: `order-1000/${bill.name}`,
+          uploadedAt: bill.uploadedAt,
+        },
+      }));
+      db.query.mockResolvedValue(rows);
+      db.queryOne.mockImplementation((sql: string, params: unknown[]) => {
+        if (sql === SELECT_ORDER_EXISTS_SQL) {
+          return Promise.resolve({ id: params[0] });
+        }
+        return Promise.resolve(
+          rows.find((row) => row.id === params[0]) ?? null,
+        );
+      });
+      await mkdir(path.join(storageDir, 'order-1000'), { recursive: true });
+      for (const bill of bills) {
+        if (!bill.fixture) continue;
+        await writeFile(
+          path.join(storageDir, 'order-1000', bill.name),
+          await readFile(path.join(FIXTURES, bill.fixture)),
+        );
+      }
+    }
+
+    it('tells the master from the house B/L by content when both are filed as "Bill of Lading"', async () => {
+      await orderHolds([
+        {
+          id: 2,
+          name: MBL_FILE,
+          documentType: ImportDocumentType.BILL_OF_LADING,
+          fixture: 'mbl-sample.pdf',
+          uploadedAt: '2026-10-24T09:00:00.000Z',
+        },
+        {
+          id: 1,
+          name: HBL_FILE,
+          documentType: ImportDocumentType.BILL_OF_LADING,
+          fixture: 'hbl-single-sample.pdf',
+          uploadedAt: '2026-10-24T08:00:00.000Z',
+        },
+      ]);
+
+      const result = await service.getBillOfLadingExtract(orderContext(1000));
+
+      expect(result.mblFileName).toBe(MBL_FILE);
+      expect(result.mbl?.mblNumber).toBe('SAMPLE-MBL-778845');
+      expect(result.mbl?.shipperName).toBe('East Harbor Components Co., Ltd.');
+      expect(result.mbl?.totalPackages).toBe('120 cartons');
+      expect(result.mblError).toBeNull();
+      expect(result.hblFileName).toBe(HBL_FILE);
+      expect(result.hbls.map((h) => h.hblNumber)).toEqual(['EHC-HA-260901']);
+      expect(result.hblError).toBeNull();
+    });
+
+    it('gives a File whose party boxes are "To be completed" the master document\'s parties', async () => {
+      await orderHolds([
+        {
+          id: 2,
+          name: 'MBL.html',
+          documentType: ImportDocumentType.MASTER_BILL_OF_LADING,
+          fixture: 'mbl-sample.html',
+          mimeType: 'text/html',
+          uploadedAt: '2026-10-24T09:00:00.000Z',
+        },
+        {
+          id: 1,
+          name: 'hbl.pdf',
+          documentType: ImportDocumentType.BILL_OF_LADING,
+          fixture: 'hbl-sample.pdf',
+          uploadedAt: '2026-10-24T08:00:00.000Z',
+        },
+      ]);
+
+      const result = await service.getBillOfLadingExtract(orderContext(1000));
+
+      expect(result.hbls).toHaveLength(3);
+      expect(result.hbls[0].shipperName).toBe(
+        'Asia Logistics Consolidation Co., Ltd.',
+      );
+      expect(result.hbls[0].shipperAddress).toBe(
+        'Port Zone B, Shanghai, China, Tel: +86-21-68881234',
+      );
+      expect(result.hbls[0].consigneeAddress).toBe(
+        'HaShoftim St 12, Haifa, Israel, Tel: +972-4-8664422',
+      );
+    });
+
+    it('completes the party addresses the bills omit from the supplier invoice', async () => {
+      await orderHolds([
+        {
+          id: 3,
+          name: '03_Supplier_Commercial_Invoice.pdf',
+          documentType: INVOICE,
+          fixture: 'invoice-sample.pdf',
+          uploadedAt: '2026-10-24T10:00:00.000Z',
+        },
+        {
+          id: 2,
+          name: MBL_FILE,
+          documentType: ImportDocumentType.BILL_OF_LADING,
+          fixture: 'mbl-sample.pdf',
+          uploadedAt: '2026-10-24T09:00:00.000Z',
+        },
+        {
+          id: 1,
+          name: HBL_FILE,
+          documentType: ImportDocumentType.BILL_OF_LADING,
+          fixture: 'hbl-single-sample.pdf',
+          uploadedAt: '2026-10-24T08:00:00.000Z',
+        },
+      ]);
+
+      const result = await service.getBillOfLadingExtract(orderContext(1000));
+
+      expect(result.mbl?.shipperAddress).toBe(
+        '88 Fictional Road, Shanghai, China',
+      );
+      expect(result.mbl?.consigneeAddress).toBeNull(); // "To Order / As instructed"
+      expect(result.mbl?.notifyPartyAddress).toBe(
+        '18 Example Avenue, Rosh HaAyin, Israel',
+      );
+      expect(result.hbls[0].shipperAddress).toBe(
+        '88 Fictional Road, Shanghai, China',
+      );
+      expect(result.hbls[0].consigneeAddress).toBe(
+        '18 Example Avenue, Rosh HaAyin, Israel',
+      );
+    });
+
+    it('uses the newest house B/L for the File even when a master was uploaded later', async () => {
+      await orderHolds([
+        {
+          id: 3,
+          name: MBL_FILE,
+          documentType: ImportDocumentType.MASTER_BILL_OF_LADING,
+          fixture: 'mbl-sample.pdf',
+          uploadedAt: '2026-10-24T09:00:00.000Z',
+        },
+        {
+          id: 2,
+          name: 'older-master.pdf',
+          documentType: ImportDocumentType.BILL_OF_LADING,
+          fixture: 'mbl-sample.pdf',
+          uploadedAt: '2026-10-24T08:30:00.000Z',
+        },
+        {
+          id: 1,
+          name: HBL_FILE,
+          documentType: ImportDocumentType.BILL_OF_LADING,
+          fixture: 'hbl-single-sample.pdf',
+          uploadedAt: '2026-10-24T08:00:00.000Z',
+        },
+      ]);
+
+      const result = await service.getBillOfLadingExtract(orderContext(1000));
+
+      expect(result.mblFileName).toBe(MBL_FILE);
+      expect(result.hblFileName).toBe(HBL_FILE);
+      expect(result.hbls).toHaveLength(1);
+    });
+
+    it('reports an unreadable bill in its part without failing the request', async () => {
+      await orderHolds([
+        {
+          id: 2,
+          name: 'scan.pdf',
+          documentType: ImportDocumentType.MASTER_BILL_OF_LADING,
+          uploadedAt: '2026-10-24T09:00:00.000Z',
+        },
+        {
+          id: 1,
+          name: HBL_FILE,
+          documentType: ImportDocumentType.BILL_OF_LADING,
+          fixture: 'hbl-single-sample.pdf',
+          uploadedAt: '2026-10-24T08:00:00.000Z',
+        },
+      ]);
+
+      const result = await service.getBillOfLadingExtract(orderContext(1000));
+
+      expect(result.mblFileName).toBe('scan.pdf');
+      expect(result.mbl).toBeNull();
+      expect(result.mblError).toEqual(expect.any(String));
+      expect(result.hbls).toHaveLength(1);
+    });
+
+    it('leaves both parts empty when the order has no bill of lading', async () => {
+      await orderHolds([
+        {
+          id: 1,
+          name: 'invoice.pdf',
+          documentType: INVOICE,
+          uploadedAt: '2026-10-24T08:00:00.000Z',
+        },
+      ]);
+
+      await expect(
+        service.getBillOfLadingExtract(orderContext(1000)),
+      ).resolves.toEqual({
+        mblFileName: null,
+        mbl: null,
+        mblError: null,
+        hblFileName: null,
+        hbls: [],
+        hblError: null,
+      });
+    });
+  });
+
   describe('getImportFile', () => {
     function fileRow(
       relativePath: string,
