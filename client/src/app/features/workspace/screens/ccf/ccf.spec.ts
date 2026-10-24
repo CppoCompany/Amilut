@@ -1,58 +1,44 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { WritableSignal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 
-import { CcfStatus, MblShippingType, MblStatus, SeaMethod } from '../../../../api/enums';
-import type { CcfDto, MblSummaryDto } from '../../../../api/models';
+import { CcfStatus } from '../../../../api/enums';
+import type { CcfDto } from '../../../../api/models';
+import { SEA_CCF_HOUSE_FIELDS } from '../../../../api/testing/sea-defaults';
+import { stubLayoutForVirtualScroll } from '../../../../shared/testing/virtual-scroll';
 import { NavigationService } from '../../navigation.service';
 import { CcfScreen } from './ccf';
-import { SEA_CCF_HOUSE_FIELDS } from '../../../../api/testing/sea-defaults';
 
 type CcfInternals = {
-  selectedShipmentFileId: WritableSignal<number | null>;
-  stagedFiles: WritableSignal<Partial<Record<string, File[]>>>;
-  stagedOrderFiles: WritableSignal<Record<number, Partial<Record<string, File[]>>>>;
-  savedCcf: () => CcfDto | null;
-  saving: () => boolean;
-  loadingExisting: () => boolean;
+  ccfs: () => CcfDto[];
+  selectedId: () => number | null;
+  selectedCcf: () => CcfDto | null;
+  creating: () => boolean;
   errorMessage: () => string | null;
-  fileNumber: () => string;
-  isReadOnly: () => boolean;
   ccfContext: () => { kind: 'ccf'; id: number } | null;
-  onSave: () => void;
+  select: (id: number) => void;
+  onCreate: () => void;
 };
 
-const SHIPMENT_FILE: MblSummaryDto = {
-  id: 42,
-  shippingType: MblShippingType.SEA,
-  seaMethod: SeaMethod.FCL_FCL,
-  airMethod: null,
-  status: MblStatus.OPEN,
-  mblNumber: 'MBL-987654321',
-  carrierName: 'MAERSK LINE',
-  handlerUserId: 9,
-  handlerName: 'Dana Levi',
-  hblCount: 1,
-  orderCount: 2,
-  orderIds: [1000, 1001],
-  customerNames: ['ACME Ltd.'],
-  createdAt: '2026-09-01T08:30:00.000Z',
-};
+function ccf(id: number, fileNumber: string, overrides: Partial<CcfDto> = {}): CcfDto {
+  return {
+    ...SEA_CCF_HOUSE_FIELDS,
+    id,
+    fileNumber,
+    shipmentFileId: null,
+    shipmentFileMblNumber: null,
+    status: CcfStatus.OPEN,
+    createdBy: 7,
+    createdByName: 'דנה לוי',
+    createdAt: '2026-09-01T08:30:00.000Z',
+    updatedAt: '2026-09-01T08:30:00.000Z',
+    ...overrides,
+  };
+}
 
-const SAVED_CCF: CcfDto = {
-  ...SEA_CCF_HOUSE_FIELDS,
-  id: 100,
-  fileNumber: 'CCF1000',
-  shipmentFileId: null,
-  shipmentFileMblNumber: null,
-  status: CcfStatus.OPEN,
-  createdBy: 7,
-  createdByName: 'דנה לוי',
-  createdAt: '2026-09-01T08:30:00.000Z',
-  updatedAt: '2026-09-01T08:30:00.000Z',
-};
+const CCF_A = ccf(100, 'CCF1000', { shipmentFileId: 42, shipmentFileMblNumber: 'MBL-987654321' });
+const CCF_B = ccf(101, 'CCF1001');
 
 describe('CcfScreen', () => {
   let fixture: ComponentFixture<CcfScreen>;
@@ -61,6 +47,7 @@ describe('CcfScreen', () => {
   let nav: NavigationService;
 
   beforeEach(async () => {
+    stubLayoutForVirtualScroll();
     await TestBed.configureTestingModule({
       imports: [CcfScreen],
       providers: [provideHttpClient(), provideHttpClientTesting()],
@@ -75,225 +62,132 @@ describe('CcfScreen', () => {
     vi.restoreAllMocks();
   });
 
-  /** Creates the component now — call after any `nav` setup a test needs in
-   *  place before the constructor runs (e.g. `nav.viewCcfId.set(...)`). */
-  function createFixture(nextFileNumber = 'CCF1000'): void {
+  /** Creates the component and answers its list request — call after any
+   *  `nav` setup a test needs in place before the constructor runs. */
+  function createFixture(list: CcfDto[] = [CCF_A, CCF_B]): void {
     fixture = TestBed.createComponent(CcfScreen);
     internals = fixture.componentInstance as unknown as CcfInternals;
     fixture.detectChanges();
+    httpMock.expectOne((req) => req.method === 'GET' && req.url === '/api/ccf').flush(list);
+    fixture.detectChanges();
+  }
+
+  /** Lets PrimeNG's virtual scroller lay out its rows — it does so on a timer. */
+  async function settle(): Promise<void> {
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    fixture.detectChanges();
+  }
+
+  function rows(): HTMLElement[] {
+    return Array.from(
+      fixture.nativeElement.querySelectorAll('.ccf-records tbody tr.data-table__row--clickable'),
+    );
+  }
+
+  function expectDocumentsFor(id: number): void {
     httpMock
-      .expectOne({ method: 'GET', url: '/api/ccf/next-file-number' })
-      .flush({ fileNumber: nextFileNumber });
+      .expectOne((req) => req.url === '/api/import-files' && req.params.get('ccfId') === String(id))
+      .flush([]);
     fixture.detectChanges();
   }
 
-  function flushShipmentFiles(files: MblSummaryDto[] = [SHIPMENT_FILE]): void {
-    httpMock.expectOne((req) => req.url === '/api/mbl').flush(files);
+  function text(selector: string): string {
+    return fixture.nativeElement.querySelector(selector)?.textContent?.trim() ?? '';
   }
 
-  /** Each linked order's stored paperwork loads once a shipping case is selected. */
-  function flushOrderDocuments(orderIds: number[] = SHIPMENT_FILE.orderIds): void {
-    for (const orderId of orderIds) {
-      httpMock
-        .expectOne(
-          (req) => req.url === '/api/import-files' && req.params.get('orderId') === String(orderId),
-        )
-        .flush([]);
-    }
-  }
-
-  function pageTitleText(): string {
-    return fixture.nativeElement.querySelector('.page-title')?.textContent?.trim() ?? '';
-  }
-
-  function headerFileNumber(): string {
-    return fixture.nativeElement.querySelector('.ccf-header__number')?.textContent?.trim() ?? '';
-  }
-
-  it('shows the server-previewed next file number before the first save', () => {
-    createFixture('CCF1042');
-    flushShipmentFiles();
-
-    expect(pageTitleText()).toContain('תיק עמילות');
-    expect(headerFileNumber()).toBe('CCF1042');
-  });
-
-  it("replaces the CCF paperwork card with the linked orders' documents once a shipping case is selected", () => {
+  it('lists the CCFs on the left and asks to pick one before showing documents', async () => {
     createFixture();
-    flushShipmentFiles();
-    const cardTitles = (): string[] =>
-      Array.from(
-        fixture.nativeElement.querySelectorAll('.ccf-card__title') as NodeListOf<HTMLElement>,
-      ).map((el) => el.textContent!.trim());
+    await settle();
 
-    expect(cardTitles()).toEqual(['פרטי תיק', 'ניירת']);
-
-    internals.selectedShipmentFileId.set(42);
-    fixture.detectChanges();
-    flushOrderDocuments();
-    fixture.detectChanges();
-
-    expect(cardTitles()).toEqual(['פרטי תיק', 'מסמכי ההזמנות בתיק השילוח']);
-    const orderTitles = Array.from(
-      fixture.nativeElement.querySelectorAll('.related-docs__title') as NodeListOf<HTMLElement>,
-    ).map((el) => el.textContent!.trim());
-    expect(orderTitles).toEqual(['הזמנה 1000', 'הזמנה 1001']);
-    expect(fixture.nativeElement.querySelectorAll('app-document-staging-list').length).toBe(2);
-
-    internals.selectedShipmentFileId.set(null);
-    fixture.detectChanges();
-    expect(cardTitles()).toEqual(['פרטי תיק', 'ניירת']);
+    expect(rows().length).toBe(2);
+    expect(text('.ccf-records__count')).toBe('(2)');
+    expect(text('.documents-hint')).toBe('בחר תיק עמילות מהרשימה כדי להציג את המסמכים שלו');
+    expect(internals.ccfContext()).toBeNull();
   });
 
-  describe('onSave', () => {
-    it('does nothing while a save is already in flight', () => {
+  it('no longer offers a linked shipment file picker', () => {
+    createFixture();
+
+    expect(fixture.nativeElement.querySelector('app-search-select')).toBeNull();
+    expect(fixture.nativeElement.querySelector('#shipmentFile')).toBeNull();
+  });
+
+  it('clicking a CCF selects it, highlights its row and loads its documents', async () => {
+    createFixture();
+    await settle();
+
+    rows()[0].click();
+    fixture.detectChanges();
+    expectDocumentsFor(100);
+    const row = rows()[0];
+
+    expect(internals.ccfContext()).toEqual({ kind: 'ccf', id: 100 });
+    expect(row.classList).toContain('data-table__row--selected');
+    expect(row.getAttribute('aria-current')).toBe('true');
+    expect(text('.ccf-header__number')).toBe('CCF1000');
+    expect(text('.panel-documents__context-label')).toBe('CCF1000');
+
+    internals.select(101);
+    fixture.detectChanges();
+    expectDocumentsFor(101);
+    expect(text('.panel-documents__context-label')).toBe('CCF1001');
+  });
+
+  describe('onCreate', () => {
+    it('creates a standalone CCF, lists it first and selects it', () => {
       createFixture();
-      flushShipmentFiles();
 
-      internals.onSave();
-      const req = httpMock.expectOne({ method: 'POST', url: '/api/ccf' });
-
-      internals.onSave(); // the guard — no second request
-      httpMock.expectNone({ method: 'POST', url: '/api/ccf' });
-
-      req.flush(SAVED_CCF); // avoid leaving a request unflushed for httpMock.verify()
-    });
-
-    it('creates a standalone CCF, stays on the page (no navigation) and the inline panel takes over', () => {
-      createFixture();
-      flushShipmentFiles();
-      const openFilingFor = vi.spyOn(nav, 'openFilingFor').mockImplementation(() => {});
-      const openClassificationFor = vi
-        .spyOn(nav, 'openClassificationFor')
-        .mockImplementation(() => {});
-
-      internals.onSave();
+      internals.onCreate();
+      internals.onCreate(); // the guard — no second request
       const req = httpMock.expectOne({ method: 'POST', url: '/api/ccf' });
       expect(req.request.body).toEqual({});
-
-      req.flush(SAVED_CCF);
-
-      expect(openFilingFor).not.toHaveBeenCalled();
-      expect(openClassificationFor).not.toHaveBeenCalled();
-      expect(internals.savedCcf()?.fileNumber).toBe('CCF1000');
-      expect(internals.isReadOnly()).toBe(true);
-      expect(internals.ccfContext()).toEqual({ kind: 'ccf', id: 100 });
-    });
-
-    it('creates a linked CCF and navigates to classification scoped to the CCF itself', () => {
-      createFixture();
-      flushShipmentFiles();
-      const openClassificationFor = vi
-        .spyOn(nav, 'openClassificationFor')
-        .mockImplementation(() => {});
-
-      internals.selectedShipmentFileId.set(42);
-      internals.onSave();
-
-      const req = httpMock.expectOne({ method: 'POST', url: '/api/ccf' });
-      expect(req.request.body).toEqual({ shipmentFileId: 42 });
-      req.flush({ ...SAVED_CCF, shipmentFileId: 42, shipmentFileMblNumber: 'MBL-987654321' });
-
-      expect(openClassificationFor).toHaveBeenCalledWith({ kind: 'ccf', id: 100 });
-    });
-
-    it('uploads files staged for the linked orders to those orders, not to the CCF', () => {
-      createFixture();
-      flushShipmentFiles();
-      const openClassificationFor = vi
-        .spyOn(nav, 'openClassificationFor')
-        .mockImplementation(() => {});
-      const invoice = new File(['x'], 'invoice.pdf', { type: 'application/pdf' });
-      const ccfOnly = new File(['y'], 'ccf.pdf', { type: 'application/pdf' });
-
-      internals.stagedFiles.set({ BILL_OF_LADING: [ccfOnly] }); // hidden while linked — not uploaded
-      internals.selectedShipmentFileId.set(42);
-      internals.stagedOrderFiles.set({ 1001: { SUPPLIER_INVOICE: [invoice] } });
-      internals.onSave();
-
-      httpMock
-        .expectOne({ method: 'POST', url: '/api/ccf' })
-        .flush({ ...SAVED_CCF, shipmentFileId: 42, shipmentFileMblNumber: 'MBL-987654321' });
-
-      const upload = httpMock.expectOne(
-        (req) => req.method === 'POST' && req.url === '/api/import-files',
-      );
-      expect(upload.request.params.get('orderId')).toBe('1001');
-      expect(upload.request.params.get('ccfId')).toBeNull();
-      const body = upload.request.body as FormData;
-      expect(body.get('documentType')).toBe('SUPPLIER_INVOICE');
-      expect((body.get('files') as File).name).toBe('invoice.pdf');
-      upload.flush([]);
-
-      expect(openClassificationFor).toHaveBeenCalledWith({ kind: 'ccf', id: 100 });
-    });
-
-    it('stays on the page when an order upload fails', () => {
-      createFixture();
-      flushShipmentFiles();
-      const openClassificationFor = vi
-        .spyOn(nav, 'openClassificationFor')
-        .mockImplementation(() => {});
-
-      internals.selectedShipmentFileId.set(42);
-      internals.stagedOrderFiles.set({ 1000: { BILL_OF_LADING: [new File(['x'], 'bl.pdf')] } });
-      internals.onSave();
-
-      httpMock
-        .expectOne({ method: 'POST', url: '/api/ccf' })
-        .flush({ ...SAVED_CCF, shipmentFileId: 42, shipmentFileMblNumber: 'MBL-987654321' });
-      httpMock
-        .expectOne((req) => req.method === 'POST' && req.url === '/api/import-files')
-        .flush(null, { status: 500, statusText: 'Server Error' });
-
-      expect(openClassificationFor).not.toHaveBeenCalled();
-      expect(internals.errorMessage()).toBe('התיק נשמר, אך העלאת חלק מהמסמכים נכשלה');
-    });
-
-    it('preserves the selection and shows the error when the save fails', () => {
-      createFixture();
-      flushShipmentFiles();
-      internals.selectedShipmentFileId.set(42);
-      internals.onSave();
-
-      httpMock
-        .expectOne({ method: 'POST', url: '/api/ccf' })
-        .flush(
-          { message: 'לתיק השילוח הזה כבר יש תיק סליקת מכס' },
-          { status: 400, statusText: 'Bad Request' },
-        );
+      req.flush(ccf(102, 'CCF1002'));
       fixture.detectChanges();
-      flushOrderDocuments();
+      expectDocumentsFor(102);
 
-      expect(internals.errorMessage()).toBe(
-        'שמירת תיק הסליקה נכשלה: לתיק השילוח הזה כבר יש תיק סליקת מכס',
-      );
-      expect(internals.selectedShipmentFileId()).toBe(42); // not cleared on failure
-      expect(internals.savedCcf()).toBeNull();
-      expect(internals.isReadOnly()).toBe(false); // still editable — nothing was created
+      expect(internals.ccfs().map((row) => row.id)).toEqual([102, 100, 101]);
+      expect(internals.selectedId()).toBe(102);
+      expect(internals.creating()).toBe(false);
+    });
+
+    it('shows the server error and keeps the selection when creation fails', () => {
+      createFixture();
+      internals.select(100);
+      fixture.detectChanges();
+      expectDocumentsFor(100);
+
+      internals.onCreate();
+      httpMock
+        .expectOne({ method: 'POST', url: '/api/ccf' })
+        .flush({ message: 'boom' }, { status: 400, statusText: 'Bad Request' });
+
+      expect(internals.errorMessage()).toBe('יצירת תיק העמילות נכשלה: boom');
+      expect(internals.selectedId()).toBe(100);
     });
   });
 
   describe('viewCcfId hand-off', () => {
-    it('loads the existing CCF and locks the form', () => {
-      nav.viewCcfId.set(100);
+    it('selects the CCF once the list arrives', () => {
+      nav.viewCcfId.set(101);
       createFixture();
-      flushShipmentFiles();
-
-      httpMock
-        .expectOne({ method: 'GET', url: '/api/ccf/100' })
-        .flush({ ...SAVED_CCF, shipmentFileId: 42, shipmentFileMblNumber: 'MBL-987654321' });
-      fixture.detectChanges();
-      // Read-only mode mounts the inline ImportFilesPanel, which loads its own list.
-      httpMock
-        .expectOne((req) => req.url === '/api/import-files' && req.params.get('ccfId') === '100')
-        .flush([]);
+      expectDocumentsFor(101);
 
       expect(nav.viewCcfId()).toBeNull(); // consumed once
-      expect(internals.isReadOnly()).toBe(true);
-      expect(internals.selectedShipmentFileId()).toBe(42);
-      expect(headerFileNumber()).toBe('CCF1000');
-      expect(fixture.nativeElement.querySelector('.form-actions button')).toBeNull();
+      expect(internals.selectedCcf()?.fileNumber).toBe('CCF1001');
+    });
+
+    it('fetches a CCF that is not in the listed batch', () => {
+      nav.viewCcfId.set(7);
+      createFixture();
+
+      httpMock.expectOne({ method: 'GET', url: '/api/ccf/7' }).flush(ccf(7, 'CCF0007'));
+      fixture.detectChanges();
+      expectDocumentsFor(7);
+
+      expect(internals.ccfs()[0].id).toBe(7);
+      expect(internals.selectedCcf()?.fileNumber).toBe('CCF0007');
     });
   });
 });

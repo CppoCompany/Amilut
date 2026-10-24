@@ -1,101 +1,111 @@
 <div class="ccf-page form-page--wide">
   <header class="ccf-header">
     <h1 class="page-title ccf-header__title">
-יצירת תיק עמילות
-      @if (fileNumber()) {
+      תיקי עמילות
+      @if (selectedCcf(); as ccf) {
         <span class="ccf-header__sep" aria-hidden="true">·</span>
-        <span class="ccf-header__number" dir="ltr">{{ fileNumber() }}</span>
+        <span class="ccf-header__number" dir="ltr">{{ ccf.fileNumber }}</span>
       }
     </h1>
-    @if (!isReadOnly() && !loadingExisting()) {
-      <p-tag value="תיק חדש" severity="info" />
-    }
+    <p-button
+      [label]="creating() ? 'יוצר תיק…' : 'תיק עמילות חדש'"
+      icon="fa-solid fa-plus"
+      [loading]="creating()"
+      [disabled]="creating()"
+      (onClick)="onCreate()"
+    />
   </header>
 
-  @if (loadingExisting()) {
-    <p-message severity="secondary" styleClass="form-message" role="status">
-      <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
-      טוען תיק...
-    </p-message>
-  } @else {
-    <section class="form-section ccf-card">
-      <h2 class="section-title ccf-card__title">פרטי תיק</h2>
-      <div class="grid-row">
-        <div class="form-group">
-          <label for="shipmentFile">תיק שילוח מקושר</label>
-          <app-search-select
-            inputId="shipmentFile"
-            placeholder="חיפוש לפי מספר תיק, MBL או לקוח..."
-            clearLabel="ללא קישור (תיק עצמאי)"
-            [options]="shipmentFileOptions()"
-            [selected]="selectedShipmentFileId()"
-            [disabled]="isReadOnly() || loadingShipmentFiles()"
-            (selectedChange)="onShipmentFileChange($event)"
-          />
-        </div>
+  @if (errorMessage(); as message) {
+    <p-message severity="error" styleClass="form-message form-message--error" role="alert">{{ message }}</p-message>
+  }
 
-        @if (savedCcf(); as ccf) {
-          <div class="form-group">
-            <label>סטטוס</label>
-            <input type="text" pInputText [value]="statusLabels[ccf.status]" readonly />
-          </div>
-        }
+  <app-import-files-panel
+    [context]="ccfContext()"
+    [documentTypes]="ccfDocumentTypes"
+    [contextLabel]="selectedCcf()?.fileNumber ?? null"
+    emptyHint="בחר תיק עמילות מהרשימה כדי להציג את המסמכים שלו"
+    layout="split"
+  >
+    <!-- Projected into the panel's left-hand side. -->
+    <section class="ccf-records" aria-label="רשימת תיקי עמילות">
+      <h2 class="section-title ccf-records__title">
+        <i class="fa-solid fa-folder-open" aria-hidden="true"></i>
+        תיקי עמילות
+        <span class="ccf-records__count">({{ ccfs().length }})</span>
+      </h2>
+
+      <p-iconfield class="ccf-records__search">
+        <p-inputicon styleClass="fa-solid fa-magnifying-glass" />
+        <input
+          #ccfsSearch
+          pInputText
+          pSize="small"
+          type="search"
+          placeholder="חיפוש לפי מס' תיק או שטר"
+          aria-label="חיפוש תיק עמילות"
+          [fluid]="true"
+          (input)="ccfsTable.filterGlobal(ccfsSearch.value, 'contains')"
+          (keydown.enter)="$event.preventDefault()"
+        />
+      </p-iconfield>
+
+      <div class="data-table-wrapper">
+        <p-table
+          #ccfsTable
+          [value]="ccfs()"
+          dataKey="id"
+          [globalFilterFields]="['fileNumber', 'shipmentFileMblNumber', 'hblNumber', 'createdByName']"
+          [appTableSort]="ccfSort"
+          [rowTrackBy]="trackById"
+          [scrollable]="true"
+          scrollHeight="flex"
+          [virtualScroll]="true"
+          [virtualScrollItemSize]="45"
+          size="small"
+          styleClass="ccf-table"
+        >
+          <ng-template #header>
+            <tr>
+              <th pSortableColumn="fileNumber">מס' תיק <p-sortIcon field="fileNumber" /></th>
+              <th pSortableColumn="billNumber">שטר <p-sortIcon field="billNumber" /></th>
+              <th pSortableColumn="status">סטטוס <p-sortIcon field="status" /></th>
+              <th pSortableColumn="createdAt">תאריך פתיחה <p-sortIcon field="createdAt" /></th>
+            </tr>
+          </ng-template>
+          <ng-template #body let-ccf [rowOf]="ccfs()">
+            <tr
+              class="data-table__row--clickable"
+              [class.data-table__row--selected]="selectedId() === ccf.id"
+              [attr.aria-current]="selectedId() === ccf.id ? 'true' : null"
+              tabindex="0"
+              (click)="select(ccf.id)"
+              (keydown.enter)="select(ccf.id)"
+              (keydown.space)="$event.preventDefault(); select(ccf.id)"
+            >
+              <td class="data-table__numeric ccf-table__id">{{ ccf.fileNumber }}</td>
+              <td class="data-table__numeric" dir="ltr">{{ billNumber(ccf) ?? '—' }}</td>
+              <td>
+                <app-status-tag [status]="ccf.status" [label]="statusLabels[ccf.status]" />
+              </td>
+              <td class="data-table__numeric">{{ formatDate(ccf.createdAt) }}</td>
+            </tr>
+          </ng-template>
+          <ng-template #emptymessage>
+            <tr>
+              <td colspan="4" class="data-table__empty">
+                @if (loading()) {
+                  טוען תיקי עמילות…
+                } @else if (ccfs().length) {
+                  לא נמצאו תיקים התואמים לחיפוש
+                } @else {
+                  אין עדיין תיקי עמילות — צור תיק חדש
+                }
+              </td>
+            </tr>
+          </ng-template>
+        </p-table>
       </div>
     </section>
-
-    @if (!isReadOnly()) {
-      @if (relatedOrderIds(); as orderIds) {
-        <!-- Linked to a shipping case: manage its orders' paperwork instead of the CCF's own. -->
-        <section class="form-section ccf-card">
-          <h2 class="section-title ccf-card__title">מסמכי ההזמנות בתיק השילוח</h2>
-          <app-related-order-documents
-            [orderIds]="orderIds"
-            [(staged)]="stagedOrderFiles"
-            bannerText="הקבצים יועלו להזמנות לאחר שמירת התיק"
-          />
-        </section>
-      } @else {
-        <section class="form-section ccf-card">
-          <h2 class="section-title ccf-card__title">ניירת</h2>
-
-          <app-document-staging-list
-            [documentTypes]="ccfDocumentTypes"
-            [requiredTypes]="requiredDocumentTypes"
-            [(files)]="stagedFiles"
-            bannerText="הקבצים יועלו לשרת לאחר שמירת התיק"
-          />
-        </section>
-      }
-    }
-
-    @if (ccfContext(); as context) {
-      <section class="form-section ccf-card">
-        <h2 class="section-title ccf-card__title">ניירת</h2>
-        <app-import-files-panel [context]="context" [documentTypes]="ccfDocumentTypes" />
-      </section>
-    }
-
-    @if (errorMessage(); as message) {
-      <p-message severity="error" styleClass="form-message form-message--error" role="alert">{{ message }}</p-message>
-    }
-
-    @if (!isReadOnly()) {
-      <div class="form-actions ccf-actions">
-        <p-button
-          label="ביטול"
-          severity="secondary"
-          [outlined]="true"
-          [disabled]="saving()"
-          (onClick)="onCancel()"
-        />
-        <p-button
-          [label]="saving() ? 'שומר...' : 'שמירת תיק עמילות'"
-          icon="fa-solid fa-floppy-disk"
-          [loading]="saving()"
-          [disabled]="saving()"
-          (onClick)="onSave()"
-        />
-      </div>
-    }
-  }
+  </app-import-files-panel>
 </div>

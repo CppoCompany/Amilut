@@ -58,11 +58,15 @@
     <h3 class="panel-documents__title">
       <i class="fa-solid fa-file-lines" aria-hidden="true"></i>
       מסמכים
+      @if (contextLabel(); as label) {
+        <span class="panel-documents__context" aria-hidden="true">·</span>
+        <span class="panel-documents__context-label" dir="ltr">{{ label }}</span>
+      }
     </h3>
   }
 
   @if (context() === null) {
-    <p class="hint-text documents-hint">בחר הזמנה או תיק עמילות כדי להציג את הקבצים שלו</p>
+    <p class="hint-text documents-hint">{{ emptyHint() }}</p>
   } @else if (loading()) {
     <p class="hint-text documents-hint">טוען קבצים…</p>
   } @else if (layout() === 'split') {
