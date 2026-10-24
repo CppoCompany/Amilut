@@ -123,6 +123,14 @@
     font-variant-numeric: tabular-nums;
   }
 
+  // Figure headers keep the header-cell typography (as "מק"ט"); the global
+  // .num figure font applies to the values only.
+  th.num {
+    font-family: inherit;
+    font-size: inherit;
+    letter-spacing: inherit;
+  }
+
   // The SKU may wrap to keep the table narrow.
   td.sku {
     min-width: 5.5rem;
