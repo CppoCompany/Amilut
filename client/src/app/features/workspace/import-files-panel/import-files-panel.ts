@@ -119,6 +119,11 @@ export class ImportFilesPanel {
    *  CCF screen passes a restricted 4-option subset. */
   readonly documentTypes = input<readonly ImportDocumentType[]>(IMPORT_DOCUMENT_TYPES);
   readonly layout = input<ImportFilesPanelLayout>('stacked');
+  /** Shown in place of the documents while no context is set. */
+  readonly emptyHint = input('בחר הזמנה או תיק עמילות כדי להציג את הקבצים שלו');
+  /** The selected record's display name (e.g. its file number), appended to
+   *  the `split` layout's "מסמכים" heading so it is clear whose files these are. */
+  readonly contextLabel = input<string | null>(null);
 
   protected readonly documentTypeLabels = IMPORT_DOCUMENT_TYPE_LABELS;
   /** Kind of paperwork the next upload is filed as — the server requires it, so uploads are gated on it. */

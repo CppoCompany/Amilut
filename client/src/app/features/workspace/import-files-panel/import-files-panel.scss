@@ -122,6 +122,17 @@
   color: var(--color-brand);
 }
 
+// "· CCF1000" after the heading — the selected record.
+.panel-documents__context {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.panel-documents__context-label {
+  color: var(--color-accent);
+  font-variant-numeric: tabular-nums;
+}
+
 // Row above the drop zone: the "סוג מסמך" picker; wraps on narrow screens.
 .panel-toolbar {
   display: flex;
