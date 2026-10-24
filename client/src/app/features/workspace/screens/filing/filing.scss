@@ -1,10 +1,24 @@
-// Component-scoped additions to the shared form styles (see src/styles.scss).
-// The upload/documents-table styling moved to `ImportFilesPanel`, which now
-// owns that UI; this screen is just the picker + panel wiring.
+// The page fills the workspace content area, so the import-files panel's
+// record tables and documents list can fill it too (see its `split` layout).
+:host {
+  display: flex;
+  flex-direction: column;
+}
 
-// Projected into the panel's toolbar row, beside "סוג מסמך" — same width rules.
-app-filing-context-picker {
-  display: block;
-  flex: 1 1 260px;
-  max-width: 360px;
+.filing-page {
+  flex: 1;
+}
+
+.filing-page > .form-section {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+// Single column: the page grows and scrolls instead.
+@media (max-width: 1100px) {
+  .filing-page,
+  .filing-page > .form-section {
+    flex: none;
+  }
 }

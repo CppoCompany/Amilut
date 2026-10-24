@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
@@ -12,6 +13,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
+import { SortEvent } from 'primeng/api';
 import { Button } from 'primeng/button';
 import { Message } from 'primeng/message';
 import { Select } from 'primeng/select';
@@ -28,7 +30,7 @@ import type { FilingContext } from '../../../api/filing-context.model';
 import { ImportFilesApi } from '../../../api/import-files-api';
 import type { UploadedImportFileDto } from '../../../api/models';
 import { ConfirmDialog } from '../../../shared/confirm-dialog/confirm-dialog';
-import { TableSort } from '../../../shared/table-sort/table-sort';
+import { compareSortKeys, TableSort, toSortKey } from '../../../shared/table-sort/table-sort';
 import { TypedRow } from '../../../shared/typed-row/typed-row';
 
 /** One row of a category's documents list — a file stored on the server for
@@ -53,6 +55,16 @@ interface DocumentCategory {
   docs: ShipmentDocument[];
 }
 
+/** One row of the `split` layout's single, virtual-scrolled documents table:
+ *  a category's caption, its "none uploaded" line, or one of its files. */
+type DocumentListRow =
+  | { kind: 'category'; key: string; label: string; count: number }
+  | { kind: 'empty'; key: string }
+  | { kind: 'doc'; key: string; doc: ShipmentDocument };
+
+/** Sortable columns of the documents table. */
+type DocumentSortField = 'name' | 'uploadedAt' | 'bytes';
+
 const UPLOAD_FAILED = 'העלאת הקבצים נכשלה';
 const LOAD_FAILED = 'טעינת רשימת הקבצים נכשלה';
 
@@ -63,17 +75,36 @@ const LOAD_FAILED = 'טעינת רשימת הקבצים נכשלה';
 export const BLOB_URL_TTL_MS = 60_000;
 
 /**
- * The upload + documents-table UI shared by the Filing screen (below its
- * Order/CCF picker) and the CCF screen (inline, scoped to the CCF just
+ * How the panel arranges itself: `stacked` (upload above the documents — the
+ * CCF screen) or `split` (upload on the right, the projected record list and
+ * the selected record's documents on the left — the Filing screen).
+ */
+export type ImportFilesPanelLayout = 'stacked' | 'split';
+
+/**
+ * The upload + documents-table UI shared by the Filing screen (beside its
+ * Order/CCF tables) and the CCF screen (inline, scoped to the CCF just
  * saved). Extracted out of `FilingScreen` so the exact same upload/list/
  * open-in-tab logic isn't duplicated between the two.
  */
 @Component({
   selector: 'app-import-files-panel',
-  imports: [FormsModule, Button, Message, Select, TableModule, Tooltip, ConfirmDialog, TableSort, TypedRow],
+  imports: [
+    FormsModule,
+    NgTemplateOutlet,
+    Button,
+    Message,
+    Select,
+    TableModule,
+    Tooltip,
+    ConfirmDialog,
+    TableSort,
+    TypedRow,
+  ],
   templateUrl: './import-files-panel.html',
   styleUrl: './import-files-panel.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { '[class.import-files-panel--split]': "layout() === 'split'" },
 })
 export class ImportFilesPanel {
   private readonly importFilesApi = inject(ImportFilesApi);
@@ -87,6 +118,7 @@ export class ImportFilesPanel {
   /** Which document types the dropdown offers — the full set by default; the
    *  CCF screen passes a restricted 4-option subset. */
   readonly documentTypes = input<readonly ImportDocumentType[]>(IMPORT_DOCUMENT_TYPES);
+  readonly layout = input<ImportFilesPanelLayout>('stacked');
 
   protected readonly documentTypeLabels = IMPORT_DOCUMENT_TYPE_LABELS;
   /** Kind of paperwork the next upload is filed as — the server requires it, so uploads are gated on it. */
@@ -131,6 +163,35 @@ export class ImportFilesPanel {
       docs: byType.get(type) ?? [],
     }));
   });
+
+  /** The `split` documents table's sort, applied within each category. */
+  protected readonly documentSort = signal<{ field: DocumentSortField; order: 1 | -1 } | null>(null);
+
+  /**
+   * `documentsByType()` flattened for the `split` layout's one table, so the
+   * whole list virtual-scrolls instead of one table per category. Rows keep a
+   * single height (`virtualScrollItemSize`), captions included.
+   */
+  protected readonly documentRows = computed<DocumentListRow[]>(() => {
+    const sort = this.documentSort();
+    return this.documentsByType().flatMap((category): DocumentListRow[] => {
+      const caption: DocumentListRow = {
+        kind: 'category',
+        key: `category-${category.type}`,
+        label: category.label,
+        count: category.docs.length,
+      };
+      if (category.docs.length === 0) return [caption, { kind: 'empty', key: `empty-${category.type}` }];
+      const docs = sort
+        ? [...category.docs].sort((a, b) =>
+            compareSortKeys(toSortKey(a[sort.field]), toSortKey(b[sort.field]), sort.order),
+          )
+        : category.docs;
+      return [caption, ...docs.map((doc): DocumentListRow => ({ kind: 'doc', key: `doc-${doc.id}`, doc }))];
+    });
+  });
+
+  protected readonly trackDocumentRow = (_: number, row: DocumentListRow): string => row.key;
 
   constructor() {
     this.loadDocumentsOnContextChange();
@@ -261,6 +322,21 @@ export class ImportFilesPanel {
           this.errorMessage.set(`מחיקת הקובץ "${doc.name}" נכשלה`);
         },
       });
+  }
+
+  /**
+   * The `split` table's header sort (`customSort`): `appTableSort` would sort
+   * the captions in with the files, so files are sorted within their category
+   * instead. PrimeNG re-emits this whenever the value changes — the guard
+   * keeps that from looping.
+   */
+  protected onDocumentsSort(event: SortEvent): void {
+    const field = event.field as DocumentSortField | undefined;
+    if (!field) return;
+    const order = event.order === -1 ? -1 : 1;
+    const current = this.documentSort();
+    if (current?.field === field && current.order === order) return;
+    this.documentSort.set({ field, order });
   }
 
   private isOfferedDocumentType(value: string): value is ImportDocumentType {

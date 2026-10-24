@@ -1,0 +1,166 @@
+<p-tabs [value]="kind()" (valueChange)="onKindChange($event)">
+  <p-tablist>
+    <p-tab value="order">
+      <i class="fa-solid fa-box" aria-hidden="true"></i>
+      הזמנות
+      <span class="records-tab__count">({{ orders().length }})</span>
+    </p-tab>
+    <p-tab value="ccf">
+      <i class="fa-solid fa-folder-open" aria-hidden="true"></i>
+      תיקי עמילות
+      <span class="records-tab__count">({{ ccfs().length }})</span>
+    </p-tab>
+  </p-tablist>
+
+  @if (errorMessage(); as message) {
+    <p-message severity="error" styleClass="form-message form-message--error" role="alert">{{ message }}</p-message>
+  }
+
+  <p-tabpanels>
+    <p-tabpanel value="order">
+      <p-iconfield class="records-search">
+        <p-inputicon styleClass="fa-solid fa-magnifying-glass" />
+        <input
+          #ordersSearch
+          pInputText
+          pSize="small"
+          type="search"
+          placeholder="חיפוש לפי מספר הזמנה או לקוח"
+          aria-label="חיפוש הזמנה"
+          [fluid]="true"
+          (input)="ordersTable.filterGlobal(ordersSearch.value, 'contains')"
+          (keydown.enter)="$event.preventDefault()"
+        />
+      </p-iconfield>
+      <div class="data-table-wrapper">
+        <p-table
+          #ordersTable
+          [value]="orders()"
+          dataKey="id"
+          [globalFilterFields]="['id', 'customerName', 'handlerName']"
+          [appTableSort]="orderSort"
+          [rowTrackBy]="trackById"
+          [scrollable]="true"
+          scrollHeight="flex"
+          [virtualScroll]="true"
+          [virtualScrollItemSize]="45"
+          size="small"
+          styleClass="records-table"
+        >
+          <ng-template #header>
+            <tr>
+              <th pSortableColumn="id">מספר הזמנה <p-sortIcon field="id" /></th>
+              <th pSortableColumn="customerName">לקוח <p-sortIcon field="customerName" /></th>
+              <th pSortableColumn="status">סטטוס <p-sortIcon field="status" /></th>
+              <th pSortableColumn="createdAt">תאריך פתיחה <p-sortIcon field="createdAt" /></th>
+            </tr>
+          </ng-template>
+          <ng-template #body let-order [rowOf]="orders()">
+            <tr
+              class="data-table__row--clickable"
+              [class.data-table__row--selected]="isSelected('order', order.id)"
+              [attr.aria-current]="isSelected('order', order.id) ? 'true' : null"
+              tabindex="0"
+              (click)="select('order', order.id)"
+              (keydown.enter)="select('order', order.id)"
+              (keydown.space)="$event.preventDefault(); select('order', order.id)"
+            >
+              <td class="data-table__numeric records-table__id">{{ order.id }}</td>
+              <td>{{ order.customerName ?? '—' }}</td>
+              <td>
+                <app-status-tag [status]="order.status" [label]="orderStatusLabels[order.status]" />
+              </td>
+              <td class="data-table__numeric">{{ formatDate(order.createdAt) }}</td>
+            </tr>
+          </ng-template>
+          <ng-template #emptymessage>
+            <tr>
+              <td colspan="4" class="data-table__empty">
+                @if (loadingOrders()) {
+                  טוען הזמנות…
+                } @else if (orders().length) {
+                  לא נמצאו הזמנות התואמות לחיפוש
+                } @else {
+                  אין עדיין הזמנות
+                }
+              </td>
+            </tr>
+          </ng-template>
+        </p-table>
+      </div>
+    </p-tabpanel>
+
+    <p-tabpanel value="ccf">
+      <p-iconfield class="records-search">
+        <p-inputicon styleClass="fa-solid fa-magnifying-glass" />
+        <input
+          #ccfsSearch
+          pInputText
+          pSize="small"
+          type="search"
+          placeholder="חיפוש לפי מס' תיק או שטר"
+          aria-label="חיפוש תיק עמילות"
+          [fluid]="true"
+          (input)="ccfsTable.filterGlobal(ccfsSearch.value, 'contains')"
+          (keydown.enter)="$event.preventDefault()"
+        />
+      </p-iconfield>
+      <div class="data-table-wrapper">
+        <p-table
+          #ccfsTable
+          [value]="ccfs()"
+          dataKey="id"
+          [globalFilterFields]="['fileNumber', 'shipmentFileMblNumber', 'hblNumber']"
+          [appTableSort]="ccfSort"
+          [rowTrackBy]="trackById"
+          [scrollable]="true"
+          scrollHeight="flex"
+          [virtualScroll]="true"
+          [virtualScrollItemSize]="45"
+          size="small"
+          styleClass="records-table"
+        >
+          <ng-template #header>
+            <tr>
+              <th pSortableColumn="fileNumber">מס' תיק <p-sortIcon field="fileNumber" /></th>
+              <th pSortableColumn="billNumber">שטר <p-sortIcon field="billNumber" /></th>
+              <th pSortableColumn="status">סטטוס <p-sortIcon field="status" /></th>
+              <th pSortableColumn="createdAt">תאריך פתיחה <p-sortIcon field="createdAt" /></th>
+            </tr>
+          </ng-template>
+          <ng-template #body let-ccf [rowOf]="ccfs()">
+            <tr
+              class="data-table__row--clickable"
+              [class.data-table__row--selected]="isSelected('ccf', ccf.id)"
+              [attr.aria-current]="isSelected('ccf', ccf.id) ? 'true' : null"
+              tabindex="0"
+              (click)="select('ccf', ccf.id)"
+              (keydown.enter)="select('ccf', ccf.id)"
+              (keydown.space)="$event.preventDefault(); select('ccf', ccf.id)"
+            >
+              <td class="data-table__numeric records-table__id">{{ ccf.fileNumber }}</td>
+              <td class="data-table__numeric" dir="ltr">{{ billNumber(ccf) ?? '—' }}</td>
+              <td>
+                <app-status-tag [status]="ccf.status" [label]="ccfStatusLabels[ccf.status]" />
+              </td>
+              <td class="data-table__numeric">{{ formatDate(ccf.createdAt) }}</td>
+            </tr>
+          </ng-template>
+          <ng-template #emptymessage>
+            <tr>
+              <td colspan="4" class="data-table__empty">
+                @if (loadingCcfs()) {
+                  טוען תיקי עמילות…
+                } @else if (ccfs().length) {
+                  לא נמצאו תיקים התואמים לחיפוש
+                } @else {
+                  אין עדיין תיקי עמילות — צור תיק במסך יצירת תיק עמילות
+                }
+              </td>
+            </tr>
+          </ng-template>
+        </p-table>
+      </div>
+    </p-tabpanel>
+  </p-tabpanels>
+</p-tabs>

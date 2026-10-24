@@ -1,16 +1,9 @@
-<form class="order-form form-page--wide">
+<div class="order-form form-page--wide filing-page">
   <section class="form-section">
     <h2 class="section-title">תיוק ניירת יבוא</h2>
 
-    <div class="section-header">
-      <div class="title-row">
-        <i class="fa-solid fa-file-lines"></i>
-        <div style="font-weight: 700; font-size: 1.05rem; color: var(--text-dark)">מסמכי משלוח</div>
-      </div>
-    </div>
-
-    <app-import-files-panel [context]="context()">
-      <app-filing-context-picker />
+    <app-import-files-panel [context]="context()" layout="split">
+      <app-filing-records />
     </app-import-files-panel>
   </section>
-</form>
+</div>
