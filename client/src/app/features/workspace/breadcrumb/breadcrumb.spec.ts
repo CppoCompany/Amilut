@@ -17,6 +17,7 @@ import { NavigationService } from '../navigation.service';
 import { provideWorkspaceTestRouting, settleNavigation } from '../navigation.testing';
 import { SelectionStateService } from '../selection-state.service';
 import { Breadcrumb } from './breadcrumb';
+import { SEA_MBL_AIR_FIELDS } from '../../../api/testing/sea-defaults';
 
 const ORDER: OrderDto = {
   id: 1001,
@@ -80,6 +81,7 @@ const MBL: MblDto = {
   handlerName: null,
   ccfId: null,
   containers: [],
+  ...SEA_MBL_AIR_FIELDS,
   createdAt: '2026-09-01T08:30:00.000Z',
   updatedAt: '2026-09-01T08:30:00.000Z',
 };

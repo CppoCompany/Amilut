@@ -19,6 +19,13 @@ export class ListCcfQuery {
   @Min(1)
   shipmentFileId?: number;
 
+  @ApiPropertyOptional({ type: 'integer', example: 15 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  hblId?: number;
+
   @ApiPropertyOptional({ type: 'integer', example: 200 })
   @IsOptional()
   @Type(() => Number)

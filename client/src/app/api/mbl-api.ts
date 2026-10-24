@@ -2,7 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
-import type { MblStatus } from './enums';
+import type { MblStatus, ShipmentStatus } from './enums';
 import type {
   CreateMblDto,
   MblDto,
@@ -75,6 +75,11 @@ export class MblApi {
 
   update(id: number, dto: UpdateMblDto): Observable<MblDto> {
     return this.http.patch<MblDto>(`${this.baseUrl}/${id}`, dto);
+  }
+
+  /** Air MAWB shipment status; moving it backwards needs a `reason`. */
+  changeShipmentStatus(id: number, status: ShipmentStatus, reason?: string): Observable<MblDto> {
+    return this.http.patch<MblDto>(`${this.baseUrl}/${id}/shipment-status`, { status, reason });
   }
 
   remove(id: number): Observable<void> {

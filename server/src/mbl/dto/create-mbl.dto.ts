@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
   ArrayMinSize,
   IsArray,
   IsDateString,
@@ -9,12 +10,15 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Matches,
   Min,
   MaxLength,
   ValidateNested,
 } from 'class-validator';
+import { AirMethod } from '../../air/air.enums';
 import { PaymentTerms } from '../../orders/orders.enums';
 import { MblShippingType, MblStatus, SeaMethod } from '../mbl.enums';
+import { CreateFlightLegDto } from './flight-leg.dto';
 import { CreateMblContainerDto } from './mbl-container.dto';
 
 /**
@@ -34,8 +38,15 @@ export class CreateMblDto {
   @IsEnum(SeaMethod)
   seaMethod?: SeaMethod;
 
-  // Set only for sea_method = 'fcl_lcl': one customer, shared by every HBL
-  // created under this MBL.
+  // Required iff shippingType = 'air'.
+  @ApiPropertyOptional({ enum: AirMethod, enumName: 'AirMethod' })
+  @IsOptional()
+  @IsEnum(AirMethod)
+  airMethod?: AirMethod;
+
+  // Set only for sea_method = 'fcl_lcl' (one customer, shared by every HBL
+  // created under this MBL) and air_method = 'direct' (required there — the
+  // importer of the MAWB, carried by its hidden mirror house).
   @ApiPropertyOptional({ type: 'integer', example: 3 })
   @IsOptional()
   @IsInt()
@@ -193,6 +204,69 @@ export class CreateMblDto {
   @IsOptional()
   @IsEnum(MblStatus)
   status?: MblStatus;
+
+  // ── Air (MAWB) only — rejected on a sea MBL ─────────────────────────────────
+  @ApiPropertyOptional({ example: 'HKG' })
+  @IsOptional()
+  @Matches(/^[A-Z]{3}$/)
+  departureAirportCode?: string;
+
+  /** Must be an airport flagged as an import destination (see GET /air/airports). */
+  @ApiPropertyOptional({ example: 'TLV' })
+  @IsOptional()
+  @Matches(/^[A-Z]{3}$/)
+  destinationAirportCode?: string;
+
+  /** A configured terminal; mutually exclusive with `cargoTerminalOther`. */
+  @ApiPropertyOptional({ type: 'integer', nullable: true, example: 1 })
+  @IsOptional()
+  @IsInt()
+  cargoTerminalId?: number | null;
+
+  /** Exceptional terminal not in the list. */
+  @ApiPropertyOptional({ type: 'string', nullable: true })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  cargoTerminalOther?: string | null;
+
+  @ApiPropertyOptional({ type: 'integer', example: 12 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  pieces?: number;
+
+  /** The chargeable weight printed on / approved from the AWB. When it differs
+   *  from the calculated value it is an override and needs
+   *  `chargeableWeightOverrideReason`. `null` clears it. */
+  @ApiPropertyOptional({ type: 'number', nullable: true, example: 412.5 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  approvedChargeableWeightKg?: number | null;
+
+  @ApiPropertyOptional({ example: 'Airline rounded per its own tariff' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  chargeableWeightOverrideReason?: string;
+
+  /** IATA special handling codes, e.g. DGR, PER, VAL. */
+  @ApiPropertyOptional({ type: 'string', isArray: true, example: ['PER'] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(20)
+  @Matches(/^[A-Z0-9]{2,4}$/, { each: true })
+  specialHandlingCodes?: string[];
+
+  /** Routing in travel order. When provided it REPLACES all legs. */
+  @ApiPropertyOptional({ type: CreateFlightLegDto, isArray: true })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(6)
+  @ValidateNested({ each: true })
+  @Type(() => CreateFlightLegDto)
+  flightLegs?: CreateFlightLegDto[];
 
   // ── Containers table — groupage_fcl only ────────────────────────────────────
   @ApiPropertyOptional({ type: CreateMblContainerDto, isArray: true })

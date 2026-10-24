@@ -1,5 +1,6 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { AirReferenceService } from '../air/air-reference.service';
 import { DatabaseService } from '../database/database.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
@@ -64,6 +65,7 @@ const validCreate: CreateOrderDto = {
 describe('OrdersService', () => {
   let service: OrdersService;
   let db: DbMock;
+  let airReference: { isAirImportDestination: jest.Mock };
 
   beforeEach(async () => {
     db = {
@@ -71,10 +73,34 @@ describe('OrdersService', () => {
       queryOne: jest.fn(),
       transaction: jest.fn(),
     };
+    airReference = { isAirImportDestination: jest.fn() };
     const moduleRef = await Test.createTestingModule({
-      providers: [OrdersService, { provide: DatabaseService, useValue: db }],
+      providers: [
+        OrdersService,
+        { provide: DatabaseService, useValue: db },
+        { provide: AirReferenceService, useValue: airReference },
+      ],
     }).compile();
     service = moduleRef.get(OrdersService);
+  });
+
+  describe('air destination', () => {
+    it('rejects an air order whose destination is not an airport import destination', async () => {
+      airReference.isAirImportDestination.mockResolvedValue(false);
+      await expect(
+        service.create({ ...validCreate, shipmentType: ShipmentType.AIR }, 7),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(airReference.isAirImportDestination).toHaveBeenCalledWith(
+        Destination.ASHDOD,
+      );
+      expect(db.queryOne).not.toHaveBeenCalled();
+    });
+
+    it('never consults the airport table for a sea order', async () => {
+      db.queryOne.mockResolvedValueOnce(null);
+      await expect(service.create(validCreate, 7)).rejects.toBeDefined();
+      expect(airReference.isAirImportDestination).not.toHaveBeenCalled();
+    });
   });
 
   describe('create', () => {

@@ -5,6 +5,14 @@ import {
 } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
 import { insertNotification } from '../notifications/notifications.util';
+import {
+  ClearanceStatus,
+  StatusTrack,
+} from '../status-tracks/status-tracks.enums';
+import {
+  initTrackIn,
+  StatusTracksService,
+} from '../status-tracks/status-tracks.service';
 import { CcfStatus } from './ccf.enums';
 import { CcfDto } from './dto/ccf.dto';
 import { CreateCcfDto } from './dto/create-ccf.dto';
@@ -16,7 +24,10 @@ interface CcfRow {
   file_number: string;
   shipment_file_id: number | null;
   shipment_file_mbl_number: string | null;
+  hbl_id: number | null;
+  hbl_number: string | null;
   status: CcfStatus;
+  clearance_status: ClearanceStatus | null;
   created_by: number;
   created_by_name: string | null;
   created_at: Date | string;
@@ -28,18 +39,25 @@ const CCF_SELECT = `
          c.file_number,
          c.shipment_file_id,
          m.mbl_number AS shipment_file_mbl_number,
+         c.hbl_id,
+         COALESCE(h.hbl_number, h.ibl_number) AS hbl_number,
          c.status,
+         c.clearance_status,
          c.created_by,
          u.name AS created_by_name,
          c.created_at,
          c.updated_at
     FROM customs_clearance_files c
-    LEFT JOIN mbl m ON m.id = c.shipment_file_id
+    LEFT JOIN hbl h ON h.id = c.hbl_id
+    LEFT JOIN mbl m ON m.id = COALESCE(c.shipment_file_id, h.mbl_id)
     LEFT JOIN users u ON u.id = c.created_by`;
 
 @Injectable()
 export class CcfService {
-  constructor(private readonly db: DatabaseService) {}
+  constructor(
+    private readonly db: DatabaseService,
+    private readonly tracks: StatusTracksService,
+  ) {}
 
   /**
    * Opens a Customs Clearance File, optionally linked to an existing
@@ -57,6 +75,9 @@ export class CcfService {
    * least been attempted in the same atomic unit.
    */
   async create(dto: CreateCcfDto, userId: number): Promise<CcfDto> {
+    if (dto.hblId !== undefined) {
+      return this.createForHouse(dto, userId);
+    }
     let shipmentFile: { id: number; handler_user_id: number | null } | null =
       null;
     if (dto.shipmentFileId !== undefined) {
@@ -136,6 +157,92 @@ export class CcfService {
     return toCcfDto(row);
   }
 
+  /**
+   * Air: opens the CCF of one HAWB (one per house / importer). The sea flow
+   * above is untouched. Notifies the house's handler, else its MAWB's, else
+   * the creator. The clearance track starts at `not_started`.
+   */
+  private async createForHouse(
+    dto: CreateCcfDto,
+    userId: number,
+  ): Promise<CcfDto> {
+    if (dto.shipmentFileId !== undefined) {
+      throw new BadRequestException(
+        'יש לקשר תיק סליקה ל-HAWB או לתיק שילוח — לא לשניהם',
+      );
+    }
+    const house = await this.db.queryOne<{
+      id: number;
+      shipping_type: string;
+      label: string;
+      handler_user_id: number | null;
+      master_handler_user_id: number | null;
+    }>(
+      `SELECT h.id, h.shipping_type, COALESCE(h.hbl_number, m.mbl_number, h.ibl_number) AS label,
+              h.handler_user_id, m.handler_user_id AS master_handler_user_id
+         FROM hbl h LEFT JOIN mbl m ON m.id = h.mbl_id
+        WHERE h.id = $1`,
+      [dto.hblId],
+    );
+    if (!house) {
+      throw new NotFoundException(`HBL ${dto.hblId} not found`);
+    }
+    if (house.shipping_type !== 'air') {
+      throw new BadRequestException(
+        'תיק סליקה לפי House נתמך כרגע רק במשלוח אווירי',
+      );
+    }
+    const recipientUserId =
+      house.handler_user_id ?? house.master_handler_user_id ?? userId;
+
+    const newId = await this.db.transaction(async (client) => {
+      let inserted;
+      try {
+        inserted = await client.query<{ id: number }>(
+          `INSERT INTO customs_clearance_files (file_number, hbl_id, status, created_by)
+           VALUES ('CCF' || nextval('customs_clearance_files_file_number_seq'), $1, $2, $3)
+           RETURNING id`,
+          [house.id, CcfStatus.OPEN, userId],
+        );
+      } catch (err) {
+        throw translateWriteError(err);
+      }
+      const ccfId = inserted.rows[0].id;
+      await initTrackIn(
+        client,
+        StatusTrack.CLEARANCE,
+        ccfId,
+        ClearanceStatus.NOT_STARTED,
+        userId,
+      );
+      await insertNotification(client, {
+        recipientUserId,
+        message: `נפתח תיק סליקת מכס חדש עבור HAWB ${house.label}`,
+        relatedCcfId: ccfId,
+        actorUserId: userId,
+      });
+      return ccfId;
+    });
+    return this.findById(newId);
+  }
+
+  /** Air (per-house) CCFs: the clearance status track; backwards needs a reason. */
+  async changeClearanceStatus(
+    id: number,
+    status: ClearanceStatus,
+    reason: string | undefined,
+    userId: number,
+  ): Promise<CcfDto> {
+    await this.tracks.changeManually({
+      track: StatusTrack.CLEARANCE,
+      entityId: id,
+      to: status,
+      reason,
+      userId,
+    });
+    return this.findById(id);
+  }
+
   /** Batch list for the Order/CCF picker (Import Paperwork Filing's direct-access flow). */
   async findAll(query: ListCcfQuery): Promise<CcfDto[]> {
     const where: string[] = [];
@@ -147,6 +254,10 @@ export class CcfService {
     if (query.shipmentFileId !== undefined) {
       params.push(query.shipmentFileId);
       where.push(`c.shipment_file_id = $${params.length}`);
+    }
+    if (query.hblId !== undefined) {
+      params.push(query.hblId);
+      where.push(`c.hbl_id = $${params.length}`);
     }
     params.push(query.limit ?? 200);
     const limitIdx = params.length;
@@ -168,6 +279,9 @@ function translateWriteError(err: unknown): unknown {
     if (pgErr.constraint === 'customs_clearance_files_shipment_file_id_key') {
       return new BadRequestException('לתיק השילוח הזה כבר יש תיק סליקת מכס');
     }
+    if (pgErr.constraint === 'customs_clearance_files_hbl_id_key') {
+      return new BadRequestException('ל-HAWB הזה כבר יש תיק סליקת מכס');
+    }
     return new BadRequestException('מספר תיק הסליקה כבר קיים, נסו שוב');
   }
   if (pgErr?.code === PG_FOREIGN_KEY_VIOLATION) {
@@ -186,7 +300,10 @@ function toCcfDto(row: CcfRow): CcfDto {
     fileNumber: row.file_number,
     shipmentFileId: row.shipment_file_id,
     shipmentFileMblNumber: row.shipment_file_mbl_number,
+    hblId: row.hbl_id ?? null,
+    hblNumber: row.hbl_number ?? null,
     status: row.status,
+    clearanceStatus: row.clearance_status ?? null,
     createdBy: row.created_by,
     createdByName: row.created_by_name,
     createdAt: toIsoString(row.created_at),

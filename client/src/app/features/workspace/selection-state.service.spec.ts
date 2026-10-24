@@ -13,6 +13,7 @@ import {
   ShipmentType,
 } from '../../api/enums';
 import { SelectionStateService } from './selection-state.service';
+import { SEA_MBL_AIR_FIELDS } from '../../api/testing/sea-defaults';
 
 const ORDER_A: OrderDto = {
   id: 1001,
@@ -78,6 +79,7 @@ const MBL_A: MblDto = {
   handlerName: null,
   ccfId: null,
   containers: [],
+  ...SEA_MBL_AIR_FIELDS,
   createdAt: '2026-09-01T08:30:00.000Z',
   updatedAt: '2026-09-01T08:30:00.000Z',
 };

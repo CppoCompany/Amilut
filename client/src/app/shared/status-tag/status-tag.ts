@@ -17,6 +17,22 @@ const SEVERITY: Record<string, TagSeverity> = {
   open: 'info',
   departed: 'success',
   released: 'success',
+  // Air status tracks (shipment / documents / clearance / arrival).
+  booking_confirmed: 'info',
+  in_transit: 'info',
+  arrived: 'success',
+  pending: 'secondary',
+  under_review: 'info',
+  missing_information: 'warn',
+  approved: 'success',
+  not_started: 'secondary',
+  classification: 'info',
+  compliance_check: 'info',
+  ready_for_declaration: 'success',
+  not_arrived: 'secondary',
+  partial: 'warn',
+  complete: 'success',
+  over_received: 'danger',
 };
 
 export function statusSeverity(status: string | null | undefined): TagSeverity {

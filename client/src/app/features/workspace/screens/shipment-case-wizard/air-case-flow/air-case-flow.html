@@ -1,0 +1,287 @@
+<section class="form-section">
+  <div class="case-head">
+    <h2 class="section-title">משלוח אווירי — {{ AIR_METHOD_LABELS[airMethod()] }}</h2>
+    @if (master(); as mbl) {
+      <div class="case-head__meta">
+        <span class="case-head__number">MAWB {{ mbl.mblNumber ?? 'ללא מספר' }}</span>
+        <app-status-tag [status]="mbl.status" [label]="MBL_STATUS_LABELS[mbl.status]" />
+        @if (view() !== 'mawb') {
+          <p-button
+            label="טופס MAWB"
+            icon="fa-solid fa-pen"
+            severity="secondary"
+            [text]="true"
+            size="small"
+            (onClick)="openMawbForm()"
+          />
+        }
+      </div>
+    } @else if (!isDirect()) {
+      <span class="hint-text">טרם נוצר MAWB — ניתן ליצור HAWBs כבר עכשיו ולשייך אותם בהמשך.</span>
+    }
+  </div>
+
+  @if (loading()) {
+    <p class="hint-text">טוען תיק...</p>
+  } @else if (error(); as message) {
+    <p-message severity="error" styleClass="form-message form-message--error" role="alert">{{
+      message
+    }}</p-message>
+  }
+
+  @if (view() !== 'mawb' && master(); as mbl) {
+    <div class="grid-row">
+      <div class="form-group">
+        <label for="shipmentStatus">סטטוס משלוח</label>
+        <p-select
+          inputId="shipmentStatus"
+          [options]="shipmentOptions"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="טרם נקבע"
+          [ngModel]="mbl.shipmentStatus"
+          (ngModelChange)="onShipmentStatus($event)"
+          appendTo="body"
+        />
+        @if (mbl.shipmentStatusSource === 'auto') {
+          <small class="hint-text">נקבע אוטומטית מקטעי הטיסה (ATD / ATA)</small>
+        }
+      </div>
+      <div class="form-group">
+        <label>מסוף מטען</label>
+        <span class="case-head__value">{{
+          mbl.cargoTerminalName ?? mbl.cargoTerminalOther ?? '—'
+        }}</span>
+      </div>
+      <div class="form-group">
+        <label>משקל לחיוב (מחושב / מאושר)</label>
+        <span class="case-head__value">
+          {{ mbl.calculatedChargeableWeightKg ?? '—' }} /
+          {{ mbl.approvedChargeableWeightKg ?? '—' }}
+          @if (mbl.chargeableWeightOverridden) {
+            <i class="fa-solid fa-triangle-exclamation" title="חריגה מתועדת"></i>
+          }
+        </span>
+      </div>
+    </div>
+    @if (pendingShipmentStatus(); as pending) {
+      <div class="correction">
+        <span
+          >החזרת סטטוס המשלוח ל"{{ SHIPMENT_STATUS_LABELS[pending] }}" היא תיקון — יש לציין
+          סיבה:</span
+        >
+        <input
+          type="text"
+          pInputText
+          aria-label="סיבת התיקון"
+          [ngModel]="shipmentReason()"
+          (ngModelChange)="shipmentReason.set($event)"
+        />
+        <p-button
+          label="אישור תיקון"
+          size="small"
+          [disabled]="shipmentReason().trim() === ''"
+          (onClick)="confirmShipmentCorrection()"
+        />
+        <p-button
+          label="ביטול"
+          size="small"
+          severity="secondary"
+          [text]="true"
+          (onClick)="cancelShipmentCorrection()"
+        />
+      </div>
+    }
+  }
+</section>
+
+@switch (view()) {
+  @case ('hawb') {
+    <section class="form-section">
+      <app-air-hawb-form
+        [hbl]="editingHouse()"
+        [mblNumber]="master()?.mblNumber ?? null"
+        [saving]="saving()"
+        [error]="formError()"
+        (save)="onSaveHawb($event)"
+        (cancelled)="backToList()"
+      />
+    </section>
+  }
+  @case ('mawb') {
+    <section class="form-section">
+      <h3 class="subsection-title">{{ master() ? 'עריכת MAWB' : 'יצירת MAWB' }}</h3>
+      <app-air-mawb-form
+        [airMethod]="airMethod()"
+        [mbl]="master()"
+        [mirrorOrderIds]="mirrorOrderIds()"
+        [saving]="saving()"
+        [error]="formError()"
+        (save)="onSaveMawb($event)"
+        (cancelled)="backToList()"
+      />
+    </section>
+  }
+  @default {
+    @if (isDirect()) {
+      @if (mirror(); as house) {
+        <section class="form-section">
+          <h3 class="subsection-title">טיפול במשלוח (הגעות, מסמכים, סליקה)</h3>
+          <app-air-house-ops [house]="house" (changed)="onHouseChanged($event)" />
+        </section>
+      }
+    } @else {
+      <section class="form-section">
+        <div class="list-head">
+          <h3 class="subsection-title">HAWBs בתיק</h3>
+          <p-button
+            label="HAWB חדש"
+            icon="fa-solid fa-plus"
+            size="small"
+            [disabled]="!canAddHouse()"
+            (onClick)="openNewHawb()"
+          />
+        </div>
+        @if (houses().length) {
+          <div class="data-table-wrapper">
+            <p-table [value]="houses()" dataKey="id" size="small">
+              <ng-template #header>
+                <tr>
+                  <th>HAWB</th>
+                  <th>לקוח</th>
+                  <th>חלקים</th>
+                  <th>משקל לחיוב</th>
+                  <th>מסמכים</th>
+                  <th>הגעה</th>
+                  <th><span class="sr-only">פעולות</span></th>
+                </tr>
+              </ng-template>
+              <ng-template #body let-house [rowOf]="houses()">
+                <tr>
+                  <td>{{ hawbLabel(house) }}</td>
+                  <td>{{ house.customerName ?? '—' }}</td>
+                  <td class="data-table__numeric">
+                    {{ house.piecesReceived }} / {{ house.pieces ?? '?' }}
+                  </td>
+                  <td class="data-table__numeric">
+                    {{
+                      house.approvedChargeableWeightKg ?? house.calculatedChargeableWeightKg ?? '—'
+                    }}
+                  </td>
+                  <td>
+                    @if (house.documentStatus; as doc) {
+                      <app-status-tag [status]="doc" [label]="DOCUMENT_STATUS_LABELS[doc]" />
+                    }
+                  </td>
+                  <td>
+                    @if (house.arrivalState; as state) {
+                      <app-status-tag [status]="state" [label]="ARRIVAL_STATE_LABELS[state]" />
+                    }
+                  </td>
+                  <td class="data-table__actions">
+                    <p-button
+                      icon="fa-solid fa-pen"
+                      severity="secondary"
+                      [text]="true"
+                      size="small"
+                      ariaLabel="עריכת HAWB"
+                      (onClick)="editHawb(house)"
+                    />
+                    <p-button
+                      icon="fa-solid fa-list-check"
+                      severity="secondary"
+                      [text]="true"
+                      size="small"
+                      ariaLabel="טיפול: הגעות, סטטוסים, סליקה"
+                      (onClick)="toggleOps(house)"
+                    />
+                  </td>
+                </tr>
+                @if (opsHouseId() === house.id) {
+                  <tr>
+                    <td colspan="7">
+                      <app-air-house-ops [house]="house" (changed)="onHouseChanged($event)" />
+                    </td>
+                  </tr>
+                }
+              </ng-template>
+            </p-table>
+          </div>
+        } @else {
+          <p class="hint-text">עדיין אין HAWBs בתיק.</p>
+        }
+
+        @if (!master()) {
+          <div class="mawb-actions">
+            <p-button
+              label="יצירת MAWB"
+              icon="fa-solid fa-plane"
+              [disabled]="houses().length === 0"
+              (onClick)="openMawbForm()"
+            />
+            <span class="hint-text">או שיוך ל-MAWB קיים:</span>
+            <p-select
+              [options]="existingMawbOptions()"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="בחירת MAWB"
+              ariaLabel="MAWB קיים"
+              [filter]="true"
+              [ngModel]="linkExistingId()"
+              (ngModelChange)="linkExistingId.set($event)"
+              appendTo="body"
+            />
+            <p-button
+              label="שיוך"
+              severity="secondary"
+              [disabled]="linkExistingId() === null || houses().length === 0 || saving()"
+              (onClick)="linkToExisting()"
+            />
+          </div>
+        }
+        @if (formError(); as message) {
+          <p-message severity="error" styleClass="form-message form-message--error" role="alert">{{
+            message
+          }}</p-message>
+        }
+      </section>
+
+      @if (unassignedToOffer().length) {
+        <section class="form-section">
+          <h3 class="subsection-title">HAWBs שממתינים לשיוך ל-MAWB</h3>
+          <div class="data-table-wrapper">
+            <p-table [value]="unassignedToOffer()" dataKey="id" size="small">
+              <ng-template #header>
+                <tr>
+                  <th>HAWB</th>
+                  <th>לקוח</th>
+                  <th>חלקים</th>
+                  <th>נוצר</th>
+                  <th><span class="sr-only">פעולות</span></th>
+                </tr>
+              </ng-template>
+              <ng-template #body let-house [rowOf]="unassignedToOffer()">
+                <tr>
+                  <td>{{ hawbLabel(house) }}</td>
+                  <td>{{ house.customerName ?? '—' }}</td>
+                  <td class="data-table__numeric">{{ house.pieces ?? '—' }}</td>
+                  <td>{{ house.createdAt.slice(0, 10) }}</td>
+                  <td class="data-table__actions">
+                    <p-button
+                      label="צירוף לתיק"
+                      size="small"
+                      severity="secondary"
+                      [text]="true"
+                      [disabled]="!canAddHouse() || saving()"
+                      (onClick)="attachUnassigned(house)"
+                    />
+                  </td>
+                </tr>
+              </ng-template>
+            </p-table>
+          </div>
+        </section>
+      }
+    }
+  }
+}

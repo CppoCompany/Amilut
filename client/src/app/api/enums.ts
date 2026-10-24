@@ -7,10 +7,14 @@
  * compilation here until a label is provided.
  */
 import {
+  AirMethod,
+  ArrivalState,
   CcfStatus,
   ClassificationApproval,
   ClassificationLicense,
+  ClearanceStatus,
   Destination,
+  DocumentStatus,
   ImportDocumentType,
   Incoterm,
   MblShippingType,
@@ -19,15 +23,24 @@ import {
   OrderStep,
   PaymentTerms,
   SeaMethod,
+  ShipmentStatus,
   ShipmentType,
+  StatusChangeSource,
+  StatusEntityType,
+  StatusTrack,
   TradeAgreement,
+  WeightRoundingMode,
 } from './generated/schema';
 
 export {
+  AirMethod,
+  ArrivalState,
   CcfStatus,
   ClassificationApproval,
   ClassificationLicense,
+  ClearanceStatus,
   Destination,
+  DocumentStatus,
   ImportDocumentType,
   Incoterm,
   MblShippingType,
@@ -36,8 +49,13 @@ export {
   OrderStep,
   PaymentTerms,
   SeaMethod,
+  ShipmentStatus,
   ShipmentType,
+  StatusChangeSource,
+  StatusEntityType,
+  StatusTrack,
   TradeAgreement,
+  WeightRoundingMode,
 };
 
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
@@ -88,6 +106,51 @@ export const SEA_METHOD_LABELS: Record<SeaMethod, string> = {
   [SeaMethod.FCL_LCL]: 'FCL / LCL',
   [SeaMethod.LCL_LCL]: 'LCL / LCL',
   [SeaMethod.GROUPAGE_FCL]: 'Groupage FCL',
+};
+
+/** Step 2 (air only) of "יצירת תיק שילוח" — the MAWB/HAWB structure. */
+export const AIR_METHOD_LABELS: Record<AirMethod, string> = {
+  [AirMethod.DIRECT]: 'ישיר (Direct)',
+  [AirMethod.CONSOLIDATION]: 'קונסולידציה',
+  [AirMethod.BACK_TO_BACK]: 'Back-to-back',
+};
+
+/** MAWB shipment status track — departed/arrived are also set automatically from ATD/ATA. */
+export const SHIPMENT_STATUS_LABELS: Record<ShipmentStatus, string> = {
+  [ShipmentStatus.BOOKING_CONFIRMED]: 'הזמנת מקום אושרה',
+  [ShipmentStatus.DEPARTED]: 'המריא',
+  [ShipmentStatus.IN_TRANSIT]: 'בדרך (נחיתת ביניים)',
+  [ShipmentStatus.ARRIVED]: 'נחת',
+};
+
+/** HAWB document status track. */
+export const DOCUMENT_STATUS_LABELS: Record<DocumentStatus, string> = {
+  [DocumentStatus.PENDING]: 'ממתין למסמכים',
+  [DocumentStatus.UNDER_REVIEW]: 'בבדיקה',
+  [DocumentStatus.MISSING_INFORMATION]: 'חסר מידע',
+  [DocumentStatus.APPROVED]: 'מסמכים אושרו',
+};
+
+/** Clearance status track of a per-HAWB (air) CCF. */
+export const CLEARANCE_STATUS_LABELS: Record<ClearanceStatus, string> = {
+  [ClearanceStatus.NOT_STARTED]: 'טרם התחיל',
+  [ClearanceStatus.CLASSIFICATION]: 'סיווג טובין',
+  [ClearanceStatus.COMPLIANCE_CHECK]: 'בדיקת חוקיות יבוא',
+  [ClearanceStatus.READY_FOR_DECLARATION]: 'מוכן להצהרה',
+};
+
+/** HAWB arrival state, derived server-side from expected vs received pieces. */
+export const ARRIVAL_STATE_LABELS: Record<ArrivalState, string> = {
+  [ArrivalState.NOT_ARRIVED]: 'טרם הגיע',
+  [ArrivalState.PARTIAL]: 'הגעה חלקית',
+  [ArrivalState.COMPLETE]: 'הגיע במלואו',
+  [ArrivalState.OVER_RECEIVED]: 'התקבל עודף (חריגה)',
+};
+
+export const STATUS_CHANGE_SOURCE_LABELS: Record<StatusChangeSource, string> = {
+  [StatusChangeSource.MANUAL]: 'ידני',
+  [StatusChangeSource.AUTO]: 'אוטומטי',
+  [StatusChangeSource.CORRECTION]: 'תיקון',
 };
 
 /** Lifecycle status of an MBL shipping case (`mbl.status`) — set on the wizard's MBL step. */
@@ -264,6 +327,10 @@ export const CLASSIFICATION_LICENSES: readonly ClassificationLicense[] =
   Object.values(ClassificationLicense);
 export const TRADE_AGREEMENTS: readonly TradeAgreement[] = Object.values(TradeAgreement);
 export const MBL_STATUSES: readonly MblStatus[] = Object.values(MblStatus);
+export const AIR_METHODS: readonly AirMethod[] = Object.values(AirMethod);
+export const SHIPMENT_STATUSES: readonly ShipmentStatus[] = Object.values(ShipmentStatus);
+export const DOCUMENT_STATUSES: readonly DocumentStatus[] = Object.values(DocumentStatus);
+export const CLEARANCE_STATUSES: readonly ClearanceStatus[] = Object.values(ClearanceStatus);
 
 /**
  * Destinations offered under each shipment type — sea shipments go to a port,

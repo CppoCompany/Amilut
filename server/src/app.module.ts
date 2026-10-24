@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
+import { AirModule } from './air/air.module';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
@@ -14,6 +15,7 @@ import { ImportFilesModule } from './import-files/import-files.module';
 import { MblModule } from './mbl/mbl.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { OrdersModule } from './orders/orders.module';
+import { StatusTracksModule } from './status-tracks/status-tracks.module';
 import { SuppliersModule } from './suppliers/suppliers.module';
 
 @Module({
@@ -21,6 +23,7 @@ import { SuppliersModule } from './suppliers/suppliers.module';
     ConfigModule.forRoot({ isGlobal: true }),
     DatabaseModule,
     AuthModule,
+    AirModule,
     CcfModule,
     CountriesModule,
     CustomersModule,
@@ -29,6 +32,7 @@ import { SuppliersModule } from './suppliers/suppliers.module';
     MblModule,
     NotificationsModule,
     OrdersModule,
+    StatusTracksModule,
     SuppliersModule,
   ],
   controllers: [AppController],
